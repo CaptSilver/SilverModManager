@@ -10,6 +10,7 @@
 
     <ItemGroup>
       <Content Include="..\..\..\src\SilverModManager.Networking.NexusWebApi\V1Interop\games.json" Link="games.json" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="CrashLogs\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

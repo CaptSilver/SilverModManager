@@ -1,0 +1,1373 @@
+CRASH TIME: 2026-11-09 18:10:25
+Skyrim VR v1.4.15
+CrashLoggerSSE v1-27-0-0 Oct 25 2026 06:20:14
+
+Unhandled exception "EXCEPTION_ACCESS_VIOLATION" at 0x000141355720 SkyrimVR.exe+1355720	cmp dword ptr [rcx+0x10], 0x00 |  FUN_141355720)
+Exception Flags: 0x00000000 (Continuable)
+Number of Parameters: 2
+Exception Thread ID: 424
+Access Violation: Tried to read memory at 0xFFFFFFFFFFFFFFFF
+ACCESS VIOLATION ANALYSIS:
+	Instruction: cmp dword ptr [rcx+0x10], 0x00
+	Memory Operand: [base=rcx, index=none, scale=0, disp=+0x10]
+	Base Register: rcx = 0x3F6A200040ADD000
+	Computed Address: 0x3F6A200040ADD010
+	Fault Address:   0xFFFFFFFFFFFFFFFF (mismatch)
+
+POSSIBLE RELEVANT OBJECTS:
+	RBP: (ShadowSceneNode*) "shadow scene node"
+	RAX: (BSLightingShaderProperty*)
+	R8: (NiPointLight*) " PtLight"
+	RDI: (BSTriShape*) "AnimObjectBread"
+	RSP+8: (BSLight*)
+	RSP+38: (BSLight*)
+	RSP+48: (BSWaterShaderProperty*)
+	RSP+60: (BSTriShape*) "Water2048:0"
+	RSP+80: (BSFadeNode*) "AnimObjectBreadRoot"
+	RSP+B0: (NiNode*)
+	RSP+E0: (BSFadeNode*) "RuneFrostProjectile01" ("Magic\RuneFrostProjectile01.nif")
+	RSP+160: (Main*)
+	RSP+178: (BSGeometryListCullingProcess*)
+	RSP+1B8: (Sun*)
+	RSP+1D0: (NiCamera*) "WorldRoot Camera"
+	RSP+2E0: (BSShaderAccumulator*)
+	RSP+2E8: (NiCamera*)
+	RSP+340: (NiNode*)
+	RSP+360: (BSMultiBoundNode*)
+
+PROCESS INFO:
+	Process ID: 420
+	Crash Thread ID: 424
+	Process Uptime: 00:03:19 (199704ms)
+	Executable MD5: 6cc5baea600d6a688a5fa5aa67a54248
+	Executable Size: 35530960 bytes
+	Executable Modified: 2023-11-23 05:32:40
+	Elevated: No
+
+THREAD CONTEXT (HEURISTIC):
+	Thread Priority: 2
+	Likely Role: Unknown (main or worker thread)
+
+CALL STACK ([P]robable / [S]tack scan):
+	[ 0][P] 0x000141355720 SkyrimVR.exe+1355720	cmp dword ptr [rcx+0x10], 0x00 |  FUN_141355720 -> 101009+0x2E0	cmp dword ptr [rcx+0x10], 0x00
+	[ 1][S] 0x00014135511E SkyrimVR.exe+135511E	mov rax, rbx |  BSTArray_BSLight___::begin_135511E -> 100997+0x3FE	mov rax, rbx
+	[ 2][S] 0x0001412FE4CE SkyrimVR.exe+12FE4CE	mov rax, rbx |  BSTArray::GetBufferEnd_1412C0A70_12FE4CE -> 99753+0x12AE	mov rax, rbx
+	[ 3][S] 0x0001412F9000 SkyrimVR.exe+12F9000	mov [rsp+0x50], rbp |  NiNode::IsSubtreeRenderable_12F9000 -> 99708+0x930	mov [rsp+0x50], rbp
+	[ 4][S] 0x000141354801 SkyrimVR.exe+1354801	test rdi, rdi |  BSShaderPropertyLightData::RemoveGeometryFromLights_1354801 -> 100988+0x21	test rdi, rdi
+	[ 5][S] 0x0001412F933A SkyrimVR.exe+12F933A	 |  BSGeometry::AttachNearbyLights_12F933A -> 99715+0x22A	
+	[ 6][S] 0x0001412FC0DB SkyrimVR.exe+12FC0DB	jmp 0x00000001412FC0F6 |  ShadowSceneNode::UnlinkChildLights_12FC0DB -> 99744+0x6B	jmp 0x00000001412FC0F6
+	[ 7][S] 0x0001412F7BC8 SkyrimVR.exe+12F7BC8	inc esi |  ShadowSceneNode::ProcessQueuedLights_12F7BC8 -> 99701+0x3E8	inc esi
+	[ 8][S] 0x0001412F8200 SkyrimVR.exe+12F8200	add rbx, 0x08 |  ProcessAllQueuedLights_12F8200 -> 99703+0x30	add rbx, 0x08
+	[ 9][S] 0x0001405B94EA SkyrimVR.exe+05B94EA	xor bl, bl |  Main::Draw_5B94EA -> 35560+0x1BA	xor bl, bl
+	[10][S] 0x000140F1A3E9 SkyrimVR.exe+0F1A3E9	mov rcx, [rsi+0x150] |  UI::IsMenuOpen_F1A3E9 -> 79937+0x39	mov rcx, [rsi+0x150]
+	[11][S] 0x0001405B92FC SkyrimVR.exe+05B92FC	nop |  Main::RenderStereoFrame_5B92FC -> 35556+0x8DC	nop
+	[12][S] 0x0001408AD670 SkyrimVR.exe+08AD670	cmp [0x0000000143011E18], eax |  NiCamera::UpdateGlobalCameraState_8AD670 -> 50741+0x2A0	cmp [0x0000000143011E18], eax
+	[13][S] 0x0001405B8CA3 SkyrimVR.exe+05B8CA3	mov dil, 0x01 |  Main::Render_5B8CA3 -> 35556+0x283	mov dil, 0x01
+	[14][S] 0x0001412FB029 SkyrimVR.exe+12FB029	mov eax, [0x0000000143186C5C] |  ShadowSceneNode::UpdateMultiBoundVisibility_12FB029 -> 99736+0x149	mov eax, [0x0000000143186C5C]
+	[15][S] 0x00014016B719 SkyrimVR.exe+016B719	movaps xmm6, xmm0 |  TES::UpdatePortalVisibility_16B719 -> 13257+0x579	movaps xmm6, xmm0
+	[16][S] 0x0001402ADD93 SkyrimVR.exe+02ADD93	mov rcx, rax |  FUN_1402adb50_2ADD93 -> 19418+0xD03	mov rcx, rax
+	[17][S] 0x0001405BB18D SkyrimVR.exe+05BB18D	test dil, dil |  Main::OnIdle_5BB18D -> 35565+0x67D	test dil, dil
+	[18][S] 0x0001405B6E94 SkyrimVR.exe+05B6E94	test bl, bl |  Main::MainLoop_5B6E94 -> 35551+0x124	test bl, bl
+	[19][S] 0x0001405B42C5 SkyrimVR.exe+05B42C5	call 0x00000000C158002A |  WinMain_5B42C5 -> 35545+0x35	call 0x00000000C158002A
+	[20][S] 0x00014138AF0A SkyrimVR.exe+138AF0A	mov ebx, eax |  __scrt_common_main_seh_138AF0A -> 102178+0x642	mov ebx, eax
+	[21][S] 0x00014138AFC1 SkyrimVR.exe+138AFC1	add rsp, 0x28 |  start_14134B228_138AFC1 -> 102178+0x6F9	add rsp, 0x28
+	[22][S] 0x00014392E310 SkyrimVR.exe+392E310 -> 528600+0x23B3B8	call 0x000000014392E315
+	[23][S] 0x6FFFFFEC1649 kernel32.dll+0011649
+	[24][S] 0x6FFFFFF40E0F    ntdll.dll+0010E0F
+
+REGISTERS:
+	RAX 0x15D26FE80        (BSLightingShaderProperty*)
+		Flags: 0x800182400301
+		RTTIName: "BSLightingShaderProperty"
+		NiPropertyType: kShade (01)
+	RCX 0x3F6A200040ADD000 (size_t) [4569499957378011136]
+	RDX 0x10FA38           (void*)
+	RBX 0x10FA38           (void*)
+	RSP 0x10F998           (void*)
+	RBP 0x1F26E80          (ShadowSceneNode*) "shadow scene node"
+		Active Lights: 30
+		Active Shadow Lights: 2
+		Lit Geometry: 1
+		RTTIName: "ShadowSceneNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 1
+			Name: "WorldRoot Node"
+			RTTIName: "SceneGraph"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	RSI 0x3F6A200040ADD000 (size_t) [4569499957378011136]
+	RDI 0x1786D4F00        (BSTriShape*) "AnimObjectBread"
+		RTTIName: "BSTriShape"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Texture[Diffuse]: "textures\clutter\food\Bread01.dds"
+		Texture[Normal]: "textures\clutter\food\Bread01_n.dds"
+		Checking Parent: 0
+			Name: "AnimObjectBreadRoot"
+			RTTIName: "BSFadeNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	R8  0x16BDD9F00        (NiPointLight*) " PtLight"
+		RTTIName: "NiPointLight"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Full Name: "Adventurer"
+		Checking User Data: -----
+			Object Reference: 
+			Flags: 0x00000008 kInitialized
+			Name: "Adventurer"
+			FormID: 0xFF007B66
+			FormType: NPC (43)
+			ParentCell: ---
+				File: "DynDOLOD.esp"
+				Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+				Flags: 0x00000009 
+				EditorID: "Wilderness"
+				FormID: 0x0000963C
+				FormType: Cell (60)
+		Checking TESObjectREFR: {}
+			Object Reference: 
+			Flags: 0x00000008 kInitialized
+			Name: "Adventurer"
+			FormID: 0xFF007B66
+			FormType: NPC (43)
+			ParentCell: ---
+				File: "DynDOLOD.esp"
+				Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+				Flags: 0x00000009 
+				EditorID: "Wilderness"
+				FormID: 0x0000963C
+				FormType: Cell (60)
+		Checking Parent: 0
+			Name: "AttachLight"
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Full Name: "Adventurer"
+			Checking User Data: -----
+				Object Reference: 
+				Flags: 0x00000008 kInitialized
+				Name: "Adventurer"
+				FormID: 0xFF007B66
+				FormType: NPC (43)
+				ParentCell: ---
+					File: "DynDOLOD.esp"
+					Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+					Flags: 0x00000009 
+					EditorID: "Wilderness"
+					FormID: 0x0000963C
+					FormType: Cell (60)
+			Checking TESObjectREFR: {}
+				Object Reference: 
+				Flags: 0x00000008 kInitialized
+				Name: "Adventurer"
+				FormID: 0xFF007B66
+				FormType: NPC (43)
+				ParentCell: ---
+					File: "DynDOLOD.esp"
+					Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+					Flags: 0x00000009 
+					EditorID: "Wilderness"
+					FormID: 0x0000963C
+					FormType: Cell (60)
+			Checking Parent: 1
+				Name: "TorchFire"
+				RTTIName: "NiNode"
+				ExtraData[0] Name: "NiTextKeyED001"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Full Name: "Adventurer"
+				Checking User Data: -----
+					Object Reference: 
+					Flags: 0x00000008 kInitialized
+					Name: "Adventurer"
+					FormID: 0xFF007B66
+					FormType: NPC (43)
+					ParentCell: ---
+						File: "DynDOLOD.esp"
+						Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+						Flags: 0x00000009 
+						EditorID: "Wilderness"
+						FormID: 0x0000963C
+						FormType: Cell (60)
+				Checking TESObjectREFR: {}
+					Object Reference: 
+					Flags: 0x00000008 kInitialized
+					Name: "Adventurer"
+					FormID: 0xFF007B66
+					FormType: NPC (43)
+					ParentCell: ---
+						File: "DynDOLOD.esp"
+						Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+						Flags: 0x00000009 
+						EditorID: "Wilderness"
+						FormID: 0x0000963C
+						FormType: Cell (60)
+				Checking Parent: 0
+					Name: "Torch  (0001D4EC)"
+					RTTIName: "BSFadeNode"
+					ExtraData[0] Name: "BSX"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Full Name: "Adventurer"
+					Checking User Data: -----
+						Object Reference: 
+						Flags: 0x00000008 kInitialized
+						Name: "Adventurer"
+						FormID: 0xFF007B66
+						FormType: NPC (43)
+						ParentCell: ---
+							File: "DynDOLOD.esp"
+							Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+							Flags: 0x00000009 
+							EditorID: "Wilderness"
+							FormID: 0x0000963C
+							FormType: Cell (60)
+					Checking TESObjectREFR: {}
+						Object Reference: 
+						Flags: 0x00000008 kInitialized
+						Name: "Adventurer"
+						FormID: 0xFF007B66
+						FormType: NPC (43)
+						ParentCell: ---
+							File: "DynDOLOD.esp"
+							Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+							Flags: 0x00000009 
+							EditorID: "Wilderness"
+							FormID: 0x0000963C
+							FormType: Cell (60)
+					Checking Parent: 0
+						Name: "SHIELD"
+						RTTIName: "NiNode"
+						ExtraData[0] Name: "hkVis:Shield"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+						Full Name: "Adventurer"
+						Checking User Data: -----
+							Object Reference: 
+							Flags: 0x00000008 kInitialized
+							Name: "Adventurer"
+							FormID: 0xFF007B66
+							FormType: NPC (43)
+							ParentCell: ---
+								File: "DynDOLOD.esp"
+								Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+								Flags: 0x00000009 
+								EditorID: "Wilderness"
+								FormID: 0x0000963C
+								FormType: Cell (60)
+						Checking TESObjectREFR: {}
+							Object Reference: 
+							Flags: 0x00000008 kInitialized
+							Name: "Adventurer"
+							FormID: 0xFF007B66
+							FormType: NPC (43)
+							ParentCell: ---
+								File: "DynDOLOD.esp"
+								Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+								Flags: 0x00000009 
+								EditorID: "Wilderness"
+								FormID: 0x0000963C
+								FormType: Cell (60)
+						Checking Parent: 0
+							Name: "PreSHIELD"
+							RTTIName: "NiNode"
+							Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+							Full Name: "Adventurer"
+							Checking User Data: -----
+								Object Reference: 
+								Flags: 0x00000008 kInitialized
+								Name: "Adventurer"
+								FormID: 0xFF007B66
+								FormType: NPC (43)
+								ParentCell: ---
+									File: "DynDOLOD.esp"
+									Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+									Flags: 0x00000009 
+									EditorID: "Wilderness"
+									FormID: 0x0000963C
+									FormType: Cell (60)
+							Checking TESObjectREFR: {}
+								Object Reference: 
+								Flags: 0x00000008 kInitialized
+								Name: "Adventurer"
+								FormID: 0xFF007B66
+								FormType: NPC (43)
+								ParentCell: ---
+									File: "DynDOLOD.esp"
+									Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+									Flags: 0x00000009 
+									EditorID: "Wilderness"
+									FormID: 0x0000963C
+									FormType: Cell (60)
+							Checking Parent: 6
+								Name: "CME L Hand [LHnd]"
+								RTTIName: "NiNode"
+								Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+								Full Name: "Adventurer"
+								Checking User Data: -----
+									Object Reference: 
+									Flags: 0x00000008 kInitialized
+									Name: "Adventurer"
+									FormID: 0xFF007B66
+									FormType: NPC (43)
+									ParentCell: ---
+										File: "DynDOLOD.esp"
+										Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+										Flags: 0x00000009 
+										EditorID: "Wilderness"
+										FormID: 0x0000963C
+										FormType: Cell (60)
+								Checking TESObjectREFR: {}
+									Object Reference: 
+									Flags: 0x00000008 kInitialized
+									Name: "Adventurer"
+									FormID: 0xFF007B66
+									FormType: NPC (43)
+									ParentCell: ---
+										File: "DynDOLOD.esp"
+										Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+										Flags: 0x00000009 
+										EditorID: "Wilderness"
+										FormID: 0x0000963C
+										FormType: Cell (60)
+								Checking Parent: 0
+									Name: "NPC L Hand [LHnd]"
+									RTTIName: "NiNode"
+									Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+									Full Name: "Adventurer"
+									Checking User Data: -----
+										Object Reference: 
+										Flags: 0x00000008 kInitialized
+										Name: "Adventurer"
+										FormID: 0xFF007B66
+										FormType: NPC (43)
+										ParentCell: ---
+											File: "DynDOLOD.esp"
+											Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+											Flags: 0x00000009 
+											EditorID: "Wilderness"
+											FormID: 0x0000963C
+											FormType: Cell (60)
+									Checking TESObjectREFR: {}
+										Object Reference: 
+										Flags: 0x00000008 kInitialized
+										Name: "Adventurer"
+										FormID: 0xFF007B66
+										FormType: NPC (43)
+										ParentCell: ---
+											File: "DynDOLOD.esp"
+											Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+											Flags: 0x00000009 
+											EditorID: "Wilderness"
+											FormID: 0x0000963C
+											FormType: Cell (60)
+									Checking Parent: 0
+										Name: "CME L Forearm [LLar]"
+										RTTIName: "NiNode"
+										Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+										Full Name: "Adventurer"
+										Checking User Data: -----
+											Object Reference: 
+											Flags: 0x00000008 kInitialized
+											Name: "Adventurer"
+											FormID: 0xFF007B66
+											FormType: NPC (43)
+											ParentCell: ---
+												File: "DynDOLOD.esp"
+												Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+												Flags: 0x00000009 
+												EditorID: "Wilderness"
+												FormID: 0x0000963C
+												FormType: Cell (60)
+										Checking TESObjectREFR: {}
+											Object Reference: 
+											Flags: 0x00000008 kInitialized
+											Name: "Adventurer"
+											FormID: 0xFF007B66
+											FormType: NPC (43)
+											ParentCell: ---
+												File: "DynDOLOD.esp"
+												Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+												Flags: 0x00000009 
+												EditorID: "Wilderness"
+												FormID: 0x0000963C
+												FormType: Cell (60)
+										Checking Parent: 0
+											Name: "NPC L Forearm [LLar]"
+											RTTIName: "NiNode"
+											Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+											Full Name: "Adventurer"
+											Checking User Data: -----
+												Object Reference: 
+												Flags: 0x00000008 kInitialized
+												Name: "Adventurer"
+												FormID: 0xFF007B66
+												FormType: NPC (43)
+												ParentCell: ---
+													File: "DynDOLOD.esp"
+													Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+													Flags: 0x00000009 
+													EditorID: "Wilderness"
+													FormID: 0x0000963C
+													FormType: Cell (60)
+											Checking TESObjectREFR: {}
+												Object Reference: 
+												Flags: 0x00000008 kInitialized
+												Name: "Adventurer"
+												FormID: 0xFF007B66
+												FormType: NPC (43)
+												ParentCell: ---
+													File: "DynDOLOD.esp"
+													Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+													Flags: 0x00000009 
+													EditorID: "Wilderness"
+													FormID: 0x0000963C
+													FormType: Cell (60)
+											Checking Parent: 0
+												Name: "CME L UpperArm [LUar]"
+												RTTIName: "NiNode"
+												Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+												Full Name: "Adventurer"
+												Checking User Data: -----
+													Object Reference: 
+													Flags: 0x00000008 kInitialized
+													Name: "Adventurer"
+													FormID: 0xFF007B66
+													FormType: NPC (43)
+													ParentCell: ---
+														File: "DynDOLOD.esp"
+														Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+														Flags: 0x00000009 
+														EditorID: "Wilderness"
+														FormID: 0x0000963C
+														FormType: Cell (60)
+												Checking TESObjectREFR: {}
+													Object Reference: 
+													Flags: 0x00000008 kInitialized
+													Name: "Adventurer"
+													FormID: 0xFF007B66
+													FormType: NPC (43)
+													ParentCell: ---
+														File: "DynDOLOD.esp"
+														Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+														Flags: 0x00000009 
+														EditorID: "Wilderness"
+														FormID: 0x0000963C
+														FormType: Cell (60)
+												Checking Parent: 0
+													Name: "NPC L UpperArm [LUar]"
+													RTTIName: "NiNode"
+													Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+													Full Name: "Adventurer"
+													Checking User Data: -----
+														Object Reference: 
+														Flags: 0x00000008 kInitialized
+														Name: "Adventurer"
+														FormID: 0xFF007B66
+														FormType: NPC (43)
+														ParentCell: ---
+															File: "DynDOLOD.esp"
+															Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+															Flags: 0x00000009 
+															EditorID: "Wilderness"
+															FormID: 0x0000963C
+															FormType: Cell (60)
+													Checking TESObjectREFR: {}
+														Object Reference: 
+														Flags: 0x00000008 kInitialized
+														Name: "Adventurer"
+														FormID: 0xFF007B66
+														FormType: NPC (43)
+														ParentCell: ---
+															File: "DynDOLOD.esp"
+															Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+															Flags: 0x00000009 
+															EditorID: "Wilderness"
+															FormID: 0x0000963C
+															FormType: Cell (60)
+													Checking Parent: 0
+														Name: "CME L Clavicle [LClv]"
+														RTTIName: "NiNode"
+														Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+														Full Name: "Adventurer"
+														Checking User Data: -----
+															Object Reference: 
+															Flags: 0x00000008 kInitialized
+															Name: "Adventurer"
+															FormID: 0xFF007B66
+															FormType: NPC (43)
+															ParentCell: ---
+																File: "DynDOLOD.esp"
+																Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																Flags: 0x00000009 
+																EditorID: "Wilderness"
+																FormID: 0x0000963C
+																FormType: Cell (60)
+														Checking TESObjectREFR: {}
+															Object Reference: 
+															Flags: 0x00000008 kInitialized
+															Name: "Adventurer"
+															FormID: 0xFF007B66
+															FormType: NPC (43)
+															ParentCell: ---
+																File: "DynDOLOD.esp"
+																Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																Flags: 0x00000009 
+																EditorID: "Wilderness"
+																FormID: 0x0000963C
+																FormType: Cell (60)
+														Checking Parent: 0
+															Name: "NPC L Clavicle [LClv]"
+															RTTIName: "NiNode"
+															Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+															Full Name: "Adventurer"
+															Checking User Data: -----
+																Object Reference: 
+																Flags: 0x00000008 kInitialized
+																Name: "Adventurer"
+																FormID: 0xFF007B66
+																FormType: NPC (43)
+																ParentCell: ---
+																	File: "DynDOLOD.esp"
+																	Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																	Flags: 0x00000009 
+																	EditorID: "Wilderness"
+																	FormID: 0x0000963C
+																	FormType: Cell (60)
+															Checking TESObjectREFR: {}
+																Object Reference: 
+																Flags: 0x00000008 kInitialized
+																Name: "Adventurer"
+																FormID: 0xFF007B66
+																FormType: NPC (43)
+																ParentCell: ---
+																	File: "DynDOLOD.esp"
+																	Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																	Flags: 0x00000009 
+																	EditorID: "Wilderness"
+																	FormID: 0x0000963C
+																	FormType: Cell (60)
+															Checking Parent: 0
+																Name: "CME L Shoulder"
+																RTTIName: "NiNode"
+																Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																Full Name: "Adventurer"
+																Checking User Data: -----
+																	Object Reference: 
+																	Flags: 0x00000008 kInitialized
+																	Name: "Adventurer"
+																	FormID: 0xFF007B66
+																	FormType: NPC (43)
+																	ParentCell: ---
+																		File: "DynDOLOD.esp"
+																		Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																		Flags: 0x00000009 
+																		EditorID: "Wilderness"
+																		FormID: 0x0000963C
+																		FormType: Cell (60)
+																Checking TESObjectREFR: {}
+																	Object Reference: 
+																	Flags: 0x00000008 kInitialized
+																	Name: "Adventurer"
+																	FormID: 0xFF007B66
+																	FormType: NPC (43)
+																	ParentCell: ---
+																		File: "DynDOLOD.esp"
+																		Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																		Flags: 0x00000009 
+																		EditorID: "Wilderness"
+																		FormID: 0x0000963C
+																		FormType: Cell (60)
+																Checking Parent: 2
+																	Name: "CME Spine2 [Spn2]"
+																	RTTIName: "NiNode"
+																	Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																	Full Name: "Adventurer"
+																	Checking User Data: -----
+																		Object Reference: 
+																		Flags: 0x00000008 kInitialized
+																		Name: "Adventurer"
+																		FormID: 0xFF007B66
+																		FormType: NPC (43)
+																		ParentCell: ---
+																			File: "DynDOLOD.esp"
+																			Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																			Flags: 0x00000009 
+																			EditorID: "Wilderness"
+																			FormID: 0x0000963C
+																			FormType: Cell (60)
+																	Checking TESObjectREFR: {}
+																		Object Reference: 
+																		Flags: 0x00000008 kInitialized
+																		Name: "Adventurer"
+																		FormID: 0xFF007B66
+																		FormType: NPC (43)
+																		ParentCell: ---
+																			File: "DynDOLOD.esp"
+																			Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																			Flags: 0x00000009 
+																			EditorID: "Wilderness"
+																			FormID: 0x0000963C
+																			FormType: Cell (60)
+																	Checking Parent: 0
+																		Name: "NPC Spine2 [Spn2]"
+																		RTTIName: "NiNode"
+																		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																		Full Name: "Adventurer"
+																		Checking User Data: -----
+																			Object Reference: 
+																			Flags: 0x00000008 kInitialized
+																			Name: "Adventurer"
+																			FormID: 0xFF007B66
+																			FormType: NPC (43)
+																			ParentCell: ---
+																				File: "DynDOLOD.esp"
+																				Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																				Flags: 0x00000009 
+																				EditorID: "Wilderness"
+																				FormID: 0x0000963C
+																				FormType: Cell (60)
+																		Checking TESObjectREFR: {}
+																			Object Reference: 
+																			Flags: 0x00000008 kInitialized
+																			Name: "Adventurer"
+																			FormID: 0xFF007B66
+																			FormType: NPC (43)
+																			ParentCell: ---
+																				File: "DynDOLOD.esp"
+																				Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																				Flags: 0x00000009 
+																				EditorID: "Wilderness"
+																				FormID: 0x0000963C
+																				FormType: Cell (60)
+																		Checking Parent: 0
+																			Name: "CME Spine1 [Spn1]"
+																			RTTIName: "NiNode"
+																			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																			Full Name: "Adventurer"
+																			Checking User Data: -----
+																				Object Reference: 
+																				Flags: 0x00000008 kInitialized
+																				Name: "Adventurer"
+																				FormID: 0xFF007B66
+																				FormType: NPC (43)
+																				ParentCell: ---
+																					File: "DynDOLOD.esp"
+																					Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																					Flags: 0x00000009 
+																					EditorID: "Wilderness"
+																					FormID: 0x0000963C
+																					FormType: Cell (60)
+																			Checking TESObjectREFR: {}
+																				Object Reference: 
+																				Flags: 0x00000008 kInitialized
+																				Name: "Adventurer"
+																				FormID: 0xFF007B66
+																				FormType: NPC (43)
+																				ParentCell: ---
+																					File: "DynDOLOD.esp"
+																					Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																					Flags: 0x00000009 
+																					EditorID: "Wilderness"
+																					FormID: 0x0000963C
+																					FormType: Cell (60)
+																			Checking Parent: 0
+																				Name: "NPC Spine1 [Spn1]"
+																				RTTIName: "NiNode"
+																				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																				Full Name: "Adventurer"
+																				Checking User Data: -----
+																					Object Reference: 
+																					Flags: 0x00000008 kInitialized
+																					Name: "Adventurer"
+																					FormID: 0xFF007B66
+																					FormType: NPC (43)
+																					ParentCell: ---
+																						File: "DynDOLOD.esp"
+																						Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																						Flags: 0x00000009 
+																						EditorID: "Wilderness"
+																						FormID: 0x0000963C
+																						FormType: Cell (60)
+																				Checking TESObjectREFR: {}
+																					Object Reference: 
+																					Flags: 0x00000008 kInitialized
+																					Name: "Adventurer"
+																					FormID: 0xFF007B66
+																					FormType: NPC (43)
+																					ParentCell: ---
+																						File: "DynDOLOD.esp"
+																						Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																						Flags: 0x00000009 
+																						EditorID: "Wilderness"
+																						FormID: 0x0000963C
+																						FormType: Cell (60)
+																				Checking Parent: 0
+																					Name: "CME Spine [Spn0]"
+																					RTTIName: "NiNode"
+																					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																					Full Name: "Adventurer"
+																					Checking User Data: -----
+																						Object Reference: 
+																						Flags: 0x00000008 kInitialized
+																						Name: "Adventurer"
+																						FormID: 0xFF007B66
+																						FormType: NPC (43)
+																						ParentCell: ---
+																							File: "DynDOLOD.esp"
+																							Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																							Flags: 0x00000009 
+																							EditorID: "Wilderness"
+																							FormID: 0x0000963C
+																							FormType: Cell (60)
+																					Checking TESObjectREFR: {}
+																						Object Reference: 
+																						Flags: 0x00000008 kInitialized
+																						Name: "Adventurer"
+																						FormID: 0xFF007B66
+																						FormType: NPC (43)
+																						ParentCell: ---
+																							File: "DynDOLOD.esp"
+																							Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																							Flags: 0x00000009 
+																							EditorID: "Wilderness"
+																							FormID: 0x0000963C
+																							FormType: Cell (60)
+																					Checking Parent: 0
+																						Name: "NPC Spine [Spn0]"
+																						RTTIName: "NiNode"
+																						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																						Full Name: "Adventurer"
+																						Checking User Data: -----
+																							Object Reference: 
+																							Flags: 0x00000008 kInitialized
+																							Name: "Adventurer"
+																							FormID: 0xFF007B66
+																							FormType: NPC (43)
+																							ParentCell: ---
+																								File: "DynDOLOD.esp"
+																								Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																								Flags: 0x00000009 
+																								EditorID: "Wilderness"
+																								FormID: 0x0000963C
+																								FormType: Cell (60)
+																						Checking TESObjectREFR: {}
+																							Object Reference: 
+																							Flags: 0x00000008 kInitialized
+																							Name: "Adventurer"
+																							FormID: 0xFF007B66
+																							FormType: NPC (43)
+																							ParentCell: ---
+																								File: "DynDOLOD.esp"
+																								Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																								Flags: 0x00000009 
+																								EditorID: "Wilderness"
+																								FormID: 0x0000963C
+																								FormType: Cell (60)
+																						Checking Parent: 0
+																							Name: "CME UBody [UBody]"
+																							RTTIName: "NiNode"
+																							Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																							Full Name: "Adventurer"
+																							Checking User Data: -----
+																								Object Reference: 
+																								Flags: 0x00000008 kInitialized
+																								Name: "Adventurer"
+																								FormID: 0xFF007B66
+																								FormType: NPC (43)
+																								ParentCell: ---
+																									File: "DynDOLOD.esp"
+																									Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																									Flags: 0x00000009 
+																									EditorID: "Wilderness"
+																									FormID: 0x0000963C
+																									FormType: Cell (60)
+																							Checking TESObjectREFR: {}
+																								Object Reference: 
+																								Flags: 0x00000008 kInitialized
+																								Name: "Adventurer"
+																								FormID: 0xFF007B66
+																								FormType: NPC (43)
+																								ParentCell: ---
+																									File: "DynDOLOD.esp"
+																									Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																									Flags: 0x00000009 
+																									EditorID: "Wilderness"
+																									FormID: 0x0000963C
+																									FormType: Cell (60)
+																							Checking Parent: 1
+																								Name: "CME Body [Body]"
+																								RTTIName: "NiNode"
+																								Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																								Full Name: "Adventurer"
+																								Checking User Data: -----
+																									Object Reference: 
+																									Flags: 0x00000008 kInitialized
+																									Name: "Adventurer"
+																									FormID: 0xFF007B66
+																									FormType: NPC (43)
+																									ParentCell: ---
+																										File: "DynDOLOD.esp"
+																										Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																										Flags: 0x00000009 
+																										EditorID: "Wilderness"
+																										FormID: 0x0000963C
+																										FormType: Cell (60)
+																								Checking TESObjectREFR: {}
+																									Object Reference: 
+																									Flags: 0x00000008 kInitialized
+																									Name: "Adventurer"
+																									FormID: 0xFF007B66
+																									FormType: NPC (43)
+																									ParentCell: ---
+																										File: "DynDOLOD.esp"
+																										Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																										Flags: 0x00000009 
+																										EditorID: "Wilderness"
+																										FormID: 0x0000963C
+																										FormType: Cell (60)
+																								Checking Parent: 0
+																									Name: "NPC COM [COM ]"
+																									RTTIName: "NiNode"
+																									Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																									Full Name: "Adventurer"
+																									Checking User Data: -----
+																										Object Reference: 
+																										Flags: 0x00000008 kInitialized
+																										Name: "Adventurer"
+																										FormID: 0xFF007B66
+																										FormType: NPC (43)
+																										ParentCell: ---
+																											File: "DynDOLOD.esp"
+																											Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																											Flags: 0x00000009 
+																											EditorID: "Wilderness"
+																											FormID: 0x0000963C
+																											FormType: Cell (60)
+																									Checking TESObjectREFR: {}
+																										Object Reference: 
+																										Flags: 0x00000008 kInitialized
+																										Name: "Adventurer"
+																										FormID: 0xFF007B66
+																										FormType: NPC (43)
+																										ParentCell: ---
+																											File: "DynDOLOD.esp"
+																											Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																											Flags: 0x00000009 
+																											EditorID: "Wilderness"
+																											FormID: 0x0000963C
+																											FormType: Cell (60)
+																									Checking Parent: 0
+																										Name: "NPC Root [Root]"
+																										RTTIName: "BSFlattenedBoneTree"
+																										Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																										Full Name: "Adventurer"
+																										Checking User Data: -----
+																											Object Reference: 
+																											Flags: 0x00000008 kInitialized
+																											Name: "Adventurer"
+																											FormID: 0xFF007B66
+																											FormType: NPC (43)
+																											ParentCell: ---
+																												File: "DynDOLOD.esp"
+																												Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																												Flags: 0x00000009 
+																												EditorID: "Wilderness"
+																												FormID: 0x0000963C
+																												FormType: Cell (60)
+																										Checking TESObjectREFR: {}
+																											Object Reference: 
+																											Flags: 0x00000008 kInitialized
+																											Name: "Adventurer"
+																											FormID: 0xFF007B66
+																											FormType: NPC (43)
+																											ParentCell: ---
+																												File: "DynDOLOD.esp"
+																												Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																												Flags: 0x00000009 
+																												EditorID: "Wilderness"
+																												FormID: 0x0000963C
+																												FormType: Cell (60)
+																										Checking Parent: 0
+																											Name: "NPC"
+																											RTTIName: "NiNode"
+																											ExtraData[0] Name: "rigVersion"
+																											ExtraData[1] Name: "rigPerspective"
+																											ExtraData[2] Name: "XPMSE"
+																											ExtraData[3] Name: "species"
+																											Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																											Full Name: "Adventurer"
+																											Checking User Data: -----
+																												Object Reference: 
+																												Flags: 0x00000008 kInitialized
+																												Name: "Adventurer"
+																												FormID: 0xFF007B66
+																												FormType: NPC (43)
+																												ParentCell: ---
+																													File: "DynDOLOD.esp"
+																													Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																													Flags: 0x00000009 
+																													EditorID: "Wilderness"
+																													FormID: 0x0000963C
+																													FormType: Cell (60)
+																											Checking TESObjectREFR: {}
+																												Object Reference: 
+																												Flags: 0x00000008 kInitialized
+																												Name: "Adventurer"
+																												FormID: 0xFF007B66
+																												FormType: NPC (43)
+																												ParentCell: ---
+																													File: "DynDOLOD.esp"
+																													Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																													Flags: 0x00000009 
+																													EditorID: "Wilderness"
+																													FormID: 0x0000963C
+																													FormType: Cell (60)
+																											Checking Parent: 0
+																												Name: "skeleton_female.nif"
+																												RTTIName: "BSFadeNode"
+																												ExtraData[0] Name: "BSBoneLOD"
+																												ExtraData[1] Name: "BOM"
+																												ExtraData[2] Name: "BBX"
+																												ExtraData[3] Name: "BSX"
+																												ExtraData[4] Name: "SkeletonID"
+																												Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																												Full Name: "Adventurer"
+																												Checking User Data: -----
+																													Object Reference: 
+																													Flags: 0x00000008 kInitialized
+																													Name: "Adventurer"
+																													FormID: 0xFF007B66
+																													FormType: NPC (43)
+																													ParentCell: ---
+																														File: "DynDOLOD.esp"
+																														Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																														Flags: 0x00000009 
+																														EditorID: "Wilderness"
+																														FormID: 0x0000963C
+																														FormType: Cell (60)
+																												Checking TESObjectREFR: {}
+																													Object Reference: 
+																													Flags: 0x00000008 kInitialized
+																													Name: "Adventurer"
+																													FormID: 0xFF007B66
+																													FormType: NPC (43)
+																													ParentCell: ---
+																														File: "DynDOLOD.esp"
+																														Modified by: Skyrim.esm -> Update.esm -> Unofficial Skyrim Special Edition Patch.esp -> Landscape and Water Fixes.esp -> Lanterns Of Skyrim II.esm -> MrissiTailOfTroubles.esp -> Holds.esp -> Merge - Holds Patches.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+																														Flags: 0x00000009 
+																														EditorID: "Wilderness"
+																														FormID: 0x0000963C
+																														FormType: Cell (60)
+																												Checking Parent: 0
+																													RTTIName: "NiNode"
+																													Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																													Checking Parent: 0
+																														RTTIName: "BSMultiBoundNode"
+																														Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																														Checking Parent: 3
+																															Name: "ObjectLODRoot"
+																															RTTIName: "NiNode"
+																															Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																															Checking Parent: 3
+																																Name: "shadow scene node"
+																																RTTIName: "ShadowSceneNode"
+																																Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+																																Checking Parent: 1
+																																	Name: "WorldRoot Node"
+																																	RTTIName: "SceneGraph"
+																																	Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	R9  0x8                (size_t) [8]
+	R10 0x143959000        (size_t) [5428842496]
+	R11 0x10F968           (void*)
+	R12 0x1F27020          (void*)
+	R13 0x1F27008          (void*)
+	R14 0x3E               (size_t) [62]
+	R15 0x0                (size_t) [0]
+
+STACK:
+	[RSP+0  ] 0x14135511E        (void* -> SkyrimVR.exe+135511E	mov rax, rbx |  BSTArray_BSLight___::begin_135511E)
+	[RSP+8  ] 0x17AA2EFC0        (BSLight*)
+	[RSP+10 ] 0x1412FE4CE        (void* -> SkyrimVR.exe+12FE4CE	mov rax, rbx |  BSTArray::GetBufferEnd_1412C0A70_12FE4CE)
+	[RSP+18 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+20 ] 0x1412F9000        (void* -> SkyrimVR.exe+12F9000	mov [rsp+0x50], rbp |  NiNode::IsSubtreeRenderable_12F9000)
+	[RSP+28 ] 0x1786D4F00        (BSTriShape*) See RDI
+	[RSP+30 ] 0x141354801        (void* -> SkyrimVR.exe+1354801	test rdi, rdi |  BSShaderPropertyLightData::RemoveGeometryFromLights_1354801)
+	[RSP+38 ] 0x17176EFC0        (BSLight*)
+	[RSP+40 ] 0x1412F933A        (void* -> SkyrimVR.exe+12F933A	 |  BSGeometry::AttachNearbyLights_12F933A)
+	[RSP+48 ] 0x177E15600        (BSWaterShaderProperty*)
+		Flags: 0x180000000
+		RTTIName: "BSWaterShaderProperty"
+		NiPropertyType: kShade (01)
+	[RSP+50 ] 0x1719B24F0        (void*)
+	[RSP+58 ] 0x1F26FD8          (void*)
+	[RSP+60 ] 0x16C99BC80        (BSTriShape*) "Water2048:0"
+		RTTIName: "BSTriShape"
+		Flags: kHidden | kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 5
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 1
+				Name: "ObjectLODRoot"
+				RTTIName: "NiNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 3
+					Name: "shadow scene node"
+					RTTIName: "ShadowSceneNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Checking Parent: 1
+						Name: "WorldRoot Node"
+						RTTIName: "SceneGraph"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+68 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+70 ] 0xC5C9A000466A9000 (size_t) [uint: 14252098418832478208 int: -4194645654877073408]
+	[RSP+78 ] 0x0                (size_t) [0]
+	[RSP+80 ] 0x15D26F100        (BSFadeNode*) "AnimObjectBreadRoot"
+		RTTIName: "BSFadeNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+88 ] 0x1786D4F00        (BSTriShape*) See RDI
+	[RSP+90 ] 0x1412FC0DB        (void* -> SkyrimVR.exe+12FC0DB	jmp 0x00000001412FC0F6 |  ShadowSceneNode::UnlinkChildLights_12FC0DB)
+	[RSP+98 ] 0x43160000         (void*)
+	[RSP+A0 ] 0x0                (size_t) [0]
+	[RSP+A8 ] 0x3D               (size_t) [61]
+	[RSP+B0 ] 0x6F827580         (NiNode*)
+		RTTIName: "NiNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 1
+			Name: "ObjectLODRoot"
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 3
+				Name: "shadow scene node"
+				RTTIName: "ShadowSceneNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 1
+					Name: "WorldRoot Node"
+					RTTIName: "SceneGraph"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+B8 ] 0x1F26E80          (ShadowSceneNode*) See RBP
+	[RSP+C0 ] 0x1412F7BC8        (void* -> SkyrimVR.exe+12F7BC8	inc esi |  ShadowSceneNode::ProcessQueuedLights_12F7BC8)
+	[RSP+C8 ] 0x15D26F100        (BSFadeNode*) See RSP+80
+	[RSP+D0 ] 0x0                (size_t) [0]
+	[RSP+D8 ] 0x0                (size_t) [0]
+	[RSP+E0 ] 0x16BAFD600        (BSFadeNode*) "RuneFrostProjectile01" ("Magic\RuneFrostProjectile01.nif")
+		RTTIName: "BSFadeNode"
+		ExtraData[0] Name: "BGED"
+		ExtraData[1] Name: "BSX"
+		Flags: kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Full Name: ""
+		Checking Owner: -----
+			File: "OrganicFactionsExtension.esp"
+			Flags: 0x00000008 kInitialized
+			Name: "Snow Elf Faction"
+			FormID: 0x3462B32D
+			FormType: Faction (11)
+		Checking User Data: -----
+			Object Reference: 
+			File: "Skyrim.esm"
+			Flags: 0x00000009 kDestructible | kInitialized
+			FormID: 0x0007326E
+			FormType: Projectile (50)
+			ParentCell: ---
+				File: "OrganicFactionsExtension.esp"
+				Flags: 0x000C0009 
+				Name: "Forgotten Chapel"
+				EditorID: "OrgFacExtForgottenChapel01"
+				FormID: 0x345E36F4
+				FormType: Cell (60)
+		Checking TESObjectREFR: {}
+			Object Reference: 
+			File: "Skyrim.esm"
+			Flags: 0x00000009 kDestructible | kInitialized
+			FormID: 0x0007326E
+			FormType: Projectile (50)
+			ParentCell: ---
+				File: "OrganicFactionsExtension.esp"
+				Flags: 0x000C0009 
+				Name: "Forgotten Chapel"
+				EditorID: "OrgFacExtForgottenChapel01"
+				FormID: 0x345E36F4
+				FormType: Cell (60)
+		Checking Parent: 10
+			Name: "DynamicNode"
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 4
+				RTTIName: "BSMultiBoundNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+E8 ] 0x0                (size_t) [0]
+	[RSP+F0 ] 0x0                (size_t) [0]
+	[RSP+F8 ] 0x0                (size_t) [0]
+	[RSP+100] 0x0                (size_t) [0]
+	[RSP+108] 0x1F270A0          (void*)
+	[RSP+110] 0x1F27050          (void*)
+	[RSP+118] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+120] 0x0                (size_t) [0]
+	[RSP+128] 0x1344F2F00        (void*)
+	[RSP+130] 0x0                (size_t) [0]
+	[RSP+138] 0x0                (size_t) [0]
+	[RSP+140] 0x0                (size_t) [0]
+	[RSP+148] 0x10FBD9           (void*)
+	[RSP+150] 0x700              (size_t) [1792]
+	[RSP+158] 0x72               (size_t) [114]
+	[RSP+160] 0x1EEE980          (Main*)
+		Game Active: true
+		On Idle: true
+		Reload Content: false
+		Freeze Time: false
+	[RSP+168] 0x0                (size_t) [0]
+	[RSP+170] 0x4                (size_t) [4]
+	[RSP+178] 0x43A4D7C0         (BSGeometryListCullingProcess*)
+		Cull Mode: kNormal (0)
+		Object Array Size: 0
+		Alpha Groups Size: 6
+		Recurse to Geometry: true
+		Is Grouping Alphas: false
+		Cull Mode Stack Index: 0
+	[RSP+180] 0x10FBD9           (void*)
+	[RSP+188] 0x143423080        (void* -> SkyrimVR.exe+3423080	sub byte ptr [rsi-0x0E], 0x01 |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3423080)
+	[RSP+190] 0x1412F8200        (void* -> SkyrimVR.exe+12F8200	add rbx, 0x08 |  ProcessAllQueuedLights_12F8200)
+	[RSP+198] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+1A0] 0x43A4D7C0         (BSGeometryListCullingProcess*) See RSP+178
+	[RSP+1A8] 0x0                (size_t) [0]
+	[RSP+1B0] 0x1344F2F10        (void*)
+	[RSP+1B8] 0x66C37AC0         (Sun*)
+	[RSP+1C0] 0x1405B94EA        (void* -> SkyrimVR.exe+05B94EA	xor bl, bl |  Main::Draw_5B94EA)
+	[RSP+1C8] 0x6                (size_t) [6]
+	[RSP+1D0] 0x1EEE480          (NiCamera*) "WorldRoot Camera"
+		RTTIName: "NiCamera"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 0
+			Name: "WorldRoot CameraNode"
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 0
+				Name: "WorldRoot Node"
+				RTTIName: "SceneGraph"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+1D8] 0x66C37AC0         (Sun*) See RSP+1B8
+	[RSP+1E0] 0x1EEE480          (NiCamera*) See RSP+1D0
+	[RSP+1E8] 0x3FB9098700000000 (size_t) [4591711770506166272]
+	[RSP+1F0] 0xBE867B3000000000 (size_t) [uint: 13728795960174182400 int: -4717948113535369216]
+	[RSP+1F8] 0x0                (size_t) [0]
+	[RSP+200] 0x3F7FFFFF00000000 (size_t) [4575657217113456640]
+	[RSP+208] 0x0                (size_t) [0]
+	[RSP+210] 0x3D9D89D8BD9D885C (size_t) [4439856371644336220]
+	[RSP+218] 0xC5C98C4B466AA08E (size_t) [uint: 14252076750722474126 int: -4194667322987077490]
+	[RSP+220] 0xC5852AF5         (void*)
+	[RSP+228] 0xC5C98EE5466AB41C (size_t) [uint: 14252079611170698268 int: -4194664462538853348]
+	[RSP+230] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+238] 0xC5C98FFD466AAD54 (size_t) [uint: 14252080813761539412 int: -4194663259948012204]
+	[RSP+240] 0xC5852BFC         (void*)
+	[RSP+248] 0xC5C992A1466AC0E2 (size_t) [uint: 14252083717159436514 int: -4194660356550115102]
+	[RSP+250] 0x140F1A3E9        (void* -> SkyrimVR.exe+0F1A3E9	mov rcx, [rsi+0x150] |  UI::IsMenuOpen_F1A3E9)
+	[RSP+258] 0x0                (size_t) [0]
+	[RSP+260] 0x0                (size_t) [0]
+	[RSP+268] 0x768              (size_t) [1896]
+	[RSP+270] 0x1EEE980          (Main*) See RSP+160
+	[RSP+278] 0x0                (size_t) [0]
+	[RSP+280] 0x0                (size_t) [0]
+	[RSP+288] 0x4B66B010         (void*)
+	[RSP+290] 0x38C4A0           (void*)
+	[RSP+298] 0x72               (size_t) [114]
+	[RSP+2A0] 0x1405B92FC        (void* -> SkyrimVR.exe+05B92FC	nop |  Main::RenderStereoFrame_5B92FC)
+	[RSP+2A8] 0x2                (size_t) [2]
+	[RSP+2B0] 0x72               (size_t) [114]
+	[RSP+2B8] 0x38C4A0           (void*)
+	[RSP+2C0] 0x0                (size_t) [0]
+	[RSP+2C8] 0x3F800000         (void*)
+	[RSP+2D0] 0x1408AD670        (void* -> SkyrimVR.exe+08AD670	cmp [0x0000000143011E18], eax |  NiCamera::UpdateGlobalCameraState_8AD670)
+	[RSP+2D8] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+2E0] 0x6EE1ACC0         (BSShaderAccumulator*)
+	[RSP+2E8] 0x66227880         (NiCamera*)
+		RTTIName: "NiCamera"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+2F0] 0x6EE1ACC0         (BSShaderAccumulator*) See RSP+2E0
+	[RSP+2F8] 0x0                (size_t) [0]
+	[RSP+300] 0x1405B8CA3        (void* -> SkyrimVR.exe+05B8CA3	mov dil, 0x01 |  Main::Render_5B8CA3)
+	[RSP+308] 0x0                (size_t) [0]
+	[RSP+310] 0x1EEE980          (Main*) See RSP+160
+	[RSP+318] 0x2                (size_t) [2]
+	[RSP+320] 0x0                (size_t) [0]
+	[RSP+328] 0x178332B00        (void*)
+	[RSP+330] 0x0                (size_t) [0]
+	[RSP+338] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+340] 0x17AA48880        (NiNode*)
+		RTTIName: "NiNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 2
+			RTTIName: "BSMultiBoundNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 27
+				Name: "ObjectLODRoot"
+				RTTIName: "NiNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 3
+					Name: "shadow scene node"
+					RTTIName: "ShadowSceneNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Checking Parent: 1
+						Name: "WorldRoot Node"
+						RTTIName: "SceneGraph"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+348] 0x0                (size_t) [0]
+	[RSP+350] 0x1412FB029        (void* -> SkyrimVR.exe+12FB029	mov eax, [0x0000000143186C5C] |  ShadowSceneNode::UpdateMultiBoundVisibility_12FB029)
+	[RSP+358] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+360] 0x17AA48E80        (BSMultiBoundNode*)
+		RTTIName: "BSMultiBoundNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 3
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 2
+				RTTIName: "BSMultiBoundNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 27
+					Name: "ObjectLODRoot"
+					RTTIName: "NiNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Checking Parent: 3
+						Name: "shadow scene node"
+						RTTIName: "ShadowSceneNode"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+						Checking Parent: 1
+							Name: "WorldRoot Node"
+							RTTIName: "SceneGraph"
+							Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+368] 0x1F26E80          (ShadowSceneNode*) See RBP
+	[RSP+370] 0x17AA48880        (NiNode*) See RSP+340
+	[RSP+378] 0x0                (size_t) [0]
+	[RSP+380] 0x14016B719        (void* -> SkyrimVR.exe+016B719	movaps xmm6, xmm0 |  TES::UpdatePortalVisibility_16B719)
+	[RSP+388] 0xB9EE4100         (void*)
+	[RSP+390] 0x0                (size_t) [0]
+	[RSP+398] 0x4                (size_t) [4]
+	[RSP+3A0] 0x0                (size_t) [0]
+	[RSP+3A8] 0xBD87BBA43F7F6600 (size_t) [uint: 13657090709138662912 int: -4789653364570888704]
+	[RSP+3B0] 0x3FBC887C00       (size_t) [273746000896]
+	[RSP+3B8] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+3C0] 0xC5C98936466A9D98 (size_t) [uint: 14252073361993276824 int: -4194670711716274792]
+	[RSP+3C8] 0x3F7E95C0C5852DC8 (size_t) [4575258926635101640]
+	[RSP+3D0] 0xC5C92B61466AA057 (size_t) [uint: 14251970192583860311 int: -4194773881125691305]
+	[RSP+3D8] 0x3F7E95C0C5855A4C (size_t) [4575258926635113036]
+	[RSP+3E0] 0xC5B383563DA4DE1C (size_t) [uint: 14245874452727651868 int: -4200869620981899748]
+	[RSP+3E8] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+3F0] 0x0                (size_t) [0]
+	[RSP+3F8] 0x1                (size_t) [1]
+	[RSP+400] 0x1402ADD93        (void* -> SkyrimVR.exe+02ADD93	mov rcx, rax |  FUN_1402adb50_2ADD93)
+	[RSP+408] 0x2                (size_t) [2]
+	[RSP+410] 0x1EEE980          (Main*) See RSP+160
+	[RSP+418] 0x38CC08           (void*)
+	[RSP+420] 0x0                (size_t) [0]
+	[RSP+428] 0x0                (size_t) [0]
+	[RSP+430] 0x1                (size_t) [1]
+	[RSP+438] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+440] 0x0                (size_t) [0]
+	[RSP+448] 0x2                (size_t) [2]
+	[RSP+450] 0x0                (size_t) [0]
+	[RSP+458] 0x0                (size_t) [0]
+	[RSP+460] 0x1                (size_t) [1]
+	[RSP+468] 0x0                (size_t) [0]
+	[RSP+470] 0x1                (size_t) [1]
+	[RSP+478] 0x1                (size_t) [1]
+	[RSP+480] 0x0                (size_t) [0]
+	[RSP+488] 0x1EEE980          (Main*) See RSP+160
+	[RSP+490] 0x1405BB18D        (void* -> SkyrimVR.exe+05BB18D	test dil, dil |  Main::OnIdle_5BB18D)
+	[RSP+498] 0x1                (size_t) [1]
+	[RSP+4A0] 0x1                (size_t) [1]
+	[RSP+4A8] 0x6EE1ACC0         (BSShaderAccumulator*) See RSP+2E0
+	[RSP+4B0] 0x66227880         (NiCamera*) See RSP+2E8
+	[RSP+4B8] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+4C0] 0x0                (size_t) [0]
+	[RSP+4C8] 0x0                (size_t) [0]
+	[RSP+4D0] 0x20080            (void*)
+	[RSP+4D8] 0x0                (size_t) [0]
+	[RSP+4E0] 0x1405B6E94        (void* -> SkyrimVR.exe+05B6E94	test bl, bl |  Main::MainLoop_5B6E94)
+	[RSP+4E8] 0x0                (size_t) [0]
+	[RSP+4F0] 0x0                (size_t) [0]
+	[RSP+4F8] 0x0                (size_t) [0]
+	[RSP+500] 0x20080            (void*)
+	[RSP+508] 0x1                (size_t) [1]
+	[RSP+510] 0x0                (size_t) [0]
+	[RSP+518] 0x0                (size_t) [0]
+	[RSP+520] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+528] 0x1A8000003CC      (size_t) [1821066134476]
+	[RSP+530] 0x1416C6DB8        (char*) "TESInitThread"
+	[RSP+538] 0x0                (size_t) [0]
+	[RSP+540] 0x0                (size_t) [0]
+	[RSP+548] 0x0                (size_t) [0]
+	[RSP+550] 0x0                (size_t) [0]
+	[RSP+558] 0x0                (size_t) [0]
+	[RSP+560] 0x0                (size_t) [0]
+	[RSP+568] 0x0                (size_t) [0]
+	[RSP+570] 0x1405B42C5        (void* -> SkyrimVR.exe+05B42C5	call 0x00000000C158002A |  WinMain_5B42C5)
+	[RSP+578] 0xA                (size_t) [10]
+	[RSP+580] 0x0                (size_t) [0]
+	[RSP+588] 0xA                (size_t) [10]
+	[RSP+590] 0x100000002        (void*)
+	[RSP+598] 0x0                (size_t) [0]
+	[RSP+5A0] 0x14138AF0A        (void* -> SkyrimVR.exe+138AF0A	mov ebx, eax |  __scrt_common_main_seh_138AF0A)
+	[RSP+5A8] 0x0                (size_t) [0]
+	[RSP+5B0] 0x14138AFC1        (void* -> SkyrimVR.exe+138AFC1	add rsp, 0x28 |  start_14134B228_138AFC1)
+	[RSP+5B8] 0x14392E310        (void* -> SkyrimVR.exe+392E310	call 0x000000014392E315)
+	[RSP+5C0] 0x0                (size_t) [0]
+	[RSP+5C8] 0x0                (size_t) [0]
+	[RSP+5D0] 0x0                (size_t) [0]
+	[RSP+5D8] 0x0                (size_t) [0]
+	[RSP+5E0] 0x6FFFFFEC1649     (void* -> kernel32.dll+0011649	mov ecx, eax)
+	[RSP+5E8] 0x0                (size_t) [0]
+	[RSP+5F0] 0x0                (size_t) [0]
+	[RSP+5F8] 0x0                (size_t) [0]
+	[RSP+600] 0x0                (size_t) [0]
+	[RSP+608] 0x0                (size_t) [0]
+	[RSP+610] 0x6FFFFFF40E0F     (void* -> ntdll.dll+0010E0F	int3)
+	[RSP+618] 0x0                (size_t) [0]
+	[RSP+620] 0x0                (size_t) [0]
+	[RSP+628] 0x0                (size_t) [0]
+	[RSP+630] 0x0                (size_t) [0]
+	[RSP+638] 0x0                (size_t) [0]
+	[RSP+640] 0x0                (size_t) [0]
+	[RSP+648] 0x0                (size_t) [0]
+	[RSP+650] 0x0                (size_t) [0]
+	[RSP+658] 0x0                (size_t) [0]
+	[RSP+660] 0x0                (size_t) [0]
+
+MODULES:
+	steam_api64.dll                    0x00007BE70000
+	OPENGL32.dll                       0x00007BEC0000
+	SkyrimVR.exe                       0x000140000000
+	binkw64.dll                        0x000180000000
+	amdxc64.dll                        0x6FFFF0190000
+	d3d12core.dll                      0x6FFFF01B0000
+	amd_fidelityfx_upscaler_dx12.dll   0x6FFFF06C0000
+	DSOUND.DLL                         0x6FFFF1C30000
+	avrt.dll                           0x6FFFF1D00000
+	winealsa.drv                       0x6FFFF1D80000
+	winepulse.drv                      0x6FFFF1DA0000
+	mmdevapi.dll                       0x6FFFF1DC0000
+
+SKSE PLUGINS:
+	activeragdoll.dll
+	AHZmoreHUDPlugin.dll v1.1
+	AnimatedStaticReload.dll v1.0.1
+	AnimationMotionRevolution.dll
+	AnimationQueueFix.dll v1.0.2
+	ArmorRatingReduxVR.dll
+	BlockingConditionFix.dll v1.0.1
+	ConsoleUtilVR.dll v1.3
+	ContainerDistributionFramework.dll v3.0.2
+	CrashLogger.dll v1.27
+	EngineFixes.dll v7.13
+	OpenAnimationReplacer.dll v3.2.1
+
+GAME STATE:
+	Main loop: active
+	Open menus: HUD Menu, WSActivateRollover
+	Player: exterior cell "" [000095FD] in Skyrim, position (15013.1, -6449.9, -4375.4), 3D loaded
+
+PLUGINS:
+	Light: 60	Regular: 199	Total: 259
+	[ 0]     Skyrim.esm
+	[ 1]     Update.esm
+	[ 2]     Dragonborn.esm
+	[ 3]     Dawnguard.esm
+	[ 4]     HearthFires.esm
+	[ 5]     SkyrimVR.esm
+	[ 6]     Unofficial Skyrim Special Edition Patch.esp
+	[ 7]     LegacyoftheDragonborn.esm
+	[ 8]     LOTD_HUB.esp
+	[ 9]     Occ_Skyrim_Tamriel.esp
+	[FE:  0] Skyrim Project Optimization - Full ESL Version.esm
+	[FE:  1] Landscape and Water Fixes.esp

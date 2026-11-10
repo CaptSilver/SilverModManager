@@ -1,0 +1,218 @@
+CRASH TIME: 2026-11-09 18:46:27
+Skyrim VR v1.4.15
+CrashLoggerSSE v1-27-0-0 Oct 25 2026 06:20:14
+
+Unhandled exception "EXCEPTION_ACCESS_VIOLATION" at 0x0001405EA5C2 SkyrimVR.exe+05EA5C2	mov rdx, [rax+0x158] |  Actor::SetObjectReference_1405E1F10_5EA5C2)
+Exception Flags: 0x00000000 (Continuable)
+Number of Parameters: 2
+Exception Thread ID: 968
+Access Violation: Tried to read memory at 0x000000000158
+ACCESS VIOLATION ANALYSIS:
+	Instruction: mov rdx, [rax+0x158]
+	Memory Operand: [base=rax, index=none, scale=0, disp=+0x158]
+	Base Register: rax = 0x0000000000000000 (likely invalid)
+	Computed Address: 0x0000000000000158
+
+POSSIBLE RELEVANT OBJECTS:
+	RBX: (PlayerCharacter*) [0x00000014]
+	R9: (type_info*)
+	RSP+C0: (Sky*)
+	RSP+C8: (LoadedAreaBound*)
+	RSP+D0: (BGSStoryTeller*)
+	RSP+E0: (SettingT<INISettingCollection>*)
+	RSP+E8: (SettingT<INISettingCollection>*)
+	RSP+F0: (SettingT<INISettingCollection>*)
+	RSP+F8: (SettingT<INISettingCollection>*)
+	RSP+100: (SettingT<INISettingCollection>*)
+	RSP+108: (SettingT<INISettingCollection>*)
+	RSP+110: (SettingT<INISettingCollection>*)
+	RSP+118: (SettingT<INISettingCollection>*)
+	RSP+120: (SettingT<INISettingCollection>*)
+	RSP+128: (SettingT<INISettingCollection>*)
+	RSP+170: (InitTESThread*)
+
+RECENT MODEL REQUESTS (this thread, newest first):
+	    2.947 ms ago  Data/Meshes/questMarker_door.nif
+	    2.948 ms ago  Data/Meshes/questMarker.nif
+	    3.319 ms ago  Data/Meshes/targetIndicator_runeRay.nif
+	    3.324 ms ago  Data/Meshes/testArc.nif
+	    3.327 ms ago  Data/Meshes/teleportFail.nif
+	    3.331 ms ago  Data/Meshes/runeFX.nif
+	    3.333 ms ago  Data/Meshes/runeMovement.nif
+	    3.340 ms ago  Data/Meshes/noGoArc.nif
+
+PROCESS INFO:
+	Process ID: 436
+	Crash Thread ID: 968
+	Process Uptime: 00:00:21 (21984ms)
+	Executable MD5: 6cc5baea600d6a688a5fa5aa67a54248
+	Executable Size: 35530960 bytes
+	Executable Modified: 2023-11-23 05:32:40
+	Elevated: No
+
+THREAD CONTEXT (HEURISTIC):
+	Thread Priority: -1
+	Likely Role: Unknown (main or worker thread)
+
+CALL STACK ([P]robable / [S]tack scan):
+	[0][P] 0x0001405EA5C2 SkyrimVR.exe+05EA5C2	mov rdx, [rax+0x158] |  Actor::SetObjectReference_1405E1F10_5EA5C2 -> 36457+0x692	mov rdx, [rax+0x158]
+	[1][P] 0x0001405BEEC7 SkyrimVR.exe+05BEEC7	mov rcx, [0x0000000142FEB9F0] |  Main::SetupPlayerBaseForm_5BEEC7 -> 35620+0x87	mov rcx, [0x0000000142FEB9F0]
+	[2][P] 0x0001405B7EE1 SkyrimVR.exe+05B7EE1	mov rcx, [0x0000000141F82AD8] |  Main::sub_1405B0120_5B7EE1 -> 35551+0x1171	mov rcx, [0x0000000141F82AD8]
+	[3][P] 0x0001405C060C SkyrimVR.exe+05C060C	mov rcx, rbx |  InitTESThread::Func1_1405B85E0_5C060C -> 35620+0x17CC	mov rcx, rbx
+	[4][P] 0x000140C484ED SkyrimVR.exe+0C484ED	mov rcx, [0x00000001430C3AA8] |  StartAddress_0_140C0D680_C484ED -> 66989+0x5D6D	mov rcx, [0x00000001430C3AA8]
+	[5][P] 0x6FFFFFEC1649 kernel32.dll+0011649
+	[6][P] 0x6FFFFFF40E0F    ntdll.dll+0010E0F
+	[7][S] 0x00014045D6CF SkyrimVR.exe+045D6CF	nop |  InitGlobalPreloadParent_45D6CF -> 29248+0x8F	nop
+
+REGISTERS:
+	RAX 0x0                (size_t) [0]
+	RCX 0x6F80AB00         (PlayerCharacter*) See RBX
+	RDX 0x0                (size_t) [0]
+	RBX 0x6F80AB00         (PlayerCharacter*) [0x00000014]
+		Flags: 0x00200400 
+		FormType: ActorCharacter (62)
+		Object Reference: None
+		ParentCell: None
+	RSP 0x6C79FDA0         (void*)
+	RBP 0x768              (size_t) [1896]
+	RSI 0x0                (size_t) [0]
+	RDI 0x30A79050         (void*)
+	R8  0x0                (size_t) [0]
+	R9  0x141EDAB88        (type_info*)
+	R10 0x1                (size_t) [1]
+	R11 0x6C79FDA0         (void*)
+	R12 0x768              (size_t) [1896]
+	R13 0x0                (size_t) [0]
+	R14 0x0                (size_t) [0]
+	R15 0x1F29601          (void*)
+
+STACK:
+	[RSP+0  ] 0x1F29601          (void*)
+	[RSP+8  ] 0x0                (size_t) [0]
+	[RSP+10 ] 0x0                (size_t) [0]
+	[RSP+18 ] 0x768              (size_t) [1896]
+	[RSP+20 ] 0x2                (size_t) [2]
+	[RSP+28 ] 0x1405BEEC7        (void* -> SkyrimVR.exe+05BEEC7	mov rcx, [0x0000000142FEB9F0] |  Main::SetupPlayerBaseForm_5BEEC7)
+	[RSP+30 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+38 ] 0x2                (size_t) [2]
+	[RSP+40 ] 0x30A79050         (void*)
+	[RSP+48 ] 0x0                (size_t) [0]
+	[RSP+50 ] 0x0                (size_t) [0]
+	[RSP+58 ] 0x14045D6CF        (void* -> SkyrimVR.exe+045D6CF	nop |  InitGlobalPreloadParent_45D6CF)
+	[RSP+60 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+68 ] 0x0                (size_t) [0]
+	[RSP+70 ] 0x768              (size_t) [1896]
+	[RSP+78 ] 0x141670DE8        (char*) "Controller disconnected."
+	[RSP+80 ] 0x0                (size_t) [0]
+	[RSP+88 ] 0x0                (size_t) [0]
+	[RSP+90 ] 0x141670DE8        (char*) "Controller disconnected."
+	[RSP+98 ] 0x1405B7EE1        (void* -> SkyrimVR.exe+05B7EE1	mov rcx, [0x0000000141F82AD8] |  Main::sub_1405B0120_5B7EE1)
+	[RSP+A0 ] 0x2                (size_t) [2]
+	[RSP+A8 ] 0x2                (size_t) [2]
+	[RSP+B0 ] 0x6C79FEA9         (void*)
+	[RSP+B8 ] 0x30A79050         (void*)
+	[RSP+C0 ] 0x661FFD00         (Sky*)
+	[RSP+C8 ] 0x661DB4C0         (LoadedAreaBound*)
+	[RSP+D0 ] 0x142FEC2A0        (BGSStoryTeller*)
+	[RSP+D8 ] 0x0                (size_t) [0]
+	[RSP+E0 ] 0x141EAC090        (SettingT<INISettingCollection>*)
+	[RSP+E8 ] 0x141EAC0A8        (SettingT<INISettingCollection>*)
+	[RSP+F0 ] 0x141EAC0C0        (SettingT<INISettingCollection>*)
+	[RSP+F8 ] 0x141EAC0D8        (SettingT<INISettingCollection>*)
+	[RSP+100] 0x141EAC0F0        (SettingT<INISettingCollection>*)
+	[RSP+108] 0x141EAC108        (SettingT<INISettingCollection>*)
+	[RSP+110] 0x141EAC120        (SettingT<INISettingCollection>*)
+	[RSP+118] 0x141EAC138        (SettingT<INISettingCollection>*)
+	[RSP+120] 0x141EAC150        (SettingT<INISettingCollection>*)
+	[RSP+128] 0x141EAC168        (SettingT<INISettingCollection>*)
+	[RSP+130] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+138] 0x142FEC750        (void* -> SkyrimVR.exe+2FEC750	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FEC750)
+	[RSP+140] 0x0                (size_t) [0]
+	[RSP+148] 0x0                (size_t) [0]
+	[RSP+150] 0x0                (size_t) [0]
+	[RSP+158] 0x0                (size_t) [0]
+	[RSP+160] 0x0                (size_t) [0]
+	[RSP+168] 0x1405C060C        (void* -> SkyrimVR.exe+05C060C	mov rcx, rbx |  InitTESThread::Func1_1405B85E0_5C060C)
+	[RSP+170] 0x10FE80           (InitTESThread*)
+	[RSP+178] 0x0                (size_t) [0]
+	[RSP+180] 0x2                (size_t) [2]
+	[RSP+188] 0x142FEC2A0        (BGSStoryTeller*) See RSP+D0
+	[RSP+190] 0x10FE80           (InitTESThread*) See RSP+170
+	[RSP+198] 0x140C484ED        (void* -> SkyrimVR.exe+0C484ED	mov rcx, [0x00000001430C3AA8] |  StartAddress_0_140C0D680_C484ED)
+	[RSP+1A0] 0x0                (size_t) [0]
+	[RSP+1A8] 0x10FE80           (InitTESThread*) See RSP+170
+	[RSP+1B0] 0x1EFB568          (void*)
+	[RSP+1B8] 0x1EFB568          (void*)
+	[RSP+1C0] 0x10FE80           (InitTESThread*) See RSP+170
+	[RSP+1C8] 0x0                (size_t) [0]
+	[RSP+1D0] 0x0                (size_t) [0]
+	[RSP+1D8] 0x6FFFFFEC1649     (void* -> kernel32.dll+0011649	mov ecx, eax)
+	[RSP+1E0] 0x0                (size_t) [0]
+	[RSP+1E8] 0x0                (size_t) [0]
+	[RSP+1F0] 0x0                (size_t) [0]
+	[RSP+1F8] 0x0                (size_t) [0]
+	[RSP+200] 0x0                (size_t) [0]
+	[RSP+208] 0x6FFFFFF40E0F     (void* -> ntdll.dll+0010E0F	int3)
+	[RSP+210] 0x0                (size_t) [0]
+	[RSP+218] 0x0                (size_t) [0]
+	[RSP+220] 0x0                (size_t) [0]
+	[RSP+228] 0x0                (size_t) [0]
+	[RSP+230] 0x0                (size_t) [0]
+	[RSP+238] 0x0                (size_t) [0]
+	[RSP+240] 0x0                (size_t) [0]
+	[RSP+248] 0x0                (size_t) [0]
+	[RSP+250] 0x0                (size_t) [0]
+	[RSP+258] 0x0                (size_t) [0]
+
+MODULES:
+	steam_api64.dll                    0x00007BE70000
+	OPENGL32.dll                       0x00007BEC0000
+	SkyrimVR.exe                       0x000140000000
+	binkw64.dll                        0x000180000000
+	DSOUND.DLL                         0x6FFFF1C20000
+	avrt.dll                           0x6FFFF1CF0000
+	winealsa.drv                       0x6FFFF1D10000
+	winepulse.drv                      0x6FFFF1D90000
+	mmdevapi.dll                       0x6FFFF1DB0000
+	XAudio2_7.dll                      0x6FFFF1DF0000
+	SkyrimUncapper.dll                 0x6FFFF1E90000
+	dragonborn_speaks_naturally.dll    0x6FFFF1F20000
+
+SKSE PLUGINS:
+	activeragdoll.dll
+	AHZmoreHUDPlugin.dll v1.1
+	AnimatedStaticReload.dll v1.0.1
+	AnimationMotionRevolution.dll
+	AnimationQueueFix.dll v1.0.2
+	ArmorRatingReduxVR.dll
+	BlockingConditionFix.dll v1.0.1
+	ConsoleUtilVR.dll v1.3
+	ContainerDistributionFramework.dll v3.0.2
+	CrashLogger.dll v1.27
+	EngineFixes.dll v7.13
+	OpenAnimationReplacer.dll v3.2.1
+
+GAME STATE:
+	Main loop: active
+	Open menus: LoadWaitSpinner, Loading Menu, Mist Menu, Fader Menu (game paused)
+	Player: no parent cell, position (0.0, 0.0, 0.0)
+
+PLUGINS:
+	Light: 0	Regular: 0	Total: 0
+
+MISSING MASTERS (FATAL: data load aborted before any plugin was loaded):
+	Yggdrasil - Spell Research Patches.esp -> Merge - Conflict Resolution.esp -> Merge - Enhanced Lighting.esp -> SunHelmSurvival.esp: NOT FOUND
+	Yggdrasil - Spell Research Patches.esp -> Merge - Conflict Resolution.esp -> Merge - Game Tweaks.esp -> SunHelmSurvival.esp: NOT FOUND
+	Yggdrasil - Spell Research Patches.esp -> Merge - Conflict Resolution.esp -> SunHelmSurvival.esp: NOT FOUND
+	Fix: install the missing file(s), or disable the plugin(s) that depend on them:
+		missing: SunHelmSurvival.esp
+		disable: DynDOLOD.esp (enabled in Plugins.txt)
+		disable: Merge - Conflict Resolution.esp (enabled in Plugins.txt)
+		disable: Merge - Enhanced Lighting.esp (enabled in Plugins.txt)
+		disable: Merge - Game Tweaks.esp (enabled in Plugins.txt)
+		disable: Yggdrasil - Spell Research Patches.esp (enabled in Plugins.txt)
+	Not fatal alone (direct master absent, game skips the plugin):
+		Merge - CACO Patches.esp
+		Merge - SunHelm Patches.esp
+		Merge - Text and Dialogue.esp
+		Yggdrasil - Synthesis Patch.esp

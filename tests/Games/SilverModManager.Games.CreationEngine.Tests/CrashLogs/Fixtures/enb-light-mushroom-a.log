@@ -1,0 +1,741 @@
+CRASH TIME: 2026-11-09 15:30:26
+Skyrim VR v1.4.15
+CrashLoggerSSE v1-27-0-0 Oct 25 2026 06:20:14
+
+Unhandled exception "EXCEPTION_ACCESS_VIOLATION" at 0x6FFFF7DECE60 d3d11.dll+00FCE60	lock inc [rsi]
+Exception Flags: 0x00000000 (Continuable)
+Number of Parameters: 2
+Exception Thread ID: 360
+Access Violation: Tried to write memory at 0x000000000001
+ACCESS VIOLATION ANALYSIS:
+	Instruction: lock inc [rsi]
+	Memory Operand: [base=rsi, index=none, scale=0, disp=+0x0]
+	Base Register: rsi = 0x0000000000000001 (likely invalid)
+	Computed Address: 0x0000000000000001
+
+POSSIBLE RELEVANT OBJECTS:
+	RSP+130: (BSTriShape*) "LightWheel_05" ("Plants\GlowingMushroomCluster01.nif")
+	RSP+2D8: (BSEffectShader*)
+	RSP+3C0: (BSBatchRenderer*)
+	RSP+3D0: (BSEffectShaderProperty*)
+	RSP+408: (Main*)
+	RSP+470: (BSShaderAccumulator*)
+	RSP+5A8: (Sun*)
+	RSP+5E8: (NiCamera*) "WorldRoot Camera"
+	RSP+6E8: (BSShaderAccumulator*)
+	RSP+6F0: (NiCamera*)
+	RSP+758: (ShadowSceneNode*) "shadow scene node"
+	RSP+760: (BSPortalGraph*)
+	RSP+770: (BSMultiBoundRoom*)
+	RSP+780: (BSGeometryListCullingProcess*)
+
+PROCESS INFO:
+	Process ID: 356
+	Crash Thread ID: 360
+	Process Uptime: 00:02:50 (170476ms)
+	Executable MD5: 6cc5baea600d6a688a5fa5aa67a54248
+	Executable Size: 35530960 bytes
+	Executable Modified: 2023-11-23 05:32:40
+	Elevated: No
+
+THREAD CONTEXT (HEURISTIC):
+	Thread Priority: 2
+	Likely Role: Rendering
+
+CALL STACK ([P]robable / [S]tack scan):
+	[ 0][P] 0x6FFFF7DECE60       d3d11.dll+00FCE60
+	[ 1][P] 0x6FFFF7DF10C1       d3d11.dll+01010C1
+	[ 2][P] 0x6FFFF9E63592    SkyrimVR.exe+0DC3592	mov eax, [0x00006FFFFC220DB8] |  BSGraphics::SetDirtyStates_140d705b0_DC3592 -> 75580+0x722	mov eax, [0x00006FFFFC220DB8]
+	[ 3][P] 0x6FFFF9E5DD68    SkyrimVR.exe+0DBDD68	mov rcx, [0x00006FFFFC21E7F8] |  Renderer::DrawIndexedTriangleList_DBDD68 -> 75477+0x68	mov rcx, [0x00006FFFFC21E7F8]
+	[ 4][P] 0x6FFFFA3E8532    SkyrimVR.exe+1348532	jmp 0x00006FFFFA3E8AFF |  BSRenderPass::DrawGeometry_1348532 -> 100847+0x1A2	jmp 0x00006FFFFA3E8AFF
+	[ 5][P] 0x6FFFFA3E9B87    SkyrimVR.exe+1349B87	mov rax, [r14] |  BSRenderPass::RenderPassImmediately_Skinned_1349B87 -> 100860+0x1D7	mov rax, [r14]
+	[ 6][P] 0x6FFFFA3E9747    SkyrimVR.exe+1349747	mov rbx, [rsp+0x48] |  BSBatchRenderer::SetupAndDrawPass_1349747 -> 100854+0xC7	mov rbx, [rsp+0x48]
+	[ 7][P] 0x6FFFF5754A77 EngineFixes.dll+0054A77	nop |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\fixes\bslightingshader_force_alpha_test.h:28 void Fixes::BSLightingShaderForceAlphaTest::detail::BSBatchRenderer_SetupAndDrawPass(RE::BSRenderPass *,unsigned int,bool,unsigned int) [?BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@YAXPEAVBSRenderPass@RE@@I_NI@Z] D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\fixes\bslightingshaderproperty_shadowmap.h:20 void Fixes::BSLightingShaderForceAlphaTest::detail::BSBatchRenderer_SetupAndDrawPass(RE::BSRenderPass *,unsigned int,bool,unsigned int) [?BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@YAXPEAVBSRenderPass@RE@@I_NI@Z] | params: a_self: RE::BSRenderPass*, a_technique: uint32_t, a_alphaTest: bool, a_renderFlags: uint32_t
+	[ 8][P] 0x6FFFFA3EA8DA    SkyrimVR.exe+134A8DA	mov rdx, [r14+0x108] |  BSBatchRenderer::RenderAlphaSortedPasses_134A8DA -> 100877+0x1EA	mov rdx, [r14+0x108]
+	[ 9][P] 0x6FFFFA3AA381    SkyrimVR.exe+130A381	mov rcx, [rbx+0x158] |  BSShaderAccumulator::RenderEffects_130A381 -> 99940+0x141	mov rcx, [rbx+0x158]
+	[10][P] 0x6FFFFA3A9F6C    SkyrimVR.exe+1309F6C	mov r9d, 0x03 |  BSShaderAccumulator::RenderPostAccumulationPasses_1309F6C -> 99939+0x5AC	mov r9d, 0x03
+	[11][P] 0x6FFFFA3A937D    SkyrimVR.exe+130937D	mov edx, edi |  BSShaderAccumulator::FinishAccumulatingPostResolveDepth_130937D -> 99937+0x1D	mov edx, edi
+	[12][P] 0x6FFFFA3C3E43    SkyrimVR.exe+1323E43	mov rdx, [0x00006FFFFC525AF0] |  Main::RenderWorld_1323E43 -> 100424+0x333	mov rdx, [0x00006FFFFC525AF0]
+	[13][P] 0x6FFFF9659AC6    SkyrimVR.exe+05B9AC6	mov rcx, [0x00006FFFFC08BA40] |  Main::Draw_5B9AC6 -> 35560+0x796	mov rcx, [0x00006FFFFC08BA40]
+	[14][P] 0x6FFFF96592FC    SkyrimVR.exe+05B92FC	nop |  Main::RenderStereoFrame_5B92FC -> 35556+0x8DC	nop
+	[15][P] 0x6FFFF9658CA3    SkyrimVR.exe+05B8CA3	mov dil, 0x01 |  Main::Render_5B8CA3 -> 35556+0x283	mov dil, 0x01
+	[16][P] 0x6FFFF965B18D    SkyrimVR.exe+05BB18D	test dil, dil |  Main::OnIdle_5BB18D -> 35565+0x67D	test dil, dil
+	[17][P] 0x6FFFF9656E94    SkyrimVR.exe+05B6E94	test bl, bl |  Main::MainLoop_5B6E94 -> 35551+0x124	test bl, bl
+	[18][P] 0x6FFFF96542C5    SkyrimVR.exe+05B42C5	call 0x00006FFF7A62002A |  WinMain_5B42C5 -> 35545+0x35	call 0x00006FFF7A62002A
+	[19][P] 0x6FFFFA42AF0A    SkyrimVR.exe+138AF0A	mov ebx, eax |  __scrt_common_main_seh_138AF0A -> 102178+0x642	mov ebx, eax
+	[20][P] 0x6FFFFFE90D59    kernel32.dll+0010D59
+	[21][P] 0x6FFFFFF001FF       ntdll.dll+00101FF
+	[22][S] 0x6FFFF7DF5F00       d3d11.dll+0105F00
+	[23][S] 0x6FFFFA3EA403    SkyrimVR.exe+134A403	mov rbx, [rbx+0x30] |  BSRenderPass::FUN_1413090c0_134A403 -> 100871+0xF3	mov rbx, [rbx+0x30]
+	[24][S] 0x6FFFF9E67DA8    SkyrimVR.exe+0DC7DA8	mov rbx, [rsp+0x30] |  SetRenderTarget_DC7DA8 -> 75654+0x98	mov rbx, [rsp+0x30]
+	[25][S] 0x6FFFF994D670    SkyrimVR.exe+08AD670	cmp [0x00006FFFFC0B1E18], eax |  NiCamera::UpdateGlobalCameraState_8AD670 -> 50741+0x2A0	cmp [0x00006FFFFC0B1E18], eax
+	[26][S] 0x6FFFF920B52E    SkyrimVR.exe+016B52E	test rax, rax |  TES::UpdatePortalVisibility_16B52E -> 13257+0x38E	test rax, rax
+	[27][S] 0x6FFFF934DD93    SkyrimVR.exe+02ADD93	mov rcx, rax |  FUN_1402adb50_2ADD93 -> 19418+0xD03	mov rcx, rax
+	[28][S] 0x6FFFFA42AFC1    SkyrimVR.exe+138AFC1	add rsp, 0x28 |  start_14134B228_138AFC1 -> 102178+0x6F9	add rsp, 0x28
+	[29][S] 0x6FFFFC9CE310    SkyrimVR.exe+392E310 -> 528600+0x23B3B8	call 0x00006FFFFC9CE315
+
+REGISTERS:
+	RAX 0x10               (size_t) [16]
+	RCX 0x0                (size_t) [0]
+	RDX 0x0                (size_t) [0]
+	RBX 0x28EDE080         (void*)
+	RSP 0x11F590           (void*)
+	RBP 0x11F5C0           (void*)
+	RSI 0x1                (size_t) [1]
+	RDI 0x1                (size_t) [1]
+	R8  0x0                (size_t) [0]
+	R9  0x2911C8F0         (void*)
+	R10 0x6FFFF86FFB08     (void* -> dxgi.dll+02FFB08	)
+	R11 0x2911C91C         (void*)
+	R12 0x1                (size_t) [1]
+	R13 0x6FFFFC2206E0     (void* -> SkyrimVR.exe+31806E0	 |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_31806E0)
+	R14 0x0                (size_t) [0]
+	R15 0x0                (size_t) [0]
+
+STACK:
+	[RSP+0  ] 0x11E              (size_t) [286]
+	[RSP+8  ] 0x7                (size_t) [7]
+	[RSP+10 ] 0x7FFFFFFF         (void*)
+	[RSP+18 ] 0x2D92A2D0         (void*)
+	[RSP+20 ] 0xC                (size_t) [12]
+	[RSP+28 ] 0x0                (size_t) [0]
+	[RSP+30 ] 0x46A391B7         (void*)
+	[RSP+38 ] 0x0                (size_t) [0]
+	[RSP+40 ] 0x0                (size_t) [0]
+	[RSP+48 ] 0x28EDE080         (void*)
+	[RSP+50 ] 0x1                (size_t) [1]
+	[RSP+58 ] 0x1                (size_t) [1]
+	[RSP+60 ] 0x11F690           (void*)
+	[RSP+68 ] 0x6FFFF7DF10C1     (void* -> d3d11.dll+01010C1	inc rbx)
+	[RSP+70 ] 0x2D92A2D0         (void*)
+	[RSP+78 ] 0x2907B910         (void*)
+	[RSP+80 ] 0x28EDE080         (void*)
+	[RSP+88 ] 0x4                (size_t) [4]
+	[RSP+90 ] 0x0                (size_t) [0]
+	[RSP+98 ] 0x0                (size_t) [0]
+	[RSP+A0 ] 0x0                (size_t) [0]
+	[RSP+A8 ] 0x47309430         (void*)
+	[RSP+B0 ] 0x28EDE080         (void*)
+	[RSP+B8 ] 0x0                (size_t) [0]
+	[RSP+C0 ] 0x0                (size_t) [0]
+	[RSP+C8 ] 0x6FFFF90A0000     (void*)
+	[RSP+D0 ] 0x0                (size_t) [0]
+	[RSP+D8 ] 0x6FFFF90A0000     (void*)
+	[RSP+E0 ] 0x11F6B0           (void*)
+	[RSP+E8 ] 0x6FFFF7DF5F00     (void* -> d3d11.dll+0105F00	test rdi, rdi)
+	[RSP+F0 ] 0x0                (size_t) [0]
+	[RSP+F8 ] 0x0                (size_t) [0]
+	[RSP+100] 0x0                (size_t) [0]
+	[RSP+108] 0x10               (size_t) [16]
+	[RSP+110] 0x1494D6B90        (char*) " 1?-"
+	[RSP+118] 0x0                (size_t) [0]
+	[RSP+120] 0x6FFFFC783280     (void* -> SkyrimVR.exe+36E3280	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_36E3280)
+	[RSP+128] 0x6FFFF90A0000     (void*)
+	[RSP+130] 0x1495F6080        (BSTriShape*) "LightWheel_05" ("Plants\GlowingMushroomCluster01.nif")
+		RTTIName: "BSTriShape"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Full Name: "Glowing Mushrooms"
+		Checking User Data: -----
+			Object Reference: 
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x00400009 kDestructible | kInitialized
+			Name: "Glowing Mushrooms"
+			FormID: 0x0007EE00
+			FormType: Flora (39)
+			ParentCell: ---
+				File: "Yggdrasil - Synthesis Patch.esp"
+				Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+				Flags: 0x00000009 
+				Name: "Realm of Lorkhan"
+				EditorID: "RealmLorkhan"
+				FormID: 0x3D01A5C6
+				FormType: Cell (60)
+		Checking TESObjectREFR: {}
+			Object Reference: 
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x00400009 kDestructible | kInitialized
+			Name: "Glowing Mushrooms"
+			FormID: 0x0007EE00
+			FormType: Flora (39)
+			ParentCell: ---
+				File: "Yggdrasil - Synthesis Patch.esp"
+				Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+				Flags: 0x00000009 
+				Name: "Realm of Lorkhan"
+				EditorID: "RealmLorkhan"
+				FormID: 0x3D01A5C6
+				FormType: Cell (60)
+		EffectTexture[Source]: "textures\effects\enb\fxBlack_32x32.dds"
+		Checking Parent: 0
+			Name: "ENB Light 05"
+			RTTIName: "NiBillboardNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Full Name: "Glowing Mushrooms"
+			Checking User Data: -----
+				Object Reference: 
+				File: "Yggdrasil - Synthesis Patch.esp"
+				Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+				Flags: 0x00400009 kDestructible | kInitialized
+				Name: "Glowing Mushrooms"
+				FormID: 0x0007EE00
+				FormType: Flora (39)
+				ParentCell: ---
+					File: "Yggdrasil - Synthesis Patch.esp"
+					Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+					Flags: 0x00000009 
+					Name: "Realm of Lorkhan"
+					EditorID: "RealmLorkhan"
+					FormID: 0x3D01A5C6
+					FormType: Cell (60)
+			Checking TESObjectREFR: {}
+				Object Reference: 
+				File: "Yggdrasil - Synthesis Patch.esp"
+				Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+				Flags: 0x00400009 kDestructible | kInitialized
+				Name: "Glowing Mushrooms"
+				FormID: 0x0007EE00
+				FormType: Flora (39)
+				ParentCell: ---
+					File: "Yggdrasil - Synthesis Patch.esp"
+					Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+					Flags: 0x00000009 
+					Name: "Realm of Lorkhan"
+					EditorID: "RealmLorkhan"
+					FormID: 0x3D01A5C6
+					FormType: Cell (60)
+			Checking Parent: 107
+				Name: "Vanilla"
+				RTTIName: "NiNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Full Name: "Glowing Mushrooms"
+				File: "Plants\GlowingMushroomCluster01.nif"
+				Checking User Data: -----
+					Object Reference: 
+					File: "Yggdrasil - Synthesis Patch.esp"
+					Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+					Flags: 0x00400009 kDestructible | kInitialized
+					Name: "Glowing Mushrooms"
+					FormID: 0x0007EE00
+					FormType: Flora (39)
+					ParentCell: ---
+						File: "Yggdrasil - Synthesis Patch.esp"
+						Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+						Flags: 0x00000009 
+						Name: "Realm of Lorkhan"
+						EditorID: "RealmLorkhan"
+						FormID: 0x3D01A5C6
+						FormType: Cell (60)
+				File: "Plants\GlowingMushroomCluster01.nif"
+				Checking TESObjectREFR: {}
+					Object Reference: 
+					File: "Yggdrasil - Synthesis Patch.esp"
+					Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+					Flags: 0x00400009 kDestructible | kInitialized
+					Name: "Glowing Mushrooms"
+					FormID: 0x0007EE00
+					FormType: Flora (39)
+					ParentCell: ---
+						File: "Yggdrasil - Synthesis Patch.esp"
+						Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+						Flags: 0x00000009 
+						Name: "Realm of Lorkhan"
+						EditorID: "RealmLorkhan"
+						FormID: 0x3D01A5C6
+						FormType: Cell (60)
+				Checking Parent: 0
+					Name: "GlowingMushroomCluster01"
+					RTTIName: "NiSwitchNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Full Name: "Glowing Mushrooms"
+					File: "Plants\GlowingMushroomCluster01.nif"
+					Checking User Data: -----
+						Object Reference: 
+						File: "Yggdrasil - Synthesis Patch.esp"
+						Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+						Flags: 0x00400009 kDestructible | kInitialized
+						Name: "Glowing Mushrooms"
+						FormID: 0x0007EE00
+						FormType: Flora (39)
+						ParentCell: ---
+							File: "Yggdrasil - Synthesis Patch.esp"
+							Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+							Flags: 0x00000009 
+							Name: "Realm of Lorkhan"
+							EditorID: "RealmLorkhan"
+							FormID: 0x3D01A5C6
+							FormType: Cell (60)
+					File: "Plants\GlowingMushroomCluster01.nif"
+					Checking TESObjectREFR: {}
+						Object Reference: 
+						File: "Yggdrasil - Synthesis Patch.esp"
+						Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+						Flags: 0x00400009 kDestructible | kInitialized
+						Name: "Glowing Mushrooms"
+						FormID: 0x0007EE00
+						FormType: Flora (39)
+						ParentCell: ---
+							File: "Yggdrasil - Synthesis Patch.esp"
+							Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+							Flags: 0x00000009 
+							Name: "Realm of Lorkhan"
+							EditorID: "RealmLorkhan"
+							FormID: 0x3D01A5C6
+							FormType: Cell (60)
+					Checking Parent: 0
+						Name: "Scene Root"
+						RTTIName: "BSFadeNode"
+						ExtraData[0] Name: "BSX"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+						Full Name: "Glowing Mushrooms"
+						File: "Plants\GlowingMushroomCluster01.nif"
+						Checking User Data: -----
+							Object Reference: 
+							File: "Yggdrasil - Synthesis Patch.esp"
+							Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+							Flags: 0x00400009 kDestructible | kInitialized
+							Name: "Glowing Mushrooms"
+							FormID: 0x0007EE00
+							FormType: Flora (39)
+							ParentCell: ---
+								File: "Yggdrasil - Synthesis Patch.esp"
+								Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+								Flags: 0x00000009 
+								Name: "Realm of Lorkhan"
+								EditorID: "RealmLorkhan"
+								FormID: 0x3D01A5C6
+								FormType: Cell (60)
+						File: "Plants\GlowingMushroomCluster01.nif"
+						Checking TESObjectREFR: {}
+							Object Reference: 
+							File: "Yggdrasil - Synthesis Patch.esp"
+							Modified by: Skyrim.esm -> Complete Alchemy & Cooking Overhaul.esp -> skymoji - merged.esp -> Yggdrasil - Synthesis Patch.esp
+							Flags: 0x00400009 kDestructible | kInitialized
+							Name: "Glowing Mushrooms"
+							FormID: 0x0007EE00
+							FormType: Flora (39)
+							ParentCell: ---
+								File: "Yggdrasil - Synthesis Patch.esp"
+								Modified by: Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Merge - Game Tweaks.esp -> Yggdrasil - Synthesis Patch.esp
+								Flags: 0x00000009 
+								Name: "Realm of Lorkhan"
+								EditorID: "RealmLorkhan"
+								FormID: 0x3D01A5C6
+								FormType: Cell (60)
+						Checking Parent: 1879
+							RTTIName: "NiNode"
+							Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+							Checking Parent: 3
+								RTTIName: "BSMultiBoundNode"
+								Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+								Checking Parent: 2
+									Name: "ObjectLODRoot"
+									RTTIName: "NiNode"
+									Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+									Checking Parent: 3
+										Name: "shadow scene node"
+										RTTIName: "ShadowSceneNode"
+										Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+										Checking Parent: 1
+											Name: "WorldRoot Node"
+											RTTIName: "SceneGraph"
+											Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+138] 0x6FFFF90A0000     (void*)
+	[RSP+140] 0x11F749           (void*)
+	[RSP+148] 0x6FFFF9E63592     (void* -> SkyrimVR.exe+0DC3592	mov eax, [0x00006FFFFC220DB8] |  BSGraphics::SetDirtyStates_140d705b0_DC3592)
+	[RSP+150] 0x6FFFFAF66FF0     (void* -> SkyrimVR.exe+1EC6FF0	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1EC6FF0)
+	[RSP+158] 0x2D59CE40         (void*)
+	[RSP+160] 0x11F740           (void*)
+	[RSP+168] 0xBB516308         (void*)
+	[RSP+170] 0xC5873A9000000000 (size_t) [uint: 14233409537477443584 int: -4213334536232108032]
+	[RSP+178] 0x11F720           (void*)
+	[RSP+180] 0x2300007000408    (size_t) [615726628996104]
+	[RSP+188] 0x3F000000BF000000 (size_t) [4539628427593908224]
+	[RSP+190] 0x7F3064B4AD00     (void*)
+	[RSP+198] 0x3000000030       (size_t) [206158430256]
+	[RSP+1A0] 0x3656BF90         (void*)
+	[RSP+1A8] 0x460FC090         (void*)
+	[RSP+1B0] 0xC59A75D4C7E17CEE (size_t) [uint: 14238822728632204526 int: -4207921345077347090]
+	[RSP+1B8] 0x3F80000045B16208 (size_t) [4575657222577676808]
+	[RSP+1C0] 0x3E408313         (void*)
+	[RSP+1C8] 0x0                (size_t) [0]
+	[RSP+1D0] 0x3E40831300000000 (size_t) [4485729346488631296]
+	[RSP+1D8] 0x0                (size_t) [0]
+	[RSP+1E0] 0x1495F6080        (BSTriShape*) See RSP+130
+	[RSP+1E8] 0x6FFFFC783280     (void* -> SkyrimVR.exe+36E3280	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_36E3280)
+	[RSP+1F0] 0x0                (size_t) [0]
+	[RSP+1F8] 0x1494D6B90        (char*) " 1?-"
+	[RSP+200] 0x10               (size_t) [16]
+	[RSP+208] 0x1                (size_t) [1]
+	[RSP+210] 0x6FFFFC221700     (void* -> SkyrimVR.exe+3181700	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3181700)
+	[RSP+218] 0x6FFFF9E5DD68     (void* -> SkyrimVR.exe+0DBDD68	mov rcx, [0x00006FFFFC21E7F8] |  Renderer::DrawIndexedTriangleList_DBDD68)
+	[RSP+220] 0x40AA302CB2AA3677 (size_t) [4659589733002393207]
+	[RSP+228] 0x83D764A4         (void*)
+	[RSP+230] 0xC6B2DADF45968E03 (size_t) [uint: 14317746817844284931 int: -4128997255865266685]
+	[RSP+238] 0x3F80000047ED34B1 (size_t) [4575657222615151793]
+	[RSP+240] 0x40443            (void*)
+	[RSP+248] 0x40443            (void*)
+	[RSP+250] 0x1512791C0        (void*)
+	[RSP+258] 0x37E1A8           (void*)
+	[RSP+260] 0x45               (size_t) [69]
+	[RSP+268] 0x6FFFFA3E8532     (void* -> SkyrimVR.exe+1348532	jmp 0x00006FFFFA3E8AFF |  BSRenderPass::DrawGeometry_1348532)
+	[RSP+270] 0x0                (size_t) [0]
+	[RSP+278] 0x0                (size_t) [0]
+	[RSP+280] 0x41               (size_t) [65]
+	[RSP+288] 0x0                (size_t) [0]
+	[RSP+290] 0xFF7FFFFF         (void*)
+	[RSP+298] 0x0                (size_t) [0]
+	[RSP+2A0] 0x46A391B7         (void*)
+	[RSP+2A8] 0x0                (size_t) [0]
+	[RSP+2B0] 0x1                (size_t) [1]
+	[RSP+2B8] 0x0                (size_t) [0]
+	[RSP+2C0] 0x6FFFFC783280     (void* -> SkyrimVR.exe+36E3280	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_36E3280)
+	[RSP+2C8] 0x37E1A8           (void*)
+	[RSP+2D0] 0x45               (size_t) [69]
+	[RSP+2D8] 0x2756B880         (BSEffectShader*)
+		fxpFilename: "Effect"
+	[RSP+2E0] 0x1512791C0        (void*)
+	[RSP+2E8] 0x6FFFFA3E9B87     (void* -> SkyrimVR.exe+1349B87	mov rax, [r14] |  BSRenderPass::RenderPassImmediately_Skinned_1349B87)
+	[RSP+2F0] 0x2756B880         (BSEffectShader*) See RSP+2D8
+	[RSP+2F8] 0x0                (size_t) [0]
+	[RSP+300] 0x41               (size_t) [65]
+	[RSP+308] 0x283620B8         (void*)
+	[RSP+310] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+318] 0x2756B880         (BSEffectShader*) See RSP+2D8
+	[RSP+320] 0x2756B880         (BSEffectShader*) See RSP+2D8
+	[RSP+328] 0x4004046F         (void*)
+	[RSP+330] 0x45               (size_t) [69]
+	[RSP+338] 0x6FFFFA3E9747     (void* -> SkyrimVR.exe+1349747	mov rbx, [rsp+0x48] |  BSBatchRenderer::SetupAndDrawPass_1349747)
+	[RSP+340] 0x1512791C0        (void*)
+	[RSP+348] 0x6FFF00000041     (size_t) [123141007343681]
+	[RSP+350] 0x1495F6080        (BSTriShape*) See RSP+130
+	[RSP+358] 0x6FFFFA3EA403     (void* -> SkyrimVR.exe+134A403	mov rbx, [rbx+0x30] |  BSRenderPass::FUN_1413090c0_134A403)
+	[RSP+360] 0x11FA30           (void*)
+	[RSP+368] 0x45               (size_t) [69]
+	[RSP+370] 0x6FFFF5965700     (void* -> EngineFixes.dll+0265700	add al, [rcx] |  safetyhook::InlineHook Fixes::BSLightingShaderForceAlphaTest::detail::g_hk_BSBatchRenderer_SetupAndDrawPass [?g_hk_BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@3VInlineHook@safetyhook@@A])
+	[RSP+378] 0x6FFFF5754A77     (void* -> EngineFixes.dll+0054A77	nop |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\fixes\bslightingshader_force_alpha_test.h:28 void Fixes::BSLightingShaderForceAlphaTest::detail::BSBatchRenderer_SetupAndDrawPass(RE::BSRenderPass *,unsigned int,bool,unsigned int) [?BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@YAXPEAVBSRenderPass@RE@@I_NI@Z] D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\fixes\bslightingshaderproperty_shadowmap.h:20 void Fixes::BSLightingShaderForceAlphaTest::detail::BSBatchRenderer_SetupAndDrawPass(RE::BSRenderPass *,unsigned int,bool,unsigned int) [?BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@YAXPEAVBSRenderPass@RE@@I_NI@Z])
+	[RSP+380] 0x4004046F         (void*)
+	[RSP+388] 0x1512791C0        (void*)
+	[RSP+390] 0x1                (size_t) [1]
+	[RSP+398] 0x6FFFF5965700     (void* -> EngineFixes.dll+0265700	add al, [rcx] |  safetyhook::InlineHook Fixes::BSLightingShaderForceAlphaTest::detail::g_hk_BSBatchRenderer_SetupAndDrawPass [?g_hk_BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@3VInlineHook@safetyhook@@A])
+	[RSP+3A0] 0x6FFFF5965700     (void* -> EngineFixes.dll+0265700	add al, [rcx] |  safetyhook::InlineHook Fixes::BSLightingShaderForceAlphaTest::detail::g_hk_BSBatchRenderer_SetupAndDrawPass [?g_hk_BSBatchRenderer_SetupAndDrawPass@detail@BSLightingShaderForceAlphaTest@Fixes@@3VInlineHook@safetyhook@@A])
+	[RSP+3A8] 0x14977B200        (char*) "@aG'"
+	[RSP+3B0] 0x6FFFFC783B40     (void* -> SkyrimVR.exe+36E3B40	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_36E3B40)
+	[RSP+3B8] 0x11FA30           (void*)
+	[RSP+3C0] 0x1BC6200          (BSBatchRenderer*)
+	[RSP+3C8] 0x1512791C0        (void*)
+	[RSP+3D0] 0x149621440        (BSEffectShaderProperty*)
+		Flags: 0x20C0000000
+		RTTIName: "BSEffectShaderProperty"
+		NiPropertyType: kShade (01)
+	[RSP+3D8] 0x45               (size_t) [69]
+	[RSP+3E0] 0x1495F6000        (void*)
+	[RSP+3E8] 0x6FFFFA3EA8DA     (void* -> SkyrimVR.exe+134A8DA	mov rdx, [r14+0x108] |  BSBatchRenderer::RenderAlphaSortedPasses_134A8DA)
+	[RSP+3F0] 0x1495F6080        (BSTriShape*) See RSP+130
+	[RSP+3F8] 0x45               (size_t) [69]
+	[RSP+400] 0x14977B200        (char*) "@aG'"
+	[RSP+408] 0x1BBE980          (Main*)
+		Game Active: true
+		On Idle: true
+		Reload Content: false
+		Freeze Time: false
+	[RSP+410] 0x0                (size_t) [0]
+	[RSP+418] 0x0                (size_t) [0]
+	[RSP+420] 0x0                (size_t) [0]
+	[RSP+428] 0x0                (size_t) [0]
+	[RSP+430] 0xFF7FFFFF         (void*)
+	[RSP+438] 0x0                (size_t) [0]
+	[RSP+440] 0x0                (size_t) [0]
+	[RSP+448] 0x37E100           (void*)
+	[RSP+450] 0x1BBE980          (Main*) See RSP+408
+	[RSP+458] 0x0                (size_t) [0]
+	[RSP+460] 0x45               (size_t) [69]
+	[RSP+468] 0x6FFFFA3AA381     (void* -> SkyrimVR.exe+130A381	mov rcx, [rbx+0x158] |  BSShaderAccumulator::RenderEffects_130A381)
+	[RSP+470] 0x1BE2940          (BSShaderAccumulator*)
+	[RSP+478] 0x0                (size_t) [0]
+	[RSP+480] 0x0                (size_t) [0]
+	[RSP+488] 0x0                (size_t) [0]
+	[RSP+490] 0x45               (size_t) [69]
+	[RSP+498] 0x0                (size_t) [0]
+	[RSP+4A0] 0xBF7E445EBDEA6DC4 (size_t) [uint: 13798541482013650372 int: -4648202591695901244]
+	[RSP+4A8] 0x3CA1EF8C         (void*)
+	[RSP+4B0] 0x0                (size_t) [0]
+	[RSP+4B8] 0x0                (size_t) [0]
+	[RSP+4C0] 0x0                (size_t) [0]
+	[RSP+4C8] 0x0                (size_t) [0]
+	[RSP+4D0] 0x41               (size_t) [65]
+	[RSP+4D8] 0x6FFFFA3A9F6C     (void* -> SkyrimVR.exe+1309F6C	mov r9d, 0x03 |  BSShaderAccumulator::RenderPostAccumulationPasses_1309F6C)
+	[RSP+4E0] 0x1BE2940          (BSShaderAccumulator*) See RSP+470
+	[RSP+4E8] 0x1                (size_t) [1]
+	[RSP+4F0] 0x45               (size_t) [69]
+	[RSP+4F8] 0x41               (size_t) [65]
+	[RSP+500] 0x1                (size_t) [1]
+	[RSP+508] 0x0                (size_t) [0]
+	[RSP+510] 0x701              (size_t) [1793]
+	[RSP+518] 0x37E1A8           (void*)
+	[RSP+520] 0x41               (size_t) [65]
+	[RSP+528] 0x6FFFFA3A937D     (void* -> SkyrimVR.exe+130937D	mov edx, edi |  BSShaderAccumulator::FinishAccumulatingPostResolveDepth_130937D)
+	[RSP+530] 0x1BE2940          (BSShaderAccumulator*) See RSP+470
+	[RSP+538] 0x41               (size_t) [65]
+	[RSP+540] 0x1BE2940          (BSShaderAccumulator*) See RSP+470
+	[RSP+548] 0x1A               (size_t) [26]
+	[RSP+550] 0x27554F70         (void*)
+	[RSP+558] 0x6FFFFA3C3E43     (void* -> SkyrimVR.exe+1323E43	mov rdx, [0x00006FFFFC525AF0] |  Main::RenderWorld_1323E43)
+	[RSP+560] 0x1A               (size_t) [26]
+	[RSP+568] 0x11FBD9           (void*)
+	[RSP+570] 0x1                (size_t) [1]
+	[RSP+578] 0x3F44C4C6         (void*)
+	[RSP+580] 0x9E8              (size_t) [2536]
+	[RSP+588] 0x0                (size_t) [0]
+	[RSP+590] 0x0                (size_t) [0]
+	[RSP+598] 0x6FFFF9E67DA8     (void* -> SkyrimVR.exe+0DC7DA8	mov rbx, [rsp+0x30] |  SetRenderTarget_DC7DA8)
+	[RSP+5A0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+5A8] 0x451C7700         (Sun*)
+	[RSP+5B0] 0x700              (size_t) [1792]
+	[RSP+5B8] 0x72               (size_t) [114]
+	[RSP+5C0] 0x451C7700         (Sun*) See RSP+5A8
+	[RSP+5C8] 0x6FFFF9659AC6     (void* -> SkyrimVR.exe+05B9AC6	mov rcx, [0x00006FFFFC08BA40] |  Main::Draw_5B9AC6)
+	[RSP+5D0] 0x1A               (size_t) [26]
+	[RSP+5D8] 0x6                (size_t) [6]
+	[RSP+5E0] 0x11FBD9           (void*)
+	[RSP+5E8] 0x1BBE480          (NiCamera*) "WorldRoot Camera"
+		RTTIName: "NiCamera"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 0
+			Name: "WorldRoot CameraNode"
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 0
+				Name: "WorldRoot Node"
+				RTTIName: "SceneGraph"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+5F0] 0x3FB9098900000000 (size_t) [4591711779096100864]
+	[RSP+5F8] 0xBE867B3100000000 (size_t) [uint: 13728795964469149696 int: -4717948109240401920]
+	[RSP+600] 0x0                (size_t) [0]
+	[RSP+608] 0x3F80000100000000 (size_t) [4575657225703391232]
+	[RSP+610] 0x0                (size_t) [0]
+	[RSP+618] 0x3F800001BF7FF99A (size_t) [4575657228916226458]
+	[RSP+620] 0x4296C4E1BFEA240B (size_t) [4798238926876320779]
+	[RSP+628] 0x3F32A73A3F713041 (size_t) [4553886041839317057]
+	[RSP+630] 0x42981B793F04A6C7 (size_t) [4798615610525525703]
+	[RSP+638] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+640] 0x3E24FA053CDE35E8 (size_t) [4477978829916091880]
+	[RSP+648] 0x3EB90E19         (void*)
+	[RSP+650] 0x3F32A73A3F713041 (size_t) [4553886041839317057]
+	[RSP+658] 0x3F8000003F04A6C7 (size_t) [4575657222465693383]
+	[RSP+660] 0x0                (size_t) [0]
+	[RSP+668] 0x0                (size_t) [0]
+	[RSP+670] 0x768              (size_t) [1896]
+	[RSP+678] 0x1BBE980          (Main*) See RSP+408
+	[RSP+680] 0x0                (size_t) [0]
+	[RSP+688] 0x0                (size_t) [0]
+	[RSP+690] 0x27461EA0         (void*)
+	[RSP+698] 0x37DA40           (void*)
+	[RSP+6A0] 0x72               (size_t) [114]
+	[RSP+6A8] 0x6FFFF96592FC     (void* -> SkyrimVR.exe+05B92FC	nop |  Main::RenderStereoFrame_5B92FC)
+	[RSP+6B0] 0x2                (size_t) [2]
+	[RSP+6B8] 0x72               (size_t) [114]
+	[RSP+6C0] 0x37DA40           (void*)
+	[RSP+6C8] 0x0                (size_t) [0]
+	[RSP+6D0] 0x3F800000         (void*)
+	[RSP+6D8] 0x6FFFF994D670     (void* -> SkyrimVR.exe+08AD670	cmp [0x00006FFFFC0B1E18], eax |  NiCamera::UpdateGlobalCameraState_8AD670)
+	[RSP+6E0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+6E8] 0x4D392CC0         (BSShaderAccumulator*)
+	[RSP+6F0] 0x4479F880         (NiCamera*)
+		RTTIName: "NiCamera"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+6F8] 0x4D392CC0         (BSShaderAccumulator*) See RSP+6E8
+	[RSP+700] 0x0                (size_t) [0]
+	[RSP+708] 0x6FFFF9658CA3     (void* -> SkyrimVR.exe+05B8CA3	mov dil, 0x01 |  Main::Render_5B8CA3)
+	[RSP+710] 0x0                (size_t) [0]
+	[RSP+718] 0x1BBE980          (Main*) See RSP+408
+	[RSP+720] 0x2                (size_t) [2]
+	[RSP+728] 0x0                (size_t) [0]
+	[RSP+730] 0x0                (size_t) [0]
+	[RSP+738] 0x6FFF00000000     (size_t) [123141007343616]
+	[RSP+740] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+748] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+750] 0x1BBE501          (void*)
+	[RSP+758] 0x1BF6E80          (ShadowSceneNode*) "shadow scene node"
+		Active Lights: 27
+		Active Shadow Lights: 6
+		Lit Geometry: 0
+		RTTIName: "ShadowSceneNode"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 1
+			Name: "WorldRoot Node"
+			RTTIName: "SceneGraph"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+760] 0x147F32BE0        (BSPortalGraph*)
+	[RSP+768] 0xFFFFFFFF         (size_t) [4294967295]
+	[RSP+770] 0x147EACB80        (BSMultiBoundRoom*)
+		RTTIName: "BSMultiBoundRoom"
+		Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 2
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 7
+				RTTIName: "BSMultiBoundNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 2
+					Name: "ObjectLODRoot"
+					RTTIName: "NiNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Checking Parent: 3
+						Name: "shadow scene node"
+						RTTIName: "ShadowSceneNode"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+						Checking Parent: 1
+							Name: "WorldRoot Node"
+							RTTIName: "SceneGraph"
+							Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+778] 0xA                (size_t) [10]
+	[RSP+780] 0x1F84D800         (BSGeometryListCullingProcess*)
+		Cull Mode: kNormal (0)
+		Object Array Size: 659
+		Alpha Groups Size: 5
+		Recurse to Geometry: true
+		Is Grouping Alphas: false
+		Cull Mode Stack Index: 0
+	[RSP+788] 0x6FFFF920B52E     (void* -> SkyrimVR.exe+016B52E	test rax, rax |  TES::UpdatePortalVisibility_16B52E)
+	[RSP+790] 0x1BF6E80          (ShadowSceneNode*) See RSP+758
+	[RSP+798] 0x0                (size_t) [0]
+	[RSP+7A0] 0x1F84D800         (BSGeometryListCullingProcess*) See RSP+780
+	[RSP+7A8] 0x0                (size_t) [0]
+	[RSP+7B0] 0x3DE47F21BF7CA801 (size_t) [4459829313926899713]
+	[RSP+7B8] 0x3FBDEDF700       (size_t) [273769428736]
+	[RSP+7C0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+7C8] 0xC688342145ADFB0D (size_t) [uint: 14305741533849975565 int: -4141002539859576051]
+	[RSP+7D0] 0xBF57A55A45903A39 (size_t) [uint: 13787670591350782521 int: -4659073482358769095]
+	[RSP+7D8] 0xC6884DF345ADEF18 (size_t) [uint: 14305769923583799064 int: -4140974150125752552]
+	[RSP+7E0] 0xBF57A55A45903C9C (size_t) [uint: 13787670591350783132 int: -4659073482358768484]
+	[RSP+7E8] 0x467D19723F040E64 (size_t) [5079243933217984100]
+	[RSP+7F0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+7F8] 0x0                (size_t) [0]
+	[RSP+800] 0x1                (size_t) [1]
+	[RSP+808] 0x6FFFF934DD93     (void* -> SkyrimVR.exe+02ADD93	mov rcx, rax |  FUN_1402adb50_2ADD93)
+	[RSP+810] 0x2                (size_t) [2]
+	[RSP+818] 0x1BBE980          (Main*) See RSP+408
+	[RSP+820] 0x37E1A8           (void*)
+	[RSP+828] 0x0                (size_t) [0]
+	[RSP+830] 0x0                (size_t) [0]
+	[RSP+838] 0x1                (size_t) [1]
+	[RSP+840] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+848] 0x0                (size_t) [0]
+	[RSP+850] 0x2                (size_t) [2]
+	[RSP+858] 0x0                (size_t) [0]
+	[RSP+860] 0x0                (size_t) [0]
+	[RSP+868] 0x1                (size_t) [1]
+	[RSP+870] 0x0                (size_t) [0]
+	[RSP+878] 0x1                (size_t) [1]
+	[RSP+880] 0x1                (size_t) [1]
+	[RSP+888] 0x0                (size_t) [0]
+	[RSP+890] 0x1BBE980          (Main*) See RSP+408
+	[RSP+898] 0x6FFFF965B18D     (void* -> SkyrimVR.exe+05BB18D	test dil, dil |  Main::OnIdle_5BB18D)
+	[RSP+8A0] 0x1                (size_t) [1]
+	[RSP+8A8] 0x1                (size_t) [1]
+	[RSP+8B0] 0x4D392CC0         (BSShaderAccumulator*) See RSP+6E8
+	[RSP+8B8] 0x4479F880         (NiCamera*) See RSP+6F0
+	[RSP+8C0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+8C8] 0x0                (size_t) [0]
+	[RSP+8D0] 0x0                (size_t) [0]
+	[RSP+8D8] 0x100CA            (void*)
+	[RSP+8E0] 0x0                (size_t) [0]
+	[RSP+8E8] 0x6FFFF9656E94     (void* -> SkyrimVR.exe+05B6E94	test bl, bl |  Main::MainLoop_5B6E94)
+	[RSP+8F0] 0x0                (size_t) [0]
+	[RSP+8F8] 0x0                (size_t) [0]
+	[RSP+900] 0x0                (size_t) [0]
+	[RSP+908] 0x100CA            (void*)
+	[RSP+910] 0x1                (size_t) [1]
+	[RSP+918] 0x0                (size_t) [0]
+	[RSP+920] 0x0                (size_t) [0]
+	[RSP+928] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+930] 0x1680000038C      (size_t) [1546188227468]
+	[RSP+938] 0x6FFFFA766DB8     (char*) "TESInitThread"
+	[RSP+940] 0x0                (size_t) [0]
+	[RSP+948] 0x0                (size_t) [0]
+	[RSP+950] 0x0                (size_t) [0]
+	[RSP+958] 0x0                (size_t) [0]
+	[RSP+960] 0x0                (size_t) [0]
+	[RSP+968] 0x0                (size_t) [0]
+	[RSP+970] 0x0                (size_t) [0]
+	[RSP+978] 0x6FFFF96542C5     (void* -> SkyrimVR.exe+05B42C5	call 0x00006FFF7A62002A |  WinMain_5B42C5)
+	[RSP+980] 0xA                (size_t) [10]
+	[RSP+988] 0x0                (size_t) [0]
+	[RSP+990] 0xA                (size_t) [10]
+	[RSP+998] 0x6FFF00000002     (size_t) [123141007343618]
+	[RSP+9A0] 0x0                (size_t) [0]
+	[RSP+9A8] 0x6FFFFA42AF0A     (void* -> SkyrimVR.exe+138AF0A	mov ebx, eax |  __scrt_common_main_seh_138AF0A)
+	[RSP+9B0] 0x0                (size_t) [0]
+	[RSP+9B8] 0x6FFFFA42AFC1     (void* -> SkyrimVR.exe+138AFC1	add rsp, 0x28 |  start_14134B228_138AFC1)
+	[RSP+9C0] 0x6FFFFC9CE310     (void* -> SkyrimVR.exe+392E310	call 0x00006FFFFC9CE315)
+	[RSP+9C8] 0x0                (size_t) [0]
+	[RSP+9D0] 0x0                (size_t) [0]
+	[RSP+9D8] 0x0                (size_t) [0]
+	[RSP+9E0] 0x0                (size_t) [0]
+	[RSP+9E8] 0x6FFFFFE90D59     (void* -> kernel32.dll+0010D59	mov ecx, eax)
+	[RSP+9F0] 0x0                (size_t) [0]
+	[RSP+9F8] 0x0                (size_t) [0]
+	[RSP+A00] 0x0                (size_t) [0]
+	[RSP+A08] 0x0                (size_t) [0]
+	[RSP+A10] 0x0                (size_t) [0]
+	[RSP+A18] 0x6FFFFFF001FF     (void* -> ntdll.dll+00101FF	int3)
+	[RSP+A20] 0x0                (size_t) [0]
+	[RSP+A28] 0x0                (size_t) [0]
+	[RSP+A30] 0x0                (size_t) [0]
+	[RSP+A38] 0x0                (size_t) [0]
+	[RSP+A40] 0x0                (size_t) [0]
+	[RSP+A48] 0x0                (size_t) [0]
+	[RSP+A50] 0x0                (size_t) [0]
+	[RSP+A58] 0x0                (size_t) [0]
+	[RSP+A60] 0x0                (size_t) [0]
+	[RSP+A68] 0x0                (size_t) [0]
+
+MODULES:
+	steam_api64.dll                    0x00007BE90000
+	OPENGL32.dll                       0x00007BEE0000
+	binkw64.dll                        0x000180000000
+	amdxc64.dll                        0x6FFFED320000
+	d3d12core.dll                      0x6FFFED340000
+	amd_fidelityfx_upscaler_dx12.dll   0x6FFFED850000
+	DSOUND.DLL                         0x6FFFEEDC0000
+	avrt.dll                           0x6FFFEEF40000
+	XAudio2_7.dll                      0x6FFFEEF60000
+	SkyrimUncapper.dll                 0x6FFFEF000000
+	dragonborn_speaks_naturally.dll    0x6FFFEF090000
+	rsaenh.dll                         0x6FFFEF150000
+
+SKSE PLUGINS:
+	activeragdoll.dll
+	AHZmoreHUDPlugin.dll v1.1
+	AnimatedStaticReload.dll v1.0.1
+	AnimationMotionRevolution.dll
+	AnimationQueueFix.dll v1.0.2
+	ArmorRatingReduxVR.dll
+	BlockingConditionFix.dll v1.0.1
+	ConsoleUtilVR.dll v1.3
+	ContainerDistributionFramework.dll v3.0.2
+	CrashLogger.dll v1.27
+	EngineFixes.dll v7.13
+	OpenAnimationReplacer.dll v3.2.1
+
+GAME STATE:
+	Main loop: active
+	Open menus: Fader Menu, HUD Menu
+	Player: interior cell "Realm of Lorkhan" [3D01A5C6], position (5577.5, -17425.9, 4506.0), 3D loaded
+
+PLUGINS:
+	Light: 60	Regular: 198	Total: 258
+	[ 0]     Skyrim.esm
+	[ 1]     Update.esm
+	[ 2]     Dragonborn.esm
+	[ 3]     Dawnguard.esm
+	[ 4]     HearthFires.esm
+	[ 5]     SkyrimVR.esm
+	[ 6]     Unofficial Skyrim Special Edition Patch.esp
+	[ 7]     LegacyoftheDragonborn.esm
+	[ 8]     LOTD_HUB.esp
+	[ 9]     Occ_Skyrim_Tamriel.esp
+	[FE:  0] Skyrim Project Optimization - Full ESL Version.esm
+	[FE:  1] Landscape and Water Fixes.esp

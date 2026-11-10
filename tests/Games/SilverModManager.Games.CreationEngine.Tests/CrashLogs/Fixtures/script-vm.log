@@ -1,0 +1,475 @@
+CRASH TIME: 2026-11-09 19:04:58
+Skyrim VR v1.4.15
+CrashLoggerSSE v1-27-0-0 Oct 25 2026 06:20:14
+
+Unhandled exception "EXCEPTION_ACCESS_VIOLATION" at 0x00014093F72B SkyrimVR.exe+093F72B	mov rax, [r9] |  FUN_14093f6a0_93F72B)
+Exception Flags: 0x00000000 (Continuable)
+Number of Parameters: 2
+Exception Thread ID: 556
+Access Violation: Tried to read memory at 0xFFFFFFFFFFFFFFFF
+ACCESS VIOLATION ANALYSIS:
+	Instruction: mov rax, [r9]
+	Memory Operand: [base=r9, index=none, scale=0, disp=+0x0]
+	Base Register: r9 = 0x3880000040A00000
+	Computed Address: 0x3880000040A00000
+	Fault Address:   0xFFFFFFFFFFFFFFFF (mismatch)
+
+POSSIBLE RELEVANT OBJECTS:
+	RSP+38: (BSScript::Internal::VirtualMachine*)
+	RSP+40: (BSFile*)
+	RSP+70: (SkyrimVM*)
+	RSP+80: (SkyrimScript::HandlePolicy*)
+	RSP+148: (ahkpWorld*)
+	RSP+220: (hkbCharacter*)
+	RSP+250: (BShkbAnimationGraph*)
+	RSP+260: (BShkbHkxDB::ProjectDBData*)
+	RSP+2A8: (BSAnimationGraphManager*)
+	RSP+300: (TESNPC*) "Pelgurt" [0x0D18A9D2] ("Yggdrasil - Synthesis Patch.esp") "Pelgurt"
+	RSP+308: (Character*) "Pelgurt" [0x0D18A9D3] ("3DNPC.esp")
+	RSP+370: (Character*) "Elda Early-Dawn" [0x0001B118] ("Skyrim.esm")
+	RSP+418: (BSFaceGenAnimationData*)
+	RSP+588: (Character*) "Luaffyn" [0x00047CB2] ("Merge - Creatures Enemies and Combat.esp")
+	RSP+5C0: (BSJobs::JobThread*)
+	RSP+718: (ScrapHeap*)
+
+PROCESS INFO:
+	Process ID: 452
+	Crash Thread ID: 556
+	Process Uptime: 00:15:47 (947437ms)
+	Executable MD5: 6cc5baea600d6a688a5fa5aa67a54248
+	Executable Size: 35530960 bytes
+	Executable Modified: 2023-11-23 05:32:40
+	Elevated: No
+
+THREAD CONTEXT (HEURISTIC):
+	Thread Priority: 0
+	Likely Role: Job/Task
+
+CALL STACK ([P]robable / [S]tack scan):
+	[ 0][P] 0x00014093F72B   SkyrimVR.exe+093F72B	mov rax, [r9] |  FUN_14093f6a0_93F72B -> 52662+0x1CEB	mov rax, [r9]
+	[ 1][P] 0x00014093E98B   SkyrimVR.exe+093E98B	mov rdi, [rax+0x08] |  FUN_14093e920_93E98B -> 52662+0xF4B	mov rdi, [rax+0x08]
+	[ 2][P] 0x00014093E01F   SkyrimVR.exe+093E01F	mov r14d, [rbp-0x2C] |  SkyrimScript__HandlePolicy::sub_1409037D0_93E01F -> 52662+0x5DF	mov r14d, [rbp-0x2C]
+	[ 3][P] 0x00014095D1BB   SkyrimVR.exe+095D1BB	movaps xmm6, [rsp+0x4F0] |  SkyrimVM::ProcessRegisteredUpdates_140921F10_95D1BB -> 53115+0xB4B	movaps xmm6, [rsp+0x4F0]
+	[ 4][P] 0x000140649947   SkyrimVR.exe+0649947	nop |  Job_VM_update_140640600_649947 -> 38118+0x37	nop
+	[ 5][P] 0x000140C77B75   SkyrimVR.exe+0C77B75	mov ecx, [rbx+0x0C] |  BSJobs__JobThread::ExecuteJobQueueSlot_C77B75 -> 67997+0xC35	mov ecx, [rbx+0x0C]
+	[ 6][P] 0x000140C79E1A   SkyrimVR.exe+0C79E1A	mov ebp, eax |  BSJobs__JobThread::ThreadProc_C79E1A -> 68058+0x32A	mov ebp, eax
+	[ 7][P] 0x000140C484ED   SkyrimVR.exe+0C484ED	mov rcx, [0x00000001430C3AA8] |  StartAddress_0_140C0D680_C484ED -> 66989+0x5D6D	mov rcx, [0x00000001430C3AA8]
+	[ 8][P] 0x6FFFFFEC1649   kernel32.dll+0011649
+	[ 9][P] 0x6FFFFFF40E0F      ntdll.dll+0010E0F
+	[10][S] 0x000140B26EA4   SkyrimVR.exe+0B26EA4	nop |  BShkbAnimationGraph::sub_140AEC270_B26EA4 -> 62618+0xFE4	nop
+	[11][S] 0x000140C421E3   SkyrimVR.exe+0C421E3	mov esi, eax |  MutexRW::EnterWriteLock_140C07350_C421E3 -> 66977+0x13	mov esi, eax
+	[12][S] 0x000140B31EF5   SkyrimVR.exe+0B31EF5	mov rdx, [rbx+0x98] |  FUN_140b31eb0_B31EF5 -> 62696+0xFC5	mov rdx, [rbx+0x98]
+	[13][S] 0x000140B2EB7A   SkyrimVR.exe+0B2EB7A	add rsp, 0x38 |  BShkbAnimationGraph::sub_140AF3DB0_B2EB7A -> 62655+0x30DA	add rsp, 0x38
+	[14][S] 0x000140C6EDE8   SkyrimVR.exe+0C6EDE8	mov r12, rax |  BSFixedString::Release_140C29E80_C6EDE8 -> 67847+0x38	mov r12, rax
+	[15][S] 0x000140502B8E   SkyrimVR.exe+0502B8E	nop |  IAnimationGraphManagerHolder::SetGraphVariableNiPoint3_502B8E -> 32144+0x8E	nop
+	[16][S] 0x0001406865D8   SkyrimVR.exe+06865D8	mov rbx, [rsp+0x30] |  ActorProcess::SetHeadTrackTarget_14067D120_6865D8 -> 38850+0x38	mov rbx, [rsp+0x30]
+	[17][S] 0x000140616674   SkyrimVR.exe+0616674	jmp 0x0000000140616698 |  Actor::ProcessTracking_14060D300_616674 -> 36979+0x1084	jmp 0x0000000140616698
+	[18][S] 0x0001403D385F   SkyrimVR.exe+03D385F	add rsp, 0x78 |  BSFaceGenAnimationData::sub_1403C3F80_3D385F -> 25980+0xDF	add rsp, 0x78
+	[19][S] 0x00014061686B   SkyrimVR.exe+061686B	movaps xmm6, [rsp+0x30] |  Actor::Func291_14060DB50_61686B -> 36979+0x127B	movaps xmm6, [rsp+0x30]
+	[20][S] 0x0001405E2117   SkyrimVR.exe+05E2117	mov rcx, rbx |  Character::sub_1405D9990_5E2117 -> 36372+0x107	mov rcx, rbx
+	[21][S] 0x000140708843   SkyrimVR.exe+0708843	nop |  RunOneActorAnimationUpdateJob_1406E1990_708843 -> 40396+0x2D43	nop
+	[22][S] 0x000140C4008A   SkyrimVR.exe+0C4008A	xor eax, eax |  BSScrapArrayAllocator::Deallocate_C4008A -> 66906+0x88A	xor eax, eax
+	[23][S] 0x6FFFFFF404F4      ntdll.dll+00104F4
+	[24][S] 0x6FFFFFC4899B kernelbase.dll+005899B
+	[25][S] 0x6FFFFFF3EA94      ntdll.dll+000EA94
+	[26][S] 0x6FFFFFC62328 kernelbase.dll+0072328
+	[27][S] 0x6FFFFFF3EBD4      ntdll.dll+000EBD4
+	[28][S] 0x000140C4215F   SkyrimVR.exe+0C4215F	cmp [rdi], eax |  MutexRW::EnterReadLock_140C072D0_C4215F -> 66976+0xF	cmp [rdi], eax
+
+REGISTERS:
+	RAX 0x1                (size_t) [1]
+	RCX 0x3661F880         (void*)
+	RDX 0x3661F830         (void*)
+	RBX 0x192545F60        (void*)
+	RSP 0x3661F7D0         (void*)
+	RBP 0x3661F880         (void*)
+	RSI 0x3661F830         (void*)
+	RDI 0x3661F880         (void*)
+	R8  0x3661F820         (void*)
+	R9  0x3880000040A00000 (size_t) [4071254064227155968]
+	R10 0x3661F728         (void*)
+	R11 0x3661F7B8         (void*)
+	R12 0x0                (size_t) [0]
+	R13 0x383F             (size_t) [14399]
+	R14 0x3661F820         (void*)
+	R15 0x30BE7E78         (void*)
+
+STACK:
+	[RSP+0  ] 0x3661F880         (void*)
+	[RSP+8  ] 0xFFFF0001A6C1     (size_t) [281470681851585]
+	[RSP+10 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+18 ] 0x6D5EC1C0         (void*)
+	[RSP+20 ] 0x0                (size_t) [0]
+	[RSP+28 ] 0x14093E98B        (void* -> SkyrimVR.exe+093E98B	mov rdi, [rax+0x08] |  FUN_14093e920_93E98B)
+	[RSP+30 ] 0x192545F60        (void*)
+	[RSP+38 ] 0x6D5EC100         (BSScript::Internal::VirtualMachine*)
+		Overstressed: false
+		Initialized: true
+		Freeze State: kNotFrozen
+		Frozen Stacks Count: 0
+		Waiting Function Messages: 0
+		Object Table Size: 0
+		Array Table Size: 2830
+		Running Stacks Count: 9
+	[RSP+40 ] 0x192546080        (BSFile*)
+	[RSP+48 ] 0x192546080        (BSFile*) See RSP+40
+	[RSP+50 ] 0x192545F60        (void*)
+	[RSP+58 ] 0x192546080        (BSFile*) See RSP+40
+	[RSP+60 ] 0x192545F60        (void*)
+	[RSP+68 ] 0x192546080        (BSFile*) See RSP+40
+	[RSP+70 ] 0x142FEC9F0        (SkyrimVM*)
+	[RSP+78 ] 0x14093E01F        (void* -> SkyrimVR.exe+093E01F	mov r14d, [rbp-0x2C] |  SkyrimScript__HandlePolicy::sub_1409037D0_93E01F)
+	[RSP+80 ] 0x142FECD18        (SkyrimScript::HandlePolicy*)
+	[RSP+88 ] 0x142FECD20        (void* -> SkyrimVR.exe+2FECD20	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FECD20)
+	[RSP+90 ] 0x3661F8B0         (void*)
+	[RSP+98 ] 0x142FEC9F0        (SkyrimVM*) See RSP+70
+	[RSP+A0 ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+A8 ] 0x0                (size_t) [0]
+	[RSP+B0 ] 0x103F666666       (size_t) [69783152230]
+	[RSP+B8 ] 0xB00000006        (size_t) [47244640262]
+	[RSP+C0 ] 0x141EB5630        (void* -> SkyrimVR.exe+1EB5630	fisubr [rbp+0xEFBE] |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1EB5630)
+	[RSP+C8 ] 0x0                (size_t) [0]
+	[RSP+D0 ] 0x192545F00        (void*)
+	[RSP+D8 ] 0x0                (size_t) [0]
+	[RSP+E0 ] 0x0                (size_t) [0]
+	[RSP+E8 ] 0x0                (size_t) [0]
+	[RSP+F0 ] 0xF25669EFFA       (size_t) [1040831868922]
+	[RSP+F8 ] 0x4                (size_t) [4]
+	[RSP+100] 0x142FEC9F0        (SkyrimVM*) See RSP+70
+	[RSP+108] 0x1926A5600        (void*)
+	[RSP+110] 0x3661F9F0         (void*)
+	[RSP+118] 0x14095D1BB        (void* -> SkyrimVR.exe+095D1BB	movaps xmm6, [rsp+0x4F0] |  SkyrimVM::ProcessRegisteredUpdates_140921F10_95D1BB)
+	[RSP+120] 0xF20000000C       (size_t) [1039382085644]
+	[RSP+128] 0x100000002        (void*)
+	[RSP+130] 0x100000000        (void*)
+	[RSP+138] 0xA                (size_t) [10]
+	[RSP+140] 0x1692A0100        (void*)
+	[RSP+148] 0x191930F00        (ahkpWorld*)
+	[RSP+150] 0x1926A5600        (void*)
+	[RSP+158] 0x5669D000619E8    (size_t) [1520199379851752]
+	[RSP+160] 0x6D5EC100         (BSScript::Internal::VirtualMachine*) See RSP+38
+	[RSP+168] 0x617CA000AFE61    (size_t) [1715006211817057]
+	[RSP+170] 0x2                (size_t) [2]
+	[RSP+178] 0x0                (size_t) [0]
+	[RSP+180] 0x0                (size_t) [0]
+	[RSP+188] 0x142FED104        (void* -> SkyrimVR.exe+2FED104	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FED104)
+	[RSP+190] 0x1415FA060        (void* -> SkyrimVR.exe+15FA060	rcl byte ptr [rcx+0x33], 0x01 |  FUN_14157e550_15FA060)
+	[RSP+198] 0x142FED104        (void* -> SkyrimVR.exe+2FED104	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FED104)
+	[RSP+1A0] 0x19D84F990        (void*)
+	[RSP+1A8] 0x105              (size_t) [261]
+	[RSP+1B0] 0x2C0000003ED1     (size_t) [48378511638225]
+	[RSP+1B8] 0xF25669EFFA       (size_t) [1040831868922]
+	[RSP+1C0] 0x383F             (size_t) [14399]
+	[RSP+1C8] 0x19D84F990        (void*)
+	[RSP+1D0] 0x0                (size_t) [0]
+	[RSP+1D8] 0x140B26EA4        (void* -> SkyrimVR.exe+0B26EA4	nop |  BShkbAnimationGraph::sub_140AEC270_B26EA4)
+	[RSP+1E0] 0x0                (size_t) [0]
+	[RSP+1E8] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+1F0] 0x142FED074        (void* -> SkyrimVR.exe+2FED074	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FED074)
+	[RSP+1F8] 0x142FED0E0        (void* -> SkyrimVR.exe+2FED0E0	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FED0E0)
+	[RSP+200] 0x0                (size_t) [0]
+	[RSP+208] 0x140C421E3        (void* -> SkyrimVR.exe+0C421E3	mov esi, eax |  MutexRW::EnterWriteLock_140C07350_C421E3)
+	[RSP+210] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+218] 0xFFFFFFFF         (void*)
+	[RSP+220] 0x19D8B5140        (hkbCharacter*)
+	[RSP+228] 0x0                (size_t) [0]
+	[RSP+230] 0x0                (size_t) [0]
+	[RSP+238] 0x0                (size_t) [0]
+	[RSP+240] 0x0                (size_t) [0]
+	[RSP+248] 0x0                (size_t) [0]
+	[RSP+250] 0x19D8B5080        (BShkbAnimationGraph*)
+		Project Name: "DefaultFemale"
+		Holder: 
+			Object Reference: 
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> Heights_of_Skyrim.esp -> AI Overhaul.esp -> Holds.esp -> Merge - Conflict Resolution.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x00400009 kDestructible | kInitialized
+			Name: "Elda Early-Dawn"
+			FormID: 0x0001412A
+			FormType: NPC (43)
+			ParentCell: ---
+				File: "Yggdrasil - Synthesis Patch.esp"
+				Modified by: Skyrim.esm -> HearthFires.esm -> Unofficial Skyrim Special Edition Patch.esp -> LegacyoftheDragonborn.esm -> Skyrim Project Optimization - Full ESL Version.esm -> 3DNPC.esp -> Vigilant.esm -> AI Overhaul.esp -> DealingwithDaedra.esp -> Embers XD.esp -> BeSeated_3.0.0.esp -> WZTamrielic Culture.esp -> Holds.esp -> SkyrimReputation_SSE.esp -> Merge - Holds Patches.esp -> Merge - Creatures Enemies and Combat.esp -> Merge - Game Tweaks.esp -> Merge - Enhanced Lighting.esp -> Yggdrasil - Synthesis Patch.esp
+				Flags: 0x0000000B 
+				Name: "Candlehearth Hall"
+				EditorID: "WindhelmCandlehearthHall"
+				FormID: 0x00016789
+				FormType: Cell (60)
+	[RSP+258] 0x140B31EF5        (void* -> SkyrimVR.exe+0B31EF5	mov rdx, [rbx+0x98] |  FUN_140b31eb0_B31EF5)
+	[RSP+260] 0x1795CBE80        (BShkbHkxDB::ProjectDBData*)
+	[RSP+268] 0x0                (size_t) [0]
+	[RSP+270] 0x3BE56041         (void*)
+	[RSP+278] 0x0                (size_t) [0]
+	[RSP+280] 0x2                (size_t) [2]
+	[RSP+288] 0x140B2EB7A        (void* -> SkyrimVR.exe+0B2EB7A	add rsp, 0x38 |  BShkbAnimationGraph::sub_140AF3DB0_B2EB7A)
+	[RSP+290] 0xFFFFFFFF556551B3 (size_t) [uint: 18446744070847287731 int: -2862263885]
+	[RSP+298] 0x19D84F9D8        (void*)
+	[RSP+2A0] 0x0                (size_t) [0]
+	[RSP+2A8] 0x19D84F940        (BSAnimationGraphManager*)
+	[RSP+2B0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+2B8] 0x4338C17C         (void*)
+	[RSP+2C0] 0x1                (size_t) [1]
+	[RSP+2C8] 0x140C6EDE8        (void* -> SkyrimVR.exe+0C6EDE8	mov r12, rax |  BSFixedString::Release_140C29E80_C6EDE8)
+	[RSP+2D0] 0x19D84F9D8        (void*)
+	[RSP+2D8] 0x3661FB28         (void*)
+	[RSP+2E0] 0x3661FC39         (void*)
+	[RSP+2E8] 0x19D84F940        (BSAnimationGraphManager*) See RSP+2A8
+	[RSP+2F0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+2F8] 0x30BE7710         (void*)
+	[RSP+300] 0x828A2700         (TESNPC*) "Pelgurt" [0x0D18A9D2] ("Yggdrasil - Synthesis Patch.esp")
+		Modified by: 3DNPC.esp -> Yggdrasil - Synthesis Patch.esp
+		Flags: 0x00000009 
+		FormType: NPC (43)
+		Modified by: 3DNPC.esp -> Yggdrasil - Synthesis Patch.esp
+		GetFullName: "Pelgurt"
+	[RSP+308] 0x827EA800         (Character*) "Pelgurt" [0x0D18A9D3] ("3DNPC.esp")
+		Flags: 0x00020409 
+		FormType: ActorCharacter (62)
+		Object Reference: 
+		Modified by: 3DNPC.esp -> Yggdrasil - Synthesis Patch.esp
+		ParentCell: ---
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> HearthFires.esm -> Unofficial Skyrim Special Edition Patch.esp -> LegacyoftheDragonborn.esm -> Skyrim Project Optimization - Full ESL Version.esm -> 3DNPC.esp -> Vigilant.esm -> AI Overhaul.esp -> DealingwithDaedra.esp -> Embers XD.esp -> BeSeated_3.0.0.esp -> WZTamrielic Culture.esp -> Holds.esp -> SkyrimReputation_SSE.esp -> Merge - Holds Patches.esp -> Merge - Creatures Enemies and Combat.esp -> Merge - Game Tweaks.esp -> Merge - Enhanced Lighting.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x0000000B 
+			Name: "Candlehearth Hall"
+			EditorID: "WindhelmCandlehearthHall"
+			FormID: 0x00016789
+			FormType: Cell (60)
+	[RSP+310] 0xFFFFFFFF         (void*)
+	[RSP+318] 0x3661FBB8         (void*)
+	[RSP+320] 0x141F82FD0        (void* -> SkyrimVR.exe+1F82FD0	clc |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F82FD0)
+	[RSP+328] 0x140502B8E        (void* -> SkyrimVR.exe+0502B8E	nop |  IAnimationGraphManagerHolder::SetGraphVariableNiPoint3_502B8E)
+	[RSP+330] 0x2                (size_t) [2]
+	[RSP+338] 0x1                (size_t) [1]
+	[RSP+340] 0x3661FC39         (void*)
+	[RSP+348] 0x3661FC39         (void*)
+	[RSP+350] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+358] 0x0                (size_t) [0]
+	[RSP+360] 0xC569BCC743BB1996 (size_t) [uint: 14225108462047271318 int: -4221635611662280298]
+	[RSP+368] 0x14338C17C        (void* -> SkyrimVR.exe+338C17C	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_338C17C)
+	[RSP+370] 0x75381600         (Character*) "Elda Early-Dawn" [0x0001B118] ("Skyrim.esm")
+		Flags: 0x00420449 
+		FormType: ActorCharacter (62)
+		Object Reference: 
+		Modified by: Skyrim.esm -> Heights_of_Skyrim.esp -> AI Overhaul.esp -> Holds.esp -> Merge - Conflict Resolution.esp -> Yggdrasil - Synthesis Patch.esp
+		ParentCell: ---
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> HearthFires.esm -> Unofficial Skyrim Special Edition Patch.esp -> LegacyoftheDragonborn.esm -> Skyrim Project Optimization - Full ESL Version.esm -> 3DNPC.esp -> Vigilant.esm -> AI Overhaul.esp -> DealingwithDaedra.esp -> Embers XD.esp -> BeSeated_3.0.0.esp -> WZTamrielic Culture.esp -> Holds.esp -> SkyrimReputation_SSE.esp -> Merge - Holds Patches.esp -> Merge - Creatures Enemies and Combat.esp -> Merge - Game Tweaks.esp -> Merge - Enhanced Lighting.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x0000000B 
+			Name: "Candlehearth Hall"
+			EditorID: "WindhelmCandlehearthHall"
+			FormID: 0x00016789
+			FormType: Cell (60)
+	[RSP+378] 0x1406865D8        (void* -> SkyrimVR.exe+06865D8	mov rbx, [rsp+0x30] |  ActorProcess::SetHeadTrackTarget_14067D120_6865D8)
+	[RSP+380] 0x19D84F940        (BSAnimationGraphManager*) See RSP+2A8
+	[RSP+388] 0x3661FBB8         (void*)
+	[RSP+390] 0x75381600         (Character*) See RSP+370
+	[RSP+398] 0x14314FE08        (void* -> SkyrimVR.exe+314FE08	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE08)
+	[RSP+3A0] 0x65FB2900         (void*)
+	[RSP+3A8] 0x140616674        (void* -> SkyrimVR.exe+0616674	jmp 0x0000000140616698 |  Actor::ProcessTracking_14060D300_616674)
+	[RSP+3B0] 0x827EA800         (Character*) See RSP+308
+	[RSP+3B8] 0x3661FC39         (void*)
+	[RSP+3C0] 0x75381600         (Character*) See RSP+370
+	[RSP+3C8] 0x75381600         (Character*) See RSP+370
+	[RSP+3D0] 0x19D84F990        (void*)
+	[RSP+3D8] 0x19D84F988        (void*)
+	[RSP+3E0] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+3E8] 0xC569BCC743BB1996 (size_t) [uint: 14225108462047271318 int: -4221635611662280298]
+	[RSP+3F0] 0x5                (size_t) [5]
+	[RSP+3F8] 0x1403D385F        (void* -> SkyrimVR.exe+03D385F	add rsp, 0x78 |  BSFaceGenAnimationData::sub_1403C3F80_3D385F)
+	[RSP+400] 0x100000002        (void*)
+	[RSP+408] 0x75381600         (Character*) See RSP+370
+	[RSP+410] 0x143153200        (char*) "0"
+	[RSP+418] 0x17FC5D800        (BSFaceGenAnimationData*)
+	[RSP+420] 0x0                (size_t) [0]
+	[RSP+428] 0x0                (size_t) [0]
+	[RSP+430] 0x0                (size_t) [0]
+	[RSP+438] 0x0                (size_t) [0]
+	[RSP+440] 0x0                (size_t) [0]
+	[RSP+448] 0x3E800000         (void*)
+	[RSP+450] 0x0                (size_t) [0]
+	[RSP+458] 0x0                (size_t) [0]
+	[RSP+460] 0x0                (size_t) [0]
+	[RSP+468] 0x0                (size_t) [0]
+	[RSP+470] 0x75381600         (Character*) See RSP+370
+	[RSP+478] 0x14061686B        (void* -> SkyrimVR.exe+061686B	movaps xmm6, [rsp+0x30] |  Actor::Func291_14060DB50_61686B)
+	[RSP+480] 0x3BE56041         (void*)
+	[RSP+488] 0x0                (size_t) [0]
+	[RSP+490] 0x14314FE04        (void* -> SkyrimVR.exe+314FE04	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE04)
+	[RSP+498] 0xFFFFFFFC         (void*)
+	[RSP+4A0] 0x14314FE00        (void* -> SkyrimVR.exe+314FE00	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE00)
+	[RSP+4A8] 0x14314FE08        (void* -> SkyrimVR.exe+314FE08	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE08)
+	[RSP+4B0] 0x3BE56041         (void*)
+	[RSP+4B8] 0x0                (size_t) [0]
+	[RSP+4C0] 0x1                (size_t) [1]
+	[RSP+4C8] 0x1405E2117        (void* -> SkyrimVR.exe+05E2117	mov rcx, rbx |  Character::sub_1405D9990_5E2117)
+	[RSP+4D0] 0x100000019        (void*)
+	[RSP+4D8] 0x65FB2901         (void*)
+	[RSP+4E0] 0x75381600         (Character*) See RSP+370
+	[RSP+4E8] 0x100110E11        (void*)
+	[RSP+4F0] 0x3BE56041         (void*)
+	[RSP+4F8] 0x0                (size_t) [0]
+	[RSP+500] 0x65FB2900         (void*)
+	[RSP+508] 0x140708843        (void* -> SkyrimVR.exe+0708843	nop |  RunOneActorAnimationUpdateJob_1406E1990_708843)
+	[RSP+510] 0x75381600         (Character*) See RSP+370
+	[RSP+518] 0x75381600         (Character*) See RSP+370
+	[RSP+520] 0x75381600         (Character*) See RSP+370
+	[RSP+528] 0x143153200        (char*) "0"
+	[RSP+530] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+538] 0x140C4008A        (void* -> SkyrimVR.exe+0C4008A	xor eax, eax |  BSScrapArrayAllocator::Deallocate_C4008A)
+	[RSP+540] 0x0                (size_t) [0]
+	[RSP+548] 0x0                (size_t) [0]
+	[RSP+550] 0x0                (size_t) [0]
+	[RSP+558] 0x0                (size_t) [0]
+	[RSP+560] 0x143153328        (void* -> SkyrimVR.exe+3153328	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3153328)
+	[RSP+568] 0x140C77B75        (void* -> SkyrimVR.exe+0C77B75	mov ecx, [rbx+0x0C] |  BSJobs__JobThread::ExecuteJobQueueSlot_C77B75)
+	[RSP+570] 0x1009F4           (void*)
+	[RSP+578] 0x75381600         (Character*) See RSP+370
+	[RSP+580] 0x3661FDD9         (void*)
+	[RSP+588] 0x827E9300         (Character*) "Luaffyn" [0x00047CB2] ("Merge - Creatures Enemies and Combat.esp")
+		Modified by: 3DNPC.esp -> Merge - Creatures Enemies and Combat.esp
+		Flags: 0x00420409 
+		FormType: ActorCharacter (62)
+		Object Reference: 
+		Modified by: Skyrim.esm -> Unofficial Skyrim Special Edition Patch.esp -> 3DNPC.esp -> Heights_of_Skyrim.esp -> AI Overhaul.esp -> Holds.esp -> Merge - Holds Patches.esp -> Merge - Conflict Resolution.esp -> Yggdrasil - Synthesis Patch.esp
+		ParentCell: ---
+			File: "Yggdrasil - Synthesis Patch.esp"
+			Modified by: Skyrim.esm -> HearthFires.esm -> Unofficial Skyrim Special Edition Patch.esp -> LegacyoftheDragonborn.esm -> Skyrim Project Optimization - Full ESL Version.esm -> 3DNPC.esp -> Vigilant.esm -> AI Overhaul.esp -> DealingwithDaedra.esp -> Embers XD.esp -> BeSeated_3.0.0.esp -> WZTamrielic Culture.esp -> Holds.esp -> SkyrimReputation_SSE.esp -> Merge - Holds Patches.esp -> Merge - Creatures Enemies and Combat.esp -> Merge - Game Tweaks.esp -> Merge - Enhanced Lighting.esp -> Yggdrasil - Synthesis Patch.esp
+			Flags: 0x0000000B 
+			Name: "Candlehearth Hall"
+			EditorID: "WindhelmCandlehearthHall"
+			FormID: 0x00016789
+			FormType: Cell (60)
+		Modified by: 3DNPC.esp -> Merge - Creatures Enemies and Combat.esp
+	[RSP+590] 0x65FB2900         (void*)
+	[RSP+598] 0x1                (size_t) [1]
+	[RSP+5A0] 0x1                (size_t) [1]
+	[RSP+5A8] 0x1431532D0        (void* -> SkyrimVR.exe+31532D0	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_31532D0)
+	[RSP+5B0] 0x6FFFFFF404F4     (void* -> ntdll.dll+00104F4	ret)
+	[RSP+5B8] 0x6FFFFFC4899B     (void* -> kernelbase.dll+005899B	mov ebx, eax)
+	[RSP+5C0] 0x1431532B0        (BSJobs::JobThread*)
+	[RSP+5C8] 0x140C421E3        (void* -> SkyrimVR.exe+0C421E3	mov esi, eax |  MutexRW::EnterWriteLock_140C07350_C421E3)
+	[RSP+5D0] 0x6FFFFFF3EA94     (void* -> ntdll.dll+000EA94	ret)
+	[RSP+5D8] 0x6FFFFFC62328     (void* -> kernelbase.dll+0072328	mov edx, eax)
+	[RSP+5E0] 0x6FFFFFF404F4     (void* -> ntdll.dll+00104F4	ret)
+	[RSP+5E8] 0x6FFFFFC4899B     (void* -> kernelbase.dll+005899B	mov ebx, eax)
+	[RSP+5F0] 0x0                (size_t) [0]
+	[RSP+5F8] 0x140C421E3        (void* -> SkyrimVR.exe+0C421E3	mov esi, eax |  MutexRW::EnterWriteLock_140C07350_C421E3)
+	[RSP+600] 0x0                (size_t) [0]
+	[RSP+608] 0x0                (size_t) [0]
+	[RSP+610] 0x0                (size_t) [0]
+	[RSP+618] 0x0                (size_t) [0]
+	[RSP+620] 0x6FFFFFF3EBD4     (void* -> ntdll.dll+000EBD4	ret)
+	[RSP+628] 0x14314FE04        (void* -> SkyrimVR.exe+314FE04	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE04)
+	[RSP+630] 0x1                (size_t) [1]
+	[RSP+638] 0x14314FE00        (void* -> SkyrimVR.exe+314FE00	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE00)
+	[RSP+640] 0x14314FE08        (void* -> SkyrimVR.exe+314FE08	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_314FE08)
+	[RSP+648] 0x65FB3100         (void*)
+	[RSP+650] 0x0                (size_t) [0]
+	[RSP+658] 0x0                (size_t) [0]
+	[RSP+660] 0x0                (size_t) [0]
+	[RSP+668] 0x140649947        (void* -> SkyrimVR.exe+0649947	nop |  Job_VM_update_140640600_649947)
+	[RSP+670] 0x142FEC9F0        (SkyrimVM*) See RSP+70
+	[RSP+678] 0x300000000        (size_t) [12884901888]
+	[RSP+680] 0x105              (size_t) [261]
+	[RSP+688] 0x500000C5E        (size_t) [21474839646]
+	[RSP+690] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+698] 0x1                (size_t) [1]
+	[RSP+6A0] 0x65FB3100         (void*)
+	[RSP+6A8] 0x140C77B75        (void* -> SkyrimVR.exe+0C77B75	mov ecx, [rbx+0x0C] |  BSJobs__JobThread::ExecuteJobQueueSlot_C77B75)
+	[RSP+6B0] 0x143153308        (void* -> SkyrimVR.exe+3153308	add [rcx], dh |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3153308)
+	[RSP+6B8] 0x11               (size_t) [17]
+	[RSP+6C0] 0x0                (size_t) [0]
+	[RSP+6C8] 0x140C4215F        (void* -> SkyrimVR.exe+0C4215F	cmp [rdi], eax |  MutexRW::EnterReadLock_140C072D0_C4215F)
+	[RSP+6D0] 0x0                (size_t) [0]
+	[RSP+6D8] 0x1431532B0        (BSJobs::JobThread*) See RSP+5C0
+	[RSP+6E0] 0x0                (size_t) [0]
+	[RSP+6E8] 0x1431532B0        (BSJobs::JobThread*) See RSP+5C0
+	[RSP+6F0] 0x65FB3100         (void*)
+	[RSP+6F8] 0x140C79E1A        (void* -> SkyrimVR.exe+0C79E1A	mov ebp, eax |  BSJobs__JobThread::ThreadProc_C79E1A)
+	[RSP+700] 0x0                (size_t) [0]
+	[RSP+708] 0x0                (size_t) [0]
+	[RSP+710] 0x87               (size_t) [135]
+	[RSP+718] 0x30BE7DE0         (ScrapHeap*)
+	[RSP+720] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+728] 0x0                (size_t) [0]
+	[RSP+730] 0x0                (size_t) [0]
+	[RSP+738] 0x0                (size_t) [0]
+	[RSP+740] 0x0                (size_t) [0]
+	[RSP+748] 0x0                (size_t) [0]
+	[RSP+750] 0x0                (size_t) [0]
+	[RSP+758] 0x0                (size_t) [0]
+	[RSP+760] 0x0                (size_t) [0]
+	[RSP+768] 0x140C484ED        (void* -> SkyrimVR.exe+0C484ED	mov rcx, [0x00000001430C3AA8] |  StartAddress_0_140C0D680_C484ED)
+	[RSP+770] 0x1B4400           (void*)
+	[RSP+778] 0x1B447D           (void*)
+	[RSP+780] 0x1431532B0        (BSJobs::JobThread*) See RSP+5C0
+	[RSP+788] 0x1EFB568          (void*)
+	[RSP+790] 0x1431532B0        (BSJobs::JobThread*) See RSP+5C0
+	[RSP+798] 0x0                (size_t) [0]
+	[RSP+7A0] 0x0                (size_t) [0]
+	[RSP+7A8] 0x6FFFFFEC1649     (void* -> kernel32.dll+0011649	mov ecx, eax)
+	[RSP+7B0] 0x0                (size_t) [0]
+	[RSP+7B8] 0x0                (size_t) [0]
+	[RSP+7C0] 0x0                (size_t) [0]
+	[RSP+7C8] 0x0                (size_t) [0]
+	[RSP+7D0] 0x0                (size_t) [0]
+	[RSP+7D8] 0x6FFFFFF40E0F     (void* -> ntdll.dll+0010E0F	int3)
+	[RSP+7E0] 0x0                (size_t) [0]
+	[RSP+7E8] 0x0                (size_t) [0]
+	[RSP+7F0] 0x0                (size_t) [0]
+	[RSP+7F8] 0x0                (size_t) [0]
+	[RSP+800] 0x0                (size_t) [0]
+	[RSP+808] 0x0                (size_t) [0]
+	[RSP+810] 0x0                (size_t) [0]
+	[RSP+818] 0x0                (size_t) [0]
+	[RSP+820] 0x0                (size_t) [0]
+	[RSP+828] 0x0                (size_t) [0]
+
+MODULES:
+	steam_api64.dll                    0x00007BE70000
+	OPENGL32.dll                       0x00007BEC0000
+	SkyrimVR.exe                       0x000140000000
+	binkw64.dll                        0x000180000000
+	amdxc64.dll                        0x6FFFF0180000
+	d3d12core.dll                      0x6FFFF01A0000
+	amd_fidelityfx_upscaler_dx12.dll   0x6FFFF06B0000
+	DSOUND.DLL                         0x6FFFF1C20000
+	avrt.dll                           0x6FFFF1CF0000
+	winealsa.drv                       0x6FFFF1D70000
+	winepulse.drv                      0x6FFFF1D90000
+	mmdevapi.dll                       0x6FFFF1DB0000
+
+SKSE PLUGINS:
+	activeragdoll.dll
+	AHZmoreHUDPlugin.dll v1.1
+	AnimatedStaticReload.dll v1.0.1
+	AnimationMotionRevolution.dll
+	AnimationQueueFix.dll v1.0.2
+	ArmorRatingReduxVR.dll
+	BlockingConditionFix.dll v1.0.1
+	ConsoleUtilVR.dll v1.3
+	ContainerDistributionFramework.dll v3.0.2
+	CrashLogger.dll v1.27
+	EngineFixes.dll v7.13
+	OpenAnimationReplacer.dll v3.2.1
+
+GAME STATE:
+	Main loop: active
+	Open menus: HUD Menu
+	Player: interior cell "Candlehearth Hall" [00016789], position (80.7, -4035.1, 64.3), 3D loaded
+
+PLUGINS:
+	Light: 60	Regular: 199	Total: 259
+	[ 0]     Skyrim.esm
+	[ 1]     Update.esm
+	[ 2]     Dragonborn.esm
+	[ 3]     Dawnguard.esm
+	[ 4]     HearthFires.esm
+	[ 5]     SkyrimVR.esm
+	[ 6]     Unofficial Skyrim Special Edition Patch.esp
+	[ 7]     LegacyoftheDragonborn.esm
+	[ 8]     LOTD_HUB.esp
+	[ 9]     Occ_Skyrim_Tamriel.esp
+	[FE:  0] Skyrim Project Optimization - Full ESL Version.esm
+	[FE:  1] Landscape and Water Fixes.esp

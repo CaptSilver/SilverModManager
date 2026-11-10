@@ -1,0 +1,763 @@
+CRASH TIME: 2026-11-09 19:35:22
+Skyrim VR v1.4.15
+CrashLoggerSSE v1-27-0-0 Oct 25 2026 06:20:14
+
+Unhandled exception "EXCEPTION_ACCESS_VIOLATION" at 0x0001404DA409 SkyrimVR.exe+04DA409	lock inc [rax+0x08] |  FUN_1404da3f0_4DA409)
+Exception Flags: 0x00000000 (Continuable)
+Number of Parameters: 2
+Exception Thread ID: 472
+Access Violation: Tried to read memory at 0xFFFFFFFFFFFFFFFF
+ACCESS VIOLATION ANALYSIS:
+	Instruction: lock inc [rax+0x08]
+	Memory Operand: [base=rax, index=none, scale=0, disp=+0x8]
+	Base Register: rax = 0x0000810182400383
+	Computed Address: 0x000081018240038B
+	Fault Address:   0xFFFFFFFFFFFFFFFF (mismatch)
+
+POSSIBLE RELEVANT OBJECTS:
+	R14: (TESWaterObject*)
+	RDI: (BSWaterShaderMaterial*)
+	R13: (BSWaterShaderProperty*)
+	RSP+48: (BSFadeNode*) "Ripples01"
+	RSP+70: (TESWaterReflections*)
+	RSP+A0: (ExtraPromotedRef*)
+	RSP+C8: (NiFloatInterpolator*)
+	RSP+2C8: (BSEffectShaderProperty*)
+	RSP+350: (TESWorldSpace*) "Skyrim" [0x0000003C] ("DynDOLOD.esp") "Skyrim"
+	RSP+490: (TESWaterNormals*)
+	RSP+4A0: (BSWaterShaderProperty*)
+	RSP+5C0: (BSMultiBoundAABB*)
+	RSP+630: (BSWaterShaderProperty*)
+	RSP+808: (com_object_list<ID3D11Resource,0>::tracker_instance*)
+	RSP+940: (BSShaderTextureSet*)
+	RSP+960: (BSLightingShaderProperty*)
+	RSP+BF0: (NiCullingProcess*)
+	RSP+C60: (NiNode*) "obj"
+	RSP+C88: (BSMultiBoundNode*) "chunk"
+	RSP+D38: (NiCamera*) "WorldRoot Camera"
+	RSP+D68: (BSGeometryListCullingProcess*)
+
+MODEL PATHS FOR RESOURCE IDS ON THIS THREAD'S STACK (innermost first):
+	[RSP+0x10] TEXTURES\cubemaps\OutputCube.dds
+
+PROCESS INFO:
+	Process ID: 468
+	Crash Thread ID: 472
+	Process Uptime: 00:26:55 (1615160ms)
+	Executable MD5: 6cc5baea600d6a688a5fa5aa67a54248
+	Executable Size: 35530960 bytes
+	Executable Modified: 2023-11-23 05:32:40
+	Elevated: No
+
+THREAD CONTEXT (HEURISTIC):
+	Thread Priority: 2
+	Likely Role: Unknown (main or worker thread)
+
+CALL STACK ([P]robable / [S]tack scan):
+	[ 0][P] 0x0001404DA409     SkyrimVR.exe+04DA409	lock inc [rax+0x08] |  FUN_1404da3f0_4DA409 -> 31410+0x19C9	lock inc [rax+0x08]
+	[ 1][P] 0x0001404D6FB4     SkyrimVR.exe+04D6FB4	jmp 0x00000001404D7171 |  TESWaterSystem::AddWater_4D6FB4 -> 31388+0x564	jmp 0x00000001404D7171
+	[ 2][P] 0x0001404DA4EC     SkyrimVR.exe+04DA4EC	xor eax, eax |  FUN_1404da470_4DA4EC -> 31410+0x1AAC	xor eax, eax
+	[ 3][P] 0x0001404D9BCC     SkyrimVR.exe+04D9BCC	mov ebx, eax |  NiAVObject::ApplyWaterFormRecursive_4D9BCC -> 31410+0x118C	mov ebx, eax
+	[ 4][P] 0x0001404D9C2A     SkyrimVR.exe+04D9C2A	inc edi |  NiAVObject::ApplyWaterFormRecursive_4D9C2A -> 31410+0x11EA	inc edi
+	[ 5][P] 0x0001404D6A3B     SkyrimVR.exe+04D6A3B	add rsp, 0x48 |  FUN_1404d6a00_4D6A3B -> 31384+0x72B	add rsp, 0x48
+	[ 6][P] 0x0001402AC7FD     SkyrimVR.exe+02AC7FD	mov rax, [r14+0x68] |  TESObjectREFR::sub_14029B010_2AC7FD -> 19400+0xDBD	mov rax, [r14+0x68]
+	[ 7][P] 0x00014028FDEE     SkyrimVR.exe+028FDEE	test r14, r14 |  TESObjectCELL::AttachReference3D_28FDEE -> 19002+0xA5E	test r14, r14
+	[ 8][P] 0x00014028F02A     SkyrimVR.exe+028F02A	jmp 0x000000014028F0BA |  TESObjectCELL::AttachReference_14027D490_28F02A -> 18949+0x235A	jmp 0x000000014028F0BA
+	[ 9][P] 0x0001404CDA90     SkyrimVR.exe+04CDA90	mov rcx, r14 |  FUN_1404cd730_4CDA90 -> 31236+0x360	mov rcx, r14
+	[10][P] 0x0001404CCD2A     SkyrimVR.exe+04CCD2A	mov rdx, rdi |  FUN_1404ccb50_4CCD2A -> 31230+0x1DA	mov rdx, rdi
+	[11][P] 0x00014016C72B     SkyrimVR.exe+016C72B	mov byte ptr [rsi+0x45], 0x01 |  TES::sub_14015BA90_16C72B -> 13260+0xCFB	mov byte ptr [rsi+0x45], 0x01
+	[12][P] 0x00014016CB4A     SkyrimVR.exe+016CB4A	mov [rsp+0x20], r15b |  TES::LoadGridCells_16CB4A -> 13278+0x11A	mov [rsp+0x20], r15b
+	[13][P] 0x00014016C9B6     SkyrimVR.exe+016C9B6	mov rcx, [rdi+0x88] |  TES::LoadExteriorGrid_16C9B6 -> 13277+0x246	mov rcx, [rdi+0x88]
+	[14][P] 0x000140162A15     SkyrimVR.exe+0162A15	mov rcx, [rbx+0x140] |  TES::SetGridFromPosition_162A15 -> 13147+0x175	mov rcx, [rbx+0x140]
+	[15][P] 0x0001401634E1     SkyrimVR.exe+01634E1	test sil, sil |  TES::UpdateGridForPosition_1634E1 -> 13148+0xA71	test sil, sil
+	[16][P] 0x000140165352     SkyrimVR.exe+0165352	mov rcx, [rdi+0x140] |  TES::ResetCellGrid_165352 -> 13172+0x312	mov rcx, [rdi+0x140]
+	[17][P] 0x0001406DA5EC     SkyrimVR.exe+06DA5EC	cmp byte ptr [rbp+0x50], 0x00 |  PlayerCharacter::MoveToPositionInCell_6DA5EC -> 39657+0x21C	cmp byte ptr [rbp+0x50], 0x00
+	[18][P] 0x0001406DAE8C     SkyrimVR.exe+06DAE8C	mov rdi, [rsp+0x68] |  PlayerCharacter::MoveToPositionInWorldSpace_6DAE8C -> 39658+0x26C	mov rdi, [rsp+0x68]
+	[19][P] 0x0001406BD012     SkyrimVR.exe+06BD012	lea rdx, [rsi+0xC40] |  PlayerCharacter::UpdateCellTransition_6BD012 -> 39366+0x6A2	lea rdx, [rsi+0xC40]
+	[20][P] 0x0001405BAB7D     SkyrimVR.exe+05BAB7D	call 0x00000001405BDFB0 |  Main::OnIdle_5BAB7D -> 35565+0x6D	call 0x00000001405BDFB0
+	[21][P] 0x0001405B6E94     SkyrimVR.exe+05B6E94	test bl, bl |  Main::MainLoop_5B6E94 -> 35551+0x124	test bl, bl
+	[22][P] 0x0001405B42C5     SkyrimVR.exe+05B42C5	call 0x00000000C158002A |  WinMain_5B42C5 -> 35545+0x35	call 0x00000000C158002A
+	[23][P] 0x00014138AF0A     SkyrimVR.exe+138AF0A	mov ebx, eax |  __scrt_common_main_seh_138AF0A -> 102178+0x642	mov ebx, eax
+	[24][P] 0x6FFFFFEC1649     kernel32.dll+0011649
+	[25][P] 0x6FFFFFF40E0F        ntdll.dll+0010E0F
+	[26][S] 0x000140D2345E     SkyrimVR.exe+0D2345E	lea rax, [0x00000001417FDC50] |  FUN_140d23450_D2345E -> 70909+0x1262E	lea rax, [0x00000001417FDC50]
+	[27][S] 0x000140C8F781     SkyrimVR.exe+0C8F781	movsx eax, byte ptr [rdi] |  ID::GenerateFromPath_C8F781 -> 68635+0xC1	movsx eax, byte ptr [rdi]
+	[28][S] 0x000140C8F4EB     SkyrimVR.exe+0C8F4EB	mov rax, rbx |  BSResource::ID::ID_C8F4EB -> 68631+0x1B	mov rax, rbx
+	[29][S] 0x000140D82CEF     SkyrimVR.exe+0D82CEF	test rax, rax |  FUN_140d82ca0_D82CEF -> 74240+0x212F	test rax, rax
+	[30][S] 0x000140D819E6     SkyrimVR.exe+0D819E6	mov edi, eax |  FUN_140d81980_D819E6 -> 74240+0xE26	mov edi, eax
+	[31][S] 0x000141345AD1     SkyrimVR.exe+1345AD1	mov eax, [rbp+0x50] |  BSWaterShaderMaterial::ComputeCRC32_141303090_1345AD1 -> 100781+0xA31	mov eax, [rbp+0x50]
+	[32][S] 0x0001402BCEF7     SkyrimVR.exe+02BCEF7	movups xmm0, [rax] |  NiTransform::Multiply_1402AB750_2BCEF7 -> 19857+0x2AC7	movups xmm0, [rax]
+	[33][S] 0x6FFFF8ED4A41  EngineFixes.dll+0144A41	mov r8d, eax |  src\tbbmalloc\frontend.cpp:2574 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z] | params: memPool: rml::internal::MemoryPool*, size: uint64_t
+	[34][S] 0x6FFFF8ED57CB  EngineFixes.dll+01457CB	mov rbx, rax |  src\tbbmalloc\frontend.cpp:2943 scalable_malloc | params: size: uint64_t
+	[35][S] 0x000140C3FB92     SkyrimVR.exe+0C3FB92	mov [rdi], rax |  FUN_140c3fb40_C3FB92 -> 66906+0x392	mov [rdi], rax
+	[36][S] 0x000140D915D4     SkyrimVR.exe+0D915D4	test al, al |  BSMultiBoundAABB::TestOcclusionShape_D915D4 -> 74649+0x104	test al, al
+	[37][S] 0x000140C3F8DA     SkyrimVR.exe+0C3F8DA	test al, al |  BSTArrayBase::AddUninitialized_C3F8DA -> 66906+0xDA	test al, al
+	[38][S] 0x0001401B569F     SkyrimVR.exe+01B569F	nop |  FUN_1401b5630_1B569F -> 14809+0x422F	nop
+	[39][S] 0x000140D9AA20     SkyrimVR.exe+0D9AA20	mov rax, [rsp+0x30] |  FUN_140d9aa00_D9AA20 -> 74821+0x90	mov rax, [rsp+0x30]
+	[40][S] 0x0001404DA843     SkyrimVR.exe+04DA843	nop |  FUN_1404da800_4DA843 -> 31451+0x83	nop
+	[41][S] 0x000140D99B3F     SkyrimVR.exe+0D99B3F	nop |  BSCullingProcess::~BSCullingProcess_D99B3F -> 74802+0x17F	nop
+	[42][S] 0x0001404D7696     SkyrimVR.exe+04D7696	cmp [rbx], eax |  TESWaterSystem::AddWater_4D7696 -> 31388+0xC46	cmp [rbx], eax
+	[43][S] 0x6FFFFFF569D1        ntdll.dll+00269D1
+	[44][S] 0x6FFFFFF835B9        ntdll.dll+00535B9
+	[45][S] 0x6FFFF8ED4CB9  EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z] | params: ptr: void*
+	[46][S] 0x6FFFF8ED41D6  EngineFixes.dll+01441D6	mov ecx, [rdi+0x68] |  src\tbbmalloc\frontend.cpp:2544 void rml::internal::Block::freeOwnObject(void *) [?freeOwnObject@Block@internal@rml@@QEAAXPEAX@Z] | params: object: void*
+	[47][S] 0x6FFFF8E3F315  EngineFixes.dll+00AF315	mov rbx, [rsp+0x30] |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\memory\memory_manager.h:71 void Memory::MemoryManager::detail::Deallocate(RE::MemoryManager *,void *,bool) [?Deallocate@detail@MemoryManager@Memory@@YAXPEAV2RE@@PEAX_N@Z] | params: __formal: RE::MemoryManager*, a_mem: void*, a_alignmentRequired: bool
+	[48][S] 0x000140CA63B9     SkyrimVR.exe+0CA63B9	mov [rbx+0x20], rbp |  NiObjectNET::sub_140C60D10_CA63B9 -> 69139+0xE39	mov [rbx+0x20], rbp
+	[49][S] 0x000140C6EEB9     SkyrimVR.exe+0C6EEB9	cmp [rbx], eax |  BSFixedString::Release_140C29E80_C6EEB9 -> 67847+0x109	cmp [rbx], eax
+	[50][S] 0x000140C6DC70     SkyrimVR.exe+0C6DC70	sub rsp, 0x38 |  BSFixedString::Release_140C28D40_C6DC70 -> 67819+0x150	sub rsp, 0x38
+	[51][S] 0x0001402E3946     SkyrimVR.exe+02E3946	nop |  BSShaderTextureSet::dtor_deleting_2E3946 -> 20905+0x836	nop
+	[52][S] 0x00014130DDB6     SkyrimVR.exe+130DDB6	nop |  BSLightingShaderMaterialBase::~BSLightingShaderMaterialBase_130DDB6 -> 100004+0x156	nop
+	[53][S] 0x0001413136F6     SkyrimVR.exe+13136F6	mov rax, rdi |  BSLightingShaderMaterialLODLandscape::dtor_deleting_13136F6 -> 100125+0xD16	mov rax, rdi
+	[54][S] 0x00014134F0DE     SkyrimVR.exe+134F0DE	cmp [0x00000001436F1760], eax |  BSShaderMaterialHashMap::Unlink_134F0DE -> 100935+0x8E	cmp [0x00000001436F1760], eax
+	[55][S] 0x000140D94FCF     SkyrimVR.exe+0D94FCF	mov ecx, [rax] |  BSOcclusionPlane::BuildFrustumPlanes_D94FCF -> 74695+0x24F	mov ecx, [rax]
+	[56][S] 0x0001412FB0BC     SkyrimVR.exe+12FB0BC	movzx ecx, al |  ShadowSceneNode::TestCachedAABBVisibility_12FB0BC -> 99736+0x1DC	movzx ecx, al
+	[57][S] 0x0001404C5D79     SkyrimVR.exe+04C5D79	test al, al |  FUN_1404c5c80_4C5D79 -> 31060+0xA79	test al, al
+	[58][S] 0x0001412FB029     SkyrimVR.exe+12FB029	mov eax, [0x0000000143186C5C] |  ShadowSceneNode::UpdateMultiBoundVisibility_12FB029 -> 99736+0x149	mov eax, [0x0000000143186C5C]
+	[59][S] 0x0001404B3A4A     SkyrimVR.exe+04B3A4A	test al, al |  FUN_1404b3a20_4B3A4A -> 30746+0x1F1A	test al, al
+	[60][S] 0x0001404B25C8     SkyrimVR.exe+04B25C8	inc edi |  FUN_1404b2500_4B25C8 -> 30746+0xA98	inc edi
+	[61][S] 0x0001404BE7C8     SkyrimVR.exe+04BE7C8	inc edi |  FUN_1404be700_4BE7C8 -> 30947+0x6D8	inc edi
+	[62][S] 0x0001404B1A08     SkyrimVR.exe+04B1A08	nop |  NiCamera::sub_1404A19A0_4B1A08 -> 30741+0x198	nop
+	[63][S] 0x0001404C3245     SkyrimVR.exe+04C3245	mov rbx, [rsp+0x30240] |  FUN_1404c31d0_4C3245 -> 31018+0x3D5	mov rbx, [rsp+0x30240]
+	[64][S] 0x0001413146F9     SkyrimVR.exe+13146F9	cmp ebx, 0x0C |  BSEffectShaderProperty::GetRenderPasses_ShadowMapOrMask_13146F9 -> 100125+0x1D19	cmp ebx, 0x0C
+	[65][S] 0x000141309129     SkyrimVR.exe+1309129	mov ecx, [0x0000000143186C5C] |  BSShaderAccumulator::FinishAccumulatingAppendPasses_1309129 -> 99925+0x9D9	mov ecx, [0x0000000143186C5C]
+	[66][S] 0x0001413086B4     SkyrimVR.exe+13086B4	movzx ebp, al |  BSShaderAccumulator::AccumulateObject_13086B4 -> 99923+0x144	movzx ebp, al
+	[67][S] 0x000140D9A9D3     SkyrimVR.exe+0D9A9D3	nop |  BSTArray_NiPointer_NiAVObject__::PushBack_D9A9D3 -> 74821+0x43	nop
+	[68][S] 0x00014136F573     SkyrimVR.exe+136F573	mov rbx, [rsp+0x40] |  BSParabolicCullingProcess::AppendNonAccum_136F573 -> 101601+0x83	mov rbx, [rsp+0x40]
+	[69][S] 0x000140CB7AD8     SkyrimVR.exe+0CB7AD8	nop |  BSGeometry::OnVisible_140C71820_CB7AD8 -> 69541+0x218	nop
+	[70][S] 0x00014136F2AD     SkyrimVR.exe+136F2AD	jmp 0x000000014136F2EB |  BSParabolicCullingProcess::Process1_136F2AD -> 101570+0x21CD	jmp 0x000000014136F2EB
+	[71][S] 0x000140C9E13B     SkyrimVR.exe+0C9E13B	add rbx, 0x08 |  NiNode::OnVisible_C9E13B -> 68956+0x6B	add rbx, 0x08
+	[72][S] 0x0001412C88CA     SkyrimVR.exe+12C88CA	movaps xmm7, [rsp+0x30] |  BSFadeNode::OnVisible_12C88CA -> 98844+0x69A	movaps xmm7, [rsp+0x30]
+	[73][S] 0x000140CAFD85     SkyrimVR.exe+0CAFD85	mov rcx, [rdi+0x188] |  BSFlattenedBoneTree::sub_140C69B20_CAFD85 -> 69335+0xE25	mov rcx, [rdi+0x188]
+	[74][S] 0x6FFFF2CA6FA9 SpellWheelVR.dll+0056FA9	test eax, eax |  C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.23.28105\include\xhash:1562 std::_Hash_find_last_result<std::_List_node<std::pair<std::basic_string<char,std::char_traits<char>,std::allocator<char> > const,bool>,void *> *> std::_Hash<std::_Umap_traits<std::basic_string<char,std::char_traits<char>,std::allocator<char> >,bool,std::_Uhash_compare<std::basic_string<char,std::char_traits<char>,std::allocator<char> >,std::hash<std::basic_string<char,std::char_traits<char>,std::allocator<char> > >,std::equal_to<std::basic_string<char,std::char_traits<char>,std::allocator<char> > > >,std::allocator<std::pair<std::basic_string<char,std::char_traits<char>,std::allocator<char> > const,bool> >,0> >::_Find_last<std::basic_string<char,std::char_traits<char>,std::allocator<char> > >(std::basic_string<char,std::char_traits<char>,std::allocator<char> > const &,unsigned __int64) [??$_Find_last@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$_Hash@V?$_Umap_traits@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_NV?$_Uhash_compare@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_N@std@@@2@$0A@@std@@@std@@IEBA?AU?$_Hash_find_last_result@PEAU?$_List_node@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_N@std@@PEAX@std@@@1@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@1@_K@Z] | params: _Keyval: std::basic_string<char,std::char_traits<char>,std::allocator<char> >*, _Hashval: uint64_t
+	[75][S] 0x000140CB00ED     SkyrimVR.exe+0CB00ED	mov rbx, rax |  BSFlattenedBoneTree::GetObjectByName_140C69E80_CB00ED -> 69335+0x118D	mov rbx, rax
+	[76][S] 0x6FFFFBFEF14F   openvr_api.dll+001F14F
+	[77][S] 0x000140C9D64C     SkyrimVR.exe+0C9D64C	test rax, rax |  NiNode::GetObjectByName_140C58390_C9D64C -> 68937+0x8EC	test rax, rax
+	[78][S] 0x6FFFF322A788  skyrimvresl.dll+004A788	add rsp, 0x290 |  E:\Documents\source\repos\SkyrimVRESL\buildvr\vcpkg_installed\x64-windows-static\include\spdlog\logger.h:376 void spdlog::logger::log_<unsigned int &,std::basic_string<char,std::char_traits<char>,std::allocator<char> >,bool>(spdlog::source_loc,spdlog::level::level_enum,fmt::v8::basic_string_view<char>,unsigned int &,std::basic_string<char,std::char_traits<char>,std::allocator<char> > &&,bool &&) [??$log_@AEAIV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_N@logger@spdlog@@IEAAXUsource_loc@1@W4level_enum@level@1@V?$basic_string_view@D@v8@fmt@@AEAI$$QEAV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$$QEA_N@Z] | params: loc: spdlog::source_loc, lvl: spdlog::level::level_enum, fmt: fmt::v8::basic_string_view<char>, <args_0>: uint32_t*, <args_1>: std::basic_string<char,std::char_traits<char>,std::allocator<char> >*, <args_2>: bool*
+	[79][S] 0x6FFFF3227D5C  skyrimvresl.dll+0047D5C	add rsp, 0x270 |  E:\Documents\source\repos\SkyrimVRESL\buildvr\vcpkg_installed\x64-windows-static\include\spdlog\logger.h:376 void spdlog::logger::log_<unsigned int &>(spdlog::source_loc,spdlog::level::level_enum,fmt::v8::basic_string_view<char>,unsigned int &) [??$log_@AEAI@logger@spdlog@@IEAAXUsource_loc@1@W4level_enum@level@1@V?$basic_string_view@D@v8@fmt@@AEAI@Z] | params: loc: spdlog::source_loc, lvl: spdlog::level::level_enum, fmt: fmt::v8::basic_string_view<char>, <args_0>: uint32_t*
+	[80][S] 0x6FFFFFF3EAD4        ntdll.dll+000EAD4
+	[81][S] 0x6FFFFFF3EEF4        ntdll.dll+000EEF4
+	[82][S] 0x6FFFFFC3DFED   kernelbase.dll+004DFED
+	[83][S] 0x6FFFFFC4FBFC   kernelbase.dll+005FBFC
+	[84][S] 0x00014138AC27     SkyrimVR.exe+138AC27	add rdi, r14 |  `eh_vector_constructor_iterator'_138AC27 -> 102178+0x35F	add rdi, r14
+	[85][S] 0x000140C87EE1     SkyrimVR.exe+0C87EE1	test al, al |  FUN_140c87e90_C87EE1 -> 68296+0x6301	test al, al
+	[86][S] 0x000140D82408     SkyrimVR.exe+0D82408	test rax, rax |  FUN_140d82390_D82408 -> 74240+0x1848	test rax, rax
+	[87][S] 0x000140D82916     SkyrimVR.exe+0D82916	mov rbx, rax |  FUN_140d828d0_D82916 -> 74240+0x1D56	mov rbx, rax
+	[88][S] 0x000140D76807     SkyrimVR.exe+0D76807	mov ecx, eax |  FUN_140d767c0_D76807 -> 74013+0xD7	mov ecx, eax
+	[89][S] 0x6FFFFF9D80F1     ucrtbase.dll+00280F1
+
+REGISTERS:
+	RAX 0x810182400383     (size_t) [141843480183683]
+	RCX 0x0                (size_t) [0]
+	RDX 0x1A3222B38        (void*)
+	RBX 0x180B48738        (void*)
+	RSP 0xDED90            (void*)
+	RBP 0xDEEC0            (void*)
+	RSI 0x0                (size_t) [0]
+	RDI 0x180B48700        (BSWaterShaderMaterial*)
+		Feature: kDefault
+		Type: "kWater"
+	R8  0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	R9  0x1                (size_t) [1]
+	R10 0x1                (size_t) [1]
+	R11 0x6FFFFBAB2925     (void* -> VCRUNTIME140.dll+0012925	)
+	R12 0xFFFFFFFF         (void*)
+	R13 0x18C6E1B00        (BSWaterShaderProperty*)
+		Flags: 0x180000000
+		RTTIName: "BSWaterShaderProperty"
+		NiPropertyType: kShade (01)
+	R14 0x1808D5B80        (TESWaterObject*)
+	R15 0x1                (size_t) [1]
+
+STACK:
+	[RSP+0    ] 0x18C6E1B00        (BSWaterShaderProperty*) See R13
+	[RSP+8    ] 0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	[RSP+10   ] 0x73646418AD22FF   (size_t) [32480003395232511]
+	[RSP+18   ] 0x3B332C26         (void*)
+	[RSP+20   ] 0x1808D5B90        (void*)
+	[RSP+28   ] 0x1404D6FB4        (void* -> SkyrimVR.exe+04D6FB4	jmp 0x00000001404D7171 |  TESWaterSystem::AddWater_4D6FB4)
+	[RSP+30   ] 0x1808D5B90        (void*)
+	[RSP+38   ] 0x1808D5B90        (void*)
+	[RSP+40   ] 0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	[RSP+48   ] 0x1931ABD00        (BSFadeNode*) "Ripples01"
+		RTTIName: "BSFadeNode"
+		ExtraData[0] Name: "BSX"
+		Flags: kHidden | kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+		Checking Parent: 0
+			RTTIName: "NiNode"
+			Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+			Checking Parent: 1
+				Name: "ObjectLODRoot"
+				RTTIName: "NiNode"
+				Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+				Checking Parent: 3
+					Name: "shadow scene node"
+					RTTIName: "ShadowSceneNode"
+					Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+					Checking Parent: 1
+						Name: "WorldRoot Node"
+						RTTIName: "SceneGraph"
+						Flags: kSelectiveUpdate | kSelectiveUpdateTransforms | kSelectiveUpdateController
+	[RSP+50   ] 0xDF2B0            (void*)
+	[RSP+58   ] 0x177105FC0        (void*)
+	[RSP+60   ] 0x1000DF201        (void*)
+	[RSP+68   ] 0x469DA298         (char*) "data\TEXTURES\cubemaps\OutputCube.dds"
+	[RSP+70   ] 0x18049FE20        (TESWaterReflections*)
+	[RSP+78   ] 0x6A               (size_t) [106]
+	[RSP+80   ] 0x180B48700        (BSWaterShaderMaterial*) See RDI
+	[RSP+88   ] 0x0                (size_t) [0]
+	[RSP+90   ] 0x3F800000         (void*)
+	[RSP+98   ] 0x0                (size_t) [0]
+	[RSP+A0   ] 0x133A807F0        (ExtraPromotedRef*)
+	[RSP+A8   ] 0x140D2345E        (void* -> SkyrimVR.exe+0D2345E	lea rax, [0x00000001417FDC50] |  FUN_140d23450_D2345E)
+	[RSP+B0   ] 0xDEE78            (void*)
+	[RSP+B8   ] 0x1808D5B80        (TESWaterObject*) See R14
+	[RSP+C0   ] 0x30               (size_t) [48]
+	[RSP+C8   ] 0x6E86ECE0         (NiFloatInterpolator*)
+	[RSP+D0   ] 0x38C4A0           (void*)
+	[RSP+D8   ] 0x141F872B0        (void* -> SkyrimVR.exe+1F872B0	fadd [rcx] |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F872B0)
+	[RSP+E0   ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+E8   ] 0x133A807F0        (ExtraPromotedRef*) See RSP+A0
+	[RSP+F0   ] 0xA93BD7EB         (void*)
+	[RSP+F8   ] 0x6E86ECE0         (NiFloatInterpolator*) See RSP+C8
+	[RSP+100  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+108  ] 0x0                (size_t) [0]
+	[RSP+110  ] 0xC65AC0003F800000 (size_t) [uint: 14292947474711576576 int: -4153796598997975040]
+	[RSP+118  ] 0x177104D60        (void*)
+	[RSP+120  ] 0x141906730        (void* -> SkyrimVR.exe+1906730	 |  FUN_14157e550_1906730)
+	[RSP+128  ] 0x0                (size_t) [0]
+	[RSP+130  ] 0x0                (size_t) [0]
+	[RSP+138  ] 0x3F80000000000000 (size_t) [4575657221408423936]
+	[RSP+140  ] 0x3F8000003F800000 (size_t) [4575657222473777152]
+	[RSP+148  ] 0xFFFFFFFF3F800000 (size_t) [uint: 18446744070479937536 int: -3229614080]
+	[RSP+150  ] 0xDF2B8            (void*)
+	[RSP+158  ] 0x0                (size_t) [0]
+	[RSP+160  ] 0x0                (size_t) [0]
+	[RSP+168  ] 0x0                (size_t) [0]
+	[RSP+170  ] 0x0                (size_t) [0]
+	[RSP+178  ] 0x0                (size_t) [0]
+	[RSP+180  ] 0x3E1C9C9D3DC0C0C2 (size_t) [4475624328859271362]
+	[RSP+188  ] 0x461C40003E088889 (size_t) [5051983251787778185]
+	[RSP+190  ] 0x3D30B0B13C808081 (size_t) [4409218310466470017]
+	[RSP+198  ] 0x404CCCCD3D30B0B1 (size_t) [4633303298524360881]
+	[RSP+1A0  ] 0x3F0C8C8D3EEEEEF0 (size_t) [4543160662384111344]
+	[RSP+1A8  ] 0x3F8000003F1D9D9E (size_t) [4575657222467329438]
+	[RSP+1B0  ] 0x3F4CCCCD447F4000 (size_t) [4561245704609021952]
+	[RSP+1B8  ] 0x425C00003F000000 (size_t) [4781696905417588736]
+	[RSP+1C0  ] 0x0                (size_t) [0]
+	[RSP+1C8  ] 0x41A00000459C4000 (size_t) [4728779609906888704]
+	[RSP+1D0  ] 0x0                (size_t) [0]
+	[RSP+1D8  ] 0x0                (size_t) [0]
+	[RSP+1E0  ] 0x0                (size_t) [0]
+	[RSP+1E8  ] 0x443B8000         (void*)
+	[RSP+1F0  ] 0x0                (size_t) [0]
+	[RSP+1F8  ] 0x0                (size_t) [0]
+	[RSP+200  ] 0x3E99999A457A7000 (size_t) [4510805389657927680]
+	[RSP+208  ] 0x3ECCCCCD         (void*)
+	[RSP+210  ] 0x3F8000003F800000 (size_t) [4575657222473777152]
+	[RSP+218  ] 0x3F6E147B3E99999A (size_t) [4570613191391418778]
+	[RSP+220  ] 0x0                (size_t) [0]
+	[RSP+228  ] 0x0                (size_t) [0]
+	[RSP+230  ] 0x0                (size_t) [0]
+	[RSP+238  ] 0x0                (size_t) [0]
+	[RSP+240  ] 0x451A400044B18000 (size_t) [4979362707908165632]
+	[RSP+248  ] 0x441B0000         (void*)
+	[RSP+250  ] 0x4000000040000000 (size_t) [4611686019501129728]
+	[RSP+258  ] 0x3F7AE14840000000 (size_t) [4574216071975796736]
+	[RSP+260  ] 0x0                (size_t) [0]
+	[RSP+268  ] 0x0                (size_t) [0]
+	[RSP+270  ] 0x3F8000003F800000 (size_t) [4575657222473777152]
+	[RSP+278  ] 0x43FF000044110000 (size_t) [4899634920744353792]
+	[RSP+280  ] 0x44C8000040333333 (size_t) [4956211390998328115]
+	[RSP+288  ] 0x3F66666645034000 (size_t) [4568451461444485120]
+	[RSP+290  ] 0x3DCCCCCD         (void*)
+	[RSP+298  ] 0xFF00000000       (size_t) [1095216660480]
+	[RSP+2A0  ] 0x469DA2B9         (char*) ".dds"
+	[RSP+2A8  ] 0x140C8F781        (void* -> SkyrimVR.exe+0C8F781	movsx eax, byte ptr [rdi] |  ID::GenerateFromPath_C8F781)
+	[RSP+2B0  ] 0x143011300        (void* -> SkyrimVR.exe+3011300	add [rcx], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3011300)
+	[RSP+2B8  ] 0x469DA2BD         (void*)
+	[RSP+2C0  ] 0x0                (size_t) [0]
+	[RSP+2C8  ] 0x661D3240         (BSEffectShaderProperty*)
+		Flags: 0x40000020A0000018
+		RTTIName: "BSEffectShaderProperty"
+		NiPropertyType: kShade (01)
+	[RSP+2D0  ] 0x0                (size_t) [0]
+	[RSP+2D8  ] 0xFFFFFFFF         (void*)
+	[RSP+2E0  ] 0xDF110            (void*)
+	[RSP+2E8  ] 0x469DA29D         (char*) "TEXTURES\cubemaps\OutputCube.dds"
+	[RSP+2F0  ] 0xDF110            (void*)
+	[RSP+2F8  ] 0x140C8F4EB        (void* -> SkyrimVR.exe+0C8F4EB	mov rax, rbx |  BSResource::ID::ID_C8F4EB)
+	[RSP+300  ] 0x1                (size_t) [1]
+	[RSP+308  ] 0x118AD22FF        (void*)
+	[RSP+310  ] 0x1809BF880        (void*)
+	[RSP+318  ] 0x0                (size_t) [0]
+	[RSP+320  ] 0x1809BF880        (void*)
+	[RSP+328  ] 0x140D82CEF        (void* -> SkyrimVR.exe+0D82CEF	test rax, rax |  FUN_140d82ca0_D82CEF)
+	[RSP+330  ] 0x143176170        (void* -> SkyrimVR.exe+3176170	sar byte ptr [rax+rsi*1], 0x9B |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_3176170)
+	[RSP+338  ] 0x141EACA40        (void* -> SkyrimVR.exe+1EACA40	fisubr [rbp+0xEFBE] |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1EACA40)
+	[RSP+340  ] 0xDF110            (void*)
+	[RSP+348  ] 0x60000000         (void*)
+	[RSP+350  ] 0x6E875D00         (TESWorldSpace*) "Skyrim" [0x0000003C] ("DynDOLOD.esp")
+		Modified by: Skyrim.esm -> Update.esm -> Dragonborn.esm -> Dawnguard.esm -> HearthFires.esm -> SkyrimVR.esm -> Unofficial Skyrim Special Edition Patch.esp -> LegacyoftheDragonborn.esm -> Skyrim Project Optimization - Full ESL Version.esm -> Landscape and Water Fixes.esp -> Occ_Skyrim_Tamriel.esp -> Lanterns Of Skyrim II.esm -> RealisticWaterTwo - Resources.esm -> 3DNPC.esp -> BlackthornManor.esp -> Forgotten DungeonsSSE.esm -> Dwarfsphere.esp -> Campfire.esm -> LvxMagicks-CampfireUnleashed.esm -> BSHeartland.esm -> BS_DLC_patch.esp -> Penitus_Oculatus.esp -> Vigilant.esm -> Gray Fox Cowl.esm -> MzarkWonders.esp -> OrganicFactions.esm -> Landscape Fixes For Grass Mods.esp -> SMIM-SE-Merged-All.esp -> Complete Alchemy & Cooking Overhaul.esp -> AI Overhaul.esp -> OrganicFactionsExtension.esp -> Skyrim Immersive Creatures Special Edition.esp -> DealingwithDaedra.esp -> DungeonsRevisited.esp -> Thunderchild - Epic Shout Package.esp -> Embers XD.esp -> Realm of Lorkhan - Custom Alternate Start - Choose your own adventure.esp -> Thieves Guild Requirements.esp -> MrissiTailOfTroubles.esp -> BeSeated_3.0.0.esp -> WZTamrielic Culture.esp -> OCW_Obscure's_CollegeofWinterhold.esp -> Wintersun - Faiths of Skyrim.esp -> 0Kaidan.esp -> FGCLeviathanAxe.esp -> TSR_TeldrynSerious.esp -> Destroy the Thieves Guild.esp -> Cloaks.esp -> CitizensComplete.esp -> 018Auri.esp -> Inigo.esp -> ww_AlternateDBEnding.esp -> UniqueBorderGates-All.esp -> AHZBetterDGEntranceSE.esp -> Clockwork.esp -> Identity Crisis.esp -> Holds.esp -> Convenient Carriages.esp -> mpThievesNightOnTheTown.esp -> Vampyrium2.0.esp -> OverlordMagic.esp -> Arcanum.esp -> WayOfTheMonk.esp -> SeranaDialogAddon.esp -> In Your Shadow.esp -> SunHelmSurvival.esp -> konahrik_accoutrements.esp -> Tools of Kagrenac.esp -> Triumvirate - Mage Archetypes.esp -> Destroy the Dark Brotherhood - Enhanced.esp -> Northern Marsh Bridges SE.esp -> Missives.esp -> ForgottenCity.esp -> Darkend.esp -> Haem Projects Goblands.esp -> MightyMjolnir.esp -> Sojourn Over Signposts.esp -> Ordinator - Perks of Skyrim.esp -> Apocalypse - Magic of Skyrim.esp -> College Of Winterhold - Quest Expansion.esp -> OCW_CellSettings.esp -> Merge - CACO Patches.esp -> Merge - LOTD Patches.esp -> Merge - Holds Patches.esp -> Merge - OCW Patches.esp -> Merge - Content and Additions.esp -> Merge - Creatures Enemies and Combat.esp -> Merge - Landscape Environment and Clutter.esp -> Merge - Game Tweaks.esp -> SamutzYggdrasilVRPatches.esp -> Merge - Enhanced Lighting.esp -> Merge - Text and Dialogue.esp -> Merge - Conflict Resolution.esp -> Yggdrasil - Synthesis Patch.esp -> DynDOLOD.esp
+		Flags: 0x0000000B kDestructible | kAltered | kInitialized
+		EditorID: "Tamriel"
+		FormType: WorldSpace (71)
+		GetFullName: "Skyrim"
+	[RSP+358  ] 0x140D819E6        (void* -> SkyrimVR.exe+0D819E6	mov edi, eax |  FUN_140d81980_D819E6)
+	[RSP+360  ] 0xDF330            (void*)
+	[RSP+368  ] 0xDF450            (void*)
+	[RSP+370  ] 0x1                (size_t) [1]
+	[RSP+378  ] 0x1                (size_t) [1]
+	[RSP+380  ] 0x73646418AD22FF   (size_t) [32480003395232511]
+	[RSP+388  ] 0x13B332C26        (void*)
+	[RSP+390  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+398  ] 0x3F8000003F800000 (size_t) [4575657222473777152]
+	[RSP+3A0  ] 0x0                (size_t) [0]
+	[RSP+3A8  ] 0xDF2E8            (void*)
+	[RSP+3B0  ] 0x0                (size_t) [0]
+	[RSP+3B8  ] 0x141345AD1        (void* -> SkyrimVR.exe+1345AD1	mov eax, [rbp+0x50] |  BSWaterShaderMaterial::ComputeCRC32_141303090_1345AD1)
+	[RSP+3C0  ] 0x0                (size_t) [0]
+	[RSP+3C8  ] 0xB4F7D1FA         (void*)
+	[RSP+3D0  ] 0xA65A5FDD         (void*)
+	[RSP+3D8  ] 0x1402BCEF7        (void* -> SkyrimVR.exe+02BCEF7	movups xmm0, [rax] |  NiTransform::Multiply_1402AB750_2BCEF7)
+	[RSP+3E0  ] 0x3E1C9C9D3DC0C0C2 (size_t) [4475624328859271362]
+	[RSP+3E8  ] 0x461C40003E088889 (size_t) [5051983251787778185]
+	[RSP+3F0  ] 0x3D30B0B13C808081 (size_t) [4409218310466470017]
+	[RSP+3F8  ] 0x404CCCCD3D30B0B1 (size_t) [4633303298524360881]
+	[RSP+400  ] 0x3F0C8C8D3EEEEEF0 (size_t) [4543160662384111344]
+	[RSP+408  ] 0x3F8000003F1D9D9E (size_t) [4575657222467329438]
+	[RSP+410  ] 0x3F4CCCCD447F4000 (size_t) [4561245704609021952]
+	[RSP+418  ] 0x425C00003F000000 (size_t) [4781696905417588736]
+	[RSP+420  ] 0x0                (size_t) [0]
+	[RSP+428  ] 0x0                (size_t) [0]
+	[RSP+430  ] 0x0                (size_t) [0]
+	[RSP+438  ] 0x0                (size_t) [0]
+	[RSP+440  ] 0x3C23D70A         (void*)
+	[RSP+448  ] 0x0                (size_t) [0]
+	[RSP+450  ] 0xC6559800         (void*)
+	[RSP+458  ] 0x0                (size_t) [0]
+	[RSP+460  ] 0x3E99999A457A7000 (size_t) [4510805389657927680]
+	[RSP+468  ] 0x6FFFF8ED4A41     (void* -> EngineFixes.dll+0144A41	mov r8d, eax |  src\tbbmalloc\frontend.cpp:2574 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+470  ] 0x0                (size_t) [0]
+	[RSP+478  ] 0x0                (size_t) [0]
+	[RSP+480  ] 0x0                (size_t) [0]
+	[RSP+488  ] 0x0                (size_t) [0]
+	[RSP+490  ] 0x178AAA430        (TESWaterNormals*)
+	[RSP+498  ] 0x1809BF880        (void*)
+	[RSP+4A0  ] 0x174478B00        (BSWaterShaderProperty*)
+		Flags: 0x180000000
+		RTTIName: "BSWaterShaderProperty"
+		NiPropertyType: kShade (01)
+	[RSP+4A8  ] 0xFFFFFFFF         (void*)
+	[RSP+4B0  ] 0x1809BF8D8        (void*)
+	[RSP+4B8  ] 0x8                (size_t) [8]
+	[RSP+4C0  ] 0xDF450            (void*)
+	[RSP+4C8  ] 0x6FFFF8ED57CB     (void* -> EngineFixes.dll+01457CB	mov rbx, rax |  src\tbbmalloc\frontend.cpp:2943 scalable_malloc)
+	[RSP+4D0  ] 0x47F3C94CC683AF63 (size_t) [5184708927618789219]
+	[RSP+4D8  ] 0x3F               (size_t) [63]
+	[RSP+4E0  ] 0x20               (size_t) [32]
+	[RSP+4E8  ] 0x174478B00        (BSWaterShaderProperty*) See RSP+4A0
+	[RSP+4F0  ] 0x4                (size_t) [4]
+	[RSP+4F8  ] 0x140C3FB92        (void* -> SkyrimVR.exe+0C3FB92	mov [rdi], rax |  FUN_140c3fb40_C3FB92)
+	[RSP+500  ] 0xC6559800         (void*)
+	[RSP+508  ] 0x0                (size_t) [0]
+	[RSP+510  ] 0xDF3E0            (void*)
+	[RSP+518  ] 0x140D915D4        (void* -> SkyrimVR.exe+0D915D4	test al, al |  BSMultiBoundAABB::TestOcclusionShape_D915D4)
+	[RSP+520  ] 0xDF3D8            (void*)
+	[RSP+528  ] 0x140C3F8DA        (void* -> SkyrimVR.exe+0C3F8DA	test al, al |  BSTArrayBase::AddUninitialized_C3F8DA)
+	[RSP+530  ] 0x1809BF8E8        (void*)
+	[RSP+538  ] 0x1401B569F        (void* -> SkyrimVR.exe+01B569F	nop |  FUN_1401b5630_1B569F)
+	[RSP+540  ] 0x1                (size_t) [1]
+	[RSP+548  ] 0x140D9AA20        (void* -> SkyrimVR.exe+0D9AA20	mov rax, [rsp+0x30] |  FUN_140d9aa00_D9AA20)
+	[RSP+550  ] 0x0                (size_t) [0]
+	[RSP+558  ] 0xDF5C0            (void*)
+	[RSP+560  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+568  ] 0x1404DA843        (void* -> SkyrimVR.exe+04DA843	nop |  FUN_1404da800_4DA843)
+	[RSP+570  ] 0xDF5C0            (void*)
+	[RSP+578  ] 0x140D99B3F        (void* -> SkyrimVR.exe+0D99B3F	nop |  BSCullingProcess::~BSCullingProcess_D99B3F)
+	[RSP+580  ] 0x10F798           (void*)
+	[RSP+588  ] 0x10F798           (void*)
+	[RSP+590  ] 0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	[RSP+598  ] 0x1415987D8        (void* -> SkyrimVR.exe+15987D8	nop |  FUN_14157e550_15987D8)
+	[RSP+5A0  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+5A8  ] 0x0                (size_t) [0]
+	[RSP+5B0  ] 0x180B48700        (BSWaterShaderMaterial*) See RDI
+	[RSP+5B8  ] 0x1404D7696        (void* -> SkyrimVR.exe+04D7696	cmp [rbx], eax |  TESWaterSystem::AddWater_4D7696)
+	[RSP+5C0  ] 0x1DB135500        (BSMultiBoundAABB*)
+	[RSP+5C8  ] 0x1DB135500        (BSMultiBoundAABB*) See RSP+5C0
+	[RSP+5D0  ] 0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	[RSP+5D8  ] 0x141F87190        (void* -> SkyrimVR.exe+1F87190	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F87190)
+	[RSP+5E0  ] 0x0                (size_t) [0]
+	[RSP+5E8  ] 0x0                (size_t) [0]
+	[RSP+5F0  ] 0x1457A7001        (void*)
+	[RSP+5F8  ] 0x469DA298         (char*) "data\TEXTURES\cubemaps\OutputCube.dds"
+	[RSP+600  ] 0x18049FE20        (TESWaterReflections*) See RSP+70
+	[RSP+608  ] 0x3F6E147B0000006A (size_t) [4570613190341165162]
+	[RSP+610  ] 0x180B48700        (BSWaterShaderMaterial*) See RDI
+	[RSP+618  ] 0x0                (size_t) [0]
+	[RSP+620  ] 0x13F800000        (void*)
+	[RSP+628  ] 0x0                (size_t) [0]
+	[RSP+630  ] 0x17A8FB100        (BSWaterShaderProperty*)
+		Flags: 0x00000000
+		RTTIName: "BSWaterShaderProperty"
+		NiPropertyType: kShade (01)
+	[RSP+638  ] 0xFFFFFFFF         (void*)
+	[RSP+640  ] 0x179B65BD0        (void*)
+	[RSP+648  ] 0x1DB135500        (BSMultiBoundAABB*) See RSP+5C0
+	[RSP+650  ] 0x460A4FA647F3FDBB (size_t) [5046933908012400059]
+	[RSP+658  ] 0x6FFFC642A471     (size_t) [123144333599857]
+	[RSP+660  ] 0x38C4A0           (void*)
+	[RSP+668  ] 0x141F872B0        (void* -> SkyrimVR.exe+1F872B0	fadd [rcx] |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_1F872B0)
+	[RSP+670  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+678  ] 0x178AAA430        (TESWaterNormals*) See RSP+490
+	[RSP+680  ] 0x179B65BD0        (void*)
+	[RSP+688  ] 0x140C3FB92        (void* -> SkyrimVR.exe+0C3FB92	mov [rdi], rax |  FUN_140c3fb40_C3FB92)
+	[RSP+690  ] 0x4800000000000000 (size_t) [5188146770730811392]
+	[RSP+698  ] 0x0                (size_t) [0]
+	[RSP+6A0  ] 0xC65598003F800000 (size_t) [uint: 14291496119362912256 int: -4155247954346639360]
+	[RSP+6A8  ] 0x0                (size_t) [0]
+	[RSP+6B0  ] 0x141909F30        (void* -> SkyrimVR.exe+1909F30	push rax |  FUN_14157e550_1909F30)
+	[RSP+6B8  ] 0x0                (size_t) [0]
+	[RSP+6C0  ] 0x0                (size_t) [0]
+	[RSP+6C8  ] 0x3F80000000000000 (size_t) [4575657221408423936]
+	[RSP+6D0  ] 0x3F8000003F800000 (size_t) [4575657222473777152]
+	[RSP+6D8  ] 0xFFFFFFFF3F800000 (size_t) [uint: 18446744070479937536 int: -3229614080]
+	[RSP+6E0  ] 0x0                (size_t) [0]
+	[RSP+6E8  ] 0x0                (size_t) [0]
+	[RSP+6F0  ] 0x0                (size_t) [0]
+	[RSP+6F8  ] 0x0                (size_t) [0]
+	[RSP+700  ] 0x0                (size_t) [0]
+	[RSP+708  ] 0x0                (size_t) [0]
+	[RSP+710  ] 0x3E1C9C9D3DC0C0C2 (size_t) [4475624328859271362]
+	[RSP+718  ] 0x461C40003E088889 (size_t) [5051983251787778185]
+	[RSP+720  ] 0x3D30B0B13C808081 (size_t) [4409218310466470017]
+	[RSP+728  ] 0x404CCCCD3D30B0B1 (size_t) [4633303298524360881]
+	[RSP+730  ] 0x3F0C8C8D3EEEEEF0 (size_t) [4543160662384111344]
+	[RSP+738  ] 0x3F8000003F1D9D9E (size_t) [4575657222467329438]
+	[RSP+740  ] 0x3F4CCCCD447F4000 (size_t) [4561245704609021952]
+	[RSP+748  ] 0x425C00003F000000 (size_t) [4781696905417588736]
+	[RSP+750  ] 0x0                (size_t) [0]
+	[RSP+758  ] 0x41A00000459C4000 (size_t) [4728779609906888704]
+	[RSP+760  ] 0x0                (size_t) [0]
+	[RSP+768  ] 0x1D760A0A0        (std::_Facet_base*)
+	[RSP+770  ] 0x250000           (void*)
+	[RSP+778  ] 0x1C3EB5970        (void*)
+	[RSP+780  ] 0x0                (size_t) [0]
+	[RSP+788  ] 0x250000           (void*)
+	[RSP+790  ] 0xDF5A0            (void*)
+	[RSP+798  ] 0x6FFFFFF569D1     (void* -> ntdll.dll+00269D1	test eax, eax)
+	[RSP+7A0  ] 0xDF620            (char*) "R"
+	[RSP+7A8  ] 0x6FFFF9008A58     (void* -> EngineFixes.dll+0278A58	 |  static MallocMutex rml::internal::MemoryPool::memPoolListLock [?memPoolListLock@MemoryPool@internal@rml@@2VMallocMutex@@A])
+	[RSP+7B0  ] 0x0                (size_t) [0]
+	[RSP+7B8  ] 0x250000           (void*)
+	[RSP+7C0  ] 0x2                (size_t) [2]
+	[RSP+7C8  ] 0x260080           (void*)
+	[RSP+7D0  ] 0xDF590            (void*)
+	[RSP+7D8  ] 0x6FFFFFF835B9     (void* -> ntdll.dll+00535B9	jmp 0x00006FFFFFF83405)
+	[RSP+7E0  ] 0x0                (size_t) [0]
+	[RSP+7E8  ] 0x1F9F4            (void*)
+	[RSP+7F0  ] 0x4D043C30         (void*)
+	[RSP+7F8  ] 0x2                (size_t) [2]
+	[RSP+800  ] 0xFFFFFFFF         (void*)
+	[RSP+808  ] 0x1D760A0D0        (com_object_list<ID3D11Resource,0>::tracker_instance*)
+	[RSP+810  ] 0x250000           (void*)
+	[RSP+818  ] 0x1D760A0D0        (com_object_list<ID3D11Resource,0>::tracker_instance*)
+	[RSP+820  ] 0x0                (size_t) [0]
+	[RSP+828  ] 0x250000           (void*)
+	[RSP+830  ] 0xDF640            (void*)
+	[RSP+838  ] 0x6FFFFFF569D1     (void* -> ntdll.dll+00269D1	test eax, eax)
+	[RSP+840  ] 0xDF6C0            (void*)
+	[RSP+848  ] 0xCBF29CE484222325 (size_t) [uint: 14695981039346656037 int: -3750763034362895579]
+	[RSP+850  ] 0x100000001B3      (size_t) [1099511628211]
+	[RSP+858  ] 0x6FFFF8ED4CB9     (void* -> EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+860  ] 0xDF620            (char*) "R"
+	[RSP+868  ] 0x1D760A0D0        (com_object_list<ID3D11Resource,0>::tracker_instance*)
+	[RSP+870  ] 0xDF710            (void*)
+	[RSP+878  ] 0x18FDBE830        (void*)
+	[RSP+880  ] 0x1999E84A0        (void*)
+	[RSP+888  ] 0x6FFFF8ED41D6     (void* -> EngineFixes.dll+01441D6	mov ecx, [rdi+0x68] |  src\tbbmalloc\frontend.cpp:2544 void rml::internal::Block::freeOwnObject(void *) [?freeOwnObject@Block@internal@rml@@QEAAXPEAX@Z])
+	[RSP+890  ] 0xEB000000052      (size_t) [16149077033042]
+	[RSP+898  ] 0x0                (size_t) [0]
+	[RSP+8A0  ] 0x0                (size_t) [0]
+	[RSP+8A8  ] 0xFD0000           (void*)
+	[RSP+8B0  ] 0x0                (size_t) [0]
+	[RSP+8B8  ] 0x6FFFF8E3F315     (void* -> EngineFixes.dll+00AF315	mov rbx, [rsp+0x30] |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\memory\memory_manager.h:71 void Memory::MemoryManager::detail::Deallocate(RE::MemoryManager *,void *,bool) [?Deallocate@detail@MemoryManager@Memory@@YAXPEAV2RE@@PEAX_N@Z])
+	[RSP+8C0  ] 0x10100000000      (size_t) [1103806595072]
+	[RSP+8C8  ] 0x0                (size_t) [0]
+	[RSP+8D0  ] 0x1999E84A0        (void*)
+	[RSP+8D8  ] 0x140CA63B9        (void* -> SkyrimVR.exe+0CA63B9	mov [rbx+0x20], rbp |  NiObjectNET::sub_140C60D10_CA63B9)
+	[RSP+8E0  ] 0x1999E84A0        (void*)
+	[RSP+8E8  ] 0x140C6EEB9        (void* -> SkyrimVR.exe+0C6EEB9	cmp [rbx], eax |  BSFixedString::Release_140C29E80_C6EEB9)
+	[RSP+8F0  ] 0x1999E84A0        (void*)
+	[RSP+8F8  ] 0x0                (size_t) [0]
+	[RSP+900  ] 0x45270001         (void*)
+	[RSP+908  ] 0x140C6DC70        (void* -> SkyrimVR.exe+0C6DC70	sub rsp, 0x38 |  BSFixedString::Release_140C28D40_C6DC70)
+	[RSP+910  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+918  ] 0x6FFFF8ED4CB9     (void* -> EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+920  ] 0xDF6E0            (char*) "M"
+	[RSP+928  ] 0x8                (size_t) [8]
+	[RSP+930  ] 0x1                (size_t) [1]
+	[RSP+938  ] 0x18055CFB0        (void*)
+	[RSP+940  ] 0x18055CFA0        (BSShaderTextureSet*) See RSP+940
+	[RSP+948  ] 0x6FFFF8ED41D6     (void* -> EngineFixes.dll+01441D6	mov ecx, [rdi+0x68] |  src\tbbmalloc\frontend.cpp:2544 void rml::internal::Block::freeOwnObject(void *) [?freeOwnObject@Block@internal@rml@@QEAAXPEAX@Z])
+	[RSP+950  ] 0xFFFF089C0000004D (size_t) [uint: 18446472064840761421 int: -272008868790195]
+	[RSP+958  ] 0x0                (size_t) [0]
+	[RSP+960  ] 0x1A3BAE500        (BSLightingShaderProperty*) See RSP+960
+	[RSP+968  ] 0x6FFFF8ED41D6     (void* -> EngineFixes.dll+01441D6	mov ecx, [rdi+0x68] |  src\tbbmalloc\frontend.cpp:2544 void rml::internal::Block::freeOwnObject(void *) [?freeOwnObject@Block@internal@rml@@QEAAXPEAX@Z])
+	[RSP+970  ] 0x0                (size_t) [0]
+	[RSP+978  ] 0x6FFFF8E3F315     (void* -> EngineFixes.dll+00AF315	mov rbx, [rsp+0x30] |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\memory\memory_manager.h:71 void Memory::MemoryManager::detail::Deallocate(RE::MemoryManager *,void *,bool) [?Deallocate@detail@MemoryManager@Memory@@YAXPEAV2RE@@PEAX_N@Z])
+	[RSP+980  ] 0xFD0000           (void*)
+	[RSP+988  ] 0x0                (size_t) [0]
+	[RSP+990  ] 0x18055CFA0        (BSShaderTextureSet*) See RSP+940
+	[RSP+998  ] 0x6FFFF8ED4CB9     (void* -> EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+9A0  ] 0xDF760            (char*) "J"
+	[RSP+9A8  ] 0x1402E3946        (void* -> SkyrimVR.exe+02E3946	nop |  BSShaderTextureSet::dtor_deleting_2E3946)
+	[RSP+9B0  ] 0x1                (size_t) [1]
+	[RSP+9B8  ] 0x8                (size_t) [8]
+	[RSP+9C0  ] 0x16BA84100        (void*)
+	[RSP+9C8  ] 0x6FFFF8ED41D6     (void* -> EngineFixes.dll+01441D6	mov ecx, [rdi+0x68] |  src\tbbmalloc\frontend.cpp:2544 void rml::internal::Block::freeOwnObject(void *) [?freeOwnObject@Block@internal@rml@@QEAAXPEAX@Z])
+	[RSP+9D0  ] 0x28A0000004A      (size_t) [2791728742474]
+	[RSP+9D8  ] 0x250000           (void*)
+	[RSP+9E0  ] 0xFFFFFFFF         (void*)
+	[RSP+9E8  ] 0x14130DDB6        (void* -> SkyrimVR.exe+130DDB6	nop |  BSLightingShaderMaterialBase::~BSLightingShaderMaterialBase_130DDB6)
+	[RSP+9F0  ] 0x0                (size_t) [0]
+	[RSP+9F8  ] 0x6FFFF8E3F315     (void* -> EngineFixes.dll+00AF315	mov rbx, [rsp+0x30] |  D:\a\EngineFixesSkyrim64\EngineFixesSkyrim64\src\memory\memory_manager.h:71 void Memory::MemoryManager::detail::Deallocate(RE::MemoryManager *,void *,bool) [?Deallocate@detail@MemoryManager@Memory@@YAXPEAV2RE@@PEAX_N@Z])
+	[RSP+A00  ] 0x0                (size_t) [0]
+	[RSP+A08  ] 0x0                (size_t) [0]
+	[RSP+A10  ] 0x16BA84100        (void*)
+	[RSP+A18  ] 0x6FFFF8ED4CB9     (void* -> EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+A20  ] 0x16BA84100        (void*)
+	[RSP+A28  ] 0x1413136F6        (void* -> SkyrimVR.exe+13136F6	mov rax, rdi |  BSLightingShaderMaterialLODLandscape::dtor_deleting_13136F6)
+	[RSP+A30  ] 0x1                (size_t) [1]
+	[RSP+A38  ] 0x1                (size_t) [1]
+	[RSP+A40  ] 0x16BA84100        (void*)
+	[RSP+A48  ] 0x140CA63B9        (void* -> SkyrimVR.exe+0CA63B9	mov [rbx+0x20], rbp |  NiObjectNET::sub_140C60D10_CA63B9)
+	[RSP+A50  ] 0x1436F16E0        (void* -> SkyrimVR.exe+36F16E0	add [rax], al |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_36F16E0)
+	[RSP+A58  ] 0x14134F0DE        (void* -> SkyrimVR.exe+134F0DE	cmp [0x00000001436F1760], eax |  BSShaderMaterialHashMap::Unlink_134F0DE)
+	[RSP+A60  ] 0x6FFFF8FF5860     (void* -> EngineFixes.dll+0265860	add al, [rcx] |  safetyhook::InlineHook BSLightingShaderPropertyShadowMap::detail::orig_BSLightingShaderProperty_dtor [?orig_BSLightingShaderProperty_dtor@detail@BSLightingShaderPropertyShadowMap@@3VInlineHook@safetyhook@@A])
+	[RSP+A68  ] 0x6FFFF8FF5860     (void* -> EngineFixes.dll+0265860	add al, [rcx] |  safetyhook::InlineHook BSLightingShaderPropertyShadowMap::detail::orig_BSLightingShaderProperty_dtor [?orig_BSLightingShaderProperty_dtor@detail@BSLightingShaderPropertyShadowMap@@3VInlineHook@safetyhook@@A])
+	[RSP+A70  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+A78  ] 0x16BA84100        (void*)
+	[RSP+A80  ] 0xDFAE0            (char*) " "
+	[RSP+A88  ] 0x8                (size_t) [8]
+	[RSP+A90  ] 0x1                (size_t) [1]
+	[RSP+A98  ] 0x1A3BAE500        (BSLightingShaderProperty*) See RSP+960
+	[RSP+AA0  ] 0x0                (size_t) [0]
+	[RSP+AA8  ] 0x6FFFF8ED4CB9     (void* -> EngineFixes.dll+0144CB9	cmp rbx, rax |  src\tbbmalloc\frontend.cpp:2519 void * rml::internal::MemoryPool::getFromLLOCache(rml::internal::TLSData *,unsigned __int64,unsigned __int64) [?getFromLLOCache@MemoryPool@internal@rml@@QEAAPEAXPEAVTLSData@23@_K1@Z])
+	[RSP+AB0  ] 0xDF870            (void*)
+	[RSP+AB8  ] 0x1A3BAE500        (BSLightingShaderProperty*) See RSP+960
+	[RSP+AC0  ] 0x1A3BAE500        (BSLightingShaderProperty*) See RSP+960
+	[RSP+AC8  ] 0x1D8F03F73        (void*)
+	[RSP+AD0  ] 0x0                (size_t) [0]
+	[RSP+AD8  ] 0x0                (size_t) [0]
+	[RSP+AE0  ] 0x0                (size_t) [0]
+	[RSP+AE8  ] 0x0                (size_t) [0]
+	[RSP+AF0  ] 0x0                (size_t) [0]
+	[RSP+AF8  ] 0x0                (size_t) [0]
+	[RSP+B00  ] 0x0                (size_t) [0]
+	[RSP+B08  ] 0x0                (size_t) [0]
+	[RSP+B10  ] 0x0                (size_t) [0]
+	[RSP+B18  ] 0x140D94FCF        (void* -> SkyrimVR.exe+0D94FCF	mov ecx, [rax] |  BSOcclusionPlane::BuildFrustumPlanes_D94FCF)
+	[RSP+B20  ] 0x0                (size_t) [0]
+	[RSP+B28  ] 0x0                (size_t) [0]
+	[RSP+B30  ] 0x0                (size_t) [0]
+	[RSP+B38  ] 0x0                (size_t) [0]
+	[RSP+B40  ] 0xBF6662C8BCF6762A (size_t) [uint: 13791819523171972650 int: -4654924550537578966]
+	[RSP+B48  ] 0xC653F35CBEDEB3B1 (size_t) [uint: 14291033622241522609 int: -4155710451468029007]
+	[RSP+B50  ] 0x3EA0C1F93C2BF996 (size_t) [4512820102825769366]
+	[RSP+B58  ] 0xC611C6CC3F730A05 (size_t) [uint: 14272407274653944325 int: -4174336799055607291]
+	[RSP+B60  ] 0xC6896ED6482612B7 (size_t) [uint: 14306087557931602615 int: -4140656515777949001]
+	[RSP+B68  ] 0x482612B7C53D99CA (size_t) [5198863400343280074]
+	[RSP+B70  ] 0xC595E079C6896ED6 (size_t) [uint: 14237532610628251350 int: -4209211463081300266]
+	[RSP+B78  ] 0xC6B297BE482612B7 (size_t) [uint: 14317673008874263223 int: -4129071064835288393]
+	[RSP+B80  ] 0x482612B7C53D99CA (size_t) [5198863400343280074]
+	[RSP+B88  ] 0xC595E079C6B297BE (size_t) [uint: 14237532610630948798 int: -4209211463078602818]
+	[RSP+B90  ] 0xC6896ED648245725 (size_t) [uint: 14306087557931489061 int: -4140656515778062555]
+	[RSP+B98  ] 0x48245725C53D99CA (size_t) [5198375689626950090]
+	[RSP+BA0  ] 0xC595E079C6896ED6 (size_t) [uint: 14237532610628251350 int: -4209211463081300266]
+	[RSP+BA8  ] 0xC6B297BE48245725 (size_t) [uint: 14317673008874149669 int: -4129071064835401947]
+	[RSP+BB0  ] 0x48245725C53D99CA (size_t) [5198375689626950090]
+	[RSP+BB8  ] 0xC595E079C6B297BE (size_t) [uint: 14237532610630948798 int: -4209211463078602818]
+	[RSP+BC0  ] 0x0                (size_t) [0]
+	[RSP+BC8  ] 0x0                (size_t) [0]
+	[RSP+BD0  ] 0x0                (size_t) [0]
+	[RSP+BD8  ] 0x0                (size_t) [0]
+	[RSP+BE0  ] 0x0                (size_t) [0]
+	[RSP+BE8  ] 0x0                (size_t) [0]
+	[RSP+BF0  ] 0xDFB10            (NiCullingProcess*) See RSP+BF0
+	[RSP+BF8  ] 0x1412FB0BC        (void* -> SkyrimVR.exe+12FB0BC	movzx ecx, al |  ShadowSceneNode::TestCachedAABBVisibility_12FB0BC)
+	[RSP+C00  ] 0x0                (size_t) [0]
+	[RSP+C08  ] 0x0                (size_t) [0]
+	[RSP+C10  ] 0x1                (size_t) [1]
+	[RSP+C18  ] 0x1404C5D79        (void* -> SkyrimVR.exe+04C5D79	test al, al |  FUN_1404c5c80_4C5D79)
+	[RSP+C20  ] 0xDFAE8            (void*)
+	[RSP+C28  ] 0xC7C0000048600000 (size_t) [uint: 14393504410290356224 int: -4053239663419195392]
+	[RSP+C30  ] 0xDFAA8            (void*)
+	[RSP+C38  ] 0x1412FB029        (void* -> SkyrimVR.exe+12FB029	mov eax, [0x0000000143186C5C] |  ShadowSceneNode::UpdateMultiBoundVisibility_12FB029)
+	[RSP+C40  ] 0xC800000048400000 (size_t) [uint: 14411518808797741056 int: -4035225264911810560]
+	[RSP+C48  ] 0xC7C0000048400000 (size_t) [uint: 14393504410288259072 int: -4053239663421292544]
+	[RSP+C50  ] 0xC800000048600000 (size_t) [uint: 14411518808799838208 int: -4035225264909713408]
+	[RSP+C58  ] 0xC7C0000048600000 (size_t) [uint: 14393504410290356224 int: -4053239663419195392]
+	[RSP+C60  ] 0x15CCE3A00        (NiNode*) See RSP+C60
+	[RSP+C68  ] 0x1404B3A4A        (void* -> SkyrimVR.exe+04B3A4A	test al, al |  FUN_1404b3a20_4B3A4A)
+	[RSP+C70  ] 0xDFAA8            (void*)
+	[RSP+C78  ] 0x142FD4510        (void* -> SkyrimVR.exe+2FD4510	and byte ptr [rax], 0xA9 |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FD4510)
+	[RSP+C80  ] 0x1                (size_t) [1]
+	[RSP+C88  ] 0x133A1DF00        (BSMultiBoundNode*) See RSP+C88
+	[RSP+C90  ] 0x142FD4510        (void* -> SkyrimVR.exe+2FD4510	and byte ptr [rax], 0xA9 |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FD4510)
+	[RSP+C98  ] 0x1404B25C8        (void* -> SkyrimVR.exe+04B25C8	inc edi |  FUN_1404b2500_4B25C8)
+	[RSP+CA0  ] 0x142FD4510        (void* -> SkyrimVR.exe+2FD4510	and byte ptr [rax], 0xA9 |  FORM_ENUM_STRING::GetFormEnumString_141E6F110_2FD4510)
+	[RSP+CA8  ] 0x1                (size_t) [1]
+	[RSP+CB0  ] 0xFF               (size_t) [255]
+	[RSP+CB8  ] 0x1404BE7C8        (void* -> SkyrimVR.exe+04BE7C8	inc edi |  FUN_1404be700_4BE7C8)
+	[RSP+CC0  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+CC8  ] 0x1401B569F        (void* -> SkyrimVR.exe+01B569F	nop |  FUN_1401b5630_1B569F)
+	[RSP+CD0  ] 0x1EEE501          (void*)
+	[RSP+CD8  ] 0x140D9AA20        (void* -> SkyrimVR.exe+0D9AA20	mov rax, [rsp+0x30] |  FUN_140d9aa00_D9AA20)
+	[RSP+CE0  ] 0x0                (size_t) [0]
+	[RSP+CE8  ] 0x1404B1A08        (void* -> SkyrimVR.exe+04B1A08	nop |  NiCamera::sub_1404A19A0_4B1A08)
+	[RSP+CF0  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+CF8  ] 0x20               (size_t) [32]
+	[RSP+D00  ] 0xDFB10            (NiCullingProcess*) See RSP+BF0
+	[RSP+D08  ] 0x140D99B3F        (void* -> SkyrimVR.exe+0D99B3F	nop |  BSCullingProcess::~BSCullingProcess_D99B3F)
+	[RSP+D10  ] 0x10FCE8           (void*)
+	[RSP+D18  ] 0x10FCE8           (void*)
+	[RSP+D20  ] 0x0                (size_t) [0]
+	[RSP+D28  ] 0xC6531301         (void*)
+	[RSP+D30  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+D38  ] 0x1EEE480          (NiCamera*) See RSP+D38
+	[RSP+D40  ] 0x1EEE480          (NiCamera*) See RSP+D38
+	[RSP+D48  ] 0x1404C3245        (void* -> SkyrimVR.exe+04C3245	mov rbx, [rsp+0x30240] |  FUN_1404c31d0_4C3245)
+	[RSP+D50  ] 0x20               (size_t) [32]
+	[RSP+D58  ] 0x11B4EA5C0        (void*)
+	[RSP+D60  ] 0x11B4EA5C0        (void*)
+	[RSP+D68  ] 0x43A1D7C0         (BSGeometryListCullingProcess*) See RSP+D68
+	[RSP+D70  ] 0xFFFFFFFFFFFFFFFE (size_t) [uint: 18446744073709551614 int: -2]
+	[RSP+D78  ] 0x0                (size_t) [0]
+	[RSP+D80  ] 0x1417F3720        (void* -> SkyrimVR.exe+17F3720	add dh, bh |  FUN_14157e550_17F3720)
+	[RSP+D88  ] 0x0                (size_t) [0]
+	[RSP+D90  ] 0x0                (size_t) [0]
+	[RSP+D98  ] 0x1EEE480          (NiCamera*) See RSP+D38
+	[RSP+DA0  ] 0x3F9A678DBF9A678D (size_t) [4583089429305517965]
+	[RSP+DA8  ] 0xBF9A678D3F9A678D (size_t) [uint: 13806461464012810125 int: -4640282609696741491]
+	[RSP+DB0  ] 0x48ACC60041500000 (size_t) [5236778171123105792]
+	[RSP+DB8  ] 0x3F4944A041598400 (size_t) [4560251552771179520]
+	[RSP+DC0  ] 0xBED076FC3EEE03C0 (size_t) [uint: 13749620488121746368 int: -4697123585587805248]
+	[RSP+DC8  ] 0xBF4944A047CB2131 (size_t) [uint: 13783623589734064433 int: -4663120483975487183]
+	[RSP+DD0  ] 0x3ED076FCBEEE03C0 (size_t) [4526248453414454208]
+	[RSP+DD8  ] 0x3F713AEDC8DF8CA7 (size_t) [4571499889709517991]
+	[RSP+DE0  ] 0xBE8F7FA8BE3B720E (size_t) [uint: 13731334151598731790 int: -4715409922110819826]
+	[RSP+DE8  ] 0x3E8955B247E3B570 (size_t) [4506227126359537008]
+	[RSP+DF0  ] 0xBEB17AD83F661998 (size_t) [uint: 13740899007279274392 int: -4705845066430277224]
+	[RSP+DF8  ] 0x3ECD076E472A0838 (size_t) [4525281370798950456]
+	[RSP+E00  ] 0xBF653A7F3E473D8D (size_t) [uint: 13791493752072125837 int: -4655250321637425779]
+	[RSP+E08  ] 0x3F4F620F477209DA (size_t) [4561972765312289242]
+	[RSP+E10  ] 0x3E897A7E3F056DB2 (size_t) [4506267584802680242]
+	[RSP+E18  ] 0x3F47BFB49E       (size_t) [271786685598]
+	[RSP+E20  ] 0x3F               (size_t) [63]
+	[RSP+E28  ] 0x0                (size_t) [0]
+	[RSP+E30  ] 0x0                (size_t) [0]
+	[RSP+E38  ] 0x0                (size_t) [0]
+	[RSP+E40  ] 0x0                (size_t) [0]
+	[RSP+E48  ] 0x0                (size_t) [0]
+	[RSP+E50  ] 0x0                (size_t) [0]
+	[RSP+E58  ] 0x0                (size_t) [0]
+	[RSP+E60  ] 0x0                (size_t) [0]
+	[RSP+E68  ] 0x0                (size_t) [0]
+	[RSP+E70  ] 0x0                (size_t) [0]
+	[RSP+E78  ] 0x0                (size_t) [0]
+	[RSP+E80  ] 0x0                (size_t) [0]
+	[RSP+E88  ] 0x3F00000000       (size_t) [270582939648]
+	[RSP+E90  ] 0x3F               (size_t) [63]
+	[RSP+E98  ] 0x100000000        (void*)
+	[RSP+EA0  ] 0x0                (size_t) [0]
+	[RSP+EA8  ] 0x0                (size_t) [0]
+	[RSP+EB0  ] 0x0                (size_t) [0]
+	[RSP+EB8  ] 0x0                (size_t) [0]
+	[RSP+EC0  ] 0x0                (size_t) [0]
+	[RSP+EC8  ] 0x0                (size_t) [0]
+	[RSP+ED0  ] 0x0                (size_t) [0]
+	[RSP+ED8  ] 0x0                (size_t) [0]
+	[RSP+EE0  ] 0x0                (size_t) [0]
+	[RSP+EE8  ] 0x0                (size_t) [0]
+	[RSP+EF0  ] 0x0                (size_t) [0]
+	[RSP+EF8  ] 0x0                (size_t) [0]
+	[RSP+F00  ] 0x0                (size_t) [0]
+	[RSP+F08  ] 0x0                (size_t) [0]
+	[RSP+F10  ] 0x0                (size_t) [0]
+	[RSP+F18  ] 0x0                (size_t) [0]
+	[RSP+F20  ] 0x0                (size_t) [0]
+	[RSP+F28  ] 0x0                (size_t) [0]
+	[RSP+F30  ] 0x0                (size_t) [0]
+	[RSP+F38  ] 0x0                (size_t) [0]
+	[RSP+F40  ] 0x0                (size_t) [0]
+	[RSP+F48  ] 0x0                (size_t) [0]
+	[RSP+F50  ] 0x0                (size_t) [0]
+	[RSP+F58  ] 0x0                (size_t) [0]
+	[RSP+F60  ] 0x0                (size_t) [0]
+	[RSP+F68  ] 0x0                (size_t) [0]
+	[RSP+F70  ] 0x0                (size_t) [0]
+	[RSP+F78  ] 0x0                (size_t) [0]
+	[RSP+F80  ] 0x0                (size_t) [0]
+	[RSP+F88  ] 0x0                (size_t) [0]
+	[RSP+F90  ] 0x0                (size_t) [0]
+	[RSP+F98  ] 0x0                (size_t) [0]
+	[RSP+FA0  ] 0x0                (size_t) [0]
+	[RSP+FA8  ] 0x0                (size_t) [0]
+	[RSP+FB0  ] 0x0                (size_t) [0]
+	[RSP+FB8  ] 0x0                (size_t) [0]
+	[RSP+FC0  ] 0x0                (size_t) [0]
+	[RSP+FC8  ] 0x0                (size_t) [0]
+	[RSP+FD0  ] 0x0                (size_t) [0]
+	[RSP+FD8  ] 0x0                (size_t) [0]
+	[RSP+FE0  ] 0x0                (size_t) [0]
+	[RSP+FE8  ] 0x0                (size_t) [0]
+	[RSP+FF0  ] 0x0                (size_t) [0]
+	[RSP+FF8  ] 0x0                (size_t) [0]
+
+MODULES:
+	steam_api64.dll                    0x00007BE70000
+	OPENGL32.dll                       0x00007BEC0000
+	SkyrimVR.exe                       0x000140000000
+	binkw64.dll                        0x000180000000
+	amdxc64.dll                        0x6FFFF0190000
+	d3d12core.dll                      0x6FFFF01B0000
+	amd_fidelityfx_upscaler_dx12.dll   0x6FFFF06C0000
+	DSOUND.DLL                         0x6FFFF1C30000
+	avrt.dll                           0x6FFFF1D00000
+	winealsa.drv                       0x6FFFF1D80000
+	winepulse.drv                      0x6FFFF1DA0000
+	mmdevapi.dll                       0x6FFFF1DC0000
+
+SKSE PLUGINS:
+	activeragdoll.dll
+	AHZmoreHUDPlugin.dll v1.1
+	AnimatedStaticReload.dll v1.0.1
+	AnimationMotionRevolution.dll
+	AnimationQueueFix.dll v1.0.2
+	ArmorRatingReduxVR.dll
+	BlockingConditionFix.dll v1.0.1
+	ConsoleUtilVR.dll v1.3
+	ContainerDistributionFramework.dll v3.0.2
+	CrashLogger.dll v1.27
+	EngineFixes.dll v7.13
+	OpenAnimationReplacer.dll v3.2.1
+
+GAME STATE:
+	Main loop: active
+	Open menus: HUD Menu, Loading Menu, Mist Menu, Fader Menu (game paused)
+	Player: exterior cell "" [0000B491] in Skyrim, position (171561.8, 37187.1, -9351.6), 3D loaded
+
+PLUGINS:
+	Light: 60	Regular: 199	Total: 259
+	[ 0]     Skyrim.esm
+	[ 1]     Update.esm
+	[ 2]     Dragonborn.esm
+	[ 3]     Dawnguard.esm
+	[ 4]     HearthFires.esm
+	[ 5]     SkyrimVR.esm
+	[ 6]     Unofficial Skyrim Special Edition Patch.esp
+	[ 7]     LegacyoftheDragonborn.esm
+	[ 8]     LOTD_HUB.esp
+	[ 9]     Occ_Skyrim_Tamriel.esp
+	[FE:  0] Skyrim Project Optimization - Full ESL Version.esm
+	[FE:  1] Landscape and Water Fixes.esp
