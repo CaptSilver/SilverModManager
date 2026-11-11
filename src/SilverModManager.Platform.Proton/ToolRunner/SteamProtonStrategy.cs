@@ -38,6 +38,7 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
             ["STEAM_COMPAT_DATA_PATH"] = Resolved(prefix.Path.Parent),
             ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = Resolved(resolution.SteamInstallPath.Value),
         };
+        WineRunSupport.ProtonDefaults(environment);
         WineRunSupport.Environment(environment, command.Env);
 
         return ToolRunPlan.Runnable(StrategyName, argv, WineRunSupport.WorkingDirectory(command, prefix), environment);

@@ -37,6 +37,20 @@ internal static class WineRunSupport
     public static AbsolutePath WorkingDirectory(PrefixCommand command, ResolvedPrefix prefix) => command.Exe?.Parent ?? prefix.Path;
 
     /// <summary>
+    /// Error lines on every channel and nothing else. Proton sets -all for game performance, which a tool
+    /// run does not need, and -all hides the loader's "Library X not found" lines that say why a tool
+    /// stopped. Wine's parser starts from err+fixme and only "all" entries change that default, so
+    /// "err+all" alone would keep the fixme spam; the leading -all clears it. The caller's variables still win.
+    /// </summary>
+    public const string ToolRunWineDebug = "-all,err+all";
+
+    /// <summary>
+    /// Sets the defaults every strategy that runs a <c>proton</c> script shares; call it before
+    /// <see cref="Environment"/> so the caller's variables override them.
+    /// </summary>
+    public static void ProtonDefaults(Dictionary<string, string> environment) => environment.TryAdd("WINEDEBUG", ToolRunWineDebug);
+
+    /// <summary>
     /// <paramref name="defaults"/> overlaid with the caller's variables, which win on a clash.
     /// </summary>
     public static Dictionary<string, string> Environment(Dictionary<string, string> defaults, IReadOnlyDictionary<string, string>? caller)

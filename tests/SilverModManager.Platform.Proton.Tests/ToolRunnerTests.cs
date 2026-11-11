@@ -149,8 +149,13 @@ public class ToolRunnerTests : IDisposable
         {
             ["STEAM_COMPAT_DATA_PATH"] = _prefix.Parent.ToString(),
             ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = _steam.ToString(),
+            ["WINEDEBUG"] = "-all,err+all",
         });
     }
+
+    [Fact]
+    public void SteamGame_AsksWineForErrorLines()
+        => Runner().Plan(SteamGame(), Exe, [], null).Environment["WINEDEBUG"].Should().Be("-all,err+all");
 
     [Fact]
     public void ThePlanRunsProtonThroughResolvedPaths()

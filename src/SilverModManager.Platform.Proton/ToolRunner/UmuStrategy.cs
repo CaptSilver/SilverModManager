@@ -54,12 +54,15 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
         AbsolutePath runner,
         PrefixCommand command)
     {
-        var environment = WineRunSupport.Environment(new Dictionary<string, string>
+        var defaults = new Dictionary<string, string>
         {
             ["GAMEID"] = $"umu-{installation.LocatorResult.StoreIdentifier}",
             ["WINEPREFIX"] = prefix.Path.ToString(),
             ["PROTONPATH"] = runner.Parent.ToString(),
-        }, command.Env);
+        };
+        // umu-run hands the run to the same proton script.
+        WineRunSupport.ProtonDefaults(defaults);
+        var environment = WineRunSupport.Environment(defaults, command.Env);
 
         return ToolRunPlan.Runnable(UmuStrategyName, WineRunSupport.Argv(["umu-run"], command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), environment);
     }
@@ -71,10 +74,12 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
     {
         // Proton wants the directory that holds pfx, and Heroic records either that directory or pfx itself.
         var compatData = prefix.Path.FileName == "pfx" ? prefix.Path.Parent : prefix.Path;
-        var environment = WineRunSupport.Environment(new Dictionary<string, string>
+        var defaults = new Dictionary<string, string>
         {
             ["STEAM_COMPAT_DATA_PATH"] = compatData.ToString(),
-        }, command.Env);
+        };
+        WineRunSupport.ProtonDefaults(defaults);
+        var environment = WineRunSupport.Environment(defaults, command.Env);
 
         return ToolRunPlan.Runnable(ProtonStrategyName, WineRunSupport.Argv([runner.ToString(), "run"], command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), environment);
     }

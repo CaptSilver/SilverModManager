@@ -68,7 +68,9 @@ public sealed class ToolRunner(
         if (!plan.IsRunnable) return plan;
 
         // Symlinks written by the deployment backends point into a folder the Steam container does not share
-        // unless it is listed, and a tool run through Proton starts that container like the game does. A game
+        // unless it is listed. A bare `proton run` does not enter that container (the proton script only adds the
+        // runtime adverb when steam-runtime-launcher-interface-0 is on PATH), so the merged roots matter for the
+        // strategies that do go through the runtime (umu, Heroic's Flatpak) and are harmless otherwise. A game
         // with no recorded metadata isn't managed, so nothing was deployed for it.
         if (!gameRegistry.TryGetMetadata(installation, out var metadata)) return plan;
 

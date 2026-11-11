@@ -164,6 +164,7 @@ public class OtherRunnerStrategyTests
             ["GAMEID"] = "umu-1234",
             ["WINEPREFIX"] = "/heroic/Prefixes/Test Game",
             ["PROTONPATH"] = "/heroic/tools/proton/GE-Proton9-1",
+            ["WINEDEBUG"] = "-all,err+all",
         });
         _probes.Should().ContainSingle().Which.TargetFilePath.Should().Be("umu-run");
     }
@@ -193,7 +194,38 @@ public class OtherRunnerStrategyTests
         plan.Environment.Should().BeEquivalentTo(new Dictionary<string, string>
         {
             ["STEAM_COMPAT_DATA_PATH"] = "/heroic/Prefixes/Test Game",
+            ["WINEDEBUG"] = "-all,err+all",
         });
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithUmu_AsksWineForErrorLines()
+    {
+        _installed.Add("umu-run");
+
+        Runner().Plan(HeroicProton(), Exe, [], null).Environment["WINEDEBUG"].Should().Be("-all,err+all");
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithoutUmu_AsksWineForErrorLines()
+        => Runner().Plan(HeroicProton(), Exe, [], null).Environment["WINEDEBUG"].Should().Be("-all,err+all");
+
+    [Fact]
+    public void HeroicWineRunner_DoesNotTouchWineDebug()
+    {
+        _installed.Add("/heroic/tools/wine/Wine-GE-8/bin/wine");
+        var installation = Install(CompatibilityLayerKind.Heroic, "/heroic/Prefixes/Test Game", "/heroic/tools/wine/Wine-GE-8/bin/wine");
+
+        Runner().Plan(installation, Exe, [], null).Environment.Should().NotContainKey("WINEDEBUG");
+    }
+
+    [Fact]
+    public void PlainWine_DoesNotTouchWineDebug()
+    {
+        _installed.Add("wine");
+        var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", null);
+
+        Runner().Plan(installation, Exe, [], null).Environment.Should().NotContainKey("WINEDEBUG");
     }
 
     [Fact]
