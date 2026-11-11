@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Errors;
@@ -78,7 +79,7 @@ public sealed class ModlistRemovalPlanner(IServiceProvider provider)
                 var otherList = OtherListNaming(db, row, modlist);
                 if (otherList is not null)
                     kept.Add(new KeptArchive(row.Name, $"used by {otherList}"));
-                else if (LibraryLinkedLoadoutItem.FindByLibraryItem(db, fetched.Id).Any())
+                else if (IsLinkedOutsideTheList(db, fetched.Id, modlist))
                     kept.Add(new KeptArchive(row.Name, "installed in a loadout"));
                 else
                 {
@@ -89,6 +90,26 @@ public sealed class ModlistRemovalPlanner(IServiceProvider provider)
         }
 
         return new ModlistRemovalPlan(modlist, name, groups, loadouts, updating, owned, ownedSize, kept);
+    }
+
+    /// <summary>
+    /// Whether some link to <paramref name="file"/> belongs to something other than this list's own install: a user mod,
+    /// a Nexus collection or another list. The list's own mod groups link the archives they were built from, and those
+    /// links go with the list, so they do not keep an archive.
+    /// </summary>
+    private static bool IsLinkedOutsideTheList(IDb db, EntityId file, LibraryFileId modlist)
+    {
+        foreach (var link in LibraryLinkedLoadoutItem.FindByLibraryItem(db, file))
+        {
+            var owner = link.AsLoadoutItem().GetThisAndParents()
+                .Select(item => item.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out var collection) ? (CollectionGroup.ReadOnly?)collection : null)
+                .FirstOrDefault(collection => collection is not null);
+            if (owner is { } collection
+                && collection.TryGetAsWabbajackModlistLoadoutGroup(out var list)
+                && list.ModlistId.Value == modlist.Value) continue;
+            return true;
+        }
+        return false;
     }
 
     private static string? OtherListNaming(IDb db, WabbajackModlistArchive.ReadOnly row, LibraryFileId modlist)
