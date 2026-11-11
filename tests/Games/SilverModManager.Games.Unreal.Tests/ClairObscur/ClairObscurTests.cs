@@ -1,6 +1,7 @@
 using FluentAssertions;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Games.Unreal.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unreal.Tests;
 
@@ -21,8 +22,8 @@ public class ClairObscurTests(ITestOutputHelper outputHelper) : AUnrealRowTests<
         layout.TryRoute("Mod_P.pak", out var pak).Should().BeTrue();
         layout.TryRoute("UE4SS.dll", out var loader).Should().BeTrue();
 
-        pak.Should().Be(new SilverModManager.Sdk.Games.GamePath(SilverModManager.Sdk.Games.LocationId.Game, "Sandfall/Content/Paks/~mods/Mod_P.pak"));
-        loader.Should().Be(new SilverModManager.Sdk.Games.GamePath(SilverModManager.Sdk.Games.LocationId.Game, "Sandfall/Binaries/Win64/UE4SS.dll"));
+        pak.Should().Be(new GamePath(LocationId.Game, "Sandfall/Content/Paks/~mods/Mod_P.pak"));
+        loader.Should().Be(new GamePath(LocationId.Game, "Sandfall/Binaries/Win64/UE4SS.dll"));
     }
 
     [Fact]
@@ -36,6 +37,25 @@ public class ClairObscurTests(ITestOutputHelper outputHelper) : AUnrealRowTests<
         targets.Should().BeEquivalentTo(
             OnGame("Sandfall/Binaries/Win64/ClairObscurFix.asi"),
             OnGame("Sandfall/Binaries/Win64/ClairObscurFix.ini"));
+    }
+
+    [Fact]
+    public async Task TheClairObscurFixArchiveWithItsExtractMarkerAndLicenceInstallsTheThreeBinariesFolderFiles()
+    {
+        var archive = await AddFromPaths(
+            "EXTRACT_TO_GAME_FOLDER",
+            "UltimateASILoader_LICENSE.md",
+            "Sandfall/Binaries/Win64/ClairObscurFix.asi",
+            "Sandfall/Binaries/Win64/ClairObscurFix.ini",
+            "Sandfall/Binaries/Win64/dsound.dll");
+
+        var (result, targets) = await TryInstall(Installer, archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(
+            OnGame("Sandfall/Binaries/Win64/ClairObscurFix.asi"),
+            OnGame("Sandfall/Binaries/Win64/ClairObscurFix.ini"),
+            OnGame("Sandfall/Binaries/Win64/dsound.dll"));
     }
 
     [Fact]

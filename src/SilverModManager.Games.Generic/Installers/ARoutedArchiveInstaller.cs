@@ -12,8 +12,8 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.Generic.Installers;
 
 /// <summary>
-/// Installs an archive by asking the game where each file goes. A readme, picture or shortcut beside the mod is left
-/// out. Any other file the game has no rule for makes the archive unsupported: it could be half of a mod for something
+/// Installs an archive by asking the game where each file goes. A readme, picture, shortcut or root EXTRACT_TO_GAME_FOLDER marker is
+/// left out. Any other file the game has no rule for makes the archive unsupported: it could be half of a mod for something
 /// the game does not cover, and installing the rest would hide that.
 /// </summary>
 public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, ILogger logger)
@@ -24,6 +24,12 @@ public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, 
         new(".txt"), new(".md"), new(".pdf"), new(".png"), new(".jpg"), new(".jpeg"), new(".url"), new(".html"),
     ];
 
+    /// <summary>
+    /// Empty file some mod authors (Lyall's fixes, for one) put at the archive root to say "unpack into the game
+    /// folder". It carries no content and has no destination.
+    /// </summary>
+    private const string ExtractMarker = "EXTRACT_TO_GAME_FOLDER";
+
     /// <summary>What the game's mods are made of, for the refusal text: "paks, LogicMods or UE4SS mods".</summary>
     protected abstract string ExpectedFiles { get; }
 
@@ -31,7 +37,8 @@ public abstract class ARoutedArchiveInstaller(IServiceProvider serviceProvider, 
     /// A file the game has no rule for that does not make the archive unsupported. Readmes and pictures by default; a
     /// game that takes only the kinds it knows and ignores the rest widens this.
     /// </summary>
-    protected virtual bool IsLeftOut(RelativePath path) => DocumentExtensions.Contains(path.Extension);
+    protected virtual bool IsLeftOut(RelativePath path) =>
+        DocumentExtensions.Contains(path.Extension) || (path.Depth == 0 && path.FileName == ExtractMarker);
 
     /// <summary>Where <paramref name="path"/>, as laid out in the archive, belongs; false when the game has no rule for it.</summary>
     protected abstract bool TryRoute(IReadOnlyList<RelativePath> archive, RelativePath path, out GamePath target);
