@@ -96,16 +96,17 @@ public class WabbajackLoadoutDataProvider : ILoadoutDataProvider
     private CompositeItemModel<EntityId> ToItemModel(LoadoutItem.ReadOnly loadoutItem)
     {
         var model = new CompositeItemModel<EntityId>(loadoutItem.Id);
+        var linkedItem = LinkedItemImages.ObserveLinkedItem(_connection, loadoutItem.Id);
 
         model.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: loadoutItem.Name));
         SharedColumns.Source.Add(model, ModSources.Wabbajack);
-        model.Add(SharedColumns.Name.ImageComponentKey, LinkedItemImages.ObserveForGroup(_connection, _thumbnails.Value, loadoutItem.Id));
+        model.Add(SharedColumns.Name.ImageComponentKey, LinkedItemImages.ObserveForGroup(_connection, _thumbnails.Value, linkedItem));
         model.Add(SharedColumns.InstalledDate.ComponentKey, new DateComponent(value: loadoutItem.GetCreatedAt()));
         model.Add(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey, new LoadoutComponents.LoadoutItemIds(itemId: loadoutItem));
         model.Add(LoadoutColumns.EnabledState.ViewModFilesComponentKey, new SharedComponents.ViewModFilesAction(isEnabled: true));
         model.Add(LoadoutColumns.EnabledState.UninstallItemComponentKey, new SharedComponents.UninstallItemAction(isEnabled: false));
 
-        model.Add(LoadoutColumns.EnabledState.ViewModPageComponentKey, ViewModPage(loadoutItem.Id));
+        model.Add(LoadoutColumns.EnabledState.ViewModPageComponentKey, ViewModPage(linkedItem));
         LoadoutDataProviderHelper.AddCollection(_connection, model, loadoutItem);
         LoadoutDataProviderHelper.AddParentCollectionDisabled(_connection, model, loadoutItem);
         LoadoutDataProviderHelper.AddEnabledStateToggle(_connection, model, loadoutItem);
@@ -114,19 +115,9 @@ public class WabbajackLoadoutDataProvider : ILoadoutDataProvider
         return model;
     }
 
-    private SharedComponents.ViewModPageAction ViewModPage(EntityId group)
-    {
-        var linked = LinkedItemImages.ObserveLinkedItem(_connection, group).Select(HasPage);
-        return new SharedComponents.ViewModPageAction(HasPage(LinkedItem(group)), linked);
-    }
-
-    private Optional<EntityId> LinkedItem(EntityId group)
-    {
-        var link = LibraryLinkedLoadoutItem.Load(_connection.Db, group);
-        return link.IsValid() && LibraryLinkedLoadoutItem.LibraryItem.TryGetValue(link, out var item)
-            ? Optional<EntityId>.Create(item)
-            : Optional<EntityId>.None;
-    }
+    /// <summary>Disabled until the link is seen; the lookup then runs where <paramref name="linkedItem"/> emits.</summary>
+    private SharedComponents.ViewModPageAction ViewModPage(IObservable<Optional<EntityId>> linkedItem) =>
+        new(initial: false, linkedItem.Select(HasPage));
 
     private bool HasPage(Optional<EntityId> link) =>
         link.HasValue

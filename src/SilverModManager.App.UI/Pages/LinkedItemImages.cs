@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using DynamicData;
@@ -24,19 +25,29 @@ internal static class LinkedItemImages
     /// </summary>
     public static ImageComponent ForGroup(IDb db, IResourceLoader<EntityId, Bitmap> thumbnails, EntityId group)
     {
-        return PageOf(db, LinkOf(db, group)) is { } page
-            ? ImageComponent.FromPipeline(thumbnails, page, ImagePipelines.ModPageThumbnailFallback)
-            : new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback);
+        return TryForGroup(db, thumbnails, group) ?? new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback);
     }
 
     /// <summary>
-    /// The same, following the group's <see cref="LibraryLinkedLoadoutItem.LibraryItem"/> datom, so a row that
-    /// exists before its link does updates when the link is written.
+    /// The mod-page thumbnail of the library item a group is linked to, or null when the group has no link or its
+    /// item has no Nexus page, for a page that leaves its own icon in place for those.
     /// </summary>
-    public static ImageComponent ObserveForGroup(IConnection connection, IResourceLoader<EntityId, Bitmap> thumbnails, EntityId group)
+    public static ImageComponent? TryForGroup(IDb db, IResourceLoader<EntityId, Bitmap> thumbnails, EntityId group)
+    {
+        return PageOf(db, LinkOf(db, group)) is { } page
+            ? ImageComponent.FromPipeline(thumbnails, page, ImagePipelines.ModPageThumbnailFallback)
+            : null;
+    }
+
+    /// <summary>
+    /// The same, driven by <paramref name="linkedItem"/> (see <see cref="ObserveLinkedItem"/>), so a row that exists
+    /// before its link does updates when the link is written. The lookups and the load start run wherever
+    /// <paramref name="linkedItem"/> emits, which is the thread pool.
+    /// </summary>
+    public static ImageComponent ObserveForGroup(IConnection connection, IResourceLoader<EntityId, Bitmap> thumbnails, IObservable<Optional<EntityId>> linkedItem)
     {
         var fallback = ImagePipelines.ModPageThumbnailFallback;
-        var images = ObserveLinkedItem(connection, group)
+        var images = linkedItem
             .Select(link => PageOf(connection.Db, link.HasValue ? link.Value : null) is { } page
                 ? Observable.FromAsync(ct => thumbnails.LoadResourceAsync(page, ct).AsTask()).Select(static resource => resource.Data)
                 : Observable.Return(fallback))
@@ -44,15 +55,29 @@ internal static class LinkedItemImages
         return new ImageComponent(fallback, images);
     }
 
-    /// <summary>The linked library item's id as it changes; none while the group has no link.</summary>
+    /// <summary>
+    /// The linked library item's id as it changes; none while the group has no link. The connection primes the first
+    /// snapshot, and everything downstream runs on the thread pool, not the UI or the database's dispatch thread.
+    /// Replays its latest value, so a row's image and action can share one subscription.
+    /// </summary>
     public static IObservable<Optional<EntityId>> ObserveLinkedItem(IConnection connection, EntityId group)
     {
         return connection.ObserveDatoms(SliceDescriptor.Create(group))
-            .QueryWhenChanged(_ => LinkOf(connection.Db, group))
-            .Prepend(LinkOf(connection.Db, group))
+            .QueryWhenChanged(_ => LinkedItem(connection.Db, group))
             .DistinctUntilChanged()
-            .Select(static link => link is { } id ? Optional<EntityId>.Create(id) : Optional<EntityId>.None);
+            .ObserveOn(PoolWithoutDedicatedThreads)
+            .Replay(1)
+            .RefCount();
     }
+
+    // ObserveOn on the stock pool schedulers parks a dedicated thread per subscription (they offer long-running
+    // scheduling); one per visible row is too many.
+    private static readonly IScheduler PoolWithoutDedicatedThreads =
+        ThreadPoolScheduler.Instance.DisableOptimizations(typeof(ISchedulerLongRunning));
+
+    /// <summary>The library item a group is linked to, if any.</summary>
+    internal static Optional<EntityId> LinkedItem(IDb db, EntityId group) =>
+        LinkOf(db, group) is { } id ? Optional<EntityId>.Create(id) : Optional<EntityId>.None;
 
     private static EntityId? LinkOf(IDb db, EntityId group)
     {

@@ -104,11 +104,9 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         // Thumbnail
         if (reactiveSortItem.ModGroupId.HasValue)
         {
-            if (LoadoutItemGroup.Load(connection.Db, reactiveSortItem.ModGroupId.Value).TryGetAsLibraryLinkedLoadoutItem(out _))
-            {
-                compositeModel.Add(LoadOrderColumns.DisplayNameColumn.ImageComponentKey,
-                    LinkedItemImages.ForGroup(connection.Db, thumbnailLoader.Value, reactiveSortItem.ModGroupId.Value));
-            }
+            // Only a group whose link resolves to a Nexus page; the rest keep the column's own icon.
+            if (LinkedItemImages.TryForGroup(connection.Db, thumbnailLoader.Value, reactiveSortItem.ModGroupId.Value) is { } image)
+                compositeModel.Add(LoadOrderColumns.DisplayNameColumn.ImageComponentKey, image);
         }
 
         // ModName

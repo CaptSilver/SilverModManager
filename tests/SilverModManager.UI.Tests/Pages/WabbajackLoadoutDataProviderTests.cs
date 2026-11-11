@@ -39,10 +39,14 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
     private sealed class FakeThumbnails : IResourceLoader<EntityId, Bitmap>
     {
         public System.Collections.Concurrent.ConcurrentQueue<EntityId> Requests { get; } = new();
+        public System.Collections.Concurrent.ConcurrentQueue<int> RequestThreads { get; } = new();
+        public System.Collections.Concurrent.ConcurrentQueue<bool> OnPoolThread { get; } = new();
 
         public ValueTask<Resource<Bitmap>> LoadResourceAsync(EntityId resourceIdentifier, CancellationToken cancellationToken)
         {
             Requests.Enqueue(resourceIdentifier);
+            RequestThreads.Enqueue(Environment.CurrentManagedThreadId);
+            OnPoolThread.Enqueue(Thread.CurrentThread.IsThreadPoolThread);
             return new ValueTask<Resource<Bitmap>>(new Resource<Bitmap> { Data = ImagePipelines.ModPageThumbnailFallback });
         }
     }
@@ -484,5 +488,48 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
 
         await Eventually(() => thumbnails.Requests.Should().Contain(page));
         await EventuallyOnUi(() => ViewPageEnabled(rows.Lookup(mod).Value).Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task TheThumbnailLoadStartsOnTheThreadPool()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-thread-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Threads");
+        var mod = await AddMod(loadout, list, "Linked before");
+        var late = await AddMod(loadout, list, "Linked after");
+        var (item, _) = await AddNexusItem(loadout);
+        await LinkGroup(mod, item);
+        var thumbnails = new FakeThumbnails();
+
+        using var rows = await Observe(CollectionFilter(loadout, list), thumbnails);
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([mod, late]));
+        var uiThread = await OnUi(() => Task.FromResult(Environment.CurrentManagedThreadId));
+        using var a = await Activate(rows.Lookup(mod).Value);
+        using var b = await Activate(rows.Lookup(late).Value);
+        var (lateItem, _) = await AddNexusItem(loadout);
+        await LinkGroup(late, lateItem);
+
+        await Eventually(() => thumbnails.Requests.Count.Should().Be(2));
+        thumbnails.RequestThreads.Should().NotContain(uiThread);
+        // Not the database's own dispatch thread either: the load starts on the thread pool.
+        thumbnails.OnPoolThread.Should().AllBeEquivalentTo(true);
+    }
+
+    [Fact]
+    public async Task OnlyANexusLinkedGroupGetsAThumbnailFromTryForGroup()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-try-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Try");
+        var nexusMod = await AddMod(loadout, list, "Nexus");
+        var megaMod = await AddMod(loadout, list, "Mega");
+        var unlinked = await AddMod(loadout, list, "Unlinked");
+        var (item, _) = await AddNexusItem(loadout);
+        await LinkGroup(nexusMod, item);
+        await LinkToLocalFile(megaMod);
+        var thumbnails = new FakeThumbnails();
+
+        LinkedItemImages.TryForGroup(Connection.Db, thumbnails, nexusMod).Should().NotBeNull();
+        LinkedItemImages.TryForGroup(Connection.Db, thumbnails, megaMod).Should().BeNull();
+        LinkedItemImages.TryForGroup(Connection.Db, thumbnails, unlinked).Should().BeNull();
     }
 }
