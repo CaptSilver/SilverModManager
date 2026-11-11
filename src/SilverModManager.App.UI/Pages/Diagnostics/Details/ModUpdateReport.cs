@@ -35,15 +35,15 @@ public static class ModUpdateReport
     /// </summary>
     public static ModUpdateVerdict Outcome(IDb db, ICollectionOwnership ownership, IModUpdateService updates, LoadoutItemId mod)
     {
-        if (!LibraryLinkedLoadoutItem.TryGet(db, mod.Value, out var linked)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
-
-        // A mod of a locked collection is updated through the collection, whatever its file's page says.
-        if (CollectionOwnership.TryNearestCollection(db, linked.Value.AsLoadoutItemGroup().AsLoadoutItem(), out var collection)
+        // A mod of a locked collection is updated through the collection, whatever its file's page says, and whether or
+        // not it still has an archive linked.
+        if (CollectionOwnership.TryNearestCollection(db, LoadoutItem.Load(db, mod.Value), out var collection)
             && ownership.WhyLocked(collection) is { } reason)
         {
             return new ModUpdateVerdict(ModUpdateOutcome.PartOfLockedCollection, reason, collection.AsLoadoutItemGroup().AsLoadoutItem().Name);
         }
 
+        if (!LibraryLinkedLoadoutItem.TryGet(db, mod.Value, out var linked)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
         if (!NexusModsLibraryItem.TryGet(db, linked.Value.LibraryItemId.Value, out var nexus)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
 
         var onPage = updates.HasModPageUpdatesAvailable(nexus.Value.ModPageMetadata);

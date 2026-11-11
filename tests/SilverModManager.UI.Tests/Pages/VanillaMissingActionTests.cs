@@ -234,6 +234,29 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
     }
 
     [Fact]
+    public async Task Test_AModOfAModlistWithNoLinkedArchiveSaysToUpdateTheListToo()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Updates");
+        var list = await WabbajackGroupSeed.AddList(Connection, "1", name: "Yggdrasil");
+        var listGroup = await WabbajackGroupSeed.AddGroup(Connection, list.Id, loadout.LoadoutId, "Yggdrasil");
+        EntityId modId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var id = tx.TempId();
+            _ = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Generated folder", LoadoutId = loadout.LoadoutId, ParentId = LoadoutItemGroupId.From(listGroup) },
+            };
+            modId = (await tx.Commit())[id];
+        }
+
+        var verdict = ModUpdateReport.Outcome(Connection.Db, Ownership, UpdatesWith(_ => Optional<ModUpdatesOnModPage>.None), LoadoutItemId.From(modId));
+
+        verdict.Outcome.Should().Be(ModUpdateOutcome.PartOfLockedCollection, "an unlinked list mod is still the list's to update");
+    }
+
+    [Fact]
     public void Test_AReportWithALockedModDoesNotSpeakForItsNexusPage()
     {
         var locked = new ModUpdateVerdict(ModUpdateOutcome.PartOfLockedCollection, "Yggdrasil is a Wabbajack modlist", "Yggdrasil");
