@@ -2,7 +2,6 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
-using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.CreationEngine.Abstractions;
