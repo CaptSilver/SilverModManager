@@ -351,6 +351,136 @@ public class ProtonResolverTests
         resolution.Diagnostic.Should().NotBeNullOrWhiteSpace();
     }
 
+    private AbsolutePath CompatData(uint appId) => _steam.Combine($"steamapps/compatdata/{appId}");
+
+    private void WriteConfigInfo(uint appId, AbsolutePath buildDir, string fontsSuffix = "/files/share/fonts/", string newline = "\n")
+        => Write(CompatData(appId).Combine("config_info"), $"11.0-100{newline}{buildDir}{fontsSuffix}{newline}");
+
+    [Fact]
+    public void ResolveForPrefix_ThePrefixesOwnBuildWinsOverTheMapping()
+    {
+        var proton11 = AddOfficial("Proton 11.0");
+        AddOfficial("Proton 9.0");
+        WriteConfig(Mapping(AppId, "proton-stable"));
+        WriteConfigInfo(AppId, proton11);
+
+        var resolution = Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId));
+
+        resolution.IsResolved.Should().BeTrue();
+        resolution.Build!.Name.Should().Be("proton_11");
+        resolution.Build.Directory.Should().Be(proton11);
+    }
+
+    [Fact]
+    public void ResolveForPrefix_ThePrefixesOwnBuildMayBeACustomOne()
+    {
+        var ge = AddCustom("GE-Proton10-9", "GE-Proton10-9");
+        WriteConfigInfo(AppId, ge);
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Name.Should().Be("GE-Proton10-9");
+    }
+
+    [Fact]
+    public void ResolveForPrefix_AConfigInfoPathWithADotSegmentStillResolves()
+    {
+        var dir = AddOfficial("Proton 11.0");
+        WriteConfigInfo(AppId, dir, fontsSuffix: "/./files/share/fonts/");
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Directory.Should().Be(dir);
+    }
+
+    [Fact]
+    public void ResolveForPrefix_CrlfAndTrailingBlankLinesAreTolerated()
+    {
+        var dir = AddOfficial("Proton 11.0");
+        WriteConfigInfo(AppId, dir, newline: "\r\n");
+        _fs.WriteAllText(CompatData(AppId).Combine("config_info"), $"11.0-100\r\n{dir}/files/share/fonts/\r\n\r\n\r\n");
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Directory.Should().Be(dir);
+    }
+
+    [Fact]
+    public void ResolveForPrefix_AnUninstalledPrefixBuildFallsBackToTheMapping()
+    {
+        WriteConfigInfo(AppId, _steam.Combine("steamapps/common/Proton 11.0"));
+        AddOfficial("Proton 9.0");
+        WriteConfig(Mapping(AppId, "proton_9"));
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Name.Should().Be("proton_9");
+    }
+
+    [Fact]
+    public void ResolveForPrefix_ABuildWithNoManifestIsSkippedToTheMapping()
+    {
+        var dir = _steam.Combine("steamapps/common/Proton 11.0");
+        Write(dir.Combine("proton"), "");
+        WriteConfigInfo(AppId, dir);
+        AddOfficial("Proton 9.0");
+        WriteConfig(Mapping(AppId, "proton_9"));
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Name.Should().Be("proton_9");
+    }
+
+    [Fact]
+    public void ResolveForPrefix_NoConfigInfoFallsBackToTheMapping()
+    {
+        WriteConfig(Mapping(AppId, "proton_9"));
+        AddOfficial("Proton 9.0");
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Name.Should().Be("proton_9");
+    }
+
+    [Fact]
+    public void ResolveForPrefix_AConfigInfoWithoutTheFontsSuffixFallsBackToTheMapping()
+    {
+        var dir = AddOfficial("Proton 11.0");
+        AddOfficial("Proton 9.0");
+        WriteConfig(Mapping(AppId, "proton_9"));
+        WriteConfigInfo(AppId, dir, fontsSuffix: "/files/lib/");
+
+        Resolver.ResolveForPrefix(_steam, AppId, CompatData(AppId)).Build!.Name.Should().Be("proton_9");
+    }
+
+    [Fact]
+    public void ResolveForApp_MappedButNotInstalledSaysHowToRecordTheBuild()
+    {
+        WriteConfig(Mapping(AppId, "proton-stable"));
+        AddOfficial("Proton 9.0");
+
+        Resolver.ResolveForApp(_steam, AppId).Diagnostic.Should()
+            .EndWith("Launch the game once through Steam so its prefix records the build, then run the tool again.");
+    }
+
+    [Fact]
+    public void APrefixRecordedThroughASymlinkedParentStillResolvesItsBuild()
+    {
+        // Steam on an ostree host records /var/home/... for the tree that /home/... also reaches.
+        var root = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolver-{Guid.NewGuid():N}");
+        try
+        {
+            var real = root.Combine("real");
+            var link = root.Combine("link");
+            var steam = real.Combine("steam");
+            var build = steam.Combine("steamapps/common/Proton 11.0");
+            FileSystem.Shared.CreateDirectory(build);
+            FileSystem.Shared.WriteAllText(build.Combine("proton"), "");
+            FileSystem.Shared.WriteAllText(build.Combine("toolmanifest.vdf"), "");
+            var compatData = steam.Combine("steamapps/compatdata/42");
+            FileSystem.Shared.CreateDirectory(compatData);
+            Directory.CreateSymbolicLink(link.ToString(), real.ToString());
+            FileSystem.Shared.WriteAllText(compatData.Combine("config_info"), $"11.0-100\n{link}/steam/steamapps/common/Proton 11.0/files/share/fonts/\n");
+
+            var resolution = new ProtonResolver(new FakeEnvironment(_env)).ResolveForPrefix(steam, 42, compatData);
+
+            resolution.IsResolved.Should().BeTrue();
+            resolution.Build!.Name.Should().Be("proton_11");
+        }
+        finally
+        {
+            if (Directory.Exists(root.ToString())) Directory.Delete(root.ToString(), recursive: true);
+        }
+    }
+
     private sealed class FakeEnvironment(IReadOnlyDictionary<string, string> values) : IEnvironmentReader
     {
         public string? Get(string name) => values.GetValueOrDefault(name);

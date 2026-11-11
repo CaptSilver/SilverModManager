@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.ToolRunner;
@@ -27,17 +28,36 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
         var resolution = Resolve(installation, prefix);
         if (!resolution.Found) return ToolRunPlan.Failed(resolution.Diagnostic);
 
-        var argv = WineRunSupport.Argv([resolution.Build.Launcher.ToString(), "run"], command, prefix.Path);
+        // Proton records the paths it was started through in the prefix's config_info. Steam starts it by fully
+        // resolved paths, so a symlinked parent (/home on an ostree host) would make every tool run rewrite them.
+        var argv = WineRunSupport.Argv([Resolved(resolution.Build.Launcher), "run"], command, prefix.Path);
 
         // Proton wants the app's compatdata directory, which is the parent of the pfx directory.
         var environment = new Dictionary<string, string>
         {
-            ["STEAM_COMPAT_DATA_PATH"] = prefix.Path.Parent.ToString(),
-            ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = resolution.SteamInstallPath.Value.ToString(),
+            ["STEAM_COMPAT_DATA_PATH"] = Resolved(prefix.Path.Parent),
+            ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = Resolved(resolution.SteamInstallPath.Value),
         };
         WineRunSupport.Environment(environment, command.Env);
 
         return ToolRunPlan.Runnable(StrategyName, argv, WineRunSupport.WorkingDirectory(command, prefix), environment);
+    }
+
+    private static string Resolved(AbsolutePath path)
+    {
+        // Links exist only on the real file system; a fake one has nothing to follow, and following the host's
+        // would read the machine the tests run on.
+        if (path.FileSystem is not NexusMods.Paths.FileSystem) return path.ToString();
+
+        try
+        {
+            return ResolvedPath.Of(path.ToString());
+        }
+        catch (IOException)
+        {
+            // Looping links: Proton gets the path as written and fails with its own message.
+            return path.ToString();
+        }
     }
 
     private sealed record ProtonResolution(ProtonBuild? Build, AbsolutePath? SteamInstallPath, string? Diagnostic)
@@ -60,7 +80,7 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
             return new ProtonResolution(null, null, $"{gameName} has a Steam prefix at '{prefix.Path}' but the Steam installation that owns it was not found.");
 
         var steamInstallPath = provider.SteamInstallPath;
-        var resolution = protonResolver.ResolveForApp(steamInstallPath, appId);
+        var resolution = protonResolver.ResolveForPrefix(steamInstallPath, appId, prefix.Path.Parent);
         return resolution.IsResolved
             ? new ProtonResolution(resolution.Build, steamInstallPath, null)
             : new ProtonResolution(null, null, resolution.Diagnostic);

@@ -153,6 +153,60 @@ public class ToolRunnerTests : IDisposable
     }
 
     [Fact]
+    public void ThePlanRunsProtonThroughResolvedPaths()
+    {
+        // Proton writes config_info from the paths it was started through, so a Steam root reached through a
+        // symlinked parent (/home on an ostree host) would make every run rewrite what Steam recorded.
+        var root = NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolved-{Guid.NewGuid():N}");
+        try
+        {
+            var real = root.Combine("real");
+            var link = root.Combine("link");
+            var realSteam = real.Combine("steam");
+            var realProton = realSteam.Combine("steamapps/common/Proton 9.0");
+            var realCompat = realSteam.Combine("steamapps/compatdata/42");
+            NexusMods.Paths.FileSystem.Shared.CreateDirectory(realProton);
+            NexusMods.Paths.FileSystem.Shared.CreateDirectory(realCompat.Combine("pfx"));
+            NexusMods.Paths.FileSystem.Shared.WriteAllText(realProton.Combine("proton"), "");
+            NexusMods.Paths.FileSystem.Shared.WriteAllText(realProton.Combine("toolmanifest.vdf"), "");
+            Directory.CreateSymbolicLink(link.ToString(), real.ToString());
+
+            var viaLink = link.Combine("steam");
+            var game = Substitute.For<IGameData>();
+            game.DisplayName.Returns("Test Game");
+            var provider = Substitute.For<ILinuxCompatabilityDataProvider>();
+            provider.SteamInstallPath.Returns(viaLink);
+            var installation = new GameInstallation(
+                new GameLocatorResult
+                {
+                    Game = game,
+                    Path = viaLink.Combine("steamapps/common/Test Game"),
+                    Store = GameStore.Steam,
+                    StoreIdentifier = "42",
+                    LocatorIds = ImmutableArray<LocatorId>.Empty,
+                    Locator = Substitute.For<IGameLocator>(),
+                    Platform = OSPlatform.Windows,
+                    LinuxCompatabilityDataProvider = provider,
+                    Compatibility = new CompatibilityLayer(CompatibilityLayerKind.SteamProton, viaLink.Combine("steamapps/compatdata/42/pfx")),
+                },
+                GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty));
+            var prefix = new ResolvedPrefix(viaLink.Combine("steamapps/compatdata/42/pfx"), CompatibilityLayerKind.SteamProton, null, 42);
+
+            var plan = new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()))
+                .Plan(installation, prefix, PrefixCommand.ForExe(Exe));
+
+            plan.IsRunnable.Should().BeTrue(plan.Diagnostic);
+            plan.Argv[0].Should().Be(realProton.Combine("proton").ToString());
+            plan.Environment["STEAM_COMPAT_CLIENT_INSTALL_PATH"].Should().Be(realSteam.ToString());
+            plan.Environment["STEAM_COMPAT_DATA_PATH"].Should().Be(realCompat.ToString());
+        }
+        finally
+        {
+            if (Directory.Exists(root.ToString())) Directory.Delete(root.ToString(), recursive: true);
+        }
+    }
+
+    [Fact]
     public void CallerEnvironmentIsAddedAndWinsOnAClash()
     {
         var env = new Dictionary<string, string>

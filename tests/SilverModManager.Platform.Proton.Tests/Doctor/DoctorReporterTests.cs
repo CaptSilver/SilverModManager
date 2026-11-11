@@ -661,6 +661,7 @@ public class DoctorReporterTests : IDisposable
     {
         public IReadOnlyList<ProtonBuild> ListBuilds(AbsolutePath steamInstallPath) => builds;
         public ProtonResolution ResolveForApp(AbsolutePath steamInstallPath, uint appId) => pick;
+        public ProtonResolution ResolveForPrefix(AbsolutePath steamInstallPath, uint appId, AbsolutePath compatData) => pick;
     }
 
     private sealed class FakeToolRunner : IToolRunner

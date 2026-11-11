@@ -59,13 +59,69 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment, ILogg
             var found = builds.FirstOrDefault(b => b.Build.Name.Equals(mapped, StringComparison.OrdinalIgnoreCase));
             return found.Build is not null
                 ? ProtonResolution.Resolved(found.Build)
-                : ProtonResolution.Failed($"Steam is set to run this game with the compatibility tool '{mapped}', which is not installed.");
+                : ProtonResolution.Failed($"Steam is set to run this game with the compatibility tool '{mapped}', which is not installed. "
+                                          + "Launch the game once through Steam so its prefix records the build, then run the tool again.");
         }
 
         var newest = NewestStable(builds);
         return newest is not null
             ? ProtonResolution.Resolved(newest)
             : ProtonResolution.Failed("No Proton build is installed. Install one through Steam or put one in compatibilitytools.d.");
+    }
+
+    /// <inheritdoc/>
+    public ProtonResolution ResolveForPrefix(AbsolutePath steamInstallPath, uint appId, AbsolutePath compatData)
+    {
+        // No "older than the prefix" refusal on the fallback: a prefix without config_info has no version for
+        // Proton to compare against, and one whose build was uninstalled is rewritten by Steam's next launch anyway.
+        return BuildRecordedIn(compatData, steamInstallPath) is { } build
+            ? ProtonResolution.Resolved(build)
+            : ResolveForApp(steamInstallPath, appId);
+    }
+
+    private const string FontsSuffix = "/files/share/fonts";
+
+    // Proton writes the build's fonts directory on line 2 of config_info. The directory is checked through the
+    // file system and never compared to the scan as a string: the same tree is recorded as /home/... or
+    // /var/home/... depending on which path Proton was started through.
+    private static ProtonBuild? BuildRecordedIn(AbsolutePath compatData, AbsolutePath steamInstallPath)
+    {
+        var configInfo = compatData.Combine("config_info");
+        if (!configInfo.FileExists) return null;
+
+        string[] lines;
+        try
+        {
+            using var stream = configInfo.Read();
+            using var reader = new StreamReader(stream);
+            lines = reader.ReadToEnd()
+                .Split('\n')
+                .Select(line => line.Trim('\r'))
+                .Where(line => line.Length > 0)
+                .ToArray();
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+
+        if (lines.Length < 2) return null;
+
+        var fonts = lines[1].Replace("/./", "/").TrimEnd('/');
+        if (!fonts.StartsWith('/') || !fonts.EndsWith(FontsSuffix, StringComparison.Ordinal)) return null;
+
+        var dir = steamInstallPath.FileSystem.FromUnsanitizedFullPath(fonts[..^FontsSuffix.Length]);
+        return BuildAt(dir);
+    }
+
+    private static ProtonBuild? BuildAt(AbsolutePath dir)
+    {
+        if (!dir.Combine("proton").FileExists) return null;
+
+        if (dir.Combine("toolmanifest.vdf").FileExists) return new ProtonBuild(OfficialMappingName(dir.FileName), dir);
+
+        var manifest = dir.Combine("compatibilitytool.vdf");
+        return manifest.FileExists ? new ProtonBuild(ReadInternalToolName(manifest) ?? dir.FileName, dir) : null;
     }
 
     private static string? Lookup(IReadOnlyDictionary<uint, string> mappings, uint appId)

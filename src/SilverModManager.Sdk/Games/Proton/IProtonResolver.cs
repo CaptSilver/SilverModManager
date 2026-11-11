@@ -20,4 +20,10 @@ public interface IProtonResolver
     /// or nothing is installed, the result carries a diagnostic instead.
     /// </summary>
     ProtonResolution ResolveForApp(AbsolutePath steamInstallPath, uint appId);
+
+    /// <summary>
+    /// The build that last set up the prefix in <paramref name="compatData"/>, read from Proton's config_info, when
+    /// that build still has a proton script; otherwise <see cref="ResolveForApp"/>.
+    /// </summary>
+    ProtonResolution ResolveForPrefix(AbsolutePath steamInstallPath, uint appId, AbsolutePath compatData);
 }
