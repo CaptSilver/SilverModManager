@@ -43,7 +43,7 @@ public static class FromSoftChecks
 
         // A hardened install has the game's own executable under the launcher's name, so the launcher rules
         // below would call it armed; the artifacts check already fails it.
-        if (rules.Launcher is not null && !hardened) results.Add(new CheckResult("eac", CheckLevel.Info, $"EAC state: {EacState(files, launcher)}"));
+        if (rules.Launcher is not null && !hardened) results.Add(new CheckResult("eac", CheckLevel.Info, $"EAC state: {EacState(files, rules, launcher)}"));
 
         foreach (var spawner in SpawnersIn(gameFolder, rules))
             results.Add(new CheckResult("spawners", CheckLevel.Warn, $"Item-spawner mod present: {spawner}. Never take its save to vanilla online."));
@@ -96,10 +96,12 @@ public static class FromSoftChecks
             : new CheckResult("artifacts", CheckLevel.Warn, $"Mod files are in the game folder: {string.Join(", ", found)}.");
     }
 
-    private static string EacState(HashSet<string> files, bool launcher)
+    // Only a proxy DLL the rules count as a loader file disarms the launcher: the artifacts check reports exactly those,
+    // so a dinput8.dll the rules do not list would otherwise read "disarmed" with no mod file named beside it.
+    private static string EacState(HashSet<string> files, GameFolderCheckRules rules, bool launcher)
     {
         if (!launcher) return "absent";
-        return GameFolderCheckRules.ProxyDlls.Any(files.Contains) ? "disarmed" : "armed";
+        return GameFolderCheckRules.ProxyDlls.Any(dll => files.Contains(dll) && rules.ModLoaderFiles.Contains(dll, StringComparer.OrdinalIgnoreCase)) ? "disarmed" : "armed";
     }
 
     private static IEnumerable<string> SpawnersIn(AbsolutePath gameFolder, GameFolderCheckRules rules)

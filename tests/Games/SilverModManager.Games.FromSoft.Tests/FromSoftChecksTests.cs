@@ -71,6 +71,21 @@ public class FromSoftChecksTests
     }
 
     [Fact]
+    public void AProxyDllTheRulesDoNotListAsALoaderFileDoesNotDisarmTheLauncher()
+    {
+        var game = new InMemoryFileSystem().FromUnsanitizedFullPath("/steam/OTHER/Game");
+        game.CreateDirectory();
+        Write(game / "other_launcher.exe");
+        Write(game / "dinput8.dll");
+        var rules = GameFolderCheckRules.ModEngine2 with { Launcher = "other_launcher.exe", ModLoaderFiles = ["modengine2.dll"] };
+
+        var results = FromSoftChecks.GameFolder(game, rules);
+
+        // The artifacts check does not call dinput8.dll a mod file for these rules, so the EAC line cannot either.
+        results.Should().ContainSingle(r => r.Id == "eac").Which.Message.Should().Be("EAC state: armed");
+    }
+
+    [Fact]
     public void EldenRingsRulesGiveTheLauncherArtifactsAndSpawnerResults()
     {
         var results = FromSoftChecks.GameFolder(Folder(), EldenRingGame.Definition.CheckRules);
