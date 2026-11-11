@@ -239,4 +239,58 @@ public class ThunderstoreVerbTests(ITestOutputHelper helper) : AIsolatedGameTest
         code.Should().Be(0, output);
         output.Should().Contain("up to date");
     }
+
+    [Fact]
+    public async Task Search_Json_ListsEveryMatchWithTheFieldsTheTableShows()
+    {
+        var loadout = await CreateLoadout();
+
+        var (code, output) = await Run("thunderstore", "search", "--loadout", loadout.Name, "--query", "repolib", "--json");
+
+        code.Should().Be(0, output);
+        var rows = System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray();
+        var row = rows.Should().ContainSingle().Subject!.AsObject();
+        ((string?)row["package"]).Should().Be("Zehs-REPOLib");
+        ((string?)row["latest"]).Should().Be("4.2.0");
+        row["rating"].Should().NotBeNull();
+        ((bool)row["deprecated"]!).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Search_Json_WithNoMatchIsAnEmptyArray()
+    {
+        var loadout = await CreateLoadout();
+
+        var (code, output) = await Run("thunderstore", "search", "--loadout", loadout.Name, "--query", "no-such-package-anywhere", "--json");
+
+        code.Should().Be(0, output);
+        System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Updates_Json_CarriesThePackageAndBothVersions()
+    {
+        var loadout = await CreateLoadout();
+        await AddLibraryPackage("4.0.0");
+
+        var (code, output) = await Run("thunderstore", "updates", "--loadout", loadout.Name, "--json");
+
+        code.Should().Be(0, output);
+        var row = System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray().Should().ContainSingle().Subject!.AsObject();
+        ((string?)row["package"]).Should().Contain("Zehs-REPOLib");
+        ((string?)row["installed"]).Should().Contain("4.0.0");
+        ((string?)row["newest"]).Should().Contain("4.2.0");
+    }
+
+    [Fact]
+    public async Task Updates_Json_WhenCurrentIsAnEmptyArray()
+    {
+        var loadout = await CreateLoadout();
+        await AddLibraryPackage("4.2.0");
+
+        var (code, output) = await Run("thunderstore", "updates", "--loadout", loadout.Name, "--json");
+
+        code.Should().Be(0, output);
+        System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray().Should().BeEmpty();
+    }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Library;
@@ -46,6 +47,8 @@ internal static class ThunderstoreVerbs
         return 0;
     }
 
+    private sealed record PackageRow(string Package, string? Latest, double Rating, bool Deprecated);
+
     [Verb("thunderstore search", "Lists the packages of the loadout's game whose name or team contains the query, best rated first")]
     private static async Task<int> Search(
         [Injected] IRenderer renderer,
@@ -53,7 +56,8 @@ internal static class ThunderstoreVerbs
         [Injected] ThunderstoreIndexCache cache,
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout whose game says which Thunderstore community to search")] Loadout.ReadOnly loadout,
-        [Option("q", "query", "Text the package name or team contains")] string query)
+        [Option("q", "query", "Text the package name or team contains")] string query,
+        [Option("j", "json", "Print every match as JSON instead of the best rated 50 as a table", true)] bool json)
     {
         if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
@@ -63,6 +67,14 @@ internal static class ThunderstoreVerbs
 
         var catalog = await LoadCatalog(cache, game.ThunderstoreCommunity, token);
         var found = catalog.Search(query, includeDeprecated: true);
+        if (json)
+        {
+            var matches = found.Select(package => new PackageRow(package.FullName,
+                package.Versions.FirstOrDefault(version => version.IsActive)?.VersionNumber, package.RatingScore, package.IsDeprecated));
+            await renderer.TextLine(JsonSerializer.Serialize(matches, CliJson.Options));
+            return 0;
+        }
+
         if (found.Count == 0)
         {
             await renderer.TextLine($"No package in '{game.ThunderstoreCommunity}' matches '{query}'.");
@@ -143,6 +155,8 @@ internal static class ThunderstoreVerbs
         return 0;
     }
 
+    private sealed record UpdateRow(string Package, string Installed, string Newest);
+
     [Verb("thunderstore updates", "Lists the Thunderstore packages in the library that have a newer version in the loadout game's index")]
     private static async Task<int> Updates(
         [Injected] IRenderer renderer,
@@ -151,7 +165,8 @@ internal static class ThunderstoreVerbs
         [Injected] ThunderstoreIndexCache cache,
         [Injected] ThunderstoreUpdateChecker checker,
         [Injected] CancellationToken token,
-        [Option("l", "loadout", "The loadout whose game says which Thunderstore community to check")] Loadout.ReadOnly loadout)
+        [Option("l", "loadout", "The loadout whose game says which Thunderstore community to check")] Loadout.ReadOnly loadout,
+        [Option("j", "json", "Print the updates as JSON", true)] bool json)
     {
         if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
@@ -161,6 +176,13 @@ internal static class ThunderstoreVerbs
 
         var catalog = await LoadCatalog(cache, game.ThunderstoreCommunity, token);
         var updates = checker.Check(game.ThunderstoreCommunity, catalog, connection.Db);
+        if (json)
+        {
+            var rows = updates.Select(update => new UpdateRow(update.Current.Package.ToString(), update.Current.Version.ToString(), update.Newest.Version.ToString()));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
         if (updates.Count == 0)
         {
             await renderer.TextLine("Every Thunderstore package in the library is up to date.");
