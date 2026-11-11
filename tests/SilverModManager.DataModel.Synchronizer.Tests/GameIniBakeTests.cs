@@ -155,7 +155,9 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
 
         var act = () => Apply(loadout);
 
-        (await act.Should().ThrowAsync<Exception>()).Which.Should().NotBeOfType<SynchronizerPreflightException>("the write fails, not the preflight");
+        (await act.Should().ThrowAsync<UnauthorizedAccessException>("File.Delete on a directory is what the write trips over, so the failure comes from the write itself"))
+            .Which.Should().NotBeOfType<SynchronizerPreflightException>();
+        (await FileStore.HaveFile(FileIdentity.XxHash3(next))).Should().BeTrue("the hook stored the bake's bytes before the write failed, so it did run");
         Live(IniStubbedGame.MainIni).DirectoryExists().Should().BeTrue("the write never replaced it");
         var state = States(Refresh(loadout)).Single();
         LoadoutIniState.LastBakedHash.Get(state).Should().Be(recorded);

@@ -133,8 +133,10 @@ public static class GameInis
     /// write, otherwise the bake recorded on the row. Null when the app has not written the file yet.
     /// </summary>
     /// <remarks>
-    /// The deployed hash comes first because a previous part of another identity kind is a vanilla file the app
-    /// never baked over, and the recorded bake is the only record then.
+    /// The deployed hash comes first because it is what this game folder's last write actually left, while the
+    /// row's bake can describe a write made for another loadout (<c>CopyLoadout</c> carries it over). The bake is
+    /// the fallback when the previous part is of another identity kind, a vanilla file the app never baked over,
+    /// or the store lacks the deployed bytes.
     /// </remarks>
     public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, FileIdentity? deployed)
     {

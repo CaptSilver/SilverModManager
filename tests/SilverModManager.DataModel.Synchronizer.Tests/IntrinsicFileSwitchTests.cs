@@ -14,6 +14,7 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// A generated file outside the game folder is rendered for the loadout being switched to, even when a copy
 /// from before the game was managed is on disk: the reset that precedes the switch puts that copy back.
 /// </summary>
+[Collection(ModListingStubbedGame.CollectionName)]
 public class IntrinsicFileSwitchTests(ITestOutputHelper helper) : AIsolatedGameTest<IntrinsicFileSwitchTests, ModListingStubbedGame>(helper)
 {
     private AbsolutePath Listing => GameInstallation.Locations.ToAbsolutePath(ModListingStubbedGame.ListingPath);
@@ -21,6 +22,7 @@ public class IntrinsicFileSwitchTests(ITestOutputHelper helper) : AIsolatedGameT
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         ModListingStubbedGame.ResetIngested();
+        ModListingStubbedGame.OnWrite = null;
         return base.AddServices(services)
             .AddGame<ModListingStubbedGame>()
             .AddUniversalGameLocator<ModListingStubbedGame>(Version.Parse("0.0.0"));

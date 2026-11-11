@@ -29,6 +29,7 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// A generated file reflects the loadout one Synchronize after the loadout changes, on every backend, and
 /// what the app wrote is never read back into the loadout as if the user had edited it.
 /// </summary>
+[Collection(ModListingStubbedGame.CollectionName)]
 public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTest<IntrinsicFileSyncTests, ModListingStubbedGame>(helper)
 {
     private AbsolutePath Listing => GameInstallation.Locations.ToAbsolutePath(ModListingStubbedGame.ListingPath);
@@ -203,6 +204,9 @@ public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTes
 /// </summary>
 public class ModListingStubbedGame : IGame, IGameData<ModListingStubbedGame>
 {
+    /// <summary>Every test class that uses this game shares one collection: <see cref="OnWrite"/> and the ingest counter are static.</summary>
+    public const string CollectionName = "ModListingStubbedGame";
+
     public static GameId GameId { get; } = GameId.From("ModListingStubbedGame");
     public static string DisplayName => "Stubbed Game With A Mod Listing";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(uint.MaxValue - 2);
@@ -215,7 +219,7 @@ public class ModListingStubbedGame : IGame, IGameData<ModListingStubbedGame>
 
     public static void ResetIngested() => _ingested = 0;
 
-    /// <summary>Called when the listing records a write; shared by every test, so only <see cref="IntrinsicFileSyncTests"/> sets it.</summary>
+    /// <summary>Called when the listing records a write; shared by every test, so only <see cref="IntrinsicFileSyncTests"/> sets it and the collection keeps other classes from running alongside.</summary>
     public static Func<IntrinsicWrite, Task>? OnWrite { get; set; }
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
