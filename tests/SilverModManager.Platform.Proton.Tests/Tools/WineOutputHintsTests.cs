@@ -133,9 +133,9 @@ public class WineOutputHintsTests
     [Fact]
     public void AHostilePrefixPathIsQuotedInTheWinetricksHint()
     {
-        var prefix = new ResolvedPrefix(_fs.FromUnsanitizedFullPath("/p/$(touch x) 'q'"), CompatibilityLayerKind.PlainWine);
+        var prefix = new ResolvedPrefix(_fs.FromUnsanitizedFullPath("""/p/$(touch x) `id` "q" 'single'"""), CompatibilityLayerKind.PlainWine);
 
-        Explain(Result("PlainWine", ImportDll("MSVBVM60.DLL")), prefix).Should().Contain("""WINEPREFIX='/p/$(touch x) '\''q'\''' winetricks""");
+        Explain(Result("PlainWine", ImportDll("MSVBVM60.DLL")), prefix).Should().Contain("""WINEPREFIX='/p/$(touch x) `id` "q" '\''single'\''' winetricks""");
     }
 
     [Fact]
