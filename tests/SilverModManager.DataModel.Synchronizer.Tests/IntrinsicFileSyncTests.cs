@@ -3,17 +3,21 @@ using System.Text;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -32,6 +36,7 @@ public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTes
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         ModListingStubbedGame.ResetIngested();
+        ModListingStubbedGame.OnWrite = null;
         return base.AddServices(services)
             .AddGame<ModListingStubbedGame>()
             .AddUniversalGameLocator<ModListingStubbedGame>(Version.Parse("0.0.0"));
@@ -148,6 +153,49 @@ public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTes
         // The app's render replaces the file in the same apply.
         (await Listed()).Should().Equal("a.mod");
     }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("copy")]
+    public async Task TheWriteIsRecordedWithTheBytesOnDiskInsideTheApplysTransaction(string backend)
+    {
+        var loadout = await CreateLoadoutOn(backend);
+        await AddMod(loadout, "a.mod");
+        var writes = new List<IntrinsicWrite>();
+        var pinned = FileIdentity.XxHash3((Hash)0x7A5E_0100UL);
+        ModListingStubbedGame.OnWrite = write =>
+        {
+            writes.Add(write);
+            TransactionPins.Keep(write.Transaction, FileStorePins.Pin(pinned));
+            return Task.CompletedTask;
+        };
+
+        await Apply(loadout);
+
+        var write = writes.Should().ContainSingle().Subject;
+        write.Bytes.Should().Equal(await Listing.ReadAllBytesAsync(), "the record is what landed on disk");
+        write.Hash.Should().Be(write.Bytes.xxHash3());
+        write.Loadout.LoadoutId.Should().Be(loadout.LoadoutId);
+        FileStorePins.Pinned().Should().NotContain(pinned, "the hold on the apply's transaction released it after the commit");
+    }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("copy")]
+    public async Task AWriteRecordThatRefusesLeavesThePreviousFileOnDisk(string backend)
+    {
+        var loadout = await CreateLoadoutOn(backend);
+        await AddMod(loadout, "a.mod");
+        await Apply(loadout);
+        var before = await Listing.ReadAllBytesAsync();
+        await AddMod(loadout, "b.mod");
+        ModListingStubbedGame.OnWrite = _ => throw new IOException("the store refused the bytes");
+
+        var act = () => Apply(loadout);
+
+        await act.Should().ThrowAsync<IOException>();
+        (await Listing.ReadAllBytesAsync()).Should().Equal(before, "the record is taken before the file is replaced");
+    }
 }
 
 /// <summary>
@@ -166,6 +214,9 @@ public class ModListingStubbedGame : IGame, IGameData<ModListingStubbedGame>
     private static int _ingested;
 
     public static void ResetIngested() => _ingested = 0;
+
+    /// <summary>Called when the listing records a write; shared by every test, so only <see cref="IntrinsicFileSyncTests"/> sets it.</summary>
+    public static Func<IntrinsicWrite, Task>? OnWrite { get; set; }
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {
@@ -202,7 +253,7 @@ public class ModListingStubbedGame : IGame, IGameData<ModListingStubbedGame>
         public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => new() { [ListingPath] = new Listing() };
     }
 
-    private sealed class Listing : IIntrinsicFile
+    private sealed class Listing : IIntrinsicFile, IIntrinsicFileWithWriteRecord
     {
         public GamePath Path => ListingPath;
 
@@ -214,6 +265,8 @@ public class ModListingStubbedGame : IGame, IGameData<ModListingStubbedGame>
                 .Order(StringComparer.Ordinal);
             await stream.WriteAsync(Encoding.UTF8.GetBytes(string.Concat(names.Select(name => name + "\n"))));
         }
+
+        public Task RecordWrite(IntrinsicWrite write) => OnWrite?.Invoke(write) ?? Task.CompletedTask;
 
         public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
         {

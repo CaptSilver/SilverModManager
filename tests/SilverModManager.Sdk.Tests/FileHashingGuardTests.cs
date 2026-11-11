@@ -120,7 +120,6 @@ public class FileHashingGuardTests
         RepoScanGuard.AssertMatchesAllowlist(found,
         [
             ("src/SilverModManager.Abstractions.Loadouts.Synchronizers/ALoadoutSynchronizer.cs", "var hash = await Xx3Hasher.HashAsync(rendered);", "hashes the rendered bytes in a MemoryStream, no file read"),
-            ("src/SilverModManager.Abstractions.Loadouts.Synchronizers/Deployment/CopyDeploymentBackend.cs", "var hash = await Xx3Hasher.HashAsync(rendered);", "hashes the rendered bytes in a MemoryStream, no file read"),
             ("src/SilverModManager.Abstractions.Games.Merge/MergeEngine.cs", "hashes = MultiHasher.HashStream(new MemoryStream(bytes)).GetAwaiter().GetResult();", "hashes bytes already read into memory, in 1 MB copies, by the lines above"),
             ("src/SilverModManager.Backend/Games/GameLocationsService.cs", "return await MinimalHash.HashAsync<Hash, XxHash3, Xx3Hasher>(fileStream, cancellationToken: cancellationToken);", "the minimal hash is three sampled 64 KB blocks by definition; a sequential hint would make the kernel read ahead of blocks it never uses"),
             ("src/SilverModManager.Collections/InstallCollectionDownloadJob.cs", "var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);", "stream comes from the file store, not a file on disk"),

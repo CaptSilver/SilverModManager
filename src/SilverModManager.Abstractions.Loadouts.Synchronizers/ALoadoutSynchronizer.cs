@@ -878,6 +878,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
+        using var pins = TransactionPins.Hold(tx);
 
         // Before the backends copy the tree: a vanilla file the store vouched for is read here, once, so what is
         // archived and recorded is the bytes' xxHash3 and the attestation is settled before anything is written.

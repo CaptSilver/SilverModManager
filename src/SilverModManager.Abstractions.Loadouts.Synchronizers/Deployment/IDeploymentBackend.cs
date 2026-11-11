@@ -97,6 +97,8 @@ public interface IDeploymentBackend
 
     /// <summary>
     /// Writes generated files such as plugin lists. <see cref="DeploymentContext.Loadout"/> is required.
+    /// A backend that writes an intrinsic file itself calls <see cref="IIntrinsicFileWithWriteRecord.RecordWrite"/> with the
+    /// rendered bytes, inside <see cref="DeploymentContext.Transaction"/>, before it replaces the file.
     /// </summary>
     Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes);
 

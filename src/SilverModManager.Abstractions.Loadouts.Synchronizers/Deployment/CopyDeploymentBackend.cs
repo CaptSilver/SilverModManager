@@ -270,6 +270,13 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             using var rendered = new MemoryStream();
             await instance.Write(rendered, loadout, context.SyncTree);
 
+            // Before the file is replaced: a store that refuses the bytes fails the apply with the previous file
+            // still on disk. The record lands with the apply's transaction, so only for a write that landed.
+            var bytes = rendered.ToArray();
+            var hash = bytes.xxHash3();
+            if (instance is IIntrinsicFileWithWriteRecord recording)
+                await recording.RecordWrite(new IntrinsicWrite(bytes, hash, loadout, context.Transaction));
+
             var resolvedPath = context.Locations.ToAbsolutePath(path);
             resolvedPath.Parent.CreateDirectory();
 
@@ -287,10 +294,8 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             // Recorded like an extracted file. Without a row holding what was just written, the next index sees
             // a file that differs from the previous state, takes it for a change made outside the loadout and
             // ingests it instead of writing, so every other sync would be one behind.
-            rendered.Position = 0;
-            var hash = await Xx3Hasher.HashAsync(rendered);
             var writeTime = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
-            DeployedFileRows.Record(context.Transaction, context, path, node, FileIdentity.XxHash3(hash), Size.From((ulong)rendered.Length), writeTime);
+            DeployedFileRows.Record(context.Transaction, context, path, node, FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length), writeTime);
         }
     }
 
