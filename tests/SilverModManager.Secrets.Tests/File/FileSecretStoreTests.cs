@@ -117,7 +117,29 @@ public class FileSecretStoreTests : IDisposable
 
         var unavailable = result.Should().BeOfType<SecretResult.Unavailable>().Subject;
         unavailable.Kind.Should().Be(SecretUnavailableKind.Faulted);
-        unavailable.Reason.Should().Contain(_secretsPath).And.Contain(octal).And.EndWith($"chmod 600 {_secretsPath}");
+        unavailable.Reason.Should().Contain(_secretsPath).And.Contain(octal).And.EndWith($"chmod 600 '{_secretsPath}'");
+    }
+
+    [Fact]
+    public async Task The_chmod_hint_quotes_a_path_with_a_quote_and_a_space_in_it()
+    {
+        var hostileHome = Path.Combine(_scratch, "it's a $(touch x) home");
+        var secretsPath = Path.Combine(hostileHome, ApplicationConstants.DataDirectoryName, "secrets.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(secretsPath)!);
+        await System.IO.File.WriteAllTextAsync(secretsPath, "{}");
+        System.IO.File.SetUnixFileMode(secretsPath, (UnixFileMode)0x1A4);
+        var shared = FileSystem.Shared;
+        var fileSystem = shared.CreateOverlayFileSystem(
+            new Dictionary<AbsolutePath, AbsolutePath>(),
+            new Dictionary<KnownPath, AbsolutePath> { [KnownPath.XDG_DATA_HOME] = shared.FromUnsanitizedFullPath(hostileHome) });
+        using var store = new FileSecretStore(fileSystem, NullLogger<FileSecretStore>.Instance);
+
+        var result = await store.GetAsync(ApiKey, CancellationToken.None);
+
+        var unavailable = result.Should().BeOfType<SecretResult.Unavailable>().Subject;
+        // The scratch folder is the only part that varies; the hostile folder name is checked as a literal.
+        unavailable.Reason.Should().EndWith(@"/it'\''s a $(touch x) home/" + ApplicationConstants.DataDirectoryName + "/secrets.json'");
+        unavailable.Reason.Should().Contain("chmod 600 '/");
     }
 
     [Fact]
@@ -148,7 +170,7 @@ public class FileSecretStoreTests : IDisposable
 
         var unavailable = result.Should().BeOfType<SecretResult.Unavailable>().Subject;
         unavailable.Kind.Should().Be(SecretUnavailableKind.Faulted);
-        unavailable.Reason.Should().Contain(_secretsPath).And.Contain("symbolic link").And.EndWith($"chmod 600 {_secretsPath}");
+        unavailable.Reason.Should().Contain(_secretsPath).And.Contain("symbolic link").And.EndWith($"chmod 600 '{_secretsPath}'");
     }
 
     [Fact]
@@ -162,7 +184,7 @@ public class FileSecretStoreTests : IDisposable
 
         var unavailable = result.Should().BeOfType<SecretResult.Unavailable>().Subject;
         unavailable.Kind.Should().Be(SecretUnavailableKind.Faulted);
-        unavailable.Reason.Should().Contain(_secretsPath).And.Contain("owned by").And.EndWith($"chmod 600 {_secretsPath}");
+        unavailable.Reason.Should().Contain(_secretsPath).And.Contain("owned by").And.EndWith($"chmod 600 '{_secretsPath}'");
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using R3;
 
 namespace SilverModManager.Secrets.File;
@@ -239,16 +240,16 @@ public sealed class FileSecretStore : ISecretStore, IDisposable
             var info = new FileInfo(_path);
             // LinkTarget first: a dangling link has Exists == false and would otherwise look like an empty store.
             if (info.LinkTarget is not null)
-                return (entries, Faulted($"{_path} is a symbolic link; secrets are only read from a regular file owned by you. Replace it with a regular file, then: chmod 600 {_path}"));
+                return (entries, Faulted($"{_path} is a symbolic link; secrets are only read from a regular file owned by you. Replace it with a regular file, then: chmod 600 {ShellText.Quote(_path)}"));
             if (!info.Exists) return (entries, null);
 
             var mode = info.UnixFileMode;
             if ((mode & GroupAndOther) != 0)
-                return (entries, Faulted($"{_path} has mode {FormatMode(mode)} and could be read by other users. Restrict it: chmod 600 {_path}"));
+                return (entries, Faulted($"{_path} has mode {FormatMode(mode)} and could be read by other users. Restrict it: chmod 600 {ShellText.Quote(_path)}"));
 
             var owner = UnixFileOwner.GetOwner(_path);
             if (owner != _effectiveUid)
-                return (entries, Faulted($"{_path} is owned by uid {owner}, not by you (uid {_effectiveUid}). Take it over or remove it, then: chmod 600 {_path}"));
+                return (entries, Faulted($"{_path} is owned by uid {owner}, not by you (uid {_effectiveUid}). Take it over or remove it, then: chmod 600 {ShellText.Quote(_path)}"));
 
             var json = System.IO.File.ReadAllText(_path);
             var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
