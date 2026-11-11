@@ -63,4 +63,23 @@ public class LibraryItemDeleteWarningDetectorTests(IServiceProvider provider) : 
         kept.CollectionName.Should().Be(list.Name);
         kept.ItemNames.Should().Equal("A");
     }
+
+    [Fact]
+    public async Task TwoModlistsWithTheSameNameStayTwoEntries()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "delete-warning-twins-" + Guid.NewGuid().ToString("N"));
+        var first = await WabbajackGroupSeed.AddList(Connection, "1", name: "Twin");
+        var second = await WabbajackGroupSeed.AddList(Connection, "2", name: "Twin");
+        var firstGroup = await WabbajackGroupSeed.AddGroup(Connection, first.Id, loadout.LoadoutId, "Twin");
+        var secondGroup = await WabbajackGroupSeed.AddGroup(Connection, second.Id, loadout.LoadoutId, "Twin");
+        var archiveA = await AddItem("A");
+        var archiveB = await AddItem("B");
+        await LinkGroup(loadout, firstGroup, "A", archiveA, asWabbajackMod: true);
+        await LinkGroup(loadout, secondGroup, "B", archiveB, asWabbajackMod: true);
+
+        var detector = LibraryItemDeleteWarningDetector.Process(Connection, Provider.GetRequiredService<ICollectionOwnership>(), [archiveA, archiveB]);
+
+        detector.KeptByCollections.Should().HaveCount(2);
+        detector.KeptByCollections.Select(kept => kept.ItemNames.Single()).Should().BeEquivalentTo("A", "B");
+    }
 }

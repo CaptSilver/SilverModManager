@@ -84,7 +84,7 @@ public record struct LibraryItemDeleteWarningDetector
         var manuallyAddedItems = new List<LibraryItem.ReadOnly>();
         var itemsInLoadouts = new List<LibraryItem.ReadOnly>();
         var allItems = new List<LibraryItem.ReadOnly>();
-        var keptBy = new Dictionary<string, List<string>>();
+        var keptBy = new Dictionary<EntityId, (string Name, List<string> Items)>();
         
         // Note: We don't track collections right now, but for when we do,
         //       this dict will be useful.
@@ -103,11 +103,11 @@ public record struct LibraryItemDeleteWarningDetector
             if (info.Loadouts.Length > 0)
                 itemsInLoadouts.Add(item);
 
-            foreach (var collectionName in info.KeptByCollections)
+            foreach (var collection in info.KeptByCollections)
             {
-                if (!keptBy.TryGetValue(collectionName, out var names))
-                    keptBy[collectionName] = names = [];
-                names.Add(item.Name);
+                if (!keptBy.TryGetValue(collection.Id, out var kept))
+                    keptBy[collection.Id] = kept = (collection.Name, []);
+                kept.Items.Add(item.Name);
             }
 
             // Add the loadout info.
@@ -135,7 +135,7 @@ public record struct LibraryItemDeleteWarningDetector
             ItemsInLoadouts = itemsInLoadouts,
             AllItems = allItems,
             LoadoutsUsed = usedLoadouts.Values.ToList(),
-            KeptByCollections = keptBy.Select(pair => new LibraryItemKeptByCollectionInfo(pair.Key, pair.Value)).ToList(),
+            KeptByCollections = keptBy.Values.Select(kept => new LibraryItemKeptByCollectionInfo(kept.Name, kept.Items)).ToList(),
         };
     }
 }

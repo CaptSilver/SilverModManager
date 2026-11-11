@@ -17,8 +17,8 @@ namespace SilverModManager.App.UI.Pages.Library;
 /// </param>
 /// <param name="IsManuallyAdded">Whether this library item was manually added from FileSystem to library.</param>
 /// <param name="Loadouts">The loadouts that hold this library item as a mod of their own (one a collection that owns its mods does not count).</param>
-/// <param name="KeptByCollections">The names of the collections that own their mods and link this library item; deleting the archive unlinks them and keeps the mods.</param>
-public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts, string[] KeptByCollections)
+/// <param name="KeptByCollections">The collections that own their mods and link this library item; deleting the archive unlinks them and keeps the mods.</param>
+public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts, KeptByCollection[] KeptByCollections)
 {
     public static LibraryItemRemovalInfo Determine(LibraryItem.ReadOnly toRemove, Loadout.ReadOnly[] loadouts, IDb db, ICollectionOwnership ownership)
     {
@@ -41,12 +41,10 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
             .ToArray();
         info.KeptByCollections = loadouts
             .SelectMany(loadout => GetLoadoutItemsByLibraryItem(loadout, toRemove))
-            .Where(link => ownership.OwnsLink(db, link) && CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItemGroup().AsLoadoutItem(), out _))
-            .Select(link =>
-            {
-                CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItemGroup().AsLoadoutItem(), out var collection);
-                return collection.AsLoadoutItemGroup().AsLoadoutItem().Name;
-            })
+            .Select(link => CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItemGroup().AsLoadoutItem(), out var collection) && ownership.OwnsItsMods(collection)
+                ? new KeptByCollection(collection.Id, collection.AsLoadoutItemGroup().AsLoadoutItem().Name)
+                : (KeptByCollection?)null)
+            .OfType<KeptByCollection>()
             .Distinct()
             .ToArray();
         return info;
@@ -64,3 +62,6 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
             .Where(linked => linked.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout);
     }
 }
+
+/// <summary>A collection that keeps its mods when a library item it links is deleted. The id tells two collections of the same name apart.</summary>
+public readonly record struct KeptByCollection(EntityId Id, string Name);
