@@ -106,7 +106,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             }
 
             SetStatus(loadoutId, plan.Steps.Any(s => s.Kind == CleanupStepKind.Privileged)
-                ? "Asking for your password, then applying the cleanup\u2026"
+                ? "Clearing the immutable attribute (a password prompt may appear), then applying the cleanup\u2026"
                 : "Applying the cleanup\u2026");
             var outcome = await RunAsJob(loadoutId, loadout, fixer, plan);
 
