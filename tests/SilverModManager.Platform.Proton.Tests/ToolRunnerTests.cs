@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using CliWrap;
@@ -165,9 +166,12 @@ public class ToolRunnerTests : IDisposable
     {
         // Proton writes config_info from the paths it was started through, so a Steam root reached through a
         // symlinked parent (/home on an ostree host) would make every run rewrite what Steam recorded.
-        var root = NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolved-{Guid.NewGuid():N}");
+        var rawRoot = NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolved-{Guid.NewGuid():N}");
         try
         {
+            NexusMods.Paths.FileSystem.Shared.CreateDirectory(rawRoot);
+            // The temp root can itself sit behind a link (/home on an ostree host), which ResolvedPath follows.
+            var root = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(ResolvedPath.Of(rawRoot.ToString()));
             var real = root.Combine("real");
             var link = root.Combine("link");
             var realSteam = real.Combine("steam");
@@ -210,7 +214,7 @@ public class ToolRunnerTests : IDisposable
         }
         finally
         {
-            if (Directory.Exists(root.ToString())) Directory.Delete(root.ToString(), recursive: true);
+            if (Directory.Exists(rawRoot.ToString())) Directory.Delete(rawRoot.ToString(), recursive: true);
         }
     }
 
@@ -414,27 +418,36 @@ public class ToolRunnerTests : IDisposable
         .Select(call => call.GetArguments()[2]!.ToString()!)
         .ToArray();
 
+    private ToolRunner.ToolRunner FallingBackRunner() => RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+
     [Fact]
-    public void FallingBackToTheLastResortKeepsTheRegularStrategysReason()
+    public void PlanningAFallbackCarriesTheReasonAndLogsNothing()
     {
-        var runner = RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+        var runner = FallingBackRunner();
 
         var plan = runner.Plan(SteamGame(), Exe, [], null);
+        var prefixPlan = runner.PlanInPrefix(SteamGame(), PrefixCommand.ForVerb("regedit"));
 
         plan.Strategy.Should().Be("FakeLastResort");
         plan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
+        prefixPlan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
+        WarningLogs().Should().BeEmpty("the Tools page and the doctor report plan without running");
+    }
+
+    [Fact]
+    public async Task RunningAToolThroughTheLastResortLogsTheRegularStrategysReason()
+    {
+        await FallingBackRunner().RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None);
+
         WarningLogs().Should().ContainSingle().Which.Should().Be("Test Game: SteamProton cannot run: primary cannot run; falling back to FakeLastResort");
     }
 
     [Fact]
-    public void FallingBackInAPrefixCommandIsLoggedAndCarriedToo()
+    public async Task RunningAPrefixCommandThroughTheLastResortLogsTheReason()
     {
-        var runner = RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+        await FallingBackRunner().RunInPrefix(SteamGame(), PrefixCommand.ForVerb("regedit"), CancellationToken.None);
 
-        var plan = runner.PlanInPrefix(SteamGame(), PrefixCommand.ForVerb("regedit"));
-
-        plan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
-        WarningLogs().Should().ContainSingle();
+        WarningLogs().Should().ContainSingle().Which.Should().Be("Test Game: SteamProton cannot run: primary cannot run; falling back to FakeLastResort");
     }
 
     [Fact]

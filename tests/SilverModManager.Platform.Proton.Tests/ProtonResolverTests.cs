@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -455,9 +456,12 @@ public class ProtonResolverTests
     public void APrefixRecordedThroughASymlinkedParentStillResolvesItsBuild()
     {
         // Steam on an ostree host records /var/home/... for the tree that /home/... also reaches.
-        var root = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolver-{Guid.NewGuid():N}");
+        var rawRoot = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolver-{Guid.NewGuid():N}");
         try
         {
+            FileSystem.Shared.CreateDirectory(rawRoot);
+            // The temp root can itself sit behind a link; the recorded path below must differ from the real one only by "link".
+            var root = FileSystem.Shared.FromUnsanitizedFullPath(ResolvedPath.Of(rawRoot.ToString()));
             var real = root.Combine("real");
             var link = root.Combine("link");
             var steam = real.Combine("steam");
@@ -477,7 +481,37 @@ public class ProtonResolverTests
         }
         finally
         {
-            if (Directory.Exists(root.ToString())) Directory.Delete(root.ToString(), recursive: true);
+            if (Directory.Exists(rawRoot.ToString())) Directory.Delete(rawRoot.ToString(), recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnUnreadableConfigInfoFallsBackToTheMappingAndSaysSo()
+    {
+        var rawRoot = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"smm-resolver-{Guid.NewGuid():N}");
+        try
+        {
+            var steam = rawRoot.Combine("steam");
+            var build = steam.Combine("steamapps/common/Proton 11.0");
+            FileSystem.Shared.CreateDirectory(build);
+            FileSystem.Shared.WriteAllText(build.Combine("proton"), "");
+            FileSystem.Shared.WriteAllText(build.Combine("toolmanifest.vdf"), "");
+            var compatData = steam.Combine("steamapps/compatdata/42");
+            FileSystem.Shared.CreateDirectory(compatData);
+            var configInfo = compatData.Combine("config_info");
+            FileSystem.Shared.WriteAllText(configInfo, $"11.0-100\n{build}/files/share/fonts/\n");
+            File.SetUnixFileMode(configInfo.ToString(), UnixFileMode.None);
+
+            var resolution = new ProtonResolver(new FakeEnvironment(_env), _logger).ResolveForPrefix(steam, 42, compatData);
+
+            resolution.IsResolved.Should().BeTrue("the newest installed build is the fallback");
+            _logger.ReceivedCalls()
+                .Count(call => call.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning)
+                .Should().Be(1);
+        }
+        finally
+        {
+            if (Directory.Exists(rawRoot.ToString())) Directory.Delete(rawRoot.ToString(), recursive: true);
         }
     }
 

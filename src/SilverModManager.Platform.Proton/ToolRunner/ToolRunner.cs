@@ -49,7 +49,7 @@ public sealed class ToolRunner(
         if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64, out var fallbackReason))
             return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
-        return WithLaunchRoots(installation, WithFallbackReason(installation, strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)), fallbackReason));
+        return WithLaunchRoots(installation, WithFallbackReason(strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)), fallbackReason));
     }
 
     /// <summary>
@@ -60,17 +60,22 @@ public sealed class ToolRunner(
         if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64, out var fallbackReason))
             return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
-        return WithLaunchRoots(installation, WithFallbackReason(installation, strategy.Plan(installation, prefix, command), fallbackReason));
+        return WithLaunchRoots(installation, WithFallbackReason(strategy.Plan(installation, prefix, command), fallbackReason));
     }
 
-    // The log line and the plan's reason are written here rather than in TryGetStrategy: the regular strategy and
-    // its last resort share a Kind, so only the plan the last resort built knows its own name.
-    private ToolRunPlan WithFallbackReason(GameInstallation installation, ToolRunPlan plan, string? fallbackReason)
-    {
-        if (fallbackReason is null || !plan.IsRunnable) return plan;
+    // Only the plan the last resort built knows its own name, and the regular strategy and its last resort share
+    // a Kind, so the reason is attached here rather than in TryGetStrategy. Nothing is logged: Plan is also called
+    // by the Tools page on every refresh and by the doctor report, and those are not runs.
+    private static ToolRunPlan WithFallbackReason(ToolRunPlan plan, string? fallbackReason)
+        => fallbackReason is null || !plan.IsRunnable
+            ? plan
+            : ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, plan.Environment, fallbackReason);
 
-        logger?.LogWarning("{Game}: {Reason}; falling back to {Strategy}", installation.Game.DisplayName, fallbackReason, plan.Strategy);
-        return ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, plan.Environment, fallbackReason);
+    // Written where a run starts, so the log says why this run went through the last resort.
+    private void LogFallback(GameInstallation installation, ToolRunPlan plan)
+    {
+        if (plan.FallbackReason is null) return;
+        logger?.LogWarning("{Game}: {Reason}; falling back to {Strategy}", installation.Game.DisplayName, plan.FallbackReason, plan.Strategy);
     }
 
     private ToolRunPlan WithLaunchRoots(GameInstallation installation, ToolRunPlan plan)
@@ -104,6 +109,7 @@ public sealed class ToolRunner(
     {
         var plan = Plan(installation, exe, args, env, via);
         if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
+        LogFallback(installation, plan);
 
         var result = await processRunner.RunAsync(ToCommand(plan), logOutput, cancellationToken);
         return new ToolRunResult(result.ExitCode);
@@ -114,6 +120,7 @@ public sealed class ToolRunner(
     {
         var plan = PlanInPrefix(installation, command);
         if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
+        LogFallback(installation, plan);
 
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();

@@ -84,7 +84,7 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment, ILogg
     // Proton writes the build's fonts directory on line 2 of config_info. The directory is checked through the
     // file system and never compared to the scan as a string: the same tree is recorded as /home/... or
     // /var/home/... depending on which path Proton was started through.
-    private static ProtonBuild? BuildRecordedIn(AbsolutePath compatData, AbsolutePath steamInstallPath)
+    private ProtonBuild? BuildRecordedIn(AbsolutePath compatData, AbsolutePath steamInstallPath)
     {
         var configInfo = compatData.Combine("config_info");
         if (!configInfo.FileExists) return null;
@@ -100,8 +100,10 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment, ILogg
                 .Where(line => line.Length > 0)
                 .ToArray();
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            // Steam's mapping may name a different build, and that build rewrites the prefix's version on the next run.
+            logger?.LogWarning(ex, "Could not read {ConfigInfo}; using Steam's compat tool mapping", configInfo);
             return null;
         }
 
