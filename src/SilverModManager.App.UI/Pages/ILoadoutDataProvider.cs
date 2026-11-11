@@ -69,43 +69,6 @@ public static class LoadoutDataProviderHelper
             .Filter(datom => !ownership.OwnsLink(connection.Db, LibraryLinkedLoadoutItem.Load(connection.Db, datom.E)));
     }
 
-    public static ChangeSet<LoadoutItem.ReadOnly, EntityId> GetLinkedLoadoutItems(
-        IDb db,
-        ICollectionOwnership ownership,
-        LoadoutFilter loadoutFilter,
-        LibraryItemId libraryItemId)
-    {
-        List<EntityId> entityIds;
-
-        if (loadoutFilter.CollectionGroupId.HasValue)
-        {
-            entityIds = db.Datoms(
-                (LibraryLinkedLoadoutItem.LibraryItemId, libraryItemId),
-                (LoadoutItem.ParentId, loadoutFilter.CollectionGroupId.Value)
-            );
-        }
-        else
-        {
-            entityIds = db.Datoms(
-                (LibraryLinkedLoadoutItem.LibraryItemId, libraryItemId),
-                (LoadoutItem.LoadoutId, loadoutFilter.LoadoutId)
-            );
-        }
-
-        var changeSet = new ChangeSet<LoadoutItem.ReadOnly, EntityId>();
-
-        foreach (var entityId in entityIds)
-        {
-            var item = LoadoutItem.Load(db, entityId);
-            if (!item.IsValid()) continue;
-            if (ownership.OwnsLink(db, LibraryLinkedLoadoutItem.Load(db, entityId))) continue;
-
-            changeSet.Add(new Change<LoadoutItem.ReadOnly, EntityId>(ChangeReason.Add, entityId, item));
-        }
-
-        return changeSet;
-    }
-
     public static CompositeItemModel<EntityId> ToChildItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var itemModel = new CompositeItemModel<EntityId>(loadoutItem.Id);
