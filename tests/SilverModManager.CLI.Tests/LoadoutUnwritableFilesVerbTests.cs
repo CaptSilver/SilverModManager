@@ -172,4 +172,29 @@ public class LoadoutUnwritableFilesVerbTests(ITestOutputHelper helper) : AIsolat
 
         act.Should().Throw<UnwritableResolutionRefusedException>();
     }
+
+    [Fact]
+    public async Task Unwritable_Json_CarriesEachPathWithItsReason()
+    {
+        var loadout = await LoadoutWithTwoUnwritableFiles();
+
+        var (exit, output) = await Run("loadout", "files", "unwritable", "-l", loadout.LoadoutId.ToString(), "--json");
+
+        exit.Should().Be(0, output);
+        var rows = System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray().Select(n => n!.AsObject()).ToArray();
+        rows.Select(r => (string?)r["path"]).Should().Equal("mod/a/one.txt", "mod/a/two.txt");
+        rows.Select(r => (string?)r["reason"]).Should().Equal(Unwritable(loadout).Select(f => f.Reason.ToString()));
+        rows.Select(r => (string?)r["description"]).Should().Equal(Unwritable(loadout).Select(f => f.Describe()));
+    }
+
+    [Fact]
+    public async Task Unwritable_Json_WhenNothingIsWaitingIsAnEmptyArray()
+    {
+        var loadout = await CreateLoadout();
+
+        var (exit, output) = await Run("loadout", "files", "unwritable", "-l", loadout.LoadoutId.ToString(), "--json");
+
+        exit.Should().Be(0, output);
+        System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray().Should().BeEmpty();
+    }
 }

@@ -363,13 +363,23 @@ public static class LoadoutManagementVerbs
         return 0;
     }
 
+    private sealed record UnwritableRow(string Path, string Reason, string Description);
+
     [Verb("loadout files unwritable", "Lists the files the loadout names that an apply cannot write, because no copy of them is kept: the Apply preview marks them 'No copy kept'. Settle them with 'loadout files accept-disk' or 'loadout files forget'.")]
     private static async Task<int> ListUnwritableFiles(
         [Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to list the files of")] Loadout.ReadOnly loadout,
-        [Injected] ISynchronizerService syncService)
+        [Injected] ISynchronizerService syncService,
+        [Option("j", "json", "Print the files as JSON; path is what the -p options of accept-disk and forget take", true)] bool json)
     {
         var files = syncService.GetUnwritableFiles(loadout.LoadoutId);
+        if (json)
+        {
+            var rows = files.Select(f => new UnwritableRow(UnwritableFile.Name(f.Path), f.Reason.ToString(), f.Describe()));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+            return 0;
+        }
+
         if (files.Count == 0)
         {
             await renderer.Text("No file is waiting on a copy that was never kept.");
