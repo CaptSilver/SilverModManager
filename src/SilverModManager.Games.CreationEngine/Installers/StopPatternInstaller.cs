@@ -189,7 +189,8 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
             GamePath target;
             if (RootBuilderConvention.TryMap(file.Path, out var underGameFolder))
             {
-                target = new GamePath(EnginePath.LocationId, EnginePath.Path / underGameFolder);
+                // The game folder itself, not EnginePath: a game whose engine folder is a subfolder still wants root/ at the top.
+                target = new GamePath(LocationId.Game, underGameFolder);
             }
             else
             {

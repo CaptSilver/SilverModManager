@@ -1,4 +1,7 @@
 using FluentAssertions;
+using NexusMods.Paths;
+using SilverModManager.Games.CreationEngine.Installers;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
 namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
@@ -61,4 +64,21 @@ public class SkyrimSEInstallerRoutingTests(ITestOutputHelper helper)
     public async Task AFileNamedRootIsNotAFolder() =>
         (await InstallLayout("root", "mod.esp"))
             .Should().Equal("Game/Data/mod.esp", "Game/Data/root");
+
+    [Fact]
+    public async Task ARootFolderGoesToTheGameFolderEvenWhenTheEngineFolderIsElsewhere()
+    {
+        var installer = new StopPatternInstaller(ServiceProvider)
+        {
+            GameId = CreationEngine.SkyrimSE.SkyrimSE.GameId,
+            EnginePath = new GamePath(LocationId.Game, "Bin/Win64"),
+            GameAliases = [],
+            TopLevelDirs = ["meshes"],
+            StopPatterns = [],
+            EngineFiles = [],
+        }.Build();
+
+        (await InstallLayoutWith(installer, "root/openvr_api.dll", "meshes/a.nif"))
+            .Should().Equal("Game/Data/meshes/a.nif", "Game/openvr_api.dll");
+    }
 }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
@@ -28,13 +29,16 @@ public abstract class ABethesdaInstallerRoutingTest<TTest, TGame>(ITestOutputHel
     }
 
     /// <summary>The installed targets as "Location/path", sorted, so a test reads as one list.</summary>
-    protected async Task<string[]> InstallLayout(params string[] archiveEntries)
+    protected Task<string[]> InstallLayout(params string[] archiveEntries) => InstallLayoutWith(null, archiveEntries);
+
+    /// <summary>Like <see cref="InstallLayout"/>, but through the given installer instead of whichever the game picks.</summary>
+    protected async Task<string[]> InstallLayoutWith(ILibraryItemInstaller? installer, params string[] archiveEntries)
     {
         var loadout = await CreateLoadout();
         var archive = await CreateTestArchive(archiveEntries.ToDictionary(e => RelativePath.FromUnsanitizedInput(e), _ => "x"u8.ToArray()));
         var library = await RegisterLocalArchive(archive.Path);
 
-        var result = await LoadoutManager.InstallItem(library.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId);
+        var result = await LoadoutManager.InstallItem(library.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId, installer: installer);
 
         return result.LoadoutItemGroup!.Value.Children.OfTypeLoadoutItemWithTargetPath()
             .Select(f => ((GamePath)f.TargetPath))
