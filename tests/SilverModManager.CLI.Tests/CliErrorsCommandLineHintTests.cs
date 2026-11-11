@@ -56,11 +56,16 @@ public class CliErrorsCommandLineHintTests
     [Fact]
     public void ACrashPointerNamesTheLogFolderOfTheFileSystemItIsGiven()
     {
-        var fileSystem = new InMemoryFileSystem();
+        // The state folder is mapped to a fake path, so the real environment's folder cannot satisfy the assertion.
+        var inMemory = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var fileSystem = inMemory.CreateOverlayFileSystem(
+            new Dictionary<AbsolutePath, AbsolutePath>(),
+            new Dictionary<KnownPath, AbsolutePath> { [KnownPath.XDG_STATE_HOME] = inMemory.FromUnsanitizedFullPath("/fake/state") });
 
         var pointer = CliErrors.CrashPointerFor(fileSystem);
 
-        pointer.Should().Contain(LoggingSettings.GetLogBaseFolder(fileSystem).ToString());
+        pointer.Should().Contain("/fake/state");
+        pointer.Should().NotContain(LoggingSettings.GetLogBaseFolder(FileSystem.Shared).ToString());
         CliErrors.Describe(new InvalidOperationException("boom"), fileSystem).Should().Be(pointer);
     }
 }
