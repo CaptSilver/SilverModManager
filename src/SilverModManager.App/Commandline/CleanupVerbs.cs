@@ -142,7 +142,7 @@ internal static class CleanupVerbs
 
             if (failed)
             {
-                await renderer.Text("The application was not fully uninstalled. {0}", CliErrors.CrashPointer);
+                await renderer.Text("The application was not fully uninstalled. {0}", CliErrors.CrashPointerFor(fileSystem));
                 return CliErrors.CrashExitCode;
             }
 

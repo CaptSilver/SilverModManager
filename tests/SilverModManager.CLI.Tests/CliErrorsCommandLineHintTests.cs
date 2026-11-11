@@ -1,5 +1,7 @@
 using FluentAssertions;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Cli;
+using SilverModManager.CrossPlatform;
 using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.CLI.Tests;
@@ -49,5 +51,16 @@ public class CliErrorsCommandLineHintTests
         var message = $"Could not move {MarkdownText.Code("my_mod")} ({MarkdownText.Inline("disk_full *now*")}) [x](http://e)";
 
         CliErrors.Describe(new Refusal(message, null)).Should().Be("Could not move my_mod (disk_full *now*) [x](http://e)");
+    }
+
+    [Fact]
+    public void ACrashPointerNamesTheLogFolderOfTheFileSystemItIsGiven()
+    {
+        var fileSystem = new InMemoryFileSystem();
+
+        var pointer = CliErrors.CrashPointerFor(fileSystem);
+
+        pointer.Should().Contain(LoggingSettings.GetLogBaseFolder(fileSystem).ToString());
+        CliErrors.Describe(new InvalidOperationException("boom"), fileSystem).Should().Be(pointer);
     }
 }
