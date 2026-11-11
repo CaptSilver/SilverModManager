@@ -392,6 +392,12 @@ public class Program
     /// The console log target. An <c>mcp</c> process writes it to stderr, because its stdout carries the protocol and a
     /// log line there would corrupt a frame.
     /// </summary>
+    /// <summary>
+    /// The MCP server always logs to stderr: a Release build defaults the console setting off, and the client's server
+    /// log is the only place a stdio server's problems show up.
+    /// </summary>
+    public static bool WantsConsoleTarget(LoggingSettings settings, StartupMode startupMode) => settings.LogToConsole || startupMode.IsMcp;
+
     public static ConsoleTarget CreateConsoleTarget(StartupMode startupMode) => new("console")
     {
         Layout = "${processtime} [${level:uppercase=true}] ${message:withexception=true}",
@@ -418,7 +424,7 @@ public class Program
         fileTarget.Header = defaultHeader;
 
         var sinks = new List<NLog.Targets.Target>();
-        if (settings.LogToConsole) sinks.Add(CreateConsoleTarget(startupMode));
+        if (WantsConsoleTarget(settings, startupMode)) sinks.Add(CreateConsoleTarget(startupMode));
         sinks.Add(fileTarget);
         sinks.Add(observableLoggingTarget);
 
