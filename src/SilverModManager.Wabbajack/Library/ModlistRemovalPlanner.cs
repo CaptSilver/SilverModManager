@@ -3,6 +3,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Errors;
@@ -101,10 +102,7 @@ public sealed class ModlistRemovalPlanner(IServiceProvider provider)
     {
         foreach (var link in LibraryLinkedLoadoutItem.FindByLibraryItem(db, file))
         {
-            var owner = link.AsLoadoutItem().GetThisAndParents()
-                .Select(item => item.TryGetAsLoadoutItemGroup(out var group) && group.TryGetAsCollectionGroup(out var collection) ? (CollectionGroup.ReadOnly?)collection : null)
-                .FirstOrDefault(collection => collection is not null);
-            if (owner is { } collection
+            if (CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItem(), out var collection)
                 && collection.TryGetAsWabbajackModlistLoadoutGroup(out var list)
                 && list.ModlistId.Value == modlist.Value) continue;
             return true;
