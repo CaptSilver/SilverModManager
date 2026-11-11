@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
@@ -47,6 +48,10 @@ internal static class ThunderstoreVerbs
         return 0;
     }
 
+    /// <summary>The newest version that is still downloadable, or null when the package has none.</summary>
+    private static string? LatestActiveVersion(PackageListing package)
+        => package.Versions.FirstOrDefault(version => version.IsActive)?.VersionNumber;
+
     private sealed record PackageRow(string Package, string? Latest, double Rating, bool Deprecated);
 
     [Verb("thunderstore search", "Lists the packages of the loadout's game whose name or team contains the query, best rated first")]
@@ -70,7 +75,7 @@ internal static class ThunderstoreVerbs
         if (json)
         {
             var matches = found.Select(package => new PackageRow(package.FullName,
-                package.Versions.FirstOrDefault(version => version.IsActive)?.VersionNumber, package.RatingScore, package.IsDeprecated));
+                LatestActiveVersion(package), package.RatingScore, package.IsDeprecated));
             await renderer.TextLine(JsonSerializer.Serialize(matches, CliJson.Options));
             return 0;
         }
@@ -84,7 +89,7 @@ internal static class ThunderstoreVerbs
         var rows = found.Take(MaxSearchRows).Select(package => new object[]
         {
             package.FullName,
-            package.Versions.FirstOrDefault(version => version.IsActive)?.VersionNumber ?? "-",
+            LatestActiveVersion(package) ?? "-",
             package.RatingScore,
             package.IsDeprecated ? "yes" : "no",
         });
