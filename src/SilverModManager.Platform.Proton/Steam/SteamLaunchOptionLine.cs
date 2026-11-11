@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using SilverModManager.Sdk;
@@ -74,7 +75,7 @@ public static class SteamLaunchOptionLine
     }
 
     private static string Span(string shimPath, string loadoutName)
-        => $"{ShellQuote(shimPath)} run {ShellQuote(loadoutName)} -- {CommandToken}";
+        => $"{ShellText.Quote(shimPath)} run {ShellText.Quote(loadoutName)} -- {CommandToken}";
 
     /// <summary>
     /// Splits a line around its launcher span without judging whether it is safe to edit.
@@ -351,14 +352,6 @@ public static class SteamLaunchOptionLine
         if (tail.Length > 0) sb.Append(' ').Append(tail);
         return sb.ToString();
     }
-
-    /// <summary>
-    /// POSIX single-quotes a value for a shell command line. An embedded quote becomes <c>'\''</c>, and a
-    /// literal <c>%command%</c> is split so Steam's textual substitution cannot hit it; the shell joins the
-    /// pieces back.
-    /// </summary>
-    public static string ShellQuote(string value)
-        => "'" + value.Replace("'", @"'\''").Replace(CommandToken, "%comm''and%") + "'";
 
     private static string? Refuse(LineScan scan)
     {

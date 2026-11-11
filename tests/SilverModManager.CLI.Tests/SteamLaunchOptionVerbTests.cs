@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
@@ -307,9 +308,9 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         exitCode.Should().Be(LaunchSession.FailureExitCode);
         var output = Output(renderer);
         output.Should().Contain("Fluorine").And.Contain(FluorineLine).And.Contain(Span)
-            .And.Contain("--replace-other-manager").And.Contain(SteamLaunchOptionLine.ShellQuote(FluorineLine))
+            .And.Contain("--replace-other-manager").And.Contain(ShellText.Quote(FluorineLine))
             .And.Contain(RecordFile);
-        output.Should().Contain($"--loadout {SteamLaunchOptionLine.ShellQuote(LoadoutName)} --game {SteamLaunchOptionLine.ShellQuote(AppId)} --write");
+        output.Should().Contain($"--loadout {ShellText.Quote(LoadoutName)} --game {ShellText.Quote(AppId)} --write");
         File.ReadAllText(ConfigFile).Should().Be(before);
         File.Exists(RecordFile).Should().BeFalse("nothing was replaced");
     }

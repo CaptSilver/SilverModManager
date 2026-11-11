@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 
@@ -67,5 +68,5 @@ public sealed class LauncherShim(AbsolutePath dataHome)
         return homePath.Combine(".local/share");
     }
 
-    private static string ContentFor(AbsolutePath target) => $"#!/bin/sh\nexec {SteamLaunchOptionLine.ShellQuote(target.ToString())} \"$@\"\n";
+    private static string ContentFor(AbsolutePath target) => $"#!/bin/sh\nexec {ShellText.Quote(target.ToString())} \"$@\"\n";
 }

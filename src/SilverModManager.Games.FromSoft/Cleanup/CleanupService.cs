@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Collections.Immutable;
 using SilverModManager.Sdk.Hashes;
 using System.Text.Json;
@@ -182,7 +183,7 @@ public sealed class CleanupService(
         }
 
         logger.LogWarning("Could not clear the immutable attribute of {File} from the app: {Why}", file, why);
-        var shell = $"sudo chattr -i {SteamLaunchOptionLine.ShellQuote(command.TargetPath)}";
+        var shell = $"sudo chattr -i {ShellText.Quote(command.TargetPath)}";
         var proceed = await askUserToRun(shell, why, () => !immutableProbe.IsImmutable(file), cancellationToken);
         return proceed && !immutableProbe.IsImmutable(file)
             ? null

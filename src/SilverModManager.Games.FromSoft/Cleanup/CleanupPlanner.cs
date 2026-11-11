@@ -1,5 +1,5 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Games.FromSoft.Me3;
-using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.FromSoft.Cleanup;
@@ -71,7 +71,7 @@ public static class CleanupPlanner
             var path = $"{input.GameFolder}/{launcher.Path}";
             yield return new CleanupStep(
                 CleanupStepKind.Privileged,
-                $"Clear the immutable attribute of {launcher.Path} (asks for your password; from a terminal: sudo chattr -i {SteamLaunchOptionLine.ShellQuote(path)})",
+                $"Clear the immutable attribute of {launcher.Path} (asks for your password; from a terminal: sudo chattr -i {ShellText.Quote(path)})",
                 launcher.Path,
                 Command: PrivilegedCommand.ClearImmutable(path));
         }

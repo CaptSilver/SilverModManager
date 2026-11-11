@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 
@@ -15,5 +16,5 @@ public static class PrefixInstallCommand
     public static string For(ResolvedPrefix prefix, string verb)
         => prefix.Kind == CompatibilityLayerKind.SteamProton && prefix.ProtonAppId is { } appId
             ? $"protontricks {appId} -q {verb}"
-            : $"WINEPREFIX={SteamLaunchOptionLine.ShellQuote(prefix.Path.ToString())} winetricks -q {verb}";
+            : $"WINEPREFIX={ShellText.Quote(prefix.Path.ToString())} winetricks -q {verb}";
 }

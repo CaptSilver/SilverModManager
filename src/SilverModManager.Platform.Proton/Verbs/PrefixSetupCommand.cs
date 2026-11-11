@@ -1,7 +1,6 @@
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.PrefixSetup;
-using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Errors;
@@ -41,7 +40,7 @@ public sealed class PrefixSetupCommand(LoadoutResolver resolver, IPrefixSetupRun
         var actual = plan.Prefix.Path.ToString();
         if (!write)
         {
-            await renderer.TextLine($"Nothing was changed. To apply this with the game closed, run: silvermod prefix setup --loadout {SteamLaunchOptionLine.ShellQuote(loadout)} --write --prefix {SteamLaunchOptionLine.ShellQuote(actual)}");
+            await renderer.TextLine($"Nothing was changed. To apply this with the game closed, run: silvermod prefix setup --loadout {ShellText.Quote(loadout)} --write --prefix {ShellText.Quote(actual)}");
             return 0;
         }
 

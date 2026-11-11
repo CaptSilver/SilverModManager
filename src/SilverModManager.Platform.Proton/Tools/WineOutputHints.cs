@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Protontricks;
-using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 
@@ -39,7 +38,7 @@ public static partial class WineOutputHints
         if (result.StdoutTail.Contains(UnixPathUnreadable, StringComparison.Ordinal) && result.Strategy == ProtontricksStrategy.StrategyName)
         {
             var folder = exe.Parent;
-            var command = MarkdownText.Code($"flatpak override --user --filesystem={SteamLaunchOptionLine.ShellQuote(folder.ToString())} {ProtontricksFlatpakDependency.FlatpakPackageId}");
+            var command = MarkdownText.Code($"flatpak override --user --filesystem={ShellText.Quote(folder.ToString())} {ProtontricksFlatpakDependency.FlatpakPackageId}");
             var sentence = $"protontricks runs in a Flatpak that cannot see {MarkdownText.Code(folder)}. Let it: {command}";
             if (result.FallbackReason is { } reason) sentence += $" Proton did not run it because {reason}.";
             sentences.Add(sentence);

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Launch;
@@ -91,10 +92,10 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         await renderer.TextLine("Replacing them would set:");
         await renderer.TextLine(replacement.NewLine);
 
-        var command = $"silvermod steam-launch-option --loadout {SteamLaunchOptionLine.ShellQuote(loadout.Name)}";
+        var command = $"silvermod steam-launch-option --loadout {ShellText.Quote(loadout.Name)}";
         // The game is named by app id: a display name could match more than one installation.
-        if (installation.LocatorResult.StoreIdentifier is { Length: > 0 } appId) command += $" --game {SteamLaunchOptionLine.ShellQuote(appId)}";
-        command += $" --write --replace-other-manager {SteamLaunchOptionLine.ShellQuote(replacement.OldLine)}";
+        if (installation.LocatorResult.StoreIdentifier is { Length: > 0 } appId) command += $" --game {ShellText.Quote(appId)}";
+        command += $" --write --replace-other-manager {ShellText.Quote(replacement.OldLine)}";
         await renderer.TextLine("To replace them, run:");
         await renderer.TextLine(command);
 

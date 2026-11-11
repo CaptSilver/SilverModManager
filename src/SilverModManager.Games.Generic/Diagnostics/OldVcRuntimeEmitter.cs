@@ -8,7 +8,6 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -178,6 +177,6 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
             return new MarkdownFragment($"Run [protontricks](https://github.com/Matoking/protontricks) with the game's Steam app id:\n\n{MarkdownText.CodeBlock($"protontricks {appId} -q {FixComponent}")}");
         }
 
-        return new MarkdownFragment($"Run [winetricks](https://github.com/Winetricks/winetricks) against the prefix:\n\n{MarkdownText.CodeBlock($"WINEPREFIX={SteamLaunchOptionLine.ShellQuote(prefix.Path.GetFullPath())} winetricks -q {FixComponent}")}");
+        return new MarkdownFragment($"Run [winetricks](https://github.com/Winetricks/winetricks) against the prefix:\n\n{MarkdownText.CodeBlock($"WINEPREFIX={ShellText.Quote(prefix.Path.GetFullPath())} winetricks -q {FixComponent}")}");
     }
 }
