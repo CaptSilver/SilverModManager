@@ -180,19 +180,26 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         if (allFiles.Length == 0)
             return ValueTask.FromResult(FailWithReason("The provided library archive has no files"));
 
-        // Compute the root prefix
-        var rootPrefix = ComputeEffectiveRootPrefix(built, allFiles);
+        // Root Builder's root/ folder goes to the game folder and takes no part in working out the mod's layout.
+        var modFiles = allFiles.Where(file => !RootBuilderConvention.TryMap(file.Path, out _)).ToArray();
+        var rootPrefix = modFiles.Length == 0 ? RelativePath.Empty : ComputeEffectiveRootPrefix(built, modFiles);
 
         foreach (var file in allFiles)
         {
-            if (!file.Path.InFolder(rootPrefix))
-                continue;
-            
-            var rel = StripLeadingData(built, file.Path.RelativeTo(rootPrefix));
+            GamePath target;
+            if (RootBuilderConvention.TryMap(file.Path, out var underGameFolder))
+            {
+                target = new GamePath(EnginePath.LocationId, EnginePath.Path / underGameFolder);
+            }
+            else
+            {
+                if (!file.Path.InFolder(rootPrefix))
+                    continue;
 
-            var targetBase = built.EngineFiles.IsMatch(rel.ToString()) ? EnginePath : DataPath;
-
-            var target = new GamePath(targetBase.LocationId, targetBase.Path / rel);
+                var rel = StripLeadingData(built, file.Path.RelativeTo(rootPrefix));
+                var targetBase = built.EngineFiles.IsMatch(rel.ToString()) ? EnginePath : DataPath;
+                target = new GamePath(targetBase.LocationId, targetBase.Path / rel);
+            }
             
             var libFile = file.AsLibraryFile();
             _ = new LoadoutFile.New(transaction, out var id)

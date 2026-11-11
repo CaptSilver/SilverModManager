@@ -41,4 +41,24 @@ public class SkyrimSEInstallerRoutingTests(ITestOutputHelper helper)
     [InlineData("Wrapper/Mod.ba2")]
     public async Task ALoneArchiveInAWrapperFolderIsSteppedInto(string entry) =>
         (await InstallLayout(entry)).Should().Equal($"Game/Data/{Path.GetFileName(entry)}");
+
+    [Fact]
+    public async Task ARootFolderGoesToTheGameFolderAndTheRestToData() =>
+        (await InstallLayout("root/openvr_api.dll", "root/opencomposite.ini", "mod.esp"))
+            .Should().Equal("Game/Data/mod.esp", "Game/opencomposite.ini", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task ARootFolderKeepsItsSubfolders() =>
+        (await InstallLayout("Root/bin/x.dll", "meshes/a.nif"))
+            .Should().Equal("Game/Data/meshes/a.nif", "Game/bin/x.dll");
+
+    [Fact]
+    public async Task AnArchiveWithoutARootFolderIsUnchanged() =>
+        (await InstallLayout("openvr_api.dll", "mod.esp"))
+            .Should().Equal("Game/Data/mod.esp", "Game/Data/openvr_api.dll");
+
+    [Fact]
+    public async Task AFileNamedRootIsNotAFolder() =>
+        (await InstallLayout("root", "mod.esp"))
+            .Should().Equal("Game/Data/mod.esp", "Game/Data/root");
 }

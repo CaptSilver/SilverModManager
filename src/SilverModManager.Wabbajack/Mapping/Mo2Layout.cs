@@ -141,10 +141,10 @@ public static class Mo2Layout
 
     private static Mo2Target ModFile(string group, string[] parts, int first, Mo2Context context)
     {
-        // Root Builder's convention: a mod's Root folder is laid over the game folder rather than Data.
-        if (parts.Length > first + 1 && parts[first].Equals("Root", StringComparison.OrdinalIgnoreCase))
-            return new Mo2Target.ModFile(group, new GamePath(LocationId.Game, Join(parts, first + 1)));
-        return new Mo2Target.ModFile(group, context.ModFilePath(Join(parts, first)));
+        var inMod = Join(parts, first);
+        if (RootBuilderConvention.TryMap(inMod, out var underGame))
+            return new Mo2Target.ModFile(group, new GamePath(LocationId.Game, underGame));
+        return new Mo2Target.ModFile(group, context.ModFilePath(inMod));
     }
 
     private static Mo2Target ProfileFile(string[] parts, Mo2Context context)
