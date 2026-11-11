@@ -160,9 +160,7 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
 
     private CompositeItemModel<EntityId> ToLoadoutItemModel(LoadoutFilter loadoutFilter, TModel model)
     {
-        var linkedItemsObservable = _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, model.Id)
-            .AsEntityIds()
-            .FilterInStaticLoadout(_connection, loadoutFilter)
+        var linkedItemsObservable = LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, model.Id, loadoutFilter)
             .Transform(datom => LoadoutItem.Load(_connection.Db, datom.E))
             .RefCount();
 

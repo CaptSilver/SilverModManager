@@ -98,8 +98,8 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
         await tx.Commit();
     }
 
-    /// <summary>Links the group to a local file destined for the loadout's game, an item the local-file provider lists.</summary>
-    private async Task LinkToLocalFile(EntityId group, Loadout.ReadOnly loadout)
+    /// <summary>Adds a local file destined for the loadout's game, an item the local-file provider lists.</summary>
+    private async Task<EntityId> AddLocalFile()
     {
         var game = LocateStubbedInstallation<Cyberpunk2077Game>(Provider, GameStore.Steam).Game.GameId;
         using var tx = Connection.BeginTransaction();
@@ -113,8 +113,32 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
         };
         _ = new LocalFile.New(tx, id) { LibraryFile = file, OriginalPath = "/x/local.7z" };
         LibraryDestinations.Write(tx, id, Destination.Of(game));
-        tx.Add(group, LibraryLinkedLoadoutItem.LibraryItemId, id);
+        return (await tx.Commit()).Remap(file).Id;
+    }
+
+    private async Task LinkToLocalFile(EntityId group)
+    {
+        var file = await AddLocalFile();
+        await LinkGroup(group, file);
+    }
+
+    private async Task LinkGroup(EntityId group, EntityId libraryItem)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(group, LibraryLinkedLoadoutItem.LibraryItemId, libraryItem);
         await tx.Commit();
+    }
+
+    /// <summary>A mod the user installed themselves: a plain group in the loadout, outside any collection.</summary>
+    private async Task<EntityId> AddUserGroup(Loadout.ReadOnly loadout, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var id)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = name },
+        };
+        return (await tx.Commit()).Remap(group).Id;
     }
 
     private async Task<IObservableCache<CompositeItemModel<EntityId>, EntityId>> Observe(LoadoutFilter filter) =>
@@ -287,18 +311,41 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
         var list = await AddModlistGroup(loadout, "Linked");
         var plain = await AddMod(loadout, list, "Plain");
         var linked = await AddMod(loadout, list, "Linked");
-        await LinkToLocalFile(linked, loadout);
+        await LinkToLocalFile(linked);
 
         using var rows = await Observe(AllFor(loadout));
         using var listRows = await Observe(CollectionFilter(loadout, list));
         using var count = ObserveCount(AllFor(loadout));
-        using var allCount = new CountWatch(LoadoutDataProviderHelper.CountAllLoadoutItems(Provider, AllFor(loadout)));
+        using var localFileCount = new CountWatch(new LocalFileDataProvider(Provider).CountLoadoutItems(AllFor(loadout)));
 
         await Eventually(() => rows.Keys.Should().BeEquivalentTo([plain, linked]));
         await Eventually(() => listRows.Keys.Should().BeEquivalentTo([plain, linked]));
         await Eventually(() => count.Latest.Should().Be(2));
-        // The local-file provider also looks at the linked archive; it must leave the list's group alone.
-        await Eventually(() => allCount.Latest.Should().Be(2));
+        // The local-file provider also looks at the linked archive; it must leave the list's group alone. Its own
+        // count starts at 0 and must stay there, so give it time to be wrong.
+        await Task.Delay(300);
+        localFileCount.Latest.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AUserCopyOfAnArchiveAListAlsoUsesShowsOnlyTheUsersGroup()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-shared-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Shared");
+        var listMod = await AddMod(loadout, list, "List mod");
+        var userMod = await AddUserGroup(loadout, "My copy");
+        var file = await AddLocalFile();
+        await LinkGroup(listMod, file);
+        await LinkGroup(userMod, file);
+
+        using var rows = await OnUi(() => Task.FromResult(new LocalFileDataProvider(Provider).ObserveLoadoutItems(AllFor(loadout)).AsObservableCache()));
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([file]));
+        var row = rows.Lookup(file).Value;
+
+        var children = row.ChildrenObservable.AsObservableCache();
+        var ids = row.Get<LoadoutComponents.LoadoutItemIds>(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey);
+        await Eventually(() => children.Keys.Should().BeEquivalentTo([userMod]));
+        await Eventually(() => ids.ItemIds.Select(id => id.Value).Should().BeEquivalentTo([userMod]));
     }
 
     [Fact]
