@@ -38,6 +38,7 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WabbajackModlistRemovalWatcher>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, GalleryRefreshDiagnosticsRunner>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModlistIdentityBackfillRunner>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ModGroupLinkBackfillRunner>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ModlistFetchInference>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICollectionLock, WabbajackModlistLock>());
         services.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
@@ -98,6 +99,7 @@ public static class Services
                 provider.GetRequiredService<ILogger<WabbajackGalleryClient>>()))
             .AddSingleton<IWabbajackGalleryClient>(provider => provider.GetRequiredService<WabbajackGalleryClient>())
             .AddSingleton<ModlistIdentityBackfill>()
+            .AddSingleton<ModGroupLinkBackfill>()
             .AddSingleton<ModlistUpdateCheck>()
             .AddSingleton<ModlistRemovalPlanner>()
             .AddSingleton<ModlistUpdater>()
