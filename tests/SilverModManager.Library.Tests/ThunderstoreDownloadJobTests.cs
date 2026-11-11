@@ -27,7 +27,7 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
     private static readonly Sha256Value PayloadDigest = Sha256Value.From(SHA256.HashData(Payload));
     private static readonly Sha256Value OtherDigest = Sha256Value.From(SHA256.HashData("other"u8));
 
-    private sealed class PayloadHandler : HttpMessageHandler
+    private sealed class PayloadHandler(byte[]? payload = null) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
 
@@ -36,7 +36,7 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
             Requests.Add(request.RequestUri!);
             if (request.RequestUri != DownloadUri) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = request });
 
-            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Payload), RequestMessage = request };
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload ?? Payload), RequestMessage = request };
             response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
             return Task.FromResult(response);
         }
@@ -120,7 +120,10 @@ public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvid
     [Fact]
     public async Task AVersionRecordWithoutAUuidLeavesTheUuidOut()
     {
-        var result = await Run(Version(uuid: null));
+        // The library keeps one file per set of bytes, so a download of bytes another test already added lands on that
+        // test's row and its uuid. These bytes belong to this test alone.
+        var ownBytes = Enumerable.Range(0, 3000).Select(i => (byte)(i * 11 + 5)).ToArray();
+        var result = await Run(Version(uuid: null), handler: new PayloadHandler(ownBytes));
         result.VersionUuid.HasValue.Should().BeFalse();
     }
 
