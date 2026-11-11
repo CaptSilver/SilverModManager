@@ -74,7 +74,7 @@ internal static class DdsHeader
         Put(8, flags);
         Put(12, (uint)height);
         Put(16, (uint)width);
-        Put(20, compressed ? (uint)slicePitch : (uint)rowPitch);
+        Put(20, PitchField(compressed ? slicePitch : rowPitch, compressed, width, height));
         Put(24, 1); // depth
         Put(28, (uint)mipLevels);
         // Eleven reserved words, then the pixel format.
@@ -100,6 +100,15 @@ internal static class DdsHeader
 
         return buffer;
     }
+
+    // The header's pitch/linear-size word is 32 bits. Pitch() works in 64 bits so a larger value is seen here
+    // instead of silently wrapping into a smaller, wrong one.
+    private static uint PitchField(ulong value, bool linearSize, int width, int height) =>
+        value <= uint.MaxValue
+            ? (uint)value
+            : throw new BethesdaArchiveException(
+                $"A {width} x {height} texture is too large for a DDS header: its {(linearSize ? "top-level size" : "row pitch")} is {value} bytes, " +
+                "and the header can record at most 4 GiB less one byte.");
 
     private static PixelFormat? LegacyPixelFormat(uint format) => format switch
     {

@@ -104,4 +104,31 @@ public class DdsHeaderTests
         DdsHeader.Build(8, 8, 1, format, isCubeMap: false).Should().Equal(
             Expected(0x2100F, 8, 8, rowPitch, 1, FourCc(Dx10), 0x1000, [format, 3, 0, 1, 0]));
     }
+
+    [Fact]
+    public void ATopLevelOver4GiBIsRefusedInsteadOfWrappingItsLinearSize()
+    {
+        // 65536 x 65536 of BC3 is exactly 2^32 bytes, which a 32-bit DDS size field wraps to 0.
+        var act = () => DdsHeader.Build(65536, 65536, 1, 77, isCubeMap: false);
+
+        act.Should().Throw<BethesdaArchiveException>().WithMessage("*65536 x 65536*4 GiB*");
+    }
+
+    [Fact]
+    public void AWideUncompressedRowOver4GiBIsRefusedToo()
+    {
+        // R32G32B32A32_FLOAT at int.MaxValue pixels per row is 32 GiB.
+        var act = () => DdsHeader.Build(int.MaxValue, 1, 1, 2, isCubeMap: false);
+
+        act.Should().Throw<BethesdaArchiveException>().WithMessage("*4 GiB*");
+    }
+
+    [Fact]
+    public void ATopLevelJustUnder4GiBStillGetsItsExactLinearSize()
+    {
+        // 65536 x 65536 of BC1 is 2 GiB.
+        var header = DdsHeader.Build(65536, 65536, 1, 71, isCubeMap: false);
+
+        BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(20)).Should().Be(0x80000000u);
+    }
 }
