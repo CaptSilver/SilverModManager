@@ -22,7 +22,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IWinePrefixRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode, IGameUpdateSensitivity
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IWinePrefixRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode, IGameUpdateSensitivity, IDxgiGame
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";

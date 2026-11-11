@@ -18,7 +18,7 @@ namespace SilverModManager.Games.CreationEngine.Starfield;
 /// flag bits (light, medium, update, blueprint). Loose files also need StarfieldCustom.ini to be loaded;
 /// writing that is not done yet.
 /// </summary>
-public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfield>(provider), IGameData<Starfield>, IHasIniFiles, IGameUpdateSensitivity
+public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfield>(provider), IGameData<Starfield>, IHasIniFiles, IGameUpdateSensitivity, IDxgiGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Starfield");
     public static string DisplayName => "Starfield";

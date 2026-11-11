@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
@@ -9,7 +10,7 @@ namespace SilverModManager.Games.CreationEngine.Fallout76;
 /// Fallout 76 has no plugin list: mods are .ba2 archives that the game loads once they are named in
 /// Fallout76Custom.ini. Writing that file is not done yet, so an installed archive is deployed but not enabled.
 /// </summary>
-public class Fallout76(IServiceProvider provider) : ABethesdaGame<Fallout76>(provider), IGameData<Fallout76>
+public class Fallout76(IServiceProvider provider) : ABethesdaGame<Fallout76>(provider), IGameData<Fallout76>, IDxgiGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout76");
     public static string DisplayName => "Fallout 76";

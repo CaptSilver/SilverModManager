@@ -9,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.EnderalSE;
 
-public class EnderalSE(IServiceProvider provider) : ACreationEngineGame<EnderalSE>(provider), IGameData<EnderalSE>, IHasIniFiles
+public class EnderalSE(IServiceProvider provider) : ACreationEngineGame<EnderalSE>(provider), IGameData<EnderalSE>, IHasIniFiles, IDxgiGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.EnderalSE");
     public static string DisplayName => "Enderal: Forgotten Stories (Special Edition)";

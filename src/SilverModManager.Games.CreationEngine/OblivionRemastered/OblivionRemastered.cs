@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.Values;
@@ -26,7 +27,7 @@ namespace SilverModManager.Games.CreationEngine.OblivionRemastered;
 /// (https://github.com/ModOrganizer2/modorganizer-basic_games/blob/master/games/game_oblivion_remaster.py)
 /// and its script extender helper (games/oblivion_remaster/script_extender.py).
 /// </remarks>
-public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>, IGameUpdateSensitivity
+public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>, IGameUpdateSensitivity, IDxgiGame
 {
     private const string ProjectFolder = "OblivionRemastered";
 

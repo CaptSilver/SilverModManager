@@ -17,7 +17,7 @@ namespace SilverModManager.Games.CreationEngine.Fallout4;
 /// masters, F4SE and the My Games and AppData folders. Fallout 4 London is installed over Fallout 4 and is one
 /// of these, told apart from it by <see cref="ABethesdaGame{TSelf}.IdentifyingFiles"/>.
 /// </summary>
-public abstract class AFallout4Game<TSelf>(IServiceProvider provider) : ACreationEngineGame<TSelf>(provider), IHasIniFiles, IGameUpdateSensitivity
+public abstract class AFallout4Game<TSelf>(IServiceProvider provider) : ACreationEngineGame<TSelf>(provider), IHasIniFiles, IGameUpdateSensitivity, IDxgiGame
     where TSelf : AFallout4Game<TSelf>, IGameData<TSelf>
 {
     public TimeSpan? DateWindow => TimeSpan.FromDays(30);

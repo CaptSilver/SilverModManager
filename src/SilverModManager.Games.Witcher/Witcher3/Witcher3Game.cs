@@ -21,7 +21,7 @@ using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.Witcher.Witcher3;
 
-public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles, IHasIniFiles, IGameLauncherSkip
+public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>, IHasMergeGame, IModOrderGame, IGameIniFiles, IHasIniFiles, IGameLauncherSkip, IDxgiGame
 {
     private AMergeGame? _mergeGame;
 

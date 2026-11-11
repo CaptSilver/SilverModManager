@@ -3,14 +3,15 @@ using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Steam;
 
 namespace SilverModManager.Platform.Proton.Steam;
 
 /// <summary>
-/// Warns about a Steam game whose launch options force <c>WINEDLLOVERRIDES=dxgi=b</c> while the game runs on DXVK.
-/// Proton then loads Wine's dxgi in place of DXVK's, and the game dies in its renderer start-up with
+/// Warns about a Steam game that uses DXGI (<see cref="IDxgiGame"/>) and whose launch options force
+/// <c>WINEDLLOVERRIDES=dxgi=b</c> while the game runs on DXVK. Proton then loads Wine's dxgi in place of DXVK's, and the game dies in its renderer start-up with
 /// "Adapter is not a DXVK adapter".
 /// </summary>
 /// <remarks>
@@ -32,13 +33,22 @@ public sealed class BuiltInDxgiOverrideEmitter : ILoadoutDiagnosticEmitter
     {
         await Task.Yield();
 
-        var installation = loadout.InstallationInstance;
-        if (SteamLaunchOptionWriter.Locate(installation) is not { } game) yield break;
+        if (Evaluate(loadout.InstallationInstance) is { } diagnostic) yield return diagnostic;
+    }
+
+    /// <summary>
+    /// The diagnostic for a DXGI game whose Steam launch options force the built-in dxgi, or null.
+    /// </summary>
+    internal static Diagnostic? Evaluate(GameInstallation installation)
+    {
+        // dxgi=b is harmless for a game that never loads dxgi, so only games that say they use it are checked.
+        if (installation.Game is not IDxgiGame) return null;
+        if (SteamLaunchOptionWriter.Locate(installation) is not { } game) return null;
 
         var read = LocalConfigLaunchOptions.Read(game.Config, game.AppId);
-        if (!read.FileReadable || read.Line is null || !ForcesBuiltInDxgi(read.Line)) yield break;
+        if (!read.FileReadable || read.Line is null || !ForcesBuiltInDxgi(read.Line)) return null;
 
-        yield return SteamLaunchDiagnostics.CreateBuiltInDxgiOverride(installation.Game.DisplayName);
+        return SteamLaunchDiagnostics.CreateBuiltInDxgiOverride(installation.Game.DisplayName);
     }
 
     /// <summary>
