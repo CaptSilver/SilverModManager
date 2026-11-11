@@ -22,7 +22,10 @@ namespace SilverModManager.UI.Tests.Pages;
 
 public partial class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private static readonly LibraryFileId SomeFile = LibraryFileId.From(EntityId.From(0xCAFE));
+    // The tests share one database, and a group seeded for the list stays in the loadout the page selects. A fresh
+    // id per test keeps one test's installs from showing up as another test's unfinished install.
+    private static long _nextFile = 0xCAFE;
+    private readonly LibraryFileId SomeFile = LibraryFileId.From(EntityId.From((ulong)Interlocked.Increment(ref _nextFile)));
 
     private sealed class FakeAcquirer : IArchiveAcquirer
     {

@@ -1050,12 +1050,14 @@ public class WabbajackUpdateUiTests(IServiceProvider provider) : AUiTest(provide
     [Fact]
     public async Task TheLibrarysCopyOfAReleaseIsFoundByItsPublishedHash()
     {
-        var published = WabbajackHash.Parse("AQIDBAUGBwg=");
+        // The database is shared and other tests seed files under the default hash, so this one publishes its own.
+        var publishedText = Convert.ToBase64String(Guid.NewGuid().ToByteArray()[..8]);
+        var published = WabbajackHash.Parse(publishedText);
         published.TryXxHash64(out var xx).Should().BeTrue();
         var held = await AddList("2.0", machineUrl: "hash-list", xxHash64: xx);
         var service = new WabbajackGalleryService(new FakeClient(null), Provider.GetRequiredService<WabbajackGalleryDownloader>(), Connection);
 
-        service.FindInLibrary(Entry("2.0", "hash-list")).Should().Be(LibraryFileId.From(held.Id));
+        service.FindInLibrary(Entry("2.0", "hash-list", hash: publishedText)).Should().Be(LibraryFileId.From(held.Id));
         service.FindInLibrary(Entry("2.0", "hash-list", hash: "CQkJCQkJCQk=")).Should().BeNull();
     }
 }
