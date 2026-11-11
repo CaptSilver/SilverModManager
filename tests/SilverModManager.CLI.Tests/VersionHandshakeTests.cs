@@ -198,6 +198,40 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task AMainThatNeverAcceptsTheConnection_MakesAForwardedLaunchUnavailable_WhenTheConnectTimesOut()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start(1);
+        _listeners.Add(listener);
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var fillers = new List<TcpClient>();
+        for (var i = 0; i < 6; i++)
+        {
+            var filler = new TcpClient();
+            fillers.Add(filler);
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            try { await filler.ConnectAsync(IPAddress.Loopback, port, cts.Token); }
+            catch (OperationCanceledException) { }
+        }
+        var sync = SyncFile("backlog-launch.sync");
+        sync.TrySetMain(MainKind.Gui, port).Should().BeTrue();
+        // Same name as SyncFile.TokenPath, which is internal.
+        await File.WriteAllTextAsync(Path.Combine(_directory, "backlog-launch.sync.launch-token"), "token");
+        var client = new CliClient(NullLogger<CliClient>.Instance, sync, Services(), Running, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(300));
+
+        try
+        {
+            var outcome = await client.ForwardLaunchAsync(new ForwardedLaunch("Loadout", "1", ["game.exe"], new Dictionary<string, string>(), null), CancellationToken.None);
+
+            outcome.Should().BeOfType<ForwardedLaunchOutcome.Unavailable>().Which.Reason.Should().Contain("did not accept the connection");
+        }
+        finally
+        {
+            foreach (var filler in fillers) filler.Dispose();
+        }
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task ADifferentVersion_MakesAForwardedLaunchUnavailable_WithTheSameSentence()
     {
         var client = await StartMain(new AppBuild("0.1.2", null));

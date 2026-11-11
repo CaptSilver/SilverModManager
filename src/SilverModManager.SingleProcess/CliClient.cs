@@ -156,12 +156,16 @@ public class CliClient(
         client.NoDelay = true;
         try
         {
-            await client.ConnectAsync(IPAddress.Loopback, port);
+            await ConnectAsync(client, port, stop);
         }
         catch (SocketException e)
         {
             logger.LogWarning(e, "Failed to connect to main process {ProcessId} on port {Port}", process.Id, port);
             return new ForwardedLaunchOutcome.Unavailable($"could not connect to the running SilverModManager ({e.Message})");
+        }
+        catch (MainProcessNotAccepting e)
+        {
+            return new ForwardedLaunchOutcome.Unavailable(e.Message);
         }
 
         var serializer = new Serializer(client.GetStream(), provider.GetRequiredService<IEnumerable<IRenderableDefinition>>());
