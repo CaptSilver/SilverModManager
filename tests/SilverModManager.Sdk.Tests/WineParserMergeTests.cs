@@ -115,6 +115,25 @@ public class WineParserMergeTests
             match.OverrideTypes.Should().Equal(required.OverrideTypes);
         }
     }
+
+    [Fact]
+    public void ParseEnvironmentVariable_ReadsOverrideTypesSpelledOutAsWellAsAsLetters()
+    {
+        WineParser.ParseEnvironmentVariable("dxgi=builtin,native").Should().ContainSingle()
+            .Which.OverrideTypes.Should().Equal(WineDllOverrideType.BuiltIn, WineDllOverrideType.Native);
+    }
+
+    [Theory]
+    [InlineData("dxgi=B", WineDllOverrideType.BuiltIn)]
+    [InlineData("dxgi=Builtin", WineDllOverrideType.BuiltIn)]
+    [InlineData("dxgi=BUILTIN", WineDllOverrideType.BuiltIn)]
+    [InlineData("dxgi=N", WineDllOverrideType.Native)]
+    [InlineData("dxgi=Native", WineDllOverrideType.Native)]
+    public void ParseEnvironmentVariable_IgnoresTheCaseOfAnOverrideType(string value, WineDllOverrideType expected)
+    {
+        WineParser.ParseEnvironmentVariable(value).Should().ContainSingle()
+            .Which.OverrideTypes.Should().Equal(expected);
+    }
 }
 
 public class WineParserWinetricksLogTests

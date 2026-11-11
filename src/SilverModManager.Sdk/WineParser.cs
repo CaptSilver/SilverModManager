@@ -194,9 +194,12 @@ public static class WineParser
         foreach (var splitRange in typesEnumerator)
         {
             var typeSpan = typesSpan[splitRange];
-            // Wine accepts the full words as well as the single letters.
-            if (typeSpan is "n" or "native") overrideTypesSpan[typesIndex++] = WineDllOverrideType.Native;
-            else if (typeSpan is "b" or "builtin") overrideTypesSpan[typesIndex++] = WineDllOverrideType.BuiltIn;
+            // Wine's parse_load_order reads only the first letter of each type and ignores its case, so
+            // "native", "Builtin" and "B" all count.
+            if (typeSpan.IsEmpty) continue;
+            var letter = char.ToLowerInvariant(typeSpan[0]);
+            if (letter == 'n') overrideTypesSpan[typesIndex++] = WineDllOverrideType.Native;
+            else if (letter == 'b') overrideTypesSpan[typesIndex++] = WineDllOverrideType.BuiltIn;
         }
 
         var sliced = overrideTypesSpan[..typesIndex];
