@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -76,6 +77,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
         ((GamePath)state.Path).Should().Be(IniStubbedGame.MainIni);
         state.Baseline.Should().Be(UserIni.xxHash3());
         (await FileStore.Load(FileIdentity.XxHash3(state.Baseline))).Should().Equal(UserIni);
+        LoadoutIniState.LastBakedHash.TryGetValue(state, out _).Should().BeFalse("nothing is recorded before the sync writes");
         (await Live(IniStubbedGame.MainIni).ReadAllBytesAsync()).Should().Equal(UserIni, "nothing is written before the sync writes");
         Live(IniStubbedGame.MainIni).Parent.EnumerateFiles().Select(f => f.FileName.ToString()).Should().HaveCount(1, "no .bak is left beside the INI, the next ingest would pick it up");
     }
@@ -101,7 +103,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
 
         loadout = await Prepare(loadout);
 
-        Connection.Db.BasisTxId.Should().Be(before, "the baseline and the recorded bake are already there");
+        Connection.Db.BasisTxId.Should().Be(before, "the baseline is already there");
         States(loadout).Should().ContainSingle();
     }
 
@@ -119,10 +121,11 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
     }
 
     [Fact]
-    public async Task TheBakedBytesAreRecordedAndStored()
+    public async Task AnApplyRecordsTheBakeOnce()
     {
         var loadout = await CreateLoadout();
         await WriteLive(IniStubbedGame.MainIni, UserIni);
+        var before = Connection.Db.BasisTxId;
 
         loadout = await Apply(loadout);
 
@@ -132,6 +135,87 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
         baked.Should().Be(written.xxHash3());
         (await FileStore.Load(FileIdentity.XxHash3(baked))).Should().Equal(written, "an ingest diffs the live file against these bytes");
         state.Baseline.Should().Be(UserIni.xxHash3(), "the baseline stays the player's copy");
+        BakesRecordedSince(before, state.Id).Should().Be(1, "the bake is recorded by one place, not by Prepare and the write both");
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(baked), "the hold released the pin after the commit");
+    }
+
+    [Fact]
+    public async Task AFailedWriteLeavesTheRecordedBakeAsItWas()
+    {
+        var loadout = await CreateLoadout();
+        await WriteLive(IniStubbedGame.MainIni, UserIni);
+        loadout = await Apply(loadout);
+        var recorded = LoadoutIniState.LastBakedHash.Get(States(loadout).Single());
+        await AddTweakMod(loadout, "High", "High [Game.ini].ini", "[Display]\r\niSize W=1920\r\n", priority: 20);
+        var next = (await GameInis.Render(Stub, FileStore, Refresh(loadout), IniStubbedGame.MainIni)).xxHash3();
+        next.Should().NotBe(recorded, "the tweak changes what the next write renders");
+        Live(IniStubbedGame.MainIni).Delete();
+        Live(IniStubbedGame.MainIni).CreateDirectory();
+        var before = Connection.Db.BasisTxId;
+
+        var act = () => Apply(loadout);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().NotBeOfType<SynchronizerPreflightException>("the write fails, not the preflight");
+        Live(IniStubbedGame.MainIni).DirectoryExists().Should().BeTrue("the write never replaced it");
+        var state = States(Refresh(loadout)).Single();
+        LoadoutIniState.LastBakedHash.Get(state).Should().Be(recorded);
+        BakesRecordedSince(before, state.Id).Should().Be(0, "the datom the write added was in a transaction that never committed");
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(next), "the hold released the pin when the apply unwound");
+    }
+
+    [Fact]
+    public async Task ARewriteOfTheSameBytesAddsNoBakeDatom()
+    {
+        var loadout = await CreateLoadout();
+        await WriteLive(IniStubbedGame.MainIni, UserIni);
+        loadout = await Apply(loadout);
+        var state = States(loadout).Single();
+        Live(IniStubbedGame.MainIni).Delete();
+        var before = Connection.Db.BasisTxId;
+
+        await Apply(loadout);
+
+        Live(IniStubbedGame.MainIni).FileExists.Should().BeTrue("the sync writes the file back");
+        BakesRecordedSince(before, state.Id).Should().Be(0, "the same bytes are already recorded");
+    }
+
+    [Fact]
+    public async Task IngestRecordsTheBaselineAndLeavesTheBakeToTheWrite()
+    {
+        var loadout = await CreateLoadout();
+        await WriteLive(IniStubbedGame.MainIni, UserIni);
+        loadout = await Apply(loadout);
+        var recorded = LoadoutIniState.LastBakedHash.Get(States(loadout).Single());
+        var edited = IniDocument.Parse(await Live(IniStubbedGame.MainIni).ReadAllBytesAsync());
+        edited.Set("Display", "iSize W", "1920");
+        await WriteLive(IniStubbedGame.MainIni, edited.ToBytes());
+        loadout = Refresh(loadout);
+        var file = GameInis.IntrinsicFiles(Stub, loadout, ServiceProvider).Single();
+
+        using (var tx = Connection.BeginTransaction())
+        using (TransactionPins.Hold(tx))
+        {
+            await file.Ingest(new MemoryStream(await Live(IniStubbedGame.MainIni).ReadAllBytesAsync()), loadout, new Dictionary<GamePath, SyncNode>(), tx);
+            await tx.Commit();
+        }
+
+        var state = States(Refresh(loadout)).Single();
+        IniDocument.Parse(await FileStore.Load(FileIdentity.XxHash3(state.Baseline))).Get("Display", "iSize W").Should().Be("1920");
+        LoadoutIniState.LastBakedHash.Get(state).Should().Be(recorded, "the write records the bake, not the ingest");
+    }
+
+    [Fact]
+    public async Task AWriteForAnIniTheLoadoutHasNoRowForIsRefused()
+    {
+        var loadout = Refresh(await CreateLoadout());
+        var file = new IniBakeIntrinsicFile(IniStubbedGame.MainIni, Stub, FileStore);
+        using var tx = Connection.BeginTransaction();
+        using var pins = TransactionPins.Hold(tx);
+
+        var act = () => ((IIntrinsicFileWithWriteRecord)file).RecordWrite(new IntrinsicWrite(UserIni, UserIni.xxHash3(), loadout, tx));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(UserIni.xxHash3()), "nothing is stored for a row that does not exist");
     }
 
     [Fact]

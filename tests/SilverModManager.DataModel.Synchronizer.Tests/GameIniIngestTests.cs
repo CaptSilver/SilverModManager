@@ -19,13 +19,9 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// A full apply after the game rewrote an owned INI: the setting the player changed in the game is kept in the
 /// loadout's copy and in the file, and a setting the app manages is put back.
 /// </summary>
-public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<GameIniIngestTests, IniStubbedGame>(helper)
+public class GameIniIngestTests(ITestOutputHelper helper) : IniTweakTestBase<GameIniIngestTests>(helper)
 {
     private static readonly byte[] UserIni = "[Display]\r\niSize W=2560 ; wide\r\niSize H=1440\r\n\r\n[General]\r\nsLanguage=ENGLISH\r\n"u8.ToArray();
-
-    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
-        .AddGame<IniStubbedGame>()
-        .AddUniversalGameLocator<IniStubbedGame>(Version.Parse("0.0.0"));
 
     private AbsolutePath Live => GameInstallation.Locations.ToAbsolutePath(IniStubbedGame.MainIni);
 
@@ -46,6 +42,22 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
 
     private LoadoutIniState.ReadOnly State(Loadout.ReadOnly loadout) =>
         LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle(s => (GamePath)s.Path == IniStubbedGame.MainIni).Subject;
+
+    [Fact]
+    public async Task AnAdoptedSettingsBakeIsRecordedOnceByTheWrite()
+    {
+        var loadout = await AppliedLoadout();
+        await GameEdits(ini => ini.Set("Display", "iSize W", "1920"));
+        var before = Connection.Db.BasisTxId;
+
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+
+        var state = State(Refresh(loadout));
+        var written = await Live.ReadAllBytesAsync();
+        BakesRecordedSince(before, state.Id).Should().Be(1, "Ingest and the write must not both record it");
+        LoadoutIniState.LastBakedHash.Get(state).Should().Be(written.xxHash3());
+        (await FileStore.Load(FileIdentity.XxHash3(written.xxHash3()))).Should().Equal(written);
+    }
 
     [Fact]
     public async Task ASettingChangedInTheGameIsAdoptedAndSurvivesTheApply()

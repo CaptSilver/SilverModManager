@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -26,6 +27,13 @@ public abstract class IniTweakTestBase<TTest>(ITestOutputHelper helper) : AIsola
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddGame<IniStubbedGame>()
         .AddUniversalGameLocator<IniStubbedGame>(Version.Parse("0.0.0"));
+
+    // Datoms that set LastBakedHash on the row, across every transaction after `before`.
+    protected int BakesRecordedSince(TxId before, EntityId state) =>
+        Enumerable.Range(1, (int)(Connection.Db.BasisTxId.Value - before.Value))
+            .Select(i => TxId.From(before.Value + (ulong)i))
+            .Sum(t => Connection.AsOf(t).Datoms(t).Count(d => d.E == state && !d.IsRetract
+                && d.A == Connection.Db.AttributeCache.GetAttributeId(LoadoutIniState.LastBakedHash.Id)));
 
     /// <summary>
     /// Adds a group named <paramref name="modName"/> holding the tweak file <paramref name="tweakFile"/> and a priority

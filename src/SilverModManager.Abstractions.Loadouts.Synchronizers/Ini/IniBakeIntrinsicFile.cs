@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
@@ -13,10 +14,11 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 /// <summary>
 /// A game INI the loadout owns: its baseline with the enabled tweaks merged in and the keys the app manages set on
-/// top. Rendering only reads the database and the file store; <see cref="GameInis.Prepare"/> is what stores the
-/// baseline and records what was baked, and <see cref="Ingest"/> is what folds the game's own edits into the baseline.
+/// top. Rendering only reads the database and the file store; <see cref="GameInis.Prepare"/> stores the baseline,
+/// <see cref="RecordWrite"/> records what the sync wrote, and <see cref="Ingest"/> is what folds the game's own edits
+/// into the baseline.
 /// </summary>
-public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFileStore fileStore) : IIntrinsicFileWithReset
+public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFileStore fileStore) : IIntrinsicFileWithReset, IIntrinsicFileWithWriteRecord
 {
     public GamePath Path { get; } = path;
 
@@ -24,6 +26,23 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
     {
         var bytes = AdoptedThisSync(syncTree, loadout) ?? await GameInis.Render(game, fileStore, loadout, Path);
         await stream.WriteAsync(bytes);
+    }
+
+    /// <summary>
+    /// Records the bytes the sync is about to write as the last bake, in the apply's transaction, so the hash lands
+    /// only for a write that landed.
+    /// </summary>
+    public async Task RecordWrite(IntrinsicWrite write)
+    {
+        // The file exists because GameInis.IntrinsicFiles found this row, so a missing one is a bug, not a case.
+        var state = GameInis.StateOf(write.Loadout, Path)
+                    ?? throw new InvalidOperationException($"{Path} is written for loadout {write.Loadout.LoadoutId}, which has no INI state row for it");
+        // An intrinsic node is written whenever the loadout provides the file, changed or not, so most writes repeat
+        // the recorded bake; those add no datom.
+        if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var last) && last == write.Hash) return;
+
+        TransactionPins.Keep(write.Transaction, await IniEdits.Store(fileStore, Path, write.Bytes));
+        write.Transaction.Add(state.Id, LoadoutIniState.LastBakedHash, write.Hash);
     }
 
     /// <summary>
@@ -41,9 +60,9 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
     /// </summary>
     /// <remarks>
     /// The file is compared with the bytes the app last wrote, not with the baseline, so a setting a tweak put
-    /// in the file is not taken for the game's. The new baseline and the bytes it bakes to are stored here, and the
-    /// bake is recorded in <paramref name="tx"/>. The apply's own loadout does not see that transaction, so the
-    /// bytes are also kept for this sync's <see cref="Write"/>.
+    /// in the file is not taken for the game's. The new baseline is stored and recorded here, in <paramref name="tx"/>;
+    /// the bake is recorded by the sync's write through <see cref="RecordWrite"/>. The apply's own loadout does not
+    /// see that transaction, so the bytes the baseline bakes to are kept for this sync's <see cref="Write"/>.
     /// </remarks>
     public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
@@ -69,22 +88,11 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
         var baselineBytes = baseline.ToBytes();
         var baked = await GameInis.Render(game, fileStore, loadout, Path, baselineBytes);
 
-        var pins = new List<IDisposable>();
-        var baselineHash = await Store(baselineBytes, pins);
-        var bakedHash = await Store(baked, pins);
+        var baselineHash = baselineBytes.xxHash3();
+        TransactionPins.Keep(tx, await IniEdits.Store(fileStore, Path, baselineBytes));
         tx.Add(state.Id, LoadoutIniState.Baseline, baselineHash);
-        tx.Add(state.Id, LoadoutIniState.LastBakedHash, bakedHash);
 
-        Pending.GetOrCreateValue(syncTree)[Path] = new AdoptedBake(baselineHash, baked, pins);
-    }
-
-    private async Task<Hash> Store(byte[] bytes, List<IDisposable> pins)
-    {
-        var hash = bytes.xxHash3();
-        pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
-        if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
-            await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(Path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
-        return hash;
+        Pending.GetOrCreateValue(syncTree)[Path] = new AdoptedBake(baselineHash, baked);
     }
 
     // The loadout a sync hands to Write was read before Ingest's transaction commits, so it still holds the old
@@ -97,15 +105,6 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
 
     private static readonly ConditionalWeakTable<Dictionary<GamePath, SyncNode>, Dictionary<GamePath, AdoptedBake>> Pending = new();
 
-    /// <summary>A bake rendered from a baseline Ingest adopted. The store pins are released once the sync is done with it.</summary>
-    private sealed class AdoptedBake(Hash baseline, byte[] bytes, List<IDisposable> pins)
-    {
-        public Hash Baseline { get; } = baseline;
-        public byte[] Bytes { get; } = bytes;
-
-        ~AdoptedBake()
-        {
-            foreach (var pin in pins) pin.Dispose();
-        }
-    }
+    /// <summary>A bake rendered from a baseline Ingest adopted; the sync's write records it through <see cref="RecordWrite"/>.</summary>
+    private sealed record AdoptedBake(Hash Baseline, byte[] Bytes);
 }

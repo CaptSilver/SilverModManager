@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.CreationEngine.Emitters;
 using SilverModManager.Games.TestFramework;
@@ -59,6 +60,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         loadout = Refresh(loadout);
         var file = GameInis.IntrinsicFiles((IGameIniFiles)Game, loadout, ServiceProvider).Single(f => f.Path == MainIni);
         using var tx = Connection.BeginTransaction();
+        using var pins = TransactionPins.Hold(tx);
         await file.Ingest(new MemoryStream(live), loadout, new Dictionary<GamePath, SyncNode>(), tx);
         await tx.Commit();
     }
@@ -121,12 +123,14 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
     public async Task AdoptingASettingRecordsTheNewBakeSoTheNextIngestDiffsAgainstIt()
     {
         var loadout = await LoadoutWithBakedIni();
-        await Ingest(loadout, await GameEdits(ini => ini.Set("Display", "iSize W", "1920")));
+        await Live.WriteAllBytesAsync(await GameEdits(ini => ini.Set("Display", "iSize W", "1920")));
 
-        var state = State(Refresh(loadout));
-        var baked = await FileStore.Load(FileIdentity.XxHash3(LoadoutIniState.LastBakedHash.Get(state)));
+        loadout = await Synchronizer.Synchronize(Refresh(loadout));
+
+        var written = await Live.ReadAllBytesAsync();
+        var baked = await FileStore.Load(FileIdentity.XxHash3(LoadoutIniState.LastBakedHash.Get(State(Refresh(loadout)))));
+        baked.Should().Equal(written, "the recorded bake is the write that landed");
         IniDocument.Parse(baked).Get("Display", "iSize W").Should().Be("1920");
-        baked.Should().Equal((await Rendered(loadout)).ToBytes());
     }
 
     [Fact]
@@ -220,6 +224,7 @@ public class GameIniIngestTests(ITestOutputHelper helper) : AIsolatedGameTest<Ga
         var tree = new Dictionary<GamePath, SyncNode> { [MainIni] = new() { SourceItemType = LoadoutSourceItemType.Intrinsic } };
 
         using var tx = Connection.BeginTransaction();
+        using var pins = TransactionPins.Hold(tx);
         await file.Ingest(new MemoryStream(), Refresh(loadout), tree, tx);
         await tx.Commit();
 

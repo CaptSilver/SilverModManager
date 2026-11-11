@@ -36,13 +36,9 @@ public static class GameInis
 
     /// <summary>
     /// Brings the loadout's INI state up to date before a sync: a game INI on disk that the loadout has no baseline
-    /// for is kept as its baseline (nothing is written to the file here), and each baseline's bake is stored and
-    /// recorded as the last one written, so the bytes are in the store before they reach the game folder.
+    /// for is kept as its baseline. Nothing is written to the file here and no bake is recorded; the sync's write
+    /// records that through <see cref="IniBakeIntrinsicFile.RecordWrite"/>.
     /// </summary>
-    /// <remarks>
-    /// The bake is recorded here, not after the write, because writing an intrinsic file has no transaction. That is
-    /// safe because rendering depends on the loadout's database state alone, so the write produces the same bytes.
-    /// </remarks>
     public static async ValueTask<Loadout.ReadOnly> Prepare(IGameIniFiles game, Loadout.ReadOnly loadout, IServiceProvider provider)
     {
         if (!loadout.IsValid() || !Loadout.OwnsGameInis.Get(loadout)) return loadout;
@@ -50,8 +46,7 @@ public static class GameInis
         var connection = provider.GetRequiredService<IConnection>();
         var fileStore = provider.GetRequiredService<IFileStore>();
 
-        loadout = await TakeBaselines(game, loadout, connection, fileStore);
-        return await RecordBakes(game, loadout, connection, fileStore);
+        return await TakeBaselines(game, loadout, connection, fileStore);
     }
 
     /// <summary>
@@ -138,9 +133,8 @@ public static class GameInis
     /// write, otherwise the bake recorded on the row. Null when the app has not written the file yet.
     /// </summary>
     /// <remarks>
-    /// The deployed hash comes first because <see cref="Prepare"/> records the bake for the apply that is about to
-    /// run before an ingest looks at it, so after a tweak was switched the recorded bake describes the next write,
-    /// not the file the game changed.
+    /// The deployed hash comes first because a previous part of another identity kind is a vanilla file the app
+    /// never baked over, and the recorded bake is the only record then.
     /// </remarks>
     public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, FileIdentity? deployed)
     {
@@ -242,9 +236,7 @@ public static class GameInis
 
                 var bytes = await file.ReadAllBytesAsync();
                 var hash = bytes.xxHash3();
-                pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
-                if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
-                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
+                pins.Add(await IniEdits.Store(fileStore, path, bytes));
                 taken.Add((path, hash));
             }
 
@@ -260,40 +252,6 @@ public static class GameInis
                     Baseline = hash,
                 };
             }
-            await tx.Commit();
-        }
-        finally
-        {
-            foreach (var pin in pins) pin.Dispose();
-        }
-
-        return loadout.Rebase();
-    }
-
-    private static async Task<Loadout.ReadOnly> RecordBakes(IGameIniFiles game, Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore)
-    {
-        var recorded = new List<(EntityId State, Hash Hash)>();
-        var pins = new List<IDisposable>();
-        try
-        {
-            var states = StatesByPath(loadout);
-            foreach (var path in Paths(game).Where(states.ContainsKey))
-            {
-                var state = states[path];
-                var bytes = await Render(game, fileStore, loadout, path);
-                var hash = bytes.xxHash3();
-                if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var last) && last == hash) continue;
-
-                pins.Add(FileStorePins.Pin(FileIdentity.XxHash3(hash)));
-                if (!await fileStore.HaveFile(FileIdentity.XxHash3(hash)))
-                    await fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length))]);
-                recorded.Add((state.Id, hash));
-            }
-
-            if (recorded.Count == 0) return loadout;
-
-            using var tx = connection.BeginTransaction();
-            foreach (var (state, hash) in recorded) tx.Add(state, LoadoutIniState.LastBakedHash, hash);
             await tx.Commit();
         }
         finally
