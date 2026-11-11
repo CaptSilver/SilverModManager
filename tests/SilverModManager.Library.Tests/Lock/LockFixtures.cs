@@ -137,19 +137,44 @@ internal sealed class LockFixtures(IConnection connection)
         });
     }
 
-    public async Task Link(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file, string groupName, bool disabled = false)
+    public Task Link(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file, string groupName, bool disabled = false)
+        => LinkUnder(loadout, file, groupName, parent: null, disabled);
+
+    /// <summary>A plain, user-owned collection.</summary>
+    public async Task<LoadoutItemGroupId> AddCollection(Loadout.ReadOnly loadout, string name)
+    {
+        using var tx = connection.BeginTransaction();
+        var collection = new CollectionGroup.New(tx, out var id)
+        {
+            IsReadOnly = false,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout.LoadoutId },
+            },
+        };
+        var result = await tx.Commit();
+        return LoadoutItemGroupId.From(result[id].Value);
+    }
+
+    public async Task LinkUnder(Loadout.ReadOnly loadout, LibraryFile.ReadOnly file, string groupName, LoadoutItemGroupId? parent, bool disabled = false)
     {
         using var tx = connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var id)
         {
             IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, id) { Name = groupName, LoadoutId = loadout.LoadoutId },
+            LoadoutItem = new LoadoutItem.New(tx, id)
+            {
+                Name = groupName,
+                LoadoutId = loadout.LoadoutId,
+            },
         };
         _ = new LibraryLinkedLoadoutItem.New(tx, id)
         {
             LibraryItemId = file.Id,
             LoadoutItemGroup = group,
         };
+        if (parent is { } p) tx.Add(id, LoadoutItem.Parent, p);
         if (disabled) tx.Add(id, LoadoutItem.Disabled, Null.Instance);
         await tx.Commit();
     }

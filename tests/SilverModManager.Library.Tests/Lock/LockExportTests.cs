@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Backend;
 using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Library.Lock;
 using SilverModManager.Library.Sources;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -18,14 +20,52 @@ public class LockExportTests(IConnection connection)
 {
     private readonly LockFixtures _fixtures = new(connection);
 
-    private LockExport Export()
+    private LockExport Export(ICollectionOwnership? ownership = null)
     {
         var digests = new LibraryFileDigests(Substitute.For<IFileStore>(), connection);
         return new LockExport([
             new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), digests),
             new GitHubLibrarySource(new ServiceCollection().BuildServiceProvider()),
             new ThunderstoreLibrarySource(new ServiceCollection().BuildServiceProvider()),
-        ], digests);
+        ], digests, ownership ?? new CollectionOwnership([]));
+    }
+
+    private sealed class OwningLock : ICollectionLock
+    {
+        private static bool IsList(CollectionGroup.ReadOnly collection)
+            => collection.AsLoadoutItemGroup().AsLoadoutItem().Name.StartsWith("List:", StringComparison.Ordinal);
+
+        public string? WhyLocked(CollectionGroup.ReadOnly collection) => IsList(collection) ? "a list decides what it contains" : null;
+        public bool OwnsItsMods(CollectionGroup.ReadOnly collection) => IsList(collection);
+    }
+
+    [Fact]
+    public async Task AModlistsModsAreSkippedNotPinned()
+    {
+        var loadout = await _fixtures.CreateLoadout();
+        var list = await _fixtures.AddCollection(loadout, "List: Yggdrasil");
+        var userDigest = LockFixtures.DigestOf("user archive");
+        var nexusInList = await _fixtures.AddNexusFile("InList-1-1-0.zip", "in list", LockFixtures.DigestOf("in list"), "In List", "1.0", modId: 1, fileId: 11);
+        var localInList = await _fixtures.AddLibraryFile("local.7z", "local bytes", sha256: null);
+        var danglingInList = await _fixtures.AddLibraryFile("gone.zip", "gone", sha256: null);
+        var user = await _fixtures.AddNexusFile("User-2-1-0.zip", "user archive", userDigest, "User mod", "1.0", modId: 2, fileId: 22);
+        await _fixtures.LinkUnder(loadout, nexusInList, "list nexus mod", list);
+        await _fixtures.LinkUnder(loadout, localInList, "list local mod", list);
+        await _fixtures.LinkUnder(loadout, danglingInList, "list dangling mod", list);
+        await _fixtures.Link(loadout, user, "User mod");
+
+        // An undo can restore a link whose file is gone.
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Delete(danglingInList.Id, recursive: false);
+            await tx.Commit();
+        }
+
+        var skipped = new List<string>();
+        var lockFile = await Export(new CollectionOwnership([new OwningLock()])).FromLoadout(loadout, TestContext.Current.CancellationToken, skipped);
+
+        lockFile.Entries.Should().ContainSingle().Which.Id.Should().Be("user-mod");
+        skipped.Should().HaveCount(3).And.OnlyContain(line => line.Contains("`List: Yggdrasil`") && line.Contains("does not pin"));
     }
 
     [Fact]

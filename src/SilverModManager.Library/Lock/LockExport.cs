@@ -2,6 +2,7 @@ using System.Text;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Library.Sources;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -13,25 +14,35 @@ namespace SilverModManager.Library.Lock;
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.
 /// </summary>
 [PublicAPI]
-public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests)
+public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests, ICollectionOwnership ownership)
 {
     /// <summary>
     /// Exports every enabled group that links a file one of the library sources owns. A group that links anything else
     /// fails the export: a lock that quietly left a mod out would be worse than none. The exception is a dangling
     /// file (no SHA-256 and no bytes in the file store, such as an unfinished download's record): nothing can pin it,
-    /// so it is left out and its message added to <paramref name="skipped"/>.
+    /// so it is left out and its message added to <paramref name="skipped"/>. A group under a collection that owns its
+    /// mods (a modlist) is left out and reported too: the list pins its own files, not this lock.
     /// </summary>
     public async ValueTask<LockFile> FromLoadout(Loadout.ReadOnly loadout, CancellationToken cancellationToken = default, ICollection<string>? skipped = null)
     {
         var entries = new Dictionary<string, LockEntry>(StringComparer.Ordinal);
 
-        var linked = LibraryLinkedLoadoutItem.All(loadout.Rebase().Db)
+        var db = loadout.Rebase().Db;
+        var linked = LibraryLinkedLoadoutItem.All(db)
             .Where(item => item.AsLoadoutItem().LoadoutId == loadout.LoadoutId && item.AsLoadoutItem().IsEnabled())
             .OrderBy(item => item.AsLoadoutItem().Name, StringComparer.Ordinal);
 
         foreach (var item in linked)
         {
             var groupName = item.AsLoadoutItem().Name;
+            if (ownership.OwnsLink(db, item))
+            {
+                CollectionOwnership.TryNearestCollection(db, item.AsLoadoutItem(), out var owner);
+                var ownerName = owner.AsLoadoutItemGroup().AsLoadoutItem().Name;
+                skipped?.Add($"{MarkdownText.Code(groupName)} belongs to {MarkdownText.Code(ownerName)}, which the lock does not pin.");
+                continue;
+            }
+
             var libraryItem = item.LibraryItem;
             if (!libraryItem.TryGetAsLibraryFile(out var file))
                 throw new LockException($"{MarkdownText.Code(groupName)} is not linked to a downloaded file, so there is nothing to pin.");

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
@@ -104,7 +105,7 @@ public class LockSourceDispatchTests(IConnection connection)
         first.Owns = _ => new LibrarySourceEntry("shared", "1", null, "shared.zip", LockFixtures.DigestOf("bytes").ToString(), "first");
         second.Owns = _ => new LibrarySourceEntry("shared", "2", null, "shared.zip", LockFixtures.DigestOf("bytes").ToString(), "second");
 
-        var lockFile = await new LockExport([none, first, second], NoStoreDigests()).FromLoadout(loadout, TestContext.Current.CancellationToken);
+        var lockFile = await new LockExport([none, first, second], NoStoreDigests(), new CollectionOwnership([])).FromLoadout(loadout, TestContext.Current.CancellationToken);
 
         lockFile.Entries.Should().ContainSingle().Which.Source.Should().Be("first");
         second.Described.Should().BeEmpty("a source after the owner is never asked");
@@ -117,7 +118,7 @@ public class LockSourceDispatchTests(IConnection connection)
         var file = await _fixtures.AddLibraryFile("local.zip", "bytes", LockFixtures.DigestOf("bytes"));
         await _fixtures.Link(loadout, file, "Local");
 
-        var act = async () => await new LockExport([Fake("alpha"), Fake("beta")], NoStoreDigests()).FromLoadout(loadout, TestContext.Current.CancellationToken);
+        var act = async () => await new LockExport([Fake("alpha"), Fake("beta")], NoStoreDigests(), new CollectionOwnership([])).FromLoadout(loadout, TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<LockException>()).Which.Message.Should().Contain("local.zip").And.Contain("alpha, beta");
     }
