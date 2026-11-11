@@ -11,7 +11,7 @@ namespace SilverModManager.Platform.Proton.Protontricks;
 /// </summary>
 public class ProtontricksFlatpakDependency : ExecutableRuntimeDependency, IProtontricksDependency
 {
-    private const string FlatpakPackageId = "com.github.Matoking.protontricks";
+    internal const string FlatpakPackageId = "com.github.Matoking.protontricks";
 
     /// <inheritdoc />
     public override string DisplayName => "protontricks (flatpak)";
