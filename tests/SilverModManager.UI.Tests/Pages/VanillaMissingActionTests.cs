@@ -229,7 +229,19 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
         verdict.Outcome.Should().Be(ModUpdateOutcome.PartOfLockedCollection, "the page has a newer file, but the list decides what the mod is");
         ModUpdateReport.Describe([("SkyUI", verdict)], CacheUpdaterResultStatus.Ok)
             .Should().Contain("SkyUI is part of Yggdrasil; Yggdrasil is a Wabbajack modlist; it decides what it contains, so update it there")
-            .And.NotContain("Nexus page known");
+            .And.NotContain("Nexus page known")
+            .And.NotContain("game build", "there is no Nexus file to read a description of");
+    }
+
+    [Fact]
+    public void Test_AReportWithALockedModDoesNotSpeakForItsNexusPage()
+    {
+        var locked = new ModUpdateVerdict(ModUpdateOutcome.PartOfLockedCollection, "Yggdrasil is a Wabbajack modlist", "Yggdrasil");
+
+        var text = ModUpdateReport.Describe([("A", Verdict(ModUpdateOutcome.UpToDate)), ("B", locked)], CacheUpdaterResultStatus.Ok);
+
+        text.Should().Contain("None of the other mods has a newer file").And.NotContain("None of these mods")
+            .And.Contain("B is part of Yggdrasil");
     }
 
     [Fact]

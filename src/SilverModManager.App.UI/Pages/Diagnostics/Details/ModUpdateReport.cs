@@ -38,9 +38,9 @@ public static class ModUpdateReport
         if (!LibraryLinkedLoadoutItem.TryGet(db, mod.Value, out var linked)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
 
         // A mod of a locked collection is updated through the collection, whatever its file's page says.
-        if (ownership.WhyLocked(db, linked.Value) is { } reason)
+        if (CollectionOwnership.TryNearestCollection(db, linked.Value.AsLoadoutItemGroup().AsLoadoutItem(), out var collection)
+            && ownership.WhyLocked(collection) is { } reason)
         {
-            CollectionOwnership.TryNearestCollection(db, linked.Value.AsLoadoutItemGroup().AsLoadoutItem(), out var collection);
             return new ModUpdateVerdict(ModUpdateOutcome.PartOfLockedCollection, reason, collection.AsLoadoutItemGroup().AsLoadoutItem().Name);
         }
 
@@ -63,25 +63,28 @@ public static class ModUpdateReport
         string Names(ModUpdateOutcome outcome) => string.Join(", ", mods.Where(m => m.Verdict.Outcome == outcome).Select(m => m.Name));
         bool Any(ModUpdateOutcome outcome) => mods.Any(m => m.Verdict.Outcome == outcome);
 
+        // A locked mod's page is never asked about, so "none of these" would claim more than the cache knows.
+        var these = Any(ModUpdateOutcome.PartOfLockedCollection) ? "the other mods" : "these mods";
         var clauses = new List<string>();
-        if (!mods.Any(m => m.Verdict.Outcome != ModUpdateOutcome.PartOfLockedCollection))
+
+        // When every mod is updated through its collection there is nothing to say about Nexus pages.
+        if (mods.Any(m => m.Verdict.Outcome != ModUpdateOutcome.PartOfLockedCollection))
         {
-            // Every mod is updated through its collection, so there is nothing to say about Nexus pages.
-        }
-        else if (Any(ModUpdateOutcome.NewerFiles))
-        {
-            clauses.Add($"Newer files exist for {Names(ModUpdateOutcome.NewerFiles)}");
-            if (Any(ModUpdateOutcome.UpToDate)) clauses.Add($"none for {Names(ModUpdateOutcome.UpToDate)}");
-            if (Any(ModUpdateOutcome.NoNexusPage)) clauses.Add($"no Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
-        }
-        else if (Any(ModUpdateOutcome.UpToDate))
-        {
-            clauses.Add(Any(ModUpdateOutcome.NoNexusPage) ? "None of the mods on Nexus has a newer file" : "None of these mods has a newer file");
-            if (Any(ModUpdateOutcome.NoNexusPage)) clauses.Add($"no Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
-        }
-        else
-        {
-            clauses.Add($"No Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
+            if (Any(ModUpdateOutcome.NewerFiles))
+            {
+                clauses.Add($"Newer files exist for {Names(ModUpdateOutcome.NewerFiles)}");
+                if (Any(ModUpdateOutcome.UpToDate)) clauses.Add($"none for {Names(ModUpdateOutcome.UpToDate)}");
+                if (Any(ModUpdateOutcome.NoNexusPage)) clauses.Add($"no Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
+            }
+            else if (Any(ModUpdateOutcome.UpToDate))
+            {
+                clauses.Add(Any(ModUpdateOutcome.NoNexusPage) ? $"None of {these} on Nexus has a newer file" : $"None of {these} has a newer file");
+                if (Any(ModUpdateOutcome.NoNexusPage)) clauses.Add($"no Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
+            }
+            else
+            {
+                clauses.Add($"No Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
+            }
         }
 
         clauses.AddRange(mods
@@ -94,7 +97,7 @@ public static class ModUpdateReport
         else if (check != CacheUpdaterResultStatus.Ok) lines.Add($"Nexus could not be asked just now ({check}), so this is only what the app already knew.");
 
         lines.Add(string.Join("; ", clauses) + ".");
-        lines.Add("The app can't tell which game build a Nexus file was made for, so read the description of a newer file before installing it.");
+        if (Any(ModUpdateOutcome.NewerFiles)) lines.Add("The app can't tell which game build a Nexus file was made for, so read the description of a newer file before installing it.");
         return string.Join("\n\n", lines);
     }
 }
