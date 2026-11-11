@@ -156,7 +156,8 @@ public class CliClient(
         client.NoDelay = true;
         try
         {
-            await ConnectAsync(client, port, stop);
+            // Not `stop`: a stop asked for early is still delivered to the launch once it is running.
+            await ConnectAsync(client, port, CancellationToken.None);
         }
         catch (SocketException e)
         {
