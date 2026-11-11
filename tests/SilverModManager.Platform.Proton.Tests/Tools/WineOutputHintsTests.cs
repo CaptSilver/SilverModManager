@@ -118,7 +118,24 @@ public class WineOutputHintsTests
 
         var hint = Explain(result, exe: exe);
 
-        hint.Should().Contain("--filesystem=\"/tools/Remap\"").And.Contain("com.github.Matoking.protontricks").And.Contain("SteamProton cannot run: no Proton build");
+        hint.Should().Contain("--filesystem='/tools/Remap'").And.Contain("com.github.Matoking.protontricks").And.Contain("SteamProton cannot run: no Proton build");
+    }
+
+    [Fact]
+    public void AHostileToolFolderIsOneSingleQuotedWordInTheFlatpakHint()
+    {
+        var exe = _fs.FromUnsanitizedFullPath("""/tools/a $(touch x) `id` "q" 'single'/x.exe""");
+        var result = Result("Protontricks", stdout: "Could not translate the specified Unix filename to a DOS filename.\n");
+
+        Explain(result, exe: exe).Should().Contain("""--filesystem='/tools/a $(touch x) `id` "q" '\''single'\''' com.github""");
+    }
+
+    [Fact]
+    public void AHostilePrefixPathIsQuotedInTheWinetricksHint()
+    {
+        var prefix = new ResolvedPrefix(_fs.FromUnsanitizedFullPath("/p/$(touch x) 'q'"), CompatibilityLayerKind.PlainWine);
+
+        Explain(Result("PlainWine", ImportDll("MSVBVM60.DLL")), prefix).Should().Contain("""WINEPREFIX='/p/$(touch x) '\''q'\''' winetricks""");
     }
 
     [Fact]

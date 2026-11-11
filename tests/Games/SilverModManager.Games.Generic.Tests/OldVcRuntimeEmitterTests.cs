@@ -192,6 +192,22 @@ public class OldVcRuntimeEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AHostilePrefixPathIsOneSingleQuotedWordInTheWinetricksFix()
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        var prefixPath = Resolver.DefaultPrefix.Path / "a $(touch x) 'q'";
+        await Install(prefixPath / "drive_c/windows/system32/msvcp140.dll");
+        _images.Versions["msvcp140.dll"] = new Version(14, 0, 24215, 1);
+        Resolver.Resolution = _ => PrefixResolution.Resolved(new ResolvedPrefix(prefixPath, CompatibilityLayerKind.Heroic));
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("WINEPREFIX='" + prefixPath.GetFullPath().Replace("'", "'\\''") + "' winetricks -q vcrun2022");
+    }
+
+    [Fact]
     public async Task AFileInTheOverridesGroupIsNotRead()
     {
         var loadout = await CreateLoadout();

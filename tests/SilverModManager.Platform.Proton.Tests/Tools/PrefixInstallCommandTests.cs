@@ -17,5 +17,14 @@ public class PrefixInstallCommandTests
     [Fact]
     public void AnyOtherPrefixUsesWinetricksWithThePrefixPath()
         => PrefixInstallCommand.For(new ResolvedPrefix(Path, CompatibilityLayerKind.PlainWine), "vb6run")
-            .Should().Be("WINEPREFIX=\"/wine\" winetricks -q vb6run");
+            .Should().Be("WINEPREFIX='/wine' winetricks -q vb6run");
+
+    [Fact]
+    public void AHostilePrefixPathIsOneSingleQuotedWord()
+    {
+        var hostile = new InMemoryFileSystem(OSInformation.FakeUnix).FromUnsanitizedFullPath("""/p/a $(touch x) `id` "q" 'single'/pfx""");
+
+        PrefixInstallCommand.For(new ResolvedPrefix(hostile, CompatibilityLayerKind.PlainWine), "vb6run")
+            .Should().Be("""WINEPREFIX='/p/a $(touch x) `id` "q" '\''single'\''/pfx' winetricks -q vb6run""");
+    }
 }
