@@ -334,6 +334,39 @@ public class ToolRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task RunWindowsToolReturnsBothTailsTheDurationAndTheRunsPlan()
+    {
+        _processRunner
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var c = call.Arg<Command>();
+                await c.StandardOutputPipe.CopyFromAsync(new MemoryStream("out line\n"u8.ToArray()));
+                await c.StandardErrorPipe.CopyFromAsync(new MemoryStream("0148:err:module:import_dll Library MSVBVM60.DLL (which is needed by L\"Z:\\\\t\\\\a.exe\") not found\n"u8.ToArray()));
+                return new CommandResult(53, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddSeconds(4));
+            });
+
+        var result = await Runner().RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None);
+
+        result.ExitCode.Should().Be(53);
+        result.Duration.Should().Be(TimeSpan.FromSeconds(4));
+        result.Strategy.Should().Be("SteamProton");
+        result.FallbackReason.Should().BeNull();
+        result.StdoutTail.Should().Be("out line\n");
+        result.StderrTail.Should().Contain("MSVBVM60.DLL");
+    }
+
+    [Fact]
+    public async Task RunWindowsToolDoesNotReplaceTheLogPipes()
+    {
+        await Runner().RunWindowsTool(SteamGame(), Exe, [], null, logOutput: true, CancellationToken.None);
+
+        var command = _commands.Should().ContainSingle().Subject;
+        command.StandardOutputPipe.Should().NotBeSameAs(PipeTarget.Null);
+        command.StandardErrorPipe.Should().NotBeSameAs(PipeTarget.Null);
+    }
+
+    [Fact]
     public async Task RunWindowsTool_WithoutAStrategy_ThrowsTheDiagnosticAndRunsNothing()
     {
         var act = () => Runner().RunWindowsTool(GogInWine(), Exe, [], null, logOutput: false, CancellationToken.None);

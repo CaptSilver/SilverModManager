@@ -74,5 +74,16 @@ public sealed record ToolRunPlan
 /// What a finished tool run reports.
 /// </summary>
 /// <param name="ExitCode">The exit code of the program that was started.</param>
+/// <param name="Duration">How long the program ran.</param>
+/// <param name="Strategy">The name of the strategy that ran it.</param>
+/// <param name="FallbackReason">Why the last-resort strategy was used, or null when the regular one ran.</param>
+/// <param name="StdoutTail">The end of the program's standard output, from the first complete line kept.</param>
+/// <param name="StderrTail">The end of the program's standard error, from the first complete line kept.</param>
 [PublicAPI]
-public sealed record ToolRunResult(int ExitCode);
+public sealed record ToolRunResult(
+    int ExitCode,
+    TimeSpan Duration = default,
+    string Strategy = "",
+    string? FallbackReason = null,
+    string StdoutTail = "",
+    string StderrTail = "");
