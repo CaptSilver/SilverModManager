@@ -65,7 +65,12 @@ public class WineOutputHintsTests
 
     [Fact]
     public void ANullPrefixNamesTheDllWithoutACommand()
-        => Explain(Result("SteamProton", ImportDll("MSVBVM60.DLL")), prefix: null).Should().NotBeNull();
+    {
+        // Goes straight to WineOutputHints: the Explain helper turns a null prefix into the Steam one.
+        var hint = WineOutputHints.Explain(Result("SteamProton", ImportDll("MSVBVM60.DLL")), _installation, _exe, null);
+        hint.Should().Contain("MSVBVM60.DLL").And.Contain("Visual Basic 6 runtime");
+        hint.Should().NotContain("-q").And.NotContain("protontricks").And.NotContain("winetricks");
+    }
 
     [Fact]
     public void RoutesAnAppInstallableDllToThePrefixSetup()

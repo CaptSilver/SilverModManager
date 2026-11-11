@@ -69,6 +69,14 @@ public partial class PrefixComponentsTests
     }
 
     [Fact]
+    public void EveryAppInstallableComponent_IsInstallable()
+    {
+        // Pins the installable set so an entry that loses its steps cannot slip into the detect-only group.
+        foreach (var component in PrefixComponents.All.Append(PrefixComponents.DotNetDesktop8))
+            component.Installable.Should().BeTrue(component.Id.Value);
+    }
+
+    [Fact]
     public void EveryComponent_HasADisplayNameAndAtLeastOneDownload()
     {
         foreach (var component in PrefixComponents.Known.Where(c => c.Installable))

@@ -111,7 +111,7 @@ public sealed class ToolRunner(
         if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
         LogFallback(installation, plan);
 
-        // The tails ride along with the log pipes ProcessRunner adds; they are what says why a tool stopped.
+        // The tails ride along with the log pipes Runner.SetupLogging adds; they are what says why a tool stopped.
         var stdout = new OutputTail();
         var stderr = new OutputTail();
         var command = ToCommand(plan)

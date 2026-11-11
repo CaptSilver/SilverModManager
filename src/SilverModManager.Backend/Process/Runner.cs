@@ -143,7 +143,7 @@ internal class ProcessRunner : IProcessRunner
             // https://github.com/Nexus-Mods/NexusMods.App/issues/1905#issuecomment-2302486535
             command = command.WithStandardInputPipe(stdInPipe);
             if (command.StandardOutputPipe == PipeTarget.Null) command = command.WithStandardOutputPipe(PipeTarget.ToStream(Stream.Null));
-            if (command.StandardOutputPipe == PipeTarget.Null) command = command.WithStandardErrorPipe(PipeTarget.ToStream(Stream.Null));
+            if (command.StandardErrorPipe == PipeTarget.Null) command = command.WithStandardErrorPipe(PipeTarget.ToStream(Stream.Null));
             return command;
         }
 
