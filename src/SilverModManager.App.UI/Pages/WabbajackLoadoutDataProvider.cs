@@ -13,9 +13,10 @@ using SilverModManager.Wabbajack.Models;
 namespace SilverModManager.App.UI.Pages;
 
 /// <summary>
-/// Lists the mods a Wabbajack modlist install wrote: plain groups parented to the modlist's group, holding files and
-/// carrying no library link. The library-linked providers never see them. A child that does carry a library link
-/// belongs to the provider that owns that link, so it is left out here and never counted twice.
+/// Lists every child group of a modlist group, library-linked or not: the install writes each mod as a group
+/// parented to the modlist's group and links it to the archive most of its files came from. The linked providers
+/// leave those groups to this one through <see cref="LoadoutDataProviderHelper.ObserveLinkedGroups"/>, so a mod is
+/// never counted twice.
 /// </summary>
 [UsedImplicitly]
 public class WabbajackLoadoutDataProvider : ILoadoutDataProvider
@@ -56,14 +57,10 @@ public class WabbajackLoadoutDataProvider : ILoadoutDataProvider
     {
         return _connection.ObserveDatoms(LoadoutItem.ParentId, modlistGroup)
             .AsEntityIds()
-            .Filter(datom => IsUnlinkedGroup(datom.E));
+            .Filter(datom => IsModGroup(datom.E));
     }
 
-    private bool IsUnlinkedGroup(EntityId id)
-    {
-        var db = _connection.Db;
-        return LoadoutItemGroup.Load(db, id).IsValid() && !LibraryLinkedLoadoutItem.Load(db, id).IsValid();
-    }
+    private bool IsModGroup(EntityId id) => LoadoutItemGroup.Load(_connection.Db, id).IsValid();
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLoadoutItems(LoadoutFilter loadoutFilter)
     {

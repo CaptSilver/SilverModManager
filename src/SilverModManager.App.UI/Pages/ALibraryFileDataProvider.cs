@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
@@ -31,11 +32,13 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
     where TModel : struct, IReadOnlyModel<TModel>
 {
     private readonly IConnection _connection;
+    private readonly ICollectionOwnership _ownership;
     private readonly GameNames _gameNames;
     private readonly ILogger _logger;
 
-    protected ALibraryFileDataProvider(IConnection connection, GameNames gameNames, ILogger logger) : base(connection)
+    protected ALibraryFileDataProvider(IConnection connection, ICollectionOwnership ownership, GameNames gameNames, ILogger logger) : base(connection)
     {
+        _ownership = ownership;
         _logger = logger;
         _connection = connection;
         _gameNames = gameNames;
@@ -142,12 +145,7 @@ internal abstract class ALibraryFileDataProvider<TModel> : ALibraryDataProvider<
     private IObservable<IChangeSet<TModel, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
         return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
-            .FilterOnObservable((_, entityId) => _connection
-                .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, entityId)
-                .AsEntityIds()
-                .FilterInStaticLoadout(_connection, loadoutFilter)
-                .IsNotEmpty()
-            );
+            .FilterOnObservable((_, entityId) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, entityId, loadoutFilter).IsNotEmpty());
     }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLoadoutItems(LoadoutFilter loadoutFilter)

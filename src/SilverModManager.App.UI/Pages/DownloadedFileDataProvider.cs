@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,10 +21,10 @@ namespace SilverModManager.App.UI.Pages;
 [UsedImplicitly]
 internal class DownloadedFileDataProvider : ALibraryFileDataProvider<DownloadedFile.ReadOnly>
 {
-    public DownloadedFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>()),
+    public DownloadedFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), serviceProvider.GetRequiredService<ICollectionOwnership>(), new GameNames(serviceProvider.GetServices<IGameData>()),
         serviceProvider.GetService<ILogger<DownloadedFileDataProvider>>() ?? NullLogger<DownloadedFileDataProvider>.Instance) { }
 
-    private DownloadedFileDataProvider(IConnection connection, GameNames gameNames, ILogger logger) : base(connection, gameNames, logger) { }
+    private DownloadedFileDataProvider(IConnection connection, ICollectionOwnership ownership, GameNames gameNames, ILogger logger) : base(connection, ownership, gameNames, logger) { }
 
     protected override LibraryFile.ReadOnly FileOf(DownloadedFile.ReadOnly model) => model.AsLibraryFile();
 

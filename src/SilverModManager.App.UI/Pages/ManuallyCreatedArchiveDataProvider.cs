@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Aggregation;
@@ -19,13 +20,15 @@ namespace SilverModManager.App.UI.Pages;
 internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<ManuallyCreatedArchive.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
+    private readonly ICollectionOwnership _ownership;
     private readonly GameNames _gameNames;
 
-    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
+    public ManuallyCreatedArchiveDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), serviceProvider.GetRequiredService<ICollectionOwnership>(), new GameNames(serviceProvider.GetServices<IGameData>())) { }
 
-    private ManuallyCreatedArchiveDataProvider(IConnection connection, GameNames gameNames) : base(connection)
+    private ManuallyCreatedArchiveDataProvider(IConnection connection, ICollectionOwnership ownership, GameNames gameNames) : base(connection)
     {
         _connection = connection;
+        _ownership = ownership;
         _gameNames = gameNames;
     }
 
@@ -98,12 +101,7 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
     private IObservable<IChangeSet<ManuallyCreatedArchive.ReadOnly, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
         return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
-            .FilterOnObservable((_, entityId) => _connection
-                .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, entityId)
-                .AsEntityIds()
-                .FilterInStaticLoadout(_connection, loadoutFilter)
-                .IsNotEmpty()
-            );
+            .FilterOnObservable((_, entityId) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, entityId, loadoutFilter).IsNotEmpty());
     }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLoadoutItems(LoadoutFilter loadoutFilter)
@@ -118,9 +116,7 @@ internal class ManuallyCreatedArchiveDataProvider : ALibraryDataProvider<Manuall
 
     private CompositeItemModel<EntityId> ToLoadoutItemModel(LoadoutFilter loadoutFilter, ManuallyCreatedArchive.ReadOnly archive)
     {
-        var linkedItemsObservable = _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItem, archive)
-            .AsEntityIds()
-            .FilterInStaticLoadout(_connection, loadoutFilter)
+        var linkedItemsObservable = LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, archive.Id, loadoutFilter)
             .Transform(datom => LoadoutItem.Load(_connection.Db, datom.E))
             .RefCount();
 

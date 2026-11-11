@@ -14,6 +14,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using R3;
@@ -52,8 +53,25 @@ public static class LoadoutDataProviderHelper
             .CombineLatest(static counts => counts.Sum());
     }
 
+    /// <summary>
+    /// The groups linked to the library item that this loadout filter shows and no collection provider owns: a group
+    /// under a collection that owns its mods is that provider's row, linked or not.
+    /// </summary>
+    public static IObservable<IChangeSet<Datom, EntityId>> ObserveLinkedGroups(
+        IConnection connection,
+        ICollectionOwnership ownership,
+        EntityId libraryItem,
+        LoadoutFilter filter)
+    {
+        return connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, libraryItem)
+            .AsEntityIds()
+            .FilterInStaticLoadout(connection, filter)
+            .Filter(datom => !ownership.OwnsLink(connection.Db, LibraryLinkedLoadoutItem.Load(connection.Db, datom.E)));
+    }
+
     public static ChangeSet<LoadoutItem.ReadOnly, EntityId> GetLinkedLoadoutItems(
         IDb db,
+        ICollectionOwnership ownership,
         LoadoutFilter loadoutFilter,
         LibraryItemId libraryItemId)
     {
@@ -80,6 +98,7 @@ public static class LoadoutDataProviderHelper
         {
             var item = LoadoutItem.Load(db, entityId);
             if (!item.IsValid()) continue;
+            if (ownership.OwnsLink(db, LibraryLinkedLoadoutItem.Load(db, entityId))) continue;
 
             changeSet.Add(new Change<LoadoutItem.ReadOnly, EntityId>(ChangeReason.Add, entityId, item));
         }

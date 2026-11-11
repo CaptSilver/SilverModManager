@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,10 +15,10 @@ namespace SilverModManager.App.UI.Pages;
 [UsedImplicitly]
 internal class LocalFileDataProvider : ALibraryFileDataProvider<LocalFile.ReadOnly>
 {
-    public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), new GameNames(serviceProvider.GetServices<IGameData>()),
+    public LocalFileDataProvider(IServiceProvider serviceProvider) : this(serviceProvider.GetRequiredService<IConnection>(), serviceProvider.GetRequiredService<ICollectionOwnership>(), new GameNames(serviceProvider.GetServices<IGameData>()),
         serviceProvider.GetService<ILogger<LocalFileDataProvider>>() ?? NullLogger<LocalFileDataProvider>.Instance) { }
 
-    private LocalFileDataProvider(IConnection connection, GameNames gameNames, ILogger logger) : base(connection, gameNames, logger) { }
+    private LocalFileDataProvider(IConnection connection, ICollectionOwnership ownership, GameNames gameNames, ILogger logger) : base(connection, ownership, gameNames, logger) { }
 
     protected override LibraryFile.ReadOnly FileOf(LocalFile.ReadOnly model) => model.AsLibraryFile();
 

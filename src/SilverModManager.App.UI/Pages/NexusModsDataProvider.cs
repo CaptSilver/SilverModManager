@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.App.UI.Helpers;
 using System.Reactive.Linq;
@@ -28,6 +29,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
+    private readonly ICollectionOwnership _ownership;
     private readonly GameNames _gameNames;
     private readonly ModSourceResolver _sources;
     private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _thumbnailLoader;
@@ -38,6 +40,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     {
         _serviceProvider = serviceProvider;
         _connection = connection;
+        _ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
         _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
         _sources = serviceProvider.GetRequiredService<ModSourceResolver>();
 
@@ -316,11 +319,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
     private IObservable<IChangeSet<IGroup<NexusModsLibraryItem.ReadOnly, EntityId, EntityId>, EntityId>> FilterLoadoutItems(LoadoutFilter loadoutFilter)
     {
         return ObserveOwnItemsForLoadout(loadoutFilter.LoadoutId)
-            .FilterOnObservable((_, itemId) => _connection
-                .ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, itemId)
-                .AsEntityIds()
-                .FilterInStaticLoadout(_connection, loadoutFilter)
-                .IsNotEmpty())
+            .FilterOnObservable((_, itemId) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, itemId, loadoutFilter).IsNotEmpty())
             .Group(PageOf);
     }
 
@@ -331,8 +330,7 @@ public class NexusModsDataProvider : ALibraryDataProvider<NexusModsLibraryItem.R
             var modPage = NexusModsModPageMetadata.Load(_connection.Db, page.Key);
             var linkedItemsObservable = page.Cache.Connect()
                 // NOTE(erri120): DynamicData 9.0.4 is broken for value types because it uses ReferenceEquals. Temporary workaround is a custom equality comparer.
-                .MergeManyChangeSets((_, e) => _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, e).AsEntityIds(), equalityComparer: DatomEntityIdEqualityComparer.Instance)
-                .FilterInStaticLoadout(_connection, loadoutFilter)
+                .MergeManyChangeSets((_, e) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, e, loadoutFilter), equalityComparer: DatomEntityIdEqualityComparer.Instance)
                 .Transform(datom => LoadoutItem.Load(_connection.Db, datom.E))
                 .RefCount();
 

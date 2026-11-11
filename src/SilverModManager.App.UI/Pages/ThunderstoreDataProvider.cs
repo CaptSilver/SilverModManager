@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive.Linq;
 using Avalonia.Media;
@@ -33,6 +34,7 @@ namespace SilverModManager.App.UI.Pages;
 internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibraryFile.ReadOnly>, ILoadoutDataProvider
 {
     private readonly IConnection _connection;
+    private readonly ICollectionOwnership _ownership;
     private readonly GameNames _gameNames;
     private readonly ModSourceResolver _sources;
     private readonly Lazy<IThumbnailLoader> _iconLoader;
@@ -45,6 +47,7 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
     {
         _iconLoader = new Lazy<IThumbnailLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThumbnailLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        _ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
         _gameNames = new GameNames(serviceProvider.GetServices<IGameData>());
         _sources = serviceProvider.GetRequiredService<ModSourceResolver>();
     }
@@ -287,10 +290,9 @@ internal class ThunderstoreDataProvider : ALibraryDataProvider<ThunderstoreLibra
     {
         return package.Cache
             .Connect()
-            .FilterOnObservable((_, fileId) => _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, fileId).IsNotEmpty())
+            .FilterOnObservable((_, fileId) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, fileId, loadoutFilter).IsNotEmpty())
             // NOTE: DynamicData 9.0.4 uses ReferenceEquals for value types, so the datoms need a comparer that looks at the entity.
-            .MergeManyChangeSets((_, fileId) => _connection.ObserveDatoms(LibraryLinkedLoadoutItem.LibraryItemId, fileId).AsEntityIds(), equalityComparer: DatomEntityIdEqualityComparer.Instance)
-            .FilterInStaticLoadout(_connection, loadoutFilter)
+            .MergeManyChangeSets((_, fileId) => LoadoutDataProviderHelper.ObserveLinkedGroups(_connection, _ownership, fileId, loadoutFilter), equalityComparer: DatomEntityIdEqualityComparer.Instance)
             .Transform(datom => LoadoutItem.Load(_connection.Db, datom.E));
     }
 

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -79,7 +80,8 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
     {
         var services = new ServiceCollection()
             .AddSingleton(Connection)
-            .AddSingleton(Provider.GetRequiredService<ModSourceResolver>());
+            .AddSingleton(Provider.GetRequiredService<ModSourceResolver>())
+            .AddSingleton(Provider.GetRequiredService<ICollectionOwnership>());
         foreach (var game in games) services.AddSingleton(game);
         return new ThunderstoreDataProvider(services.BuildServiceProvider(), iconLoader);
     }

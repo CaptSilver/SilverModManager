@@ -12,6 +12,7 @@ using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -72,6 +73,7 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
             IsGroup = true,
             LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = name, ParentId = parent },
         };
+        tx.Add(id, WabbajackModGroup.Folder, name);
         if (withFile)
         {
             _ = new LoadoutFile.New(tx, out var fileId)
@@ -93,6 +95,25 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
         using var tx = Connection.BeginTransaction();
         var item = new LibraryItem.New(tx) { Name = "linked" };
         tx.Add(group, LibraryLinkedLoadoutItem.LibraryItemId, item.Id);
+        await tx.Commit();
+    }
+
+    /// <summary>Links the group to a local file destined for the loadout's game, an item the local-file provider lists.</summary>
+    private async Task LinkToLocalFile(EntityId group, Loadout.ReadOnly loadout)
+    {
+        var game = LocateStubbedInstallation<Cyberpunk2077Game>(Provider, GameStore.Steam).Game.GameId;
+        using var tx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes("local" + Guid.NewGuid());
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = "local.7z",
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = "local.7z" },
+        };
+        _ = new LocalFile.New(tx, id) { LibraryFile = file, OriginalPath = "/x/local.7z" };
+        LibraryDestinations.Write(tx, id, Destination.Of(game));
+        tx.Add(group, LibraryLinkedLoadoutItem.LibraryItemId, id);
         await tx.Commit();
     }
 
@@ -260,19 +281,24 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
     }
 
     [Fact]
-    public async Task ALibraryLinkedChildIsLeftToTheProviderThatOwnsItSoItIsNotCountedTwice()
+    public async Task ALinkedModIsThisProvidersRowAndNoOthers()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-linked-" + Guid.NewGuid().ToString("N"));
         var list = await AddModlistGroup(loadout, "Linked");
         var plain = await AddMod(loadout, list, "Plain");
         var linked = await AddMod(loadout, list, "Linked");
-        await LinkToLibrary(linked);
+        await LinkToLocalFile(linked, loadout);
 
         using var rows = await Observe(AllFor(loadout));
+        using var listRows = await Observe(CollectionFilter(loadout, list));
         using var count = ObserveCount(AllFor(loadout));
+        using var allCount = new CountWatch(LoadoutDataProviderHelper.CountAllLoadoutItems(Provider, AllFor(loadout)));
 
-        await Eventually(() => rows.Keys.Should().BeEquivalentTo([plain]));
-        await Eventually(() => count.Latest.Should().Be(1));
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([plain, linked]));
+        await Eventually(() => listRows.Keys.Should().BeEquivalentTo([plain, linked]));
+        await Eventually(() => count.Latest.Should().Be(2));
+        // The local-file provider also looks at the linked archive; it must leave the list's group alone.
+        await Eventually(() => allCount.Latest.Should().Be(2));
     }
 
     [Fact]
