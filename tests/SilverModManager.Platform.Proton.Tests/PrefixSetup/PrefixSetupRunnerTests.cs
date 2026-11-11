@@ -224,6 +224,17 @@ public class PrefixSetupRunnerTests : IDisposable
     // ---- refusals ----
 
     [Fact]
+    public async Task ADetectOnlyComponentIsRefused()
+    {
+        var act = () => Runner().Run(_installation, Write("vb6run"), CancellationToken.None);
+
+        var message = (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message;
+        message.Should().Contain("vb6run").And.Contain("protontricks 42 -q vb6run");
+        _tools.Commands.Should().BeEmpty();
+        _fetcher.Fetched.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Write_IsRefusedWithoutAConfirmation()
     {
         var request = Write("vcrun2022") with { ConfirmedPrefixPath = null };

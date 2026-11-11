@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
@@ -146,6 +147,9 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     private IReadOnlyList<PrefixSetupStep> BuildSteps(ResolvedPrefix prefix, IReadOnlyList<PrefixComponentId> ids)
     {
         var components = ids.Select(_component).DistinctBy(c => c.Id).ToList();
+        if (components.FirstOrDefault(c => !c.Installable) is { } detectOnly)
+            throw new PrefixSetupRefusedException($"{MarkdownText.Code(detectOnly.Id.Value)} ({detectOnly.DisplayName}) can be detected but not installed by the app. Install it with {MarkdownText.Code(PrefixInstallCommand.For(prefix, detectOnly.Id.Value))}.");
+
         return components.Select(component => new PrefixSetupStep(
             component.Id,
             component.DisplayName,

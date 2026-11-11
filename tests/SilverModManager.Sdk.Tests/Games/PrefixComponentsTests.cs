@@ -18,6 +18,37 @@ public partial class PrefixComponentsTests
     }
 
     [Fact]
+    public void ForNativeFile_FindsADetectOnlyComponent()
+    {
+        var component = PrefixComponents.ForNativeFile("msvbvm60.dll");
+        component!.Id.Value.Should().Be("vb6run");
+        component.Installable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ForNativeFile_IsCaseInsensitive()
+        => PrefixComponents.ForNativeFile("MSVBVM60.DLL")!.Id.Value.Should().Be("vb6run");
+
+    [Fact]
+    public void ForNativeFile_FindsAnInstallableComponent()
+    {
+        var component = PrefixComponents.ForNativeFile("vcruntime140.dll");
+        component.Should().BeSameAs(PrefixComponents.VisualCppRuntime);
+        component!.Installable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ForNativeFile_ReturnsNullForAnUnknownDll()
+        => PrefixComponents.ForNativeFile("xinput1_3.dll").Should().BeNull();
+
+    [Fact]
+    public void DetectOnlyComponents_AreKnownButNotInAll()
+    {
+        PrefixComponents.Known.Select(c => c.Id.Value).Should().Contain("vb6run");
+        PrefixComponents.All.Select(c => c.Id.Value).Should().NotContain("vb6run");
+    }
+
+    [Fact]
     public void TryResolve_ResolvesTheDirectXCompilerByItsId()
     {
         PrefixComponents.TryResolve("d3dcompiler_47", out var component).Should().BeTrue();
@@ -40,11 +71,22 @@ public partial class PrefixComponentsTests
     [Fact]
     public void EveryComponent_HasADisplayNameAndAtLeastOneDownload()
     {
-        foreach (var component in PrefixComponents.Known)
+        foreach (var component in PrefixComponents.Known.Where(c => c.Installable))
         {
             component.DisplayName.Should().NotBeNullOrWhiteSpace(component.Id.Value);
             component.Downloads.Should().NotBeEmpty(component.Id.Value);
             component.InstallSteps.Should().NotBeEmpty(component.Id.Value);
+        }
+    }
+
+    [Fact]
+    public void EveryDetectOnlyComponent_HasANameNativeFilesAndNothingToInstall()
+    {
+        foreach (var component in PrefixComponents.Known.Where(c => !c.Installable))
+        {
+            component.DisplayName.Should().NotBeNullOrWhiteSpace(component.Id.Value);
+            component.NativeFiles.Should().NotBeEmpty(component.Id.Value);
+            component.Downloads.Should().BeEmpty(component.Id.Value);
         }
     }
 

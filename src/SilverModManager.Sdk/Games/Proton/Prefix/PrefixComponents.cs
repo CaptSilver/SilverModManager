@@ -98,11 +98,14 @@ public sealed record PrefixComponent
     /// <summary>The name shown to the user.</summary>
     public required string DisplayName { get; init; }
 
-    /// <summary>Every file the install fetches.</summary>
-    public required ImmutableArray<PrefixDownload> Downloads { get; init; }
+    /// <summary>Every file the install fetches. Empty for a component that is only detected.</summary>
+    public ImmutableArray<PrefixDownload> Downloads { get; init; } = [];
 
-    /// <summary>The install, in order.</summary>
-    public required ImmutableArray<PrefixInstallStep> InstallSteps { get; init; }
+    /// <summary>The install, in order. Empty for a component that is only detected.</summary>
+    public ImmutableArray<PrefixInstallStep> InstallSteps { get; init; } = [];
+
+    /// <summary>Whether the app can install this component; false means it can only be detected and named.</summary>
+    public bool Installable => InstallSteps.Length > 0;
 
     /// <summary>Environment variables to run the install with.</summary>
     public ImmutableDictionary<string, string> Environment { get; init; } = ImmutableDictionary<string, string>.Empty;
@@ -222,6 +225,40 @@ public static class PrefixComponents
         InstalledFolders = [new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "8.")],
     };
 
+    // The entries below are only detected and named: their download URLs and hashes are not checked, so the app
+    // installs none of them and the hint points at the winetricks verb instead.
+
+    /// <summary>The Visual Basic 6 runtime.</summary>
+    public static readonly PrefixComponent VisualBasic6Runtime = DetectOnly("vb6run", "Visual Basic 6 runtime", "msvbvm60.dll");
+
+    /// <summary>The Visual Basic 5 runtime.</summary>
+    public static readonly PrefixComponent VisualBasic5Runtime = DetectOnly("vb5run", "Visual Basic 5 runtime", "msvbvm50.dll");
+
+    /// <summary>The Visual C++ 2013 runtime.</summary>
+    public static readonly PrefixComponent VisualCpp2013 = DetectOnly("vcrun2013", "Visual C++ 2013 runtime", "msvcr120.dll", "msvcp120.dll");
+
+    /// <summary>The Visual C++ 2012 runtime.</summary>
+    public static readonly PrefixComponent VisualCpp2012 = DetectOnly("vcrun2012", "Visual C++ 2012 runtime", "msvcr110.dll", "msvcp110.dll");
+
+    /// <summary>The Visual C++ 2010 runtime.</summary>
+    public static readonly PrefixComponent VisualCpp2010 = DetectOnly("vcrun2010", "Visual C++ 2010 runtime", "msvcr100.dll", "msvcp100.dll");
+
+    /// <summary>The Visual C++ 2008 runtime.</summary>
+    public static readonly PrefixComponent VisualCpp2008 = DetectOnly("vcrun2008", "Visual C++ 2008 runtime", "msvcr90.dll", "msvcp90.dll");
+
+    /// <summary>The Visual C++ 2005 runtime.</summary>
+    public static readonly PrefixComponent VisualCpp2005 = DetectOnly("vcrun2005", "Visual C++ 2005 runtime", "msvcr80.dll", "msvcp80.dll");
+
+    /// <summary>The DirectX 9 June 2010 runtime.</summary>
+    public static readonly PrefixComponent DirectX9June2010 = DetectOnly("d3dx9_43", "DirectX 9 June 2010 runtime", "d3dx9_43.dll");
+
+    private static PrefixComponent DetectOnly(string id, string displayName, params string[] nativeFiles) => new()
+    {
+        Id = new PrefixComponentId(id),
+        DisplayName = displayName,
+        NativeFiles = [.. nativeFiles],
+    };
+
     /// <summary>
     /// The components the prefix setup verb brings into every game's prefix.
     /// </summary>
@@ -231,7 +268,18 @@ public static class PrefixComponents
     /// Every component that can be detected and installed: <see cref="All"/> plus the ones only a tool needs,
     /// which are installed for that tool and not into every prefix.
     /// </summary>
-    public static ImmutableArray<PrefixComponent> Known { get; } = [.. All, DotNetDesktop8];
+    public static ImmutableArray<PrefixComponent> Known { get; } =
+    [
+        .. All, DotNetDesktop8,
+        VisualBasic6Runtime, VisualBasic5Runtime, VisualCpp2013, VisualCpp2012, VisualCpp2010, VisualCpp2008, VisualCpp2005, DirectX9June2010,
+    ];
+
+    /// <summary>
+    /// The component whose <see cref="PrefixComponent.NativeFiles"/> include this DLL, ignoring case, or null
+    /// when none does. Wine's loader errors name the missing DLL, and this turns the name into the verb that fixes it.
+    /// </summary>
+    public static PrefixComponent? ForNativeFile(string dll)
+        => Known.FirstOrDefault(c => c.NativeFiles.Contains(dll, StringComparer.OrdinalIgnoreCase));
 
     /// <summary>
     /// Finds a component by its id or one of its aliases, ignoring case.
