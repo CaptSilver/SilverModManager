@@ -59,6 +59,7 @@ public static class Services
         // The Steam launch options suggestion shows the line the fix would write.
         services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, BuiltInDxgiOverrideEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
         return services.AddDoctorVerbs().AddDeploymentVerbs().AddPrefixVerbs().AddSelftestVerbs().AddToolRunVerbs();

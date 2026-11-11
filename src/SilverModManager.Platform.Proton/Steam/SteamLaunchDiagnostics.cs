@@ -45,4 +45,25 @@ so the fix replaces the other line and keeps a copy of it.
             .AddValue<string>("ManagerName")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate BuiltInDxgiOverride = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("Steam Launch Options Replace DXVK's dxgi")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{GameName}'s Steam launch options force Wine's own dxgi, which breaks DXVK")
+        .WithDetails("""
+The launch options for {GameName} set Wine DLL overrides that make dxgi built-in only (`dxgi=b`). Proton runs
+DirectX 11 games through DXVK, which ships its own dxgi. Forcing the built-in one swaps it for Wine's, DXVK
+never finds its adapter, and the game stops while starting its renderer with "Adapter is not a DXVK adapter".
+
+Remove `dxgi=b` from the launch options in Steam's Properties. If you want a native dxgi proxy such as ReShade
+to load, use `dxgi=n,b` instead, which tries the DLL in the game folder first and falls back to DXVK's.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
 }

@@ -194,11 +194,9 @@ public static class WineParser
         foreach (var splitRange in typesEnumerator)
         {
             var typeSpan = typesSpan[splitRange];
-            if (typeSpan.Length != 1) continue;
-
-            var c = typeSpan[0];
-            if (c is 'n') overrideTypesSpan[typesIndex++] = WineDllOverrideType.Native;
-            if (c is 'b') overrideTypesSpan[typesIndex++] = WineDllOverrideType.BuiltIn;
+            // Wine accepts the full words as well as the single letters.
+            if (typeSpan is "n" or "native") overrideTypesSpan[typesIndex++] = WineDllOverrideType.Native;
+            else if (typeSpan is "b" or "builtin") overrideTypesSpan[typesIndex++] = WineDllOverrideType.BuiltIn;
         }
 
         var sliced = overrideTypesSpan[..typesIndex];

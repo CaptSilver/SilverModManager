@@ -313,6 +313,26 @@ public static class SteamLaunchOptionLine
         return sb.Append(line, copied, line.Length - copied).ToString();
     }
 
+    /// <summary>
+    /// The value of the environment variable the line sets before its command, or null when it does not. Only the
+    /// leading <c>KEY=value</c> words count: sh reads an assignment after a wrapper as an argument to the wrapper.
+    /// A repeated name takes the last value, as sh does.
+    /// </summary>
+    public static string? LeadingEnvironmentValue(string line, string name)
+    {
+        var words = new List<Word>();
+        Tokenize(line, words, []);
+
+        string? value = null;
+        foreach (var word in words)
+        {
+            var key = EnvKey(word.Raw);
+            if (key is null) break;
+            if (key == name) value = word.Value[(word.Value.IndexOf('=') + 1)..];
+        }
+        return value;
+    }
+
     /// <summary>The variable name when the word is a shell assignment, otherwise null.</summary>
     private static string? EnvKey(string raw)
     {

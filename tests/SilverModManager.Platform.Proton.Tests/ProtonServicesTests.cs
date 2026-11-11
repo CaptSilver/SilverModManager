@@ -72,7 +72,7 @@ public class ProtonServicesTests
         ]);
         provider.GetServices<IToolRunStrategy>().OfType<ILastResortToolRunStrategy>().Should().ContainSingle()
             .Which.Should().BeOfType<ProtontricksStrategy>();
-        provider.GetServices<IDiagnosticEmitter>().Should().ContainSingle().Which.Should().BeOfType<SteamLaunchOptionEmitter>();
+        provider.GetServices<IDiagnosticEmitter>().Select(e => e.GetType()).Should().BeEquivalentTo([typeof(SteamLaunchOptionEmitter), typeof(BuiltInDxgiOverrideEmitter)]);
         provider.GetServices<IRuntimeDependency>().Should().ContainSingle().Which.Should().BeOfType<AggregateProtontricksDependency>();
     }
 }
