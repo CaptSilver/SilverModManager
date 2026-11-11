@@ -49,6 +49,9 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         List<string> unreadable = [];
         var installation = loadout.InstallationInstance;
         var overrides = OverridesGroupLookup.Find(loadout);
+        // The mod link names the group holding the plugin's loadout row. A plugin with no row of its own (a file found
+        // in the game folder) falls back to the Overrides group. A loadout with neither still gets the diagnostic,
+        // since the master is missing regardless, but its mod link has no group to point at and shows as an invalid entity.
         LoadoutItemGroupReference GroupOf(in SyncNode node) => new()
         {
             TxId = loadout.Db.BasisTxId,

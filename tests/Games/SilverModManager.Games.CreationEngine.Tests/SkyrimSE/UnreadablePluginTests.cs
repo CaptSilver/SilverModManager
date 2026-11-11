@@ -11,6 +11,10 @@ using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Skyrim;
 using Size = NexusMods.Paths.Size;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -22,6 +26,7 @@ using SilverModManager.Games.CreationEngine.PluginLists;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
@@ -42,7 +47,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        return base.AddServices(services)
+        return base.AddServices(services).AddDiagnosticWriter()
             .AddCreationEngine()
             .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
@@ -99,7 +104,8 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     private async Task<List<Diagnostic>> Diagnose(FrozenDictionary<GamePath, SyncNode> tree)
     {
-        var loadout = await EnsureLoadout();
+        // Read again so a group added after the loadout was created is seen.
+        var loadout = Refresh(await EnsureLoadout());
         var emitter = new MissingMasterEmitter(Creation);
         var result = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, tree, CancellationToken.None))
@@ -249,6 +255,66 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         var diagnostics = await Diagnose(Tree(readable, master));
 
         diagnostics.Should().BeEmpty();
+    }
+
+    private static readonly DiagnosticId DisabledMasterId = new("SilverModManager.Games.CreationEngine", number: 2);
+
+    private static LoadoutItemGroupId[] ModLinks(Diagnostic diagnostic)
+        => diagnostic.DataReferences.Values.OfType<LoadoutItemGroupReference>().Select(r => r.DataId).ToArray();
+
+    [Fact]
+    public async Task MissingMasterEmitter_NamesTheDisabledModThatProvidesAMaster()
+    {
+        var loadout = await EnsureLoadout();
+        var dependant = await StoredPlugin("Dependant.esp", "Disabled.esm");
+        using (var tx = Connection.BeginTransaction())
+        {
+            var disabledMod = AddEmptyGroup(tx, loadout, "Disabled mod");
+            AddFile(tx, loadout, disabledMod, DataPath("Disabled.esm"), content: "Disabled.esm");
+            tx.Add(disabledMod.Value, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+
+        var diagnostics = await Diagnose(Tree(dependant));
+
+        var diagnostic = diagnostics.Should().ContainSingle(d => d.Id == DisabledMasterId).Subject;
+        diagnostics.Should().NotContain(d => d.Id == MissingMasterId);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
+        // The mod holding the master is a value of the message, not a data reference, so it shows in the rendered text.
+        diagnostic.FormatSummary(ServiceProvider.GetRequiredService<IDiagnosticWriter>())
+            .Should().Contain("Dependant.esp").And.Contain("Disabled.esm").And.Contain("Disabled mod");
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_LinksAPluginWithNoLoadoutRowToTheOverridesGroup()
+    {
+        var loadout = await EnsureLoadout();
+        await AddToOverrides(loadout, DataPath("Elsewhere.esp"));
+        var overrides = OverridesGroupLookup.Find(Refresh(loadout));
+        overrides.Value.Should().NotBe(0UL);
+        var dependant = await StoredPlugin("Dependant.esp", "Absent.esm");
+
+        var diagnostic = (await Diagnose(Tree(dependant))).Should().ContainSingle(d => d.Id == MissingMasterId).Subject;
+
+        ModLinks(diagnostic).Should().Equal(LoadoutItemGroupId.From(overrides));
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_StillReportsAMissingMasterWhenTheLoadoutHasNoGroupToLinkTo()
+    {
+        var loadout = await EnsureLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(OverridesGroupLookup.Find(Refresh(loadout)), recursive: true);
+            await tx.Commit();
+        }
+        OverridesGroupLookup.Find(Refresh(loadout)).Value.Should().Be(0UL);
+        var dependant = await StoredPlugin("Dependant.esp", "Absent.esm");
+
+        var diagnostic = (await Diagnose(Tree(dependant))).Should().ContainSingle(d => d.Id == MissingMasterId).Subject;
+
+        Summary(diagnostic).Should().Contain("Absent.esm");
+        ModLinks(diagnostic).Should().Equal(default(LoadoutItemGroupId));
     }
 
     [Fact]
