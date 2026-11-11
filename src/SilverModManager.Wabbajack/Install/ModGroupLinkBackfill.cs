@@ -13,8 +13,9 @@ namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// Gives the mod groups of lists installed before <see cref="WabbajackModGroup.MainArchive"/> existed their archive and
-/// library link. Only adds <see cref="WabbajackModGroup.MainArchive"/> and adds or retracts
-/// <see cref="LibraryLinkedLoadoutItem.LibraryItem"/> on mod groups; it never deletes or moves a file or a row.
+/// library link. Only adds <see cref="WabbajackModGroup.MainArchive"/> and, for groups that predate it,
+/// <see cref="WabbajackModGroup.Folder"/>, and adds or retracts <see cref="LibraryLinkedLoadoutItem.LibraryItem"/> on mod groups;
+/// it never deletes or moves a file or a row.
 /// </summary>
 public sealed class ModGroupLinkBackfill(IConnection connection, IFileStore fileStore, ILibraryArchiveLocator locator, ModlistInstallRuns runs, ILogger<ModGroupLinkBackfill> logger)
 {
@@ -60,8 +61,20 @@ public sealed class ModGroupLinkBackfill(IConnection connection, IFileStore file
         }
         if (IsBusy(group, loadoutId)) return;
 
+        // Groups made before they recorded a folder are not valid mod groups until they have one, so nothing below can see them.
+        if (await RecordFolders(id, ct))
+        {
+            db = connection.Db;
+            group = WabbajackModlistLoadoutGroup.Load(db, id);
+            if (!group.IsValid() || IsBusy(group, loadoutId)) return;
+        }
+
         var mods = ModGroups(db, id).ToArray();
-        if (mods.Length == 0) return;
+        if (mods.Length == 0)
+        {
+            logger.LogDebug("Modlist install {Group} has no mod groups to link", id);
+            return;
+        }
 
         IReadOnlyDictionary<string, FileIdentity>? recorded = null;
         if (!mods.Any(HasMainArchive))
@@ -89,6 +102,23 @@ public sealed class ModGroupLinkBackfill(IConnection connection, IFileStore file
         }
         ModGroupArchives.Relink(tx, db, locator, id, recorded);
         if (!tx.IsEmpty) await tx.Commit();
+    }
+
+    /// <summary>
+    /// Gives each mod group that has no <see cref="WabbajackModGroup.Folder"/> the one an install would record: its name.
+    /// Returns whether it wrote any. This is the only thing besides the archive and the link the pass adds.
+    /// </summary>
+    private async Task<bool> RecordFolders(EntityId modlistGroup, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var db = connection.Db;
+        var state = InstallModlistJob.LoadExisting(db, LoadoutItemGroupId.From(modlistGroup));
+        if (state.FolderlessGroups.Count == 0) return false;
+
+        using var tx = connection.BeginTransaction();
+        InstallModlistJob.AddFolders(tx, state);
+        await tx.Commit();
+        return true;
     }
 
     private bool IsBusy(WabbajackModlistLoadoutGroup.ReadOnly group, LoadoutId loadoutId)

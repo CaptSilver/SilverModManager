@@ -1469,9 +1469,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (state.FolderlessGroups.Count == 0) return;
 
         using var tx = Connection.BeginTransaction();
-        foreach (var name in state.FolderlessGroups) tx.Add(state.Groups[name].Value, WabbajackModGroup.Folder, name);
+        AddFolders(tx, state);
         await tx.Commit();
         state.FolderlessGroups.Clear();
+    }
+
+    /// <summary>Adds the folder, taken from the group's name, to each group in <see cref="WriteState.FolderlessGroups"/>.</summary>
+    internal static void AddFolders(ITransaction tx, WriteState state)
+    {
+        foreach (var name in state.FolderlessGroups) tx.Add(state.Groups[name].Value, WabbajackModGroup.Folder, name);
     }
 
     /// <summary>The rows the group holds now, by mod folder, as the reconciliation reads them.</summary>

@@ -104,6 +104,29 @@ public class ModGroupLinkBackfillTests(ITestOutputHelper helper) : InstallTestBa
     }
 
     [Fact]
+    public async Task AGroupMadeBeforeGroupsRecordedTheirFolderIsGivenItAndLinked()
+    {
+        var (_, group, archive, file) = await StrippedInstall();
+        var modGroup = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup()
+            .Select(g => g.Id).Single(id => WabbajackModGroup.Load(Connection.Db, id).IsValid() && WabbajackModGroup.Load(Connection.Db, id).Folder == "A");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.RetractCurrent(modGroup, WabbajackModGroup.Folder);
+            await tx.Commit();
+        }
+        WabbajackModGroup.Load(Connection.Db, modGroup).IsValid().Should().BeFalse("the fixture starts from a group with no folder");
+
+        await Backfill().Run(TestContext.Current.CancellationToken);
+
+        var mod = WabbajackModGroup.Load(Connection.Db, modGroup);
+        mod.IsValid().Should().BeTrue();
+        mod.Folder.Should().Be("A", "the folder comes from the group's name, as an install records it");
+        WabbajackModGroup.MainArchive.TryGetValue(mod, out var main).Should().BeTrue();
+        main.Should().Be(archive.XxHash64);
+        LibraryLinkedLoadoutItem.Load(Connection.Db, modGroup).LibraryItem.Id.Should().Be(file);
+    }
+
+    [Fact]
     public async Task ARemovedArchiveUnlinksTheGroupAndAReAddedOneRelinksIt()
     {
         var member = "kept"u8.ToArray();
