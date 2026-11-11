@@ -35,9 +35,8 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileD
         foreach (var item in linked)
         {
             var groupName = item.AsLoadoutItem().Name;
-            if (ownership.OwnsLink(db, item))
+            if (CollectionOwnership.TryNearestCollection(db, item.AsLoadoutItem(), out var owner) && ownership.OwnsItsMods(owner))
             {
-                CollectionOwnership.TryNearestCollection(db, item.AsLoadoutItem(), out var owner);
                 var ownerName = owner.AsLoadoutItemGroup().AsLoadoutItem().Name;
                 skipped?.Add($"{MarkdownText.Code(groupName)} belongs to {MarkdownText.Code(ownerName)}, which the lock does not pin.");
                 continue;

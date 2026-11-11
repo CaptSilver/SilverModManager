@@ -122,7 +122,9 @@ internal sealed class ThunderstoreInstaller(
         downloaded[root.Id] = root;
 
         // A loadout that already links the new version only loses the old one: replacing would install a second copy.
-        var alreadyThere = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, root).Select(static link => link.AsLoadoutItem().LoadoutId).ToHashSet();
+        var alreadyThere = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, root)
+            .Where(link => !Ownership.OwnsLink(connection.Db, link))
+            .Select(static link => link.AsLoadoutItem().LoadoutId).ToHashSet();
         var result = LibraryItemReplacementResult.Success;
         try
         {

@@ -558,6 +558,39 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         LoadoutItem.Load(Connection.Db, listMod).IsDisabled.Should().BeTrue("the list's folder is the list's to switch");
     }
 
+    [Fact]
+    public async Task Install_WithTwoCopiesOfAFile_DoesNotPickTheOneOnlyAModlistLinks()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        // The list's copy is seeded second, so it is the one a lookup that counts list links would settle on.
+        var own = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        var listsCopy = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        var list = await WabbajackGroupSeed.AddList(Connection, "1.0");
+        var listGroup = await WabbajackGroupSeed.AddGroup(Connection, list.Id, f.LoadoutId, "Some list");
+        using (var tx = Connection.BeginTransaction())
+        {
+            var modId = tx.TempId();
+            var itemGroup = new LoadoutItemGroup.New(tx, modId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, modId)
+                {
+                    LoadoutId = f.LoadoutId, Name = "Some mod", ParentId = LoadoutItemGroupId.From(listGroup), IsDisabled = true,
+                },
+            };
+            _ = new WabbajackModGroup.New(tx, modId) { Folder = "Some mod", LoadoutItemGroup = itemGroup };
+            _ = new LibraryLinkedLoadoutItem.New(tx, modId) { LibraryItemId = listsCopy.Id, LoadoutItemGroup = itemGroup };
+            await tx.Commit();
+        }
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.Vm.ErrorText.Should().BeEmpty();
+        Installed(f).Should().Equal((own.Id, f.LoadoutId));
+    }
+
     private async Task LinkIntoLoadout(Fixture f, LibraryItem.ReadOnly item)
     {
         using (var tx = Connection.BeginTransaction())

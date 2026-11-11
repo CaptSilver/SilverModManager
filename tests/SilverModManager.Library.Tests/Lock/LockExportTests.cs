@@ -46,7 +46,7 @@ public class LockExportTests(IConnection connection)
         var list = await _fixtures.AddCollection(loadout, "List: Yggdrasil");
         var userDigest = LockFixtures.DigestOf("user archive");
         var nexusInList = await _fixtures.AddNexusFile("InList-1-1-0.zip", "in list", LockFixtures.DigestOf("in list"), "In List", "1.0", modId: 1, fileId: 11);
-        var localInList = await _fixtures.AddLibraryFile("local.7z", "local bytes", sha256: null);
+        var localInList = await _fixtures.AddLibraryFile("local.7z", "local bytes", LockFixtures.DigestOf("local bytes"));
         var danglingInList = await _fixtures.AddLibraryFile("gone.zip", "gone", sha256: null);
         var user = await _fixtures.AddNexusFile("User-2-1-0.zip", "user archive", userDigest, "User mod", "1.0", modId: 2, fileId: 22);
         await _fixtures.LinkUnder(loadout, nexusInList, "list nexus mod", list);

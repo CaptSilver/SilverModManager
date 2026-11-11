@@ -120,8 +120,8 @@ public sealed class LibraryService : ILibraryService
         if (offending is not { } link) return;
 
         // A locked collection puts its mods back on its own, so "uninstall it" would be a dead end.
-        if (ownership.WhyLocked(db, link) is not null
-            && CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItem(), out var collection))
+        if (CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItem(), out var collection)
+            && ownership.WhyLocked(collection) is not null)
         {
             var collectionName = collection.AsLoadoutItemGroup().AsLoadoutItem().Name;
             throw new DestinationStillInstalledException($"{MarkdownText.Code(item.Name)} is used by {MarkdownText.Code(collectionName)} in a loadout for {MarkdownText.Code(gameDescription)}; remove {MarkdownText.Code(collectionName)} first.");
