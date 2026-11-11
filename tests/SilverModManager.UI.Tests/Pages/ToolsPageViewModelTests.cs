@@ -62,6 +62,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
 
     private IPrefixInspector _inspector = Substitute.For<IPrefixInspector>();
     private readonly IPrefixSetupLauncher _prefixSetup = Substitute.For<IPrefixSetupLauncher>();
+    private readonly IErrorPresenter _errorPresenter = Substitute.For<IErrorPresenter>();
 
     private ModdingToolFactory CreateToolFactory(FakeToolRunner toolRunner)
         => new(toolRunner, Substitute.For<IProcessRunner>(), new ToolArgumentResolver(), new FakePrefixResolver(), new ToolOutputCapture(Connection, Substitute.For<IFileStore>()), new ToolPrefixSetup(toolRunner, new FakePrefixResolver(), _inspector));
@@ -89,7 +90,8 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             Provider.GetRequiredService<IJobMonitor>(),
             new ToolInstaller(Connection, new KnownToolDetector(definitions ?? [])),
             new ToolPipelineRunner(toolManager, pipelines ?? [], pipelineDefinitions ?? []),
-            _prefixSetup
+            _prefixSetup,
+            _errorPresenter
         );
     }
 
@@ -407,6 +409,21 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         vm.LastRunMessage.Should().Be("TexGen exited with code 3; see the process log.");
         vm.IsRunning.Should().BeFalse();
         vm.RunningMessage.Should().BeNull();
+        await _errorPresenter.DidNotReceiveWithAnyArgs().Report(default!, default!);
+    }
+
+    [Fact]
+    public async Task AStoppedToolShowsItsRefusalOnThePageAndInADialog()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        var stopped = new ToolExitedException("TexGen exited with code 3 after 4 s, run through SteamProton.", 3, "SteamProton");
+
+        await vm.RunToolReportingAsync(new ThrowingTool(stopped, loadout.Game.GameId), TestContext.Current.CancellationToken);
+
+        vm.LastRunMessage.Should().Be("TexGen exited with code 3 after 4 s, run through SteamProton.");
+        await _errorPresenter.Received(1).Report(Arg.Is<Exception>(e => e is ToolExitedException), Arg.Any<string>());
     }
 
     [Fact]
@@ -660,13 +677,15 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         vm.LastRunMessage.Should().BeNull();
     }
 
-    private sealed class ThrowingTool(string message, GameId gameId) : ITool
+    private sealed class ThrowingTool(Exception exception, GameId gameId) : ITool
     {
+        public ThrowingTool(string message, GameId gameId) : this(new InvalidOperationException(message), gameId) { }
+
         public IEnumerable<GameId> GameIds => [gameId];
         public string Name => "Throwing";
 
         public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
-            => throw new InvalidOperationException(message);
+            => throw exception;
     }
 
     private sealed class StubTool(string name, GameId gameId) : ITool

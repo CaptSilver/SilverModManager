@@ -37,6 +37,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     private readonly ToolInstaller _installer;
     private readonly ToolPipelineRunner _pipelineRunner;
     private readonly IPrefixSetupLauncher _prefixSetup;
+    private readonly IErrorPresenter _errorPresenter;
     private readonly object _runLock = new();
     private CancellationTokenSource? _runCancellation;
     private string? _runningName;
@@ -76,7 +77,8 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         IJobMonitor monitor,
         ToolInstaller installer,
         ToolPipelineRunner pipelineRunner,
-        IPrefixSetupLauncher prefixSetup) : base(windowManager)
+        IPrefixSetupLauncher prefixSetup,
+        IErrorPresenter errorPresenter) : base(windowManager)
     {
         _logger = logger;
         _conn = conn;
@@ -89,6 +91,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         _installer = installer;
         _pipelineRunner = pipelineRunner;
         _prefixSetup = prefixSetup;
+        _errorPresenter = errorPresenter;
 
         TabIcon = IconValues.Wrench;
         TabTitle = "Tools";
@@ -161,8 +164,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     }
 
     // Commands run on a worker and a thrown exception would end up unobserved, so it is logged and
-    // shown on the page instead. A refusal is only shown here; a crash also reaches the error dialog through
-    // the log. A message already on the page (the steps a pipeline finished) stays above the failure.
+    // shown on the page instead. A refusal is written to the page and shown in a dialog by the presenter (which
+    // logs it); a crash is only logged and shown on the page. A message already on the page (the steps a
+    // pipeline finished) stays above the failure.
     private async ValueTask ReportFailure(string what, Func<Task> action)
     {
         try
@@ -175,10 +179,13 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         }
         catch (Exception ex)
         {
-            _logger.LogFailure(ex, "Running a tool from the Tools page failed");
+            var refusal = UserFacingErrors.Find(ex);
+            if (refusal is null) _logger.LogFailure(ex, "Running a tool from the Tools page failed");
             // The page is a plain text block and a refusal's message is Markdown.
-            var failure = ex is UserFacingException ? MarkdownText.ToPlain(ex.Message) : ex.Message;
+            var failure = refusal is not null ? MarkdownText.ToPlain(refusal.Message) : ex.Message;
             LastRunMessage = string.IsNullOrEmpty(LastRunMessage) ? failure : $"{LastRunMessage}\n{failure}";
+            // Awaited so the command stays busy until the dialog closes, like the launch button.
+            if (refusal is not null) await _errorPresenter.Report(ex, $"running {what}");
         }
     }
 
