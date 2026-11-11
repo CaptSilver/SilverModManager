@@ -15,7 +15,9 @@ using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
@@ -46,6 +48,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
     private readonly FakePrefixInspector _inspector = new();
     private readonly List<Command> _commands = [];
     private int _exitCode;
+    private ToolRunResult? _windowsResult;
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
@@ -59,7 +62,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
     private void StubRunners(string? cannotRunBecause = null, ToolRunVia? runnableVia = null)
     {
         _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
-            .ReturnsForAnyArgs(_ => new ToolRunResult(_exitCode));
+            .ReturnsForAnyArgs(_ => _windowsResult ?? new ToolRunResult(_exitCode, Strategy: "test"));
         _toolRunner.Plan(default!, default, default!, default, default)
             .ReturnsForAnyArgs(call => cannotRunBecause is not null && call.ArgAt<ToolRunVia>(4) != runnableVia
                 ? ToolRunPlan.Failed(cannotRunBecause)
@@ -188,7 +191,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(Editor()).Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("xEdit").And.Contain("No Wine prefix was found.");
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message.Should().Contain("xEdit").And.Contain("No Wine prefix was found.");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
 
@@ -234,13 +237,14 @@ public class ModdingToolTests(ITestOutputHelper helper)
     public async Task ZeroIsSuccess_NonZeroExitFailsTheRunNamingTheToolAndCode(ToolRunVia via)
     {
         StubRunners();
+        UsePrefix();
         _exitCode = 3;
         var loadout = await CreateLoadout();
         var definition = Editor() with { ExitCodes = ExitCodePolicy.ZeroIsSuccess };
 
         var act = () => Tool(definition, new InstalledTool(Exe, null, via)).Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("xEdit").And.Contain("3");
+        (await act.Should().ThrowAsync<ToolExitedException>()).Which.Message.Should().Contain("xEdit").And.Contain("3");
     }
 
     [Theory]
@@ -374,7 +378,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
 
-        var failure = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var failure = (await act.Should().ThrowAsync<ToolExitedException>()).Which;
         var runFolder = seen.Single().Substring("-O:".Length);
         failure.Message.Should().Contain("DynDOLOD").And.Contain("3").And.Contain(runFolder);
         FileSystem.FromUnsanitizedFullPath(runFolder).DirectoryExists().Should().BeTrue();
@@ -389,7 +393,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod() with { Id = null }).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*catalogue*");
+        await act.Should().ThrowAsync<ToolRefusedException>().WithMessage("*DynDOLOD*catalogue*");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
 
@@ -401,7 +405,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod(), new InstalledTool(Exe, null, ToolRunVia.Native)).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*prefix*");
+        await act.Should().ThrowAsync<ToolRefusedException>().WithMessage("*DynDOLOD*prefix*");
         _commands.Should().BeEmpty();
     }
 
@@ -414,7 +418,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*DynDOLOD*Two prefixes found.*");
+        await act.Should().ThrowAsync<ToolRefusedException>().WithMessage("*DynDOLOD*Two prefixes found.*");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
 
@@ -433,7 +437,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No Wine prefix was found.*");
+        await act.Should().ThrowAsync<ToolRefusedException>().WithMessage("*No Wine prefix was found.*");
         RunFoldersIn(prefix).Should().BeEmpty();
     }
 
@@ -563,13 +567,14 @@ public class ModdingToolTests(ITestOutputHelper helper)
     public async Task QuickAutoClean_ThatExitsNonZero_IsAFailedRun()
     {
         StubRunners();
+        UsePrefix();
         _exitCode = 2;
         var loadout = await CreateLoadout();
         var clean = Tool(WithQuickAutoClean(Editor())).ForQuickAutoClean("Update.esm")!;
 
         var act = () => clean.Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("exited with code 2");
+        (await act.Should().ThrowAsync<ToolExitedException>()).Which.Message.Should().Contain("exited with code 2");
     }
 
     private static readonly PrefixComponentId Vc = PrefixComponents.VisualCppRuntime.Id;
@@ -673,7 +678,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(XEdit(WinXpFor("SSEEdit.exe"))).Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message
             .Should().Contain("xEdit").And.Contain("SSEEdit.exe").And.Contain("access denied");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
@@ -688,7 +693,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message
             .Should().Contain("xEdit").And.Contain(PrefixComponents.VisualCppRuntime.DisplayName);
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
         await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
@@ -705,7 +710,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(XEdit(prefix)).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<ToolRefusedException>();
         await _toolRunner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
     }
 
@@ -760,7 +765,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(XEdit(WinXpFor("SSEEdit.exe"))).Execute(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message
             .Should().Contain("xEdit").And.Contain("No Wine prefix was found.");
         await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
     }
@@ -774,7 +779,145 @@ public class ModdingToolTests(ITestOutputHelper helper)
 
         var act = () => Tool(DynDolod() with { Prefix = new ToolPrefixRequirements { Components = [Vc] } }).Execute(loadout, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<ToolRefusedException>();
         RunFoldersIn(prefix).Should().BeEmpty();
+    }
+
+    private const string ImportDllLine = "0024:err:module:import_dll Library MSVBVM60.DLL (which is needed by L\"Z:\\home\\x\\Remap.exe\") not found";
+
+    private Task<ToolExitedException> ExitFailure(ToolRunResult result, ToolRunVia via = ToolRunVia.Auto)
+    {
+        StubRunners();
+        UsePrefix();
+        _windowsResult = result;
+        return Run();
+
+        async Task<ToolExitedException> Run()
+        {
+            var loadout = await CreateLoadout();
+            var definition = Editor() with { ExitCodes = ExitCodePolicy.ZeroIsSuccess };
+            var act = () => Tool(definition, new InstalledTool(Exe, null, via)).Execute(loadout, CancellationToken.None);
+            return (await act.Should().ThrowAsync<ToolExitedException>()).Which;
+        }
+    }
+
+    [Fact]
+    public async Task AFailingExitInsideTheStartWindowIsARefusalWithTheExcerptAndHint()
+    {
+        var failure = await ExitFailure(new ToolRunResult(53, TimeSpan.FromSeconds(4), "Protontricks", "SteamProton cannot run: no build", "", ImportDllLine));
+
+        failure.ExitCode.Should().Be(53);
+        failure.Message.Should().Contain("MSVBVM60.DLL").And.Contain("vb6run").And.Contain("Protontricks")
+            .And.Contain("SteamProton cannot run: no build").And.Contain("```").And.Contain(ImportDllLine);
+    }
+
+    [Fact]
+    public async Task AFailingExitAfterALongRunPointsAtTheProcessLog()
+    {
+        var failure = await ExitFailure(new ToolRunResult(1, TimeSpan.FromMinutes(40), "SteamProton"));
+
+        failure.Message.Should().Contain("40 min").And.Contain("process log").And.NotContain("```");
+    }
+
+    [Fact]
+    public async Task ARunOfExactlyAMinuteReadsAsOneMinute()
+    {
+        var failure = await ExitFailure(new ToolRunResult(1, TimeSpan.FromSeconds(60), "SteamProton"));
+
+        failure.Message.Should().Contain("1 min").And.NotContain("60 s");
+    }
+
+    [Fact]
+    public async Task ANativeToolsFailureNamesTheDurationAndNoExcerpt()
+    {
+        StubRunners();
+        _exitCode = 2;
+        _processRunner
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new CommandResult(2, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddSeconds(3)));
+        var loadout = await CreateLoadout();
+        var definition = Editor() with { ExitCodes = ExitCodePolicy.ZeroIsSuccess };
+
+        var act = () => Tool(definition, new InstalledTool(Exe, null, ToolRunVia.Native)).Execute(loadout, CancellationToken.None);
+
+        var failure = (await act.Should().ThrowAsync<ToolExitedException>()).Which;
+        failure.Strategy.Should().Be("Native");
+        failure.Message.Should().Contain("3 s").And.Contain("process log");
+    }
+
+    [Fact]
+    public async Task ACannotRunPlanIsARefusal()
+    {
+        StubRunners("No Wine prefix was found.");
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(Editor()).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ToolRefusedException>();
+    }
+
+    [Fact]
+    public async Task AMissingPrefixComponentIsARefusal()
+    {
+        StubRunners();
+        UsePrefix();
+        _inspector.State = id => id == Vc ? PrefixComponentState.Missing : PrefixComponentState.Installed;
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(XEdit(new ToolPrefixRequirements { Components = [Vc] })).Execute(loadout, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ToolRefusedException>();
+    }
+
+    [Fact]
+    public async Task ARefusalThrownAfterTheStartStaysARefusalAndNamesTheKeptFolder()
+    {
+        var seen = new List<string>();
+        UsePrefix();
+        StubRunners();
+        var original = new ToolRefusedException("prefix locked");
+        _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs<Task<ToolRunResult>>(call =>
+            {
+                seen.AddRange(call.ArgAt<IReadOnlyList<string>>(2));
+                throw original;
+            });
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        var failure = (await act.Should().ThrowAsync<ToolRefusedException>()).Which;
+        failure.Message.Should().EndWith($"The tool's output was kept at {seen.Single().Substring("-O:".Length)}.");
+        failure.InnerException.Should().BeSameAs(original);
+    }
+
+    [Fact]
+    public async Task ACrashThrownAfterTheStartStaysACrash()
+    {
+        UsePrefix();
+        StubRunners();
+        _toolRunner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs<Task<ToolRunResult>>(_ => throw new IOException("wine went away"));
+        var loadout = await CreateLoadout();
+
+        var act = () => Tool(DynDolod()).Execute(loadout, CancellationToken.None);
+
+        var failure = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
+        UserFacingErrors.Find(failure).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ARefusalReachesTheCallerThroughStartJob()
+    {
+        StubRunners("No Wine prefix was found.");
+        var loadout = await CreateLoadout();
+        var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+
+        Exception? caught = null;
+        try { await Tool(Editor()).StartJob(loadout, monitor, CancellationToken.None); }
+        catch (Exception ex) { caught = ex; }
+
+        caught.Should().NotBeNull();
+        UserFacingErrors.Find(caught!).Should().BeOfType<ToolRefusedException>();
     }
 }

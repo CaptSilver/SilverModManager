@@ -56,11 +56,11 @@ public class ToolPipelineRunnerTests(ITestOutputHelper helper) : AToolFlowTest<T
         var loadout = await CreateLoadout();
         Installed(Tool(TexGen), Tool(DynDolod));
         _manager.RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "TexGen"), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<ToolRunOutcome>(new InvalidOperationException("TexGen exited with code 3; see the process log.")));
+            .Returns(Task.FromException<ToolRunOutcome>(new ToolExitedException("TexGen exited with code 3; see the process log.", 3, "SteamProton")));
 
         var act = () => new ToolPipelineRunner(_manager, [Lod], [TexGen, DynDolod]).Run(Lod, loadout, _monitor, _ => { }, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("TexGen exited with code 3");
+        (await act.Should().ThrowAsync<ToolExitedException>()).Which.Message.Should().Contain("TexGen exited with code 3");
         await _manager.DidNotReceive().RunToolWithOutcome(Arg.Is<ITool>(t => t.Name == "DynDOLOD"), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>());
     }
 

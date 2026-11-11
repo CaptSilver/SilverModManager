@@ -68,8 +68,9 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
             }
         });
 
-    // A tool's own refusals (a missing prefix component, a non-zero exit) are plain InvalidOperationExceptions with
-    // a message written for the user; anything else is a crash and keeps its detail in the log.
+    // A tool's own refusals (a missing prefix component, a non-zero exit) are UserFacingExceptions with a message
+    // written for the user. The InvalidOperationException arm stays for IToolRunner's refusals, which keep that
+    // type by contract; anything else is a crash and keeps its detail in the log.
     private async Task<int> Guarded(IRenderer renderer, string what, Func<Task> action)
     {
         try

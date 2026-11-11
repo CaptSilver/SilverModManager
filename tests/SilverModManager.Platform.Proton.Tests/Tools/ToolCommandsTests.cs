@@ -176,7 +176,7 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
         var loadout = await CreateLoadout();
         Installed(Tool(TexGen));
         _manager.RunToolWithOutcome(default!, default, default!, default).ReturnsForAnyArgs(
-            Task.FromException<ToolRunOutcome>(new InvalidOperationException("TexGen exited with code 3; see the process log.")));
+            Task.FromException<ToolRunOutcome>(new ToolExitedException("TexGen exited with code 3; see the process log.", 3, "SteamProton")));
 
         var exit = await Commands().RunToolAsync(_out, loadout, "texgen", null, CancellationToken.None);
 

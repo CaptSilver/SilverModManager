@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.DataModel;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -30,6 +31,9 @@ public sealed class ModdingTool(
     ToolPrefixSetup prefixSetup,
     IReadOnlyDictionary<string, string>? variables = null) : ITool, IToolWithOutput, IToolWithRunSummary
 {
+    /// <summary>A failing run that ends within this long shows Wine's output in the message; its tail still says why it stopped.</summary>
+    public static readonly TimeSpan StartFailureWindow = TimeSpan.FromSeconds(10);
+
     public AbsolutePath Exe => installed.Exe;
 
     /// <summary>The catalogue id of the definition, or null for a program the user added by hand.</summary>
@@ -88,11 +92,11 @@ public sealed class ModdingTool(
         var via = installed.RunVia ?? definition.RunVia;
         AbsolutePath? runFolder = definition.Output is ToolOutput.DeclaredFolder ? CreateRunFolder(loadout.InstallationInstance, via) : null;
         var started = false;
-        int exitCode;
+        ToolRunResult result;
         try
         {
             var args = Arguments(loadout, runFolder);
-            exitCode = via is ToolRunVia.Native
+            result = via is ToolRunVia.Native
                 ? await RunNative(args, cancellationToken)
                 : await RunWindows(loadout.InstallationInstance, args, via, () => started = true, cancellationToken);
             started = true;
@@ -107,13 +111,20 @@ public sealed class ModdingTool(
             }
 
             if (exception is OperationCanceledException) throw;
-            throw new InvalidOperationException($"{exception.Message} The tool's output was kept at {folder}.", exception);
+            // A refusal keeps its kind so the player still gets a dialog; a crash stays a crash.
+            var kept = $"{exception.Message} The tool's output was kept at {folder}.";
+            throw exception is UserFacingException ? new ToolRefusedException(kept, exception) : new InvalidOperationException(kept, exception);
         }
 
         var captured = 0;
-        var kept = runFolder is null ? string.Empty : $" Its output was kept at {runFolder}.";
-        if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && exitCode != 0)
-            throw new InvalidOperationException($"{Name} exited with code {exitCode}; see the process log.{kept}");
+        if (definition.ExitCodes is ExitCodePolicy.ZeroIsSuccess && result.ExitCode != 0)
+        {
+            // Native runs have no prefix and no output tails to read.
+            var hint = via is ToolRunVia.Native
+                ? null
+                : WineOutputHints.Explain(result, loadout.InstallationInstance, Exe, prefixResolver.Resolve(loadout.InstallationInstance).Prefix);
+            throw new ToolExitedException(ToolExitMessage.For(Name, result, hint, runFolder), result.ExitCode, result.Strategy);
+        }
 
         if (runFolder is not null && Output is ToolOutput.DeclaredFolder output)
         {
@@ -121,7 +132,7 @@ public sealed class ModdingTool(
             runFolder.Value.DeleteDirectory(recursive: true);
         }
 
-        LastRun = new ToolRunSummary(exitCode, captured);
+        LastRun = new ToolRunSummary(result.ExitCode, captured);
     }
 
     // The user may have renamed the group in the tools list; the definition's name is the default.
@@ -137,13 +148,13 @@ public sealed class ModdingTool(
     private AbsolutePath CreateRunFolder(GameInstallation installation, ToolRunVia via)
     {
         if (definition.Id is not { } id)
-            throw new InvalidOperationException($"Cannot run {Name}: it writes output to a folder but has no catalogue id to name the run folder after.");
+            throw new ToolRefusedException($"Cannot run {Name}: it writes output to a folder but has no catalogue id to name the run folder after.");
         if (via is ToolRunVia.Native)
-            throw new InvalidOperationException($"Cannot run {Name} natively: the folder it writes to is kept in the game's Wine prefix.");
+            throw new ToolRefusedException($"Cannot run {Name} natively: the folder it writes to is kept in the game's Wine prefix.");
 
         var prefix = prefixResolver.Resolve(installation);
         if (prefix.IsResolved is false)
-            throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {prefix.Diagnostic ?? "this installation does not run in a Wine prefix."}");
+            throw new ToolRefusedException($"Cannot run {Name} for {installation.Game.DisplayName}: {prefix.Diagnostic ?? "this installation does not run in a Wine prefix."}");
 
         return ToolRunFolder.Create(prefix.Prefix.Path, id, DateTimeOffset.Now);
     }
@@ -162,28 +173,27 @@ public sealed class ModdingTool(
         return definition.ExtraArguments is { } more ? [.. words, .. more(game, Exe.FileName)] : words;
     }
 
-    private async Task<int> RunWindows(GameInstallation installation, IReadOnlyList<string> args, ToolRunVia via, Action onStart, CancellationToken cancellationToken)
+    private async Task<ToolRunResult> RunWindows(GameInstallation installation, IReadOnlyList<string> args, ToolRunVia via, Action onStart, CancellationToken cancellationToken)
     {
         // Plan with the strategy that will run, not Auto: a forced strategy can run in a prefix Auto cannot.
         // Without a way to run, starting quietly would leave the user wondering why nothing happened.
         var plan = toolRunner.Plan(installation, Exe, args, null, via);
         if (plan.IsRunnable is false)
-            throw new InvalidOperationException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
+            throw new ToolRefusedException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
 
         await prefixSetup.Ensure(installation, Name, definition.Prefix, cancellationToken);
 
         onStart();
-        var result = await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);
-        return result.ExitCode;
+        return await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);
     }
 
-    private async Task<int> RunNative(IReadOnlyList<string> args, CancellationToken cancellationToken)
+    private async Task<ToolRunResult> RunNative(IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         var command = Cli.Wrap(Exe.ToString())
             .WithArguments(args)
             .WithWorkingDirectory(Exe.Parent.ToString())
             .WithValidation(CommandResultValidation.None);
         var result = await processRunner.RunAsync(command, logOutput: true, cancellationToken);
-        return result.ExitCode;
+        return new ToolRunResult(result.ExitCode, result.RunTime, "Native");
     }
 }

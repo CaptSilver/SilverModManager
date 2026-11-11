@@ -11,14 +11,14 @@ namespace SilverModManager.Platform.Proton.Tools;
 /// </summary>
 public sealed class ToolPrefixSetup(IToolRunner toolRunner, IPrefixResolver prefixResolver, IPrefixInspector inspector)
 {
-    /// <exception cref="InvalidOperationException">The prefix is unusable, a component is missing or a registry value could not be written; the message is for the user.</exception>
+    /// <exception cref="ToolRefusedException">The prefix is unusable, a component is missing or a registry value could not be written; the message is for the user.</exception>
     public async Task Ensure(GameInstallation installation, string toolName, ToolPrefixRequirements requirements, CancellationToken cancellationToken)
     {
         if (requirements.Components.Count == 0 && requirements.RegistryDefaults.Count == 0) return;
 
         var resolution = prefixResolver.Resolve(installation);
         if (resolution.Prefix is not { } prefix)
-            throw new InvalidOperationException($"Cannot run {toolName} for {installation.Game.DisplayName}: {resolution.Diagnostic ?? "this installation does not run in a Wine prefix."}");
+            throw new ToolRefusedException($"Cannot run {toolName} for {installation.Game.DisplayName}: {resolution.Diagnostic ?? "this installation does not run in a Wine prefix."}");
 
         RequireComponents(prefix, toolName, requirements.Components);
         foreach (var registryDefault in requirements.RegistryDefaults)
@@ -54,7 +54,7 @@ public sealed class ToolPrefixSetup(IToolRunner toolRunner, IPrefixResolver pref
         var missing = MissingComponentIds(prefix, components).Select(id => PrefixComponents.Get(id).DisplayName).ToList();
         if (missing.Count == 0) return;
 
-        throw new InvalidOperationException($"{toolName} needs the {string.Join(" and the ", missing)} in the game's Wine prefix, and it is not there. Set it up in the prefix, then run the tool again.");
+        throw new ToolRefusedException($"{toolName} needs the {string.Join(" and the ", missing)} in the game's Wine prefix, and it is not there. Set it up in the prefix, then run the tool again.");
     }
 
     private async Task WriteRegistryDefault(GameInstallation installation, ResolvedPrefix prefix, string toolName, PrefixRegistryDefault registryDefault, CancellationToken cancellationToken)
@@ -75,6 +75,6 @@ public sealed class ToolPrefixSetup(IToolRunner toolRunner, IPrefixResolver pref
         if (result.ExitCode == 0) return;
 
         var output = (result.Stderr.Length > 0 ? result.Stderr : result.Stdout).Trim();
-        throw new InvalidOperationException($"Cannot run {toolName}: setting {registryDefault.Value} to {registryDefault.Data} for {registryDefault.ExeName} in the prefix failed with exit code {result.ExitCode}." + (output.Length > 0 ? $" {output}" : ""));
+        throw new ToolRefusedException($"Cannot run {toolName}: setting {registryDefault.Value} to {registryDefault.Data} for {registryDefault.ExeName} in the prefix failed with exit code {result.ExitCode}." + (output.Length > 0 ? $" {output}" : ""));
     }
 }
