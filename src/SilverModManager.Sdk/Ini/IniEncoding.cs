@@ -21,9 +21,8 @@ public enum IniEncoding
     Utf16BigEndian,
 
     /// <summary>
-    /// One byte per character, no mark. A file with bytes that are not valid UTF-8 is read this way because the
-    /// mapping is 1:1, so any bytes round trip. Windows-1252 text (the game's usual encoding) reads correctly
-    /// for everything except the few characters 0x80-0x9F holds.
+    /// One byte per character, no mark, read as Windows-1252 (the games' usual encoding). A file with bytes that
+    /// are not valid UTF-8 is read this way because the mapping is 1:1, so any bytes round trip.
     /// </summary>
     Latin1,
 
@@ -55,8 +54,14 @@ internal static class IniEncodings
         IniEncoding.Utf8 or IniEncoding.Utf8Bom => StrictUtf8,
         IniEncoding.Utf16LittleEndian => new UnicodeEncoding(bigEndian: false, byteOrderMark: false, throwOnInvalidBytes: true),
         IniEncoding.Utf16BigEndian => new UnicodeEncoding(bigEndian: true, byteOrderMark: false, throwOnInvalidBytes: true),
-        _ => Encoding.GetEncoding("iso-8859-1", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback),
+        _ => Windows1252,
     };
+
+    // Windows-1252 rather than ISO 8859-1: Morrowind.ini and the Bethesda INIs hold curly quotes and the euro sign
+    // as 0x80-0x9F bytes, which Latin-1 cannot write. The two agree on every other byte, and .NET maps the five
+    // bytes 1252 leaves undefined to the matching control characters, so any bytes still round trip.
+    private static readonly Encoding Windows1252 = CodePagesEncodingProvider.Instance.GetEncoding(
+        1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)!;
 
     /// <summary>Picks the encoding of <paramref name="bytes"/> and decodes the text after any mark.</summary>
     public static (IniEncoding Encoding, string Text) Decode(byte[] bytes)
@@ -69,7 +74,7 @@ internal static class IniEncodings
             }
             catch (DecoderFallbackException)
             {
-                return (IniEncoding.Latin1WithUtf8Mark, Encoding.Latin1.GetString(bytes, 3, bytes.Length - 3));
+                return (IniEncoding.Latin1WithUtf8Mark, Windows1252.GetString(bytes, 3, bytes.Length - 3));
             }
         }
         if (bytes is [0xFF, 0xFE, ..])
@@ -83,7 +88,7 @@ internal static class IniEncodings
         }
         catch (DecoderFallbackException)
         {
-            return (IniEncoding.Latin1, Encoding.Latin1.GetString(bytes));
+            return (IniEncoding.Latin1, Windows1252.GetString(bytes));
         }
     }
 }

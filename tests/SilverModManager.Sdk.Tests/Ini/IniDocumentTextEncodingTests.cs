@@ -25,4 +25,32 @@ public class IniDocumentTextEncodingTests
     {
         IniDocument.Parse("k=é\r\n", IniEncoding.Latin1).ToBytes().Should().Equal(Encoding.Latin1.GetBytes("k=é\r\n"));
     }
+
+    [Fact]
+    public void AWindows1252FileReadsItsCurlyQuoteAndWritesItBackAsTheSameByte()
+    {
+        byte[] bytes = [.. "[General]\r\nsName=It".Select(c => (byte)c), 0x92, .. "s\r\n".Select(c => (byte)c)];
+
+        var document = IniDocument.Parse(bytes);
+
+        document.Get("General", "sName").Should().Be("It\u2019s");
+        document.ToBytes().Should().Equal(bytes);
+    }
+
+    [Fact]
+    public void SettingACharacterWindows1252HoldsWritesItsOneByteInALegacyFile()
+    {
+        var document = IniDocument.Parse("k=\u00e9\r\n", IniEncoding.Latin1);
+        document.Set("General", "sName", "It\u2019s \u20ac");
+
+        document.ToBytes().Should().Contain([0x92, 0x80]);
+    }
+
+    [Fact]
+    public void EveryByteOfALegacyFileRoundTrips()
+    {
+        byte[] bytes = [.. "k=".Select(c => (byte)c), .. Enumerable.Range(0x80, 0x80).Select(b => (byte)b), 0x0D, 0x0A];
+
+        IniDocument.Parse(bytes).ToBytes().Should().Equal(bytes);
+    }
 }
