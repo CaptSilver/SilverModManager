@@ -5,6 +5,8 @@ using NSubstitute;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Wabbajack.Models;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Dialog;
@@ -47,12 +49,14 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
         return result.Remap(group);
     }
 
+    private ICollectionOwnership Ownership => Provider.GetRequiredService<ICollectionOwnership>();
+
     private static LoadoutItemId IdOf(LoadoutItemGroup.ReadOnly mod) => mod.AsLoadoutItem().LoadoutItemId;
 
     private bool IsDisabled(LoadoutItemGroup.ReadOnly mod) => LoadoutItem.Load(Connection.Db, IdOf(mod)).IsDisabled;
 
     /// <summary>A mod installed from a Nexus file; returns the file's metadata and a newer file of the same page.</summary>
-    private async Task<(LoadoutItemGroup.ReadOnly Mod, NexusModsFileMetadata.ReadOnly Installed, NexusModsFileMetadata.ReadOnly Newer)> AddNexusMod(Loadout.ReadOnly loadout, string name, uint modId)
+    private async Task<(LoadoutItemGroup.ReadOnly Mod, NexusModsFileMetadata.ReadOnly Installed, NexusModsFileMetadata.ReadOnly Newer)> AddNexusMod(Loadout.ReadOnly loadout, string name, uint modId, EntityId? parent = null)
     {
         using var tx = Connection.BeginTransaction();
         var item = default(LibraryItem.New);
@@ -95,6 +99,7 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
             IsGroup = true,
             LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadout },
         };
+        if (parent is { } parentId) tx.Add(groupId, LoadoutItem.ParentId, parentId);
         _ = new LibraryLinkedLoadoutItem.New(tx, groupId) { LibraryItemId = item, LoadoutItemGroup = group };
         var result = await tx.Commit();
         return (result.Remap(group), result.Remap(installed), result.Remap(newer));
@@ -143,11 +148,13 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
 
     #region report text
 
+    private static ModUpdateVerdict Verdict(ModUpdateOutcome outcome) => new(outcome);
+
     [Fact]
     public void Test_TheReportSaysWhichModsHaveNewerFilesWhichDoNotAndWhichHaveNoNexusPage()
     {
         var text = ModUpdateReport.Describe(
-            [("A", ModUpdateOutcome.NewerFiles), ("B", ModUpdateOutcome.NewerFiles), ("C", ModUpdateOutcome.UpToDate), ("D", ModUpdateOutcome.NoNexusPage)],
+            [("A", Verdict(ModUpdateOutcome.NewerFiles)), ("B", Verdict(ModUpdateOutcome.NewerFiles)), ("C", Verdict(ModUpdateOutcome.UpToDate)), ("D", Verdict(ModUpdateOutcome.NoNexusPage))],
             CacheUpdaterResultStatus.Ok);
 
         text.Should().Contain("Newer files exist for A, B; none for C; no Nexus page known for D.");
@@ -158,10 +165,10 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
     [Fact]
     public void Test_TheReportLeavesOutTheClausesNoModFitsAndSaysSoWhenNothingWasAsked()
     {
-        ModUpdateReport.Describe([("A", ModUpdateOutcome.UpToDate)], CacheUpdaterResultStatus.Ok)
+        ModUpdateReport.Describe([("A", Verdict(ModUpdateOutcome.UpToDate))], CacheUpdaterResultStatus.Ok)
             .Should().Contain("None of these mods has a newer file").And.NotContain("Newer files exist");
 
-        ModUpdateReport.Describe([("A", ModUpdateOutcome.NewerFiles)], CacheUpdaterResultStatus.NotLoggedIn)
+        ModUpdateReport.Describe([("A", Verdict(ModUpdateOutcome.NewerFiles))], CacheUpdaterResultStatus.NotLoggedIn)
             .Should().Contain("Log in to Nexus Mods").And.Contain("already knew");
     }
 
@@ -175,7 +182,7 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Updates");
         var mod = await AddMod(loadout, "Local mod");
 
-        ModUpdateReport.Outcome(Connection.Db, UpdatesWith(_ => Optional<ModUpdatesOnModPage>.None), IdOf(mod)).Should().Be(ModUpdateOutcome.NoNexusPage);
+        ModUpdateReport.Outcome(Connection.Db, Ownership, UpdatesWith(_ => Optional<ModUpdatesOnModPage>.None), IdOf(mod)).Outcome.Should().Be(ModUpdateOutcome.NoNexusPage);
     }
 
     [Fact]
@@ -188,9 +195,56 @@ public class VanillaMissingActionTests(IServiceProvider provider) : AUiTest(prov
         var forThisFile = UpdatesWith(_ => Optional.Some(new ModUpdatesOnModPage([new ModUpdateOnPage(installed, [newer])])));
         var forAnotherFile = UpdatesWith(_ => Optional.Some(new ModUpdatesOnModPage([new ModUpdateOnPage(otherFile, [newer])])));
 
-        ModUpdateReport.Outcome(Connection.Db, forThisFile, IdOf(mod)).Should().Be(ModUpdateOutcome.NewerFiles);
-        ModUpdateReport.Outcome(Connection.Db, forAnotherFile, IdOf(mod)).Should().Be(ModUpdateOutcome.UpToDate, "the page has an update, but for a different file than the one installed");
-        ModUpdateReport.Outcome(Connection.Db, UpdatesWith(_ => Optional<ModUpdatesOnModPage>.None), IdOf(other)).Should().Be(ModUpdateOutcome.UpToDate);
+        ModUpdateReport.Outcome(Connection.Db, Ownership, forThisFile, IdOf(mod)).Outcome.Should().Be(ModUpdateOutcome.NewerFiles);
+        ModUpdateReport.Outcome(Connection.Db, Ownership, forAnotherFile, IdOf(mod)).Outcome.Should().Be(ModUpdateOutcome.UpToDate, "the page has an update, but for a different file than the one installed");
+        ModUpdateReport.Outcome(Connection.Db, Ownership, UpdatesWith(_ => Optional<ModUpdatesOnModPage>.None), IdOf(other)).Outcome.Should().Be(ModUpdateOutcome.UpToDate);
+    }
+
+    private async Task<EntityId> AddCollection(Loadout.ReadOnly loadout, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = new CollectionGroup.New(tx, out var id)
+        {
+            IsReadOnly = true,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = name, LoadoutId = loadout },
+            },
+        };
+        return (await tx.Commit()).Remap(group).Id;
+    }
+
+    [Fact]
+    public async Task Test_AModOfAModlistSaysToUpdateTheList()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Updates");
+        var list = await WabbajackGroupSeed.AddList(Connection, "1", name: "Yggdrasil");
+        var listGroup = await WabbajackGroupSeed.AddGroup(Connection, list.Id, loadout.LoadoutId, "Yggdrasil");
+        var (mod, installed, newer) = await AddNexusMod(loadout, "SkyUI", 701, listGroup);
+        var updates = UpdatesWith(_ => Optional.Some(new ModUpdatesOnModPage([new ModUpdateOnPage(installed, [newer])])));
+
+        var verdict = ModUpdateReport.Outcome(Connection.Db, Ownership, updates, IdOf(mod));
+
+        verdict.Outcome.Should().Be(ModUpdateOutcome.PartOfLockedCollection, "the page has a newer file, but the list decides what the mod is");
+        ModUpdateReport.Describe([("SkyUI", verdict)], CacheUpdaterResultStatus.Ok)
+            .Should().Contain("SkyUI is part of Yggdrasil; Yggdrasil is a Wabbajack modlist; it decides what it contains, so update it there")
+            .And.NotContain("Nexus page known");
+    }
+
+    [Fact]
+    public async Task Test_AModOfANexusCollectionSaysSo()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Updates");
+        var collection = await AddCollection(loadout, "Elden Overhaul");
+        var (mod, installed, newer) = await AddNexusMod(loadout, "Great Runes", 702, collection);
+        var updates = UpdatesWith(_ => Optional.Some(new ModUpdatesOnModPage([new ModUpdateOnPage(installed, [newer])])));
+
+        var verdict = ModUpdateReport.Outcome(Connection.Db, Ownership, updates, IdOf(mod));
+
+        verdict.Outcome.Should().Be(ModUpdateOutcome.PartOfLockedCollection);
+        ModUpdateReport.Describe([("Great Runes", verdict)], CacheUpdaterResultStatus.Ok)
+            .Should().Contain("Great Runes is part of Elden Overhaul; Elden Overhaul is a Nexus collection; it decides what it contains, so update it there");
     }
 
     #endregion

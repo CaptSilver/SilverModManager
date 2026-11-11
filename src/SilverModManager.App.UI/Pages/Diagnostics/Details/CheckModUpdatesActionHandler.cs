@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -43,10 +44,11 @@ public sealed class CheckModUpdatesActionHandler(IServiceProvider serviceProvide
 
         // The mods are read after the check, which may have refreshed the pages they point at.
         db = serviceProvider.GetRequiredService<IConnection>().Db;
+        var ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
         var mods = ids
             .Select(id => LoadoutItem.Load(db, id))
             .Where(item => item.IsValid())
-            .Select(item => (item.Name, ModUpdateReport.Outcome(db, modUpdates, item.LoadoutItemId)))
+            .Select(item => (item.Name, ModUpdateReport.Outcome(db, ownership, modUpdates, item.LoadoutItemId)))
             .ToArray();
         if (mods.Length == 0) throw new ModsNotFoundException($"None of the mods the diagnostic named is in loadout {MarkdownText.Code(loadoutId)} any more.");
 

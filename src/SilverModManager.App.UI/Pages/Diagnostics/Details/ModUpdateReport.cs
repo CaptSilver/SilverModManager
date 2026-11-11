@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.ModUpdates;
@@ -17,7 +18,13 @@ public enum ModUpdateOutcome
 
     /// <summary>The mod was not installed from Nexus, so there is no page to ask about.</summary>
     NoNexusPage,
+
+    /// <summary>The mod sits in a collection that decides what it contains, so it is updated by updating that collection.</summary>
+    PartOfLockedCollection,
 }
+
+/// <summary>An outcome, with the lock's own sentence and the collection's name when the mod is part of a locked collection.</summary>
+public readonly record struct ModUpdateVerdict(ModUpdateOutcome Outcome, string? LockReason = null, string? CollectionName = null);
 
 /// <summary>Works out and words the answer to "do these mods have newer files on Nexus?".</summary>
 public static class ModUpdateReport
@@ -26,30 +33,42 @@ public static class ModUpdateReport
     /// Reads the update cache for the file <paramref name="mod"/> was installed from. A page can have updates for
     /// some of the library's files and not for this one, so the page alone does not decide it.
     /// </summary>
-    public static ModUpdateOutcome Outcome(IDb db, IModUpdateService updates, LoadoutItemId mod)
+    public static ModUpdateVerdict Outcome(IDb db, ICollectionOwnership ownership, IModUpdateService updates, LoadoutItemId mod)
     {
-        if (!LibraryLinkedLoadoutItem.TryGet(db, mod.Value, out var linked)) return ModUpdateOutcome.NoNexusPage;
-        if (!NexusModsLibraryItem.TryGet(db, linked.Value.LibraryItemId.Value, out var nexus)) return ModUpdateOutcome.NoNexusPage;
+        if (!LibraryLinkedLoadoutItem.TryGet(db, mod.Value, out var linked)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
+
+        // A mod of a locked collection is updated through the collection, whatever its file's page says.
+        if (ownership.WhyLocked(db, linked.Value) is { } reason)
+        {
+            CollectionOwnership.TryNearestCollection(db, linked.Value.AsLoadoutItemGroup().AsLoadoutItem(), out var collection);
+            return new ModUpdateVerdict(ModUpdateOutcome.PartOfLockedCollection, reason, collection.AsLoadoutItemGroup().AsLoadoutItem().Name);
+        }
+
+        if (!NexusModsLibraryItem.TryGet(db, linked.Value.LibraryItemId.Value, out var nexus)) return new ModUpdateVerdict(ModUpdateOutcome.NoNexusPage);
 
         var onPage = updates.HasModPageUpdatesAvailable(nexus.Value.ModPageMetadata);
-        if (!onPage.HasValue) return ModUpdateOutcome.UpToDate;
+        if (!onPage.HasValue) return new ModUpdateVerdict(ModUpdateOutcome.UpToDate);
 
         var installed = nexus.Value.FileMetadataId;
-        return onPage.Value.FileMappings.Any(m => m.File.Id == installed.Value && m.NewerFiles.Length > 0)
+        return new ModUpdateVerdict(onPage.Value.FileMappings.Any(m => m.File.Id == installed.Value && m.NewerFiles.Length > 0)
             ? ModUpdateOutcome.NewerFiles
-            : ModUpdateOutcome.UpToDate;
+            : ModUpdateOutcome.UpToDate);
     }
 
-    /// <param name="mods">Each mod's name and what the cache says about it.</param>
+    /// <param name="mods">Each mod's name and what the cache says about it. A mod of a locked collection is worded by the collection's own reason.</param>
     /// <param name="check">How the fresh check of the cache went; anything but Ok means the answer is only what the app already had.</param>
     /// <param name="checkFailure">Why asking Nexus threw, when it did.</param>
-    public static string Describe(IReadOnlyList<(string Name, ModUpdateOutcome Outcome)> mods, CacheUpdaterResultStatus check, string? checkFailure = null)
+    public static string Describe(IReadOnlyList<(string Name, ModUpdateVerdict Verdict)> mods, CacheUpdaterResultStatus check, string? checkFailure = null)
     {
-        string Names(ModUpdateOutcome outcome) => string.Join(", ", mods.Where(m => m.Outcome == outcome).Select(m => m.Name));
-        bool Any(ModUpdateOutcome outcome) => mods.Any(m => m.Outcome == outcome);
+        string Names(ModUpdateOutcome outcome) => string.Join(", ", mods.Where(m => m.Verdict.Outcome == outcome).Select(m => m.Name));
+        bool Any(ModUpdateOutcome outcome) => mods.Any(m => m.Verdict.Outcome == outcome);
 
         var clauses = new List<string>();
-        if (Any(ModUpdateOutcome.NewerFiles))
+        if (!mods.Any(m => m.Verdict.Outcome != ModUpdateOutcome.PartOfLockedCollection))
+        {
+            // Every mod is updated through its collection, so there is nothing to say about Nexus pages.
+        }
+        else if (Any(ModUpdateOutcome.NewerFiles))
         {
             clauses.Add($"Newer files exist for {Names(ModUpdateOutcome.NewerFiles)}");
             if (Any(ModUpdateOutcome.UpToDate)) clauses.Add($"none for {Names(ModUpdateOutcome.UpToDate)}");
@@ -64,6 +83,10 @@ public static class ModUpdateReport
         {
             clauses.Add($"No Nexus page known for {Names(ModUpdateOutcome.NoNexusPage)}");
         }
+
+        clauses.AddRange(mods
+            .Where(m => m.Verdict.Outcome == ModUpdateOutcome.PartOfLockedCollection)
+            .Select(m => $"{m.Name} is part of {m.Verdict.CollectionName}; {m.Verdict.LockReason}, so update it there"));
 
         var lines = new List<string>();
         if (checkFailure is not null) lines.Add($"Nexus could not be asked ({checkFailure}), so this is only what the app already knew.");
