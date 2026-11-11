@@ -75,6 +75,19 @@
             </Setter>
         </Style>
         
+        <!-- Collections that keep their mods -->
+        <Style Selector="ItemsControl.KeptByList">
+            <Setter Property="ItemTemplate">
+                <DataTemplate DataType="library:LibraryItemKeptByCollectionInfo">
+                    <StackPanel Classes="CommonPanel">
+                        <Separator Classes="LoadoutSeparator"/>
+                        <TextBlock Classes="BodyMDBold" Margin="0" Text="{CompiledBinding CollectionName, StringFormat={x:Static resources:Language.LibraryItemDeleteConfirmation_KeptBy}}" />
+                        <ItemsControl Classes="LoadoutNameList" ItemsSource="{CompiledBinding ItemNames}" />
+                    </StackPanel>
+                </DataTemplate>
+            </Setter>
+        </Style>
+
         <Style Selector="ItemsControl.LoadoutsList">
             <Setter Property="ItemTemplate">
                 <DataTemplate DataType="library:LibraryItemUsedLoadoutInfo">
@@ -124,6 +137,11 @@
                         <!-- Loadout List (when added to a number of loadouts -->
                         <StackPanel x:Name="LoadoutsPanel">
                             <ItemsControl x:Name="SourceLoadoutsList" Classes="LoadoutsList"/>
+                        </StackPanel>
+
+                        <!-- Collections that own their mods and keep them -->
+                        <StackPanel x:Name="KeptPanel">
+                            <ItemsControl x:Name="KeptByList" Classes="KeptByList"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

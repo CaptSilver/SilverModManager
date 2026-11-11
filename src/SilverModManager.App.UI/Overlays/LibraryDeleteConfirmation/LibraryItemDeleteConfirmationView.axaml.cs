@@ -38,6 +38,16 @@ public partial class LibraryItemDeleteConfirmationView : ReactiveUserControl<ILi
                     v => v.SourceLoadoutsList.ItemsSource)
                 .DisposeWith(d);
 
+            // Collections that keep their mods show in their own section.
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.KeptByCollections))
+                .Subscribe(kept => KeptPanel.IsVisible = kept.Count > 0)
+                .DisposeWith(d);
+
+            this.OneWayBind(ViewModel,
+                    vm => vm.KeptByCollections,
+                    v => v.KeptByList.ItemsSource)
+                .DisposeWith(d);
+
             // Bind button commands
             DeleteButton.Command = ReactiveCommand.Create(() => ViewModel?.Complete(true));
             NoButton.Command = ReactiveCommand.Create(() => ViewModel?.Complete(false));

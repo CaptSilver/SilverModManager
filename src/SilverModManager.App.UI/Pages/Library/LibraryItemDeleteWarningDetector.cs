@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -50,14 +51,22 @@ public record struct LibraryItemDeleteWarningDetector
     public List<LibraryItemUsedLoadoutInfo> LoadoutsUsed { get; init; }
 
     /// <summary>
+    /// The collections that own their mods (a Wabbajack modlist) and link the items being deleted. They keep their
+    /// mods; the archive is needed again to resume or update them.
+    /// </summary>
+    public List<LibraryItemKeptByCollectionInfo> KeptByCollections { get; init; }
+
+    /// <summary>
     /// Processes a collection of library items and categorizes them based on
     /// deletion warning criteria.
     /// </summary>
     /// <param name="connection">The database connection used to retrieve additional information.</param>
+    /// <param name="ownership">Says which collections own their mod rows.</param>
     /// <param name="toRemove">The collection of library items to process.</param>
     /// <returns>A new instance of LibraryItemDeleteWarningProcessor containing the categorized items.</returns>
     public static LibraryItemDeleteWarningDetector Process(
         IConnection connection,
+        ICollectionOwnership ownership,
         IEnumerable<LibraryItem.ReadOnly> toRemove)
     {
         var loadouts = Loadout.All(connection.Db).ToArray();
@@ -75,6 +84,7 @@ public record struct LibraryItemDeleteWarningDetector
         var manuallyAddedItems = new List<LibraryItem.ReadOnly>();
         var itemsInLoadouts = new List<LibraryItem.ReadOnly>();
         var allItems = new List<LibraryItem.ReadOnly>();
+        var keptBy = new Dictionary<string, List<string>>();
         
         // Note: We don't track collections right now, but for when we do,
         //       this dict will be useful.
@@ -82,7 +92,7 @@ public record struct LibraryItemDeleteWarningDetector
 
         foreach (var item in toRemove)
         {
-            var info = LibraryItemRemovalInfo.Determine(item, loadouts);
+            var info = LibraryItemRemovalInfo.Determine(item, loadouts, connection.Db, ownership);
 
             if (info.IsNonPermanent)
                 nonPermanentItems.Add(item);
@@ -92,6 +102,13 @@ public record struct LibraryItemDeleteWarningDetector
 
             if (info.Loadouts.Length > 0)
                 itemsInLoadouts.Add(item);
+
+            foreach (var collectionName in info.KeptByCollections)
+            {
+                if (!keptBy.TryGetValue(collectionName, out var names))
+                    keptBy[collectionName] = names = [];
+                names.Add(item.Name);
+            }
 
             // Add the loadout info.
             foreach (var loadout in info.Loadouts)
@@ -118,6 +135,7 @@ public record struct LibraryItemDeleteWarningDetector
             ItemsInLoadouts = itemsInLoadouts,
             AllItems = allItems,
             LoadoutsUsed = usedLoadouts.Values.ToList(),
+            KeptByCollections = keptBy.Select(pair => new LibraryItemKeptByCollectionInfo(pair.Key, pair.Value)).ToList(),
         };
     }
 }

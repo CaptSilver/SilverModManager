@@ -55,4 +55,15 @@ public static class LibraryItemDeleteConfirmationDesignViewModels
             },
         ],
     };
+
+    public static readonly LibraryItemDeleteConfirmationViewModel KeptByAModlist = new()
+    {
+        AllItems =
+        [
+            "SkyUI 5.2SE",
+            "Some Mod that's not in Any Loadout",
+        ],
+        LoadoutsUsed = [],
+        KeptByCollections = [new LibraryItemKeptByCollectionInfo("Yggdrasil", ["SkyUI 5.2SE"])],
+    };
 }

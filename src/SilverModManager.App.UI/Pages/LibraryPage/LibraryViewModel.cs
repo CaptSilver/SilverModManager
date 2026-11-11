@@ -598,7 +598,7 @@ After asking design, we're choosing to simply open the mod page for now.
         if (ids.Length == 0) return;
         
         var toRemove = ids.Select(id => LibraryItem.Load(_connection.Db, id)).ToArray();
-        await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
+        await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, _ownership, toRemove);
 
         _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
     }
@@ -806,7 +806,7 @@ After asking design, we're choosing to simply open the mod page for now.
     {
         var db = _connection.Db;
         var toRemove = GetSelectedIds().Select(id => LibraryItem.Load(db, id)).ToArray();
-        await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
+        await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, _ownership, toRemove);
         
         _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
     }

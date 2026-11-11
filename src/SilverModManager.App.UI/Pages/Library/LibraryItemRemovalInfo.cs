@@ -1,5 +1,7 @@
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 
@@ -14,10 +16,11 @@ namespace SilverModManager.App.UI.Pages.Library;
 ///     (As of time of writing it means 'not from Nexus Mods')
 /// </param>
 /// <param name="IsManuallyAdded">Whether this library item was manually added from FileSystem to library.</param>
-/// <param name="Loadouts">The loadouts that this library item is used within.</param>
-public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts)
+/// <param name="Loadouts">The loadouts that hold this library item as a mod of their own (one a collection that owns its mods does not count).</param>
+/// <param name="KeptByCollections">The names of the collections that own their mods and link this library item; deleting the archive unlinks them and keeps the mods.</param>
+public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts, string[] KeptByCollections)
 {
-    public static LibraryItemRemovalInfo Determine(LibraryItem.ReadOnly toRemove, Loadout.ReadOnly[] loadouts)
+    public static LibraryItemRemovalInfo Determine(LibraryItem.ReadOnly toRemove, Loadout.ReadOnly[] loadouts, IDb db, ICollectionOwnership ownership)
     {
         var info = new LibraryItemRemovalInfo();
 
@@ -33,7 +36,19 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
         }
         
         // Check if it's added to any loadout
-        info.Loadouts = loadouts.Where(loadout => GetLoadoutItemsByLibraryItem(loadout, toRemove).Any()).ToArray();
+        info.Loadouts = loadouts
+            .Where(loadout => GetLoadoutItemsByLibraryItem(loadout, toRemove).Any(link => !ownership.OwnsLink(db, link)))
+            .ToArray();
+        info.KeptByCollections = loadouts
+            .SelectMany(loadout => GetLoadoutItemsByLibraryItem(loadout, toRemove))
+            .Where(link => ownership.OwnsLink(db, link) && CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItemGroup().AsLoadoutItem(), out _))
+            .Select(link =>
+            {
+                CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItemGroup().AsLoadoutItem(), out var collection);
+                return collection.AsLoadoutItemGroup().AsLoadoutItem().Name;
+            })
+            .Distinct()
+            .ToArray();
         return info;
     }
 

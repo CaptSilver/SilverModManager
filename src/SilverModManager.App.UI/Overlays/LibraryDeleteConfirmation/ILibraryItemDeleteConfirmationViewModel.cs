@@ -15,6 +15,11 @@ public interface ILibraryItemDeleteConfirmationViewModel : IOverlayViewModel<boo
     /// <summary>
     /// Listing of all loadouts that contain the mods listed in <see cref="AllItems"/>.
     /// </summary>
-    public List<LibraryItemUsedLoadoutInfo> LoadoutsUsed { get; } 
+    public List<LibraryItemUsedLoadoutInfo> LoadoutsUsed { get; }
+
+    /// <summary>
+    /// Collections that own their mods and link the items being deleted; they keep their mods.
+    /// </summary>
+    public List<LibraryItemKeptByCollectionInfo> KeptByCollections { get; }
 }
 

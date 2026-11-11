@@ -41,6 +41,7 @@ public class OverlayMissingViewModelTests(IServiceProvider provider) : AUiTest(p
     {
         public List<string> AllItems { get; } = [];
         public List<LibraryItemUsedLoadoutInfo> LoadoutsUsed { get; } = [];
+        public List<LibraryItemKeptByCollectionInfo> KeptByCollections { get; } = [];
     }
 
     private sealed class FakeNexusLogin : FakeOverlay<Unit>, INexusLoginOverlayViewModel

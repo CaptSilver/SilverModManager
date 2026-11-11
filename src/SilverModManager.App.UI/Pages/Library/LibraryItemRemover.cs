@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -20,9 +21,10 @@ public static class LibraryItemRemover
         IConnection conn,
         IOverlayController overlayController,
         ILibraryService libraryService,
+        ICollectionOwnership ownership,
         LibraryItem.ReadOnly[] toRemove)
     {
-        var warnings = LibraryItemDeleteWarningDetector.Process(conn, toRemove);
+        var warnings = LibraryItemDeleteWarningDetector.Process(conn, ownership, toRemove);
         var alphaWarningViewModel = LibraryItemDeleteConfirmationViewModel.FromWarningDetector(warnings);
         alphaWarningViewModel.Controller = overlayController;
         var result = await overlayController.EnqueueAndWait(alphaWarningViewModel);

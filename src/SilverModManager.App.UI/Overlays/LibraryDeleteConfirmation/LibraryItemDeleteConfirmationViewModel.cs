@@ -5,6 +5,7 @@ public class LibraryItemDeleteConfirmationViewModel : AOverlayViewModel<ILibrary
 {
     public required List<string> AllItems { get; init; }
     public required List<LibraryItemUsedLoadoutInfo> LoadoutsUsed { get; init; }
+    public List<LibraryItemKeptByCollectionInfo> KeptByCollections { get; init; } = [];
 
     // ReSharper disable once EmptyConstructor
     public LibraryItemDeleteConfirmationViewModel() { }
@@ -19,6 +20,7 @@ public class LibraryItemDeleteConfirmationViewModel : AOverlayViewModel<ILibrary
         {
             AllItems = allItems,
             LoadoutsUsed = detector.LoadoutsUsed,
+            KeptByCollections = detector.KeptByCollections,
         };
     }
 }

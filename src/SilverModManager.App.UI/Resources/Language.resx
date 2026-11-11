@@ -841,6 +841,10 @@
         <value>Used by {0} - {1}:</value>
     </data>
 
+    <data name="LibraryItemDeleteConfirmation_KeptBy" xml:space="preserve">
+        <value>Kept in {0}; the archive is needed again to resume or update:</value>
+    </data>
+
     <data name="LibraryItemDeleteConfirmation_DeleteModsButton" xml:space="preserve">
         <value>Delete mod(s)</value>
     </data>

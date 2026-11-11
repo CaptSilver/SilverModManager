@@ -2824,6 +2824,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Kept in {0}; the archive is needed again to resume or update:.
+        /// </summary>
+        public static string LibraryItemDeleteConfirmation_KeptBy {
+            get {
+                return ResourceManager.GetString("LibraryItemDeleteConfirmation_KeptBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Manage your downloaded mods and collections. Install, update or add more..
         /// </summary>
         public static string LibraryPageDescription {
