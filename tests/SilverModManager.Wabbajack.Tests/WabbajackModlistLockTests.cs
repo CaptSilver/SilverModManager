@@ -31,6 +31,24 @@ public class WabbajackModlistLockTests(ITestOutputHelper helper) : InstallTestBa
             .Should().BeNull();
     }
 
+    [Fact]
+    public async Task AModlistGroupOwnsItsMods()
+    {
+        var loadout = await CreateLoadout();
+        var list = await AddCollection(loadout, "Living Skyrim", modlist: true);
+
+        ServiceProvider.GetRequiredService<ICollectionOwnership>().OwnsItsMods(CollectionGroup.Load(Connection.Db, list)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AUserCollectionDoesNotOwnItsMods()
+    {
+        var loadout = await CreateLoadout();
+        var mine = await AddCollection(loadout, "Mine", modlist: false);
+
+        ServiceProvider.GetRequiredService<ICollectionOwnership>().OwnsItsMods(CollectionGroup.Load(Connection.Db, mine)).Should().BeFalse();
+    }
+
     private async Task<EntityId> AddCollection(LoadoutId loadout, string name, bool modlist)
     {
         using var tx = Connection.BeginTransaction();

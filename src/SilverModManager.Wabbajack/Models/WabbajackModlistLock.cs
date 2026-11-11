@@ -14,4 +14,7 @@ public sealed class WabbajackModlistLock : ICollectionLock
         => collection.TryGetAsWabbajackModlistLoadoutGroup(out _)
             ? $"{collection.AsLoadoutItemGroup().AsLoadoutItem().Name} is a Wabbajack modlist; it decides what it contains"
             : null;
+
+    /// <inheritdoc />
+    public bool OwnsItsMods(CollectionGroup.ReadOnly collection) => collection.TryGetAsWabbajackModlistLoadoutGroup(out _);
 }
