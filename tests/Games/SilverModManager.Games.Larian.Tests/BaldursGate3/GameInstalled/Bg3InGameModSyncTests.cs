@@ -99,7 +99,6 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
     private GameInstalledItem.ReadOnly Item(Loadout.ReadOnly loadout, string pak) => Items(loadout).Single(i => i.SourceId == pak);
 
-
     private static Hash HashOf(byte[] bytes) => bytes.xxHash3();
 
     private async Task<Hash> DiskHash(string pak) => HashOf(await OnDisk(Pak(pak)).ReadAllBytesAsync());

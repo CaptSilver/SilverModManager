@@ -38,7 +38,6 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
 
     private AbsolutePath Pref(string rel) => GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Preferences, rel));
 
-
     private async Task WriteGameFile(string rel, string content)
     {
         var file = Pref(rel);
