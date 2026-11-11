@@ -493,20 +493,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         var itemModel = new CompositeItemModel<EntityId>(groupPriorityId);
 
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: loadoutGroup.AsLoadoutItem().Name));
-        ImageComponent? imageComponent = null;
-
-        if (loadoutGroup.TryGetAsLibraryLinkedLoadoutItem(out var libraryLinkedLoadoutItem))
-        {
-            if (libraryLinkedLoadoutItem.LibraryItem.TryGetAsNexusModsLibraryItem(out var nexusLibraryItem))
-            {
-                imageComponent = ImageComponent.FromPipeline(
-                    _modPageThumbnailPipeline, 
-                    nexusLibraryItem.ModPageMetadataId, 
-                    ImagePipelines.ModPageThumbnailFallback);
-            }
-        }
-
-        imageComponent ??= new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback);
+        var imageComponent = LinkedItemImages.ForGroup(db, _modPageThumbnailPipeline, loadoutGroup.Id);
         itemModel.Add(SharedColumns.Name.ImageComponentKey, imageComponent);
 
         itemModel.Add(FileConflictsColumns.ConflictsColumn.NumConflictsComponentKey, new FileConflictsComponents.NumConflicts(

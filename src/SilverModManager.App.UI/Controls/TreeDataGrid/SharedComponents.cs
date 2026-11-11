@@ -27,6 +27,24 @@ public static class SharedComponents
             IsEnabled = new BindableReactiveProperty<bool>(isEnabled);
         }
 
+        /// <summary>
+        /// An action whose enabled state follows <paramref name="isEnabled"/> while the row is on screen, for a row
+        /// whose page is only known once its library link exists.
+        /// </summary>
+        public ViewModPageAction(bool initial, IObservable<bool> isEnabled)
+        {
+            var property = new BindableReactiveProperty<bool>(initial);
+            IsEnabled = property;
+            _activationDisposable = this.WhenActivated(isEnabled.ToObservable(), static (self, enabled, disposables) =>
+            {
+                enabled.ObserveOnUIThreadDispatcher().Subscribe(self, static (value, self) =>
+                {
+                    ((BindableReactiveProperty<bool>)self.IsEnabled).Value = value;
+                }).AddTo(disposables);
+            });
+        }
+
+        private readonly IDisposable? _activationDisposable;
         private bool _isDisposed;
         protected override void Dispose(bool disposing)
         {
@@ -34,6 +52,7 @@ public static class SharedComponents
             {
                 if (disposing)
                 {
+                    _activationDisposable?.Dispose();
                     Disposable.Dispose(CommandViewModPage, IsEnabled);
                 }
 

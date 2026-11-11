@@ -104,13 +104,10 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         // Thumbnail
         if (reactiveSortItem.ModGroupId.HasValue)
         {
-            if (LoadoutItemGroup.Load(connection.Db, reactiveSortItem.ModGroupId.Value).TryGetAsLibraryLinkedLoadoutItem(out var linkedItem))
+            if (LoadoutItemGroup.Load(connection.Db, reactiveSortItem.ModGroupId.Value).TryGetAsLibraryLinkedLoadoutItem(out _))
             {
-                if (linkedItem.LibraryItem.TryGetAsNexusModsLibraryItem(out var nexusLibraryItem))
-                {
-                    compositeModel.Add(LoadOrderColumns.DisplayNameColumn.ImageComponentKey,
-                        ImageComponent.FromPipeline(thumbnailLoader.Value, nexusLibraryItem.ModPageMetadata, initialValue: ImagePipelines.ModPageThumbnailFallback));
-                }
+                compositeModel.Add(LoadOrderColumns.DisplayNameColumn.ImageComponentKey,
+                    LinkedItemImages.ForGroup(connection.Db, thumbnailLoader.Value, reactiveSortItem.ModGroupId.Value));
             }
         }
 

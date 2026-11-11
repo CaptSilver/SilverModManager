@@ -1,11 +1,15 @@
 using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
+using Avalonia.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.App.UI;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.LoadoutPage;
@@ -16,6 +20,8 @@ using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Resources;
 using SilverModManager.UI.Sdk;
 using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
@@ -29,6 +35,76 @@ namespace SilverModManager.UI.Tests.Pages;
 public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiTest(provider)
 {
     private WabbajackLoadoutDataProvider CreateProvider() => new(Provider);
+
+    private sealed class FakeThumbnails : IResourceLoader<EntityId, Bitmap>
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<EntityId> Requests { get; } = new();
+
+        public ValueTask<Resource<Bitmap>> LoadResourceAsync(EntityId resourceIdentifier, CancellationToken cancellationToken)
+        {
+            Requests.Enqueue(resourceIdentifier);
+            return new ValueTask<Resource<Bitmap>>(new Resource<Bitmap> { Data = ImagePipelines.ModPageThumbnailFallback });
+        }
+    }
+
+    private async Task<IObservableCache<CompositeItemModel<EntityId>, EntityId>> Observe(LoadoutFilter filter, FakeThumbnails thumbnails) =>
+        await OnUi(() => Task.FromResult(new WabbajackLoadoutDataProvider(Provider, new Lazy<IResourceLoader<EntityId, Bitmap>>(thumbnails))
+            .ObserveLoadoutItems(filter).AsObservableCache()));
+
+    /// <summary>A library item downloaded from a Nexus mod page, the way a Nexus install leaves it.</summary>
+    private async Task<(EntityId Item, EntityId Page)> AddNexusItem(Loadout.ReadOnly loadout)
+    {
+        var game = GameInstallMetadata.GameId.Get(Loadout.Load(Connection.Db, loadout.LoadoutId).Installation);
+        var modId = (uint)Random.Shared.Next(100_000, 900_000);
+        using var tx = Connection.BeginTransaction();
+        var page = new NexusModsModPageMetadata.New(tx)
+        {
+            Uid = new ModUid(ModId.From(modId), game),
+            Name = "Linked mod",
+            GameDomain = GameDomain.From("cyberpunk2077"),
+            UpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            DataUpdatedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+        };
+        var file = new NexusModsFileMetadata.New(tx)
+        {
+            Uid = new FileUid(FileId.From(modId), game),
+            Name = "Linked.zip",
+            Version = "1",
+            UploadedAt = DateTimeOffset.UnixEpoch.UtcDateTime,
+            ModPageId = page.Id,
+        };
+        var bytes = System.Text.Encoding.UTF8.GetBytes("nexus" + Guid.NewGuid());
+        var item = new NexusModsLibraryItem.New(tx, out var id)
+        {
+            LibraryItem = new LibraryItem.New(tx, id) { Name = "Linked.zip" },
+            FileMetadataId = file.Id,
+            ModPageMetadataId = page.Id,
+        };
+        _ = new LibraryFile.New(tx, id)
+        {
+            FileName = "Linked.zip",
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = "Linked.zip" },
+        };
+        var result = await tx.Commit();
+        return (result.Remap(item).Id, result.Remap(page).Id);
+    }
+
+    private static bool ViewPageEnabled(CompositeItemModel<EntityId> row) =>
+        row.Get<SharedComponents.ViewModPageAction>(LoadoutColumns.EnabledState.ViewModPageComponentKey).IsEnabled.Value;
+
+    private async Task<IDisposable> Activate(CompositeItemModel<EntityId> row)
+    {
+        var image = row.Get<ImageComponent>(SharedColumns.Name.ImageComponentKey);
+        var action = row.Get<SharedComponents.ViewModPageAction>(LoadoutColumns.EnabledState.ViewModPageComponentKey);
+        return await OnUi(() => Task.FromResult<IDisposable>(new CompositeDisposable(image.Activate(), action.Activate())));
+    }
+
+    private sealed class CompositeDisposable(params IDisposable[] items) : IDisposable
+    {
+        public void Dispose() { foreach (var item in items) item.Dispose(); }
+    }
 
     private static LoadoutFilter AllFor(Loadout.ReadOnly loadout) => new()
     {
@@ -352,5 +428,61 @@ public class WabbajackLoadoutDataProviderTests(IServiceProvider provider) : AUiT
     public async Task ARowIsRegisteredAmongTheLoadoutProviders()
     {
         Provider.GetServices<ILoadoutDataProvider>().Should().ContainSingle(p => p is WabbajackLoadoutDataProvider);
+    }
+
+    [Fact]
+    public async Task ALinkedNexusModShowsItsPageThumbnailAndViewModPage()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-thumb-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Thumbs");
+        var mod = await AddMod(loadout, list, "SkyUI");
+        var (item, page) = await AddNexusItem(loadout);
+        await LinkGroup(mod, item);
+        var thumbnails = new FakeThumbnails();
+
+        using var rows = await Observe(CollectionFilter(loadout, list), thumbnails);
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([mod]));
+        using var _ = await Activate(rows.Lookup(mod).Value);
+
+        await Eventually(() => thumbnails.Requests.Should().Contain(page));
+        await EventuallyOnUi(() => ViewPageEnabled(rows.Lookup(mod).Value).Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task AModFromAMegaArchiveKeepsTheFallback()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-mega-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Mega");
+        var mod = await AddMod(loadout, list, "Mega mod");
+        await LinkToLocalFile(mod);
+        var thumbnails = new FakeThumbnails();
+
+        using var rows = await Observe(CollectionFilter(loadout, list), thumbnails);
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([mod]));
+        using var _ = await Activate(rows.Lookup(mod).Value);
+
+        await Task.Delay(300);
+        thumbnails.Requests.Should().BeEmpty();
+        ViewPageEnabled(rows.Lookup(mod).Value).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARowMadeBeforeItsLinkUpdatesWhenTheLinkIsWritten()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "wj-late-" + Guid.NewGuid().ToString("N"));
+        var list = await AddModlistGroup(loadout, "Late");
+        var mod = await AddMod(loadout, list, "Late mod");
+        var thumbnails = new FakeThumbnails();
+
+        using var rows = await Observe(CollectionFilter(loadout, list), thumbnails);
+        await Eventually(() => rows.Keys.Should().BeEquivalentTo([mod]));
+        using var _ = await Activate(rows.Lookup(mod).Value);
+        ViewPageEnabled(rows.Lookup(mod).Value).Should().BeFalse();
+
+        var (item, page) = await AddNexusItem(loadout);
+        await LinkGroup(mod, item);
+
+        await Eventually(() => thumbnails.Requests.Should().Contain(page));
+        await EventuallyOnUi(() => ViewPageEnabled(rows.Lookup(mod).Value).Should().BeTrue());
     }
 }
