@@ -15,6 +15,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 using SilverModManager.Wabbajack.Tests.Acquire;
@@ -142,6 +143,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
             Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
             LoadoutManager = LoadoutManager,
+            Locator = ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(),
             MemoryBudget = budget,
             Parallelism = parallelism,
             Commits = commits ?? CommitPolicy.Default,

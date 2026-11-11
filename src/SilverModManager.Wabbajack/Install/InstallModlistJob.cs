@@ -28,6 +28,7 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Mapping;
 using SilverModManager.Wabbajack.Models;
 using BethesdaArchiveException = SilverModManager.Games.Bethesda.Archives.BethesdaArchiveException;
@@ -79,6 +80,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required ILogger Logger { get; init; }
     public required ModOrderImporter OrderImporter { get; init; }
     public required ILoadoutManager LoadoutManager { get; init; }
+    public required ILibraryArchiveLocator Locator { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
     /// <summary>What the install may hold in memory at once; the budget for this machine when not set.</summary>
@@ -125,6 +127,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Logger = provider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = provider.GetRequiredService<ModOrderImporter>(),
             LoadoutManager = provider.GetRequiredService<ILoadoutManager>(),
+            Locator = provider.GetRequiredService<ILibraryArchiveLocator>(),
         };
         return monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
@@ -151,6 +154,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (_groupWasInstalled || (_updateMode && _previousModlist is not null)) _gameFilesKeptByUser = await GameFilesTheUserKept(check, state, cancellationToken);
             var prepared = await Resolve(check, state, cancellationToken);
             await Write(check, group, extrasFolder, state, prepared, cancellationToken);
+            await LinkArchives(check, group, state, cancellationToken);
             await RegisterTools(check, group, extrasFolder, cancellationToken);
             await Order(check, group, state, cancellationToken);
         }
@@ -174,6 +178,23 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
 
         return WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Value);
+    }
+
+    /// <summary>
+    /// Records which archive each mod folder came from and links its group to the library file that holds it. Runs after
+    /// <see cref="Write"/>, so the groups of folders the new list dropped are already gone, and on every run, so a resume
+    /// links a folder whose archive reached the library since the run that wrote it.
+    /// </summary>
+    private async Task LinkArchives(Checked check, LoadoutItemGroupId group, WriteState state, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var db = Connection.Db;
+        var main = ModGroupArchives.MainArchiveByFolder(check.Placements, check.BsaInputs, check.List.Archives);
+        using var tx = Connection.BeginTransaction();
+        ModGroupArchives.Record(tx, db, state.Groups, main);
+        ModGroupArchives.Relink(tx, db, Locator, group.Value, main);
+        // A commit makes the loadout recompute, so a list with nothing to record or link does not make one.
+        if (!tx.IsEmpty) await tx.Commit();
     }
 
     #region Check

@@ -19,6 +19,7 @@ using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Update;
 using SilverModManager.Wabbajack.Tests.Install;
 
 namespace SilverModManager.Wabbajack.Tests.Update;
@@ -43,6 +44,27 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
         list.Directives.Add(list.Inline("profiles/Default/modlist.txt", modlistTxt));
         return await AddModlist(list.ToList("Test list"), list.Blobs);
     }
+
+    /// <summary>One folder, A, whose single file comes from <paramref name="archive"/>; the list names only that archive.</summary>
+    private async Task<WabbajackModlistLibraryFile.ReadOnly> AddListWithArchive(ArchiveEntry archive, byte[] bytes, string name = "Test list")
+    {
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/f.bin", archive, "f.bin", bytes));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", "+A\n"));
+        return await AddModlist(list.ToList(name), list.Blobs);
+    }
+
+    private (EntityId Mod, FileIdentity? Main, EntityId? Link) LinkOf(WabbajackModlistLoadoutGroup.ReadOnly group)
+    {
+        var mod = WabbajackModGroup.Load(Connection.Db, ModGroup(group, "A")!.Value.Id);
+        FileIdentity? main = WabbajackModGroup.MainArchive.TryGetValue(mod, out var recorded) ? recorded : null;
+        var link = LibraryLinkedLoadoutItem.Load(Connection.Db, mod.Id);
+        return (mod.Id, main, link.IsValid() ? link.LibraryItem.Id : null);
+    }
+
+    private EntityId LibraryFileOf(ArchiveEntry archive)
+        => ServiceProvider.GetRequiredService<SilverModManager.Wabbajack.Library.ILibraryArchiveLocator>().FindTopLevelByXxHash64(Connection.Db, archive.XxHash64)!.Value.Id;
 
     private static InstallOptions UpdateOf(WabbajackModlistLoadoutGroup.ReadOnly group)
         => new(false, new HashSet<RelativePath>(), group.WabbajackModlistLoadoutGroupId);
@@ -583,4 +605,79 @@ public class UpdateJobTests(ITestOutputHelper helper) : InstallTestBase<UpdateJo
         refused.Should().BeOfType<ModlistUpdateRefusedException>().Which.Message.Should().Contain("Finish the update with Resume, or undo it");
         elsewhere.Should().BeOfType<ModlistUpdateRefusedException>();
     }
+
+    private async Task<(Loadout.ReadOnly Loadout, ArchiveEntry One, ArchiveEntry Two, WabbajackModlistLoadoutGroup.ReadOnly Group, WabbajackModlistLibraryFile.ReadOnly ListTwo)> InstalledFromTheFirstArchive()
+    {
+        var loadout = await CreateLoadout();
+        var a1 = await AddZip("a1.zip", new() { ["f.bin"] = "one"u8.ToArray() });
+        var a2 = await AddZip("a2.zip", new() { ["f.bin"] = "two"u8.ToArray() });
+        var one = await AddListWithArchive(a1, "one"u8.ToArray());
+        var two = await AddListWithArchive(a2, "two"u8.ToArray());
+        var (_, group) = await Install(loadout, one, Options);
+        return (loadout, a1, a2, group, two);
+    }
+
+    [Fact]
+    public async Task AnUpdateThatChangesAFoldersArchiveMovesItsLink()
+    {
+        var (loadout, a1, a2, group, two) = await InstalledFromTheFirstArchive();
+        LinkOf(group).Link.Should().Be(LibraryFileOf(a1));
+
+        var updated = await Update(loadout, two, group);
+
+        var (_, main, link) = LinkOf(updated);
+        main.Should().Be(a2.XxHash64);
+        link.Should().Be(LibraryFileOf(a2));
+    }
+
+    [Fact]
+    public async Task UndoPutsTheLinkBack()
+    {
+        var (loadout, a1, a2, group, two) = await InstalledFromTheFirstArchive();
+        var updated = await Update(loadout, two, group);
+        WabbajackModlistLoadoutGroup.LastUpdateRestorePoint.TryGetValue(updated, out var restorePoint).Should().BeTrue();
+
+        await ServiceProvider.GetRequiredService<UndoService>().RevertTo(new LoadoutRevision(loadout.Id, restorePoint, DateTimeOffset.UtcNow));
+
+        var (mod, main, link) = LinkOf(group);
+        main.Should().Be(a1.XxHash64);
+        link.Should().Be(LibraryFileOf(a1));
+
+        // The archive leaves the library: the link now dangles, and relinking retracts it instead of throwing.
+        using (var delete = Connection.BeginTransaction())
+        {
+            delete.Delete(LibraryFileOf(a1), recursive: false);
+            await delete.Commit();
+        }
+        using (var tx = Connection.BeginTransaction())
+        {
+            ModGroupArchives.Relink(tx, Connection.Db, ServiceProvider.GetRequiredService<SilverModManager.Wabbajack.Library.ILibraryArchiveLocator>(), group.Id);
+            await tx.Commit();
+        }
+        LibraryLinkedLoadoutItem.Load(Connection.Db, mod).IsValid().Should().BeFalse();
+        LinkOf(group).Main.Should().Be(a1.XxHash64, "the recorded archive stays, so a library file added later is linked again");
+    }
+
+    [Fact]
+    public async Task FinishingAnUpdateWithLinkedModsDeletesTheOldOnlyArchives()
+    {
+        var (loadout, a1, a2, group, two) = await InstalledFromTheFirstArchive();
+        var oldFile = LibraryFileOf(a1);
+        var newFile = LibraryFileOf(a2);
+        var installed = WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Id).ModlistId.Value;
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var row in WabbajackModlistArchive.FindByModlist(Connection.Db, installed))
+                tx.Add(row.Id, WabbajackModlistArchive.FetchedFiles, oldFile);
+            await tx.Commit();
+        }
+        var updated = await Update(loadout, two, group);
+
+        await new ModlistUpdateFinish(ServiceProvider).Finish(updated, deleteOldArchives: true, CancellationToken.None);
+
+        LibraryFile.Load(Connection.Db, oldFile).IsValid().Should().BeFalse("only the old version used it, and the mod now links the new archive");
+        LibraryFile.Load(Connection.Db, newFile).IsValid().Should().BeTrue();
+        LinkOf(updated).Link.Should().Be(newFile);
+    }
+
 }

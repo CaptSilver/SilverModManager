@@ -357,4 +357,37 @@ public class InstallResumeTests(ITestOutputHelper helper) : InstallTestBase<Inst
 
         SkipsOf(resumed).Should().ContainSingle().Which.Kind.Should().Be(SkipKind.GameFileOwnVersion);
     }
+
+    [Fact]
+    public async Task AFolderFromAnArchiveTheLibraryDoesNotHoldIsLinkedOnTheResumeThatHasIt()
+    {
+        var bytes = "late archive"u8.ToArray();
+        await using var zip = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { [P("f.bin")] = bytes });
+        var zipBytes = await File.ReadAllBytesAsync(zip.Path.ToString(), TestContext.Current.CancellationToken);
+        var archive = new ArchiveEntry(Xx64.Of(zipBytes), zipBytes.Length, "late.zip", "", new ManualState(new Uri("https://example.test/late"), "get it"));
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/f.bin", archive, "f.bin", bytes));
+        // An inline file, so the folder has a group while its archive file is skipped.
+        list.Directives.Add(list.Inline("mods/A/readme.txt", "read me"));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", "+A\n"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var options = new InstallOptions(SkipMissingArchives: true, new HashSet<RelativePath>());
+
+        var (_, group) = await Install(loadout, modlist, options);
+
+        var mod = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup()
+            .Select(g => WabbajackModGroup.Load(Connection.Db, g.Id)).Single(g => g.IsValid() && g.Folder == "A");
+        WabbajackModGroup.MainArchive.TryGetValue(mod, out var recorded).Should().BeTrue("the folder is named even while its archive is missing");
+        recorded.Should().Be(archive.XxHash64);
+        LibraryLinkedLoadoutItem.Load(Connection.Db, mod.Id).IsValid().Should().BeFalse("the library holds nothing to link yet");
+
+        var added = await RegisterLocalArchive(zip.Path);
+        await Install(loadout, modlist, options);
+
+        var link = LibraryLinkedLoadoutItem.Load(Connection.Db, mod.Id);
+        link.IsValid().Should().BeTrue();
+        link.LibraryItem.Id.Should().Be(added.Id);
+    }
 }

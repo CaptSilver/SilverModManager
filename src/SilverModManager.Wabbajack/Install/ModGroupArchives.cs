@@ -1,6 +1,12 @@
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 using SilverModManager.Wabbajack.Mapping;
+using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack.Install;
 
@@ -48,6 +54,88 @@ internal static class ModGroupArchives
                 .First().Key;
         }
         return result;
+    }
+
+    /// <summary>
+    /// Writes <see cref="WabbajackModGroup.MainArchive"/> on each folder's group (retracting it where the folder has none)
+    /// and writes nothing for a group that already holds the right value, so a rerun over an unchanged list adds no
+    /// datoms. Skips the settings group and any group that is not a mod group, such as one an update just deleted.
+    /// </summary>
+    public static void Record(ITransaction tx, IDb db, IReadOnlyDictionary<string, LoadoutItemGroupId> groups, IReadOnlyDictionary<string, FileIdentity> mainArchives)
+    {
+        foreach (var (folder, groupId) in groups)
+        {
+            if (folder == Mo2Layout.ProfileSettingsGroup) continue;
+            var group = WabbajackModGroup.Load(db, groupId.Value);
+            if (!group.IsValid()) continue;
+
+            var hasCurrent = WabbajackModGroup.MainArchive.TryGetValue(group, out var current);
+            if (mainArchives.TryGetValue(folder, out var main))
+            {
+                if (!hasCurrent || !current.Equals(main)) tx.Add(groupId.Value, WabbajackModGroup.MainArchive, main);
+            }
+            else if (hasCurrent)
+            {
+                tx.RetractCurrent(groupId.Value, WabbajackModGroup.MainArchive);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets <see cref="LibraryLinkedLoadoutItem.LibraryItem"/> on every <see cref="WabbajackModGroup"/> under the modlist
+    /// group to the top-level library file holding its main archive, retracts it when no file does, and writes nothing
+    /// for a group whose link is already right. "Already right" means the linked entity loads as a library file, is not
+    /// an archive member and has the main archive's xxHash64, so two library copies of one archive never flip the link.
+    /// A group with no main archive and no link is left alone. Returns the number of groups whose link changed.
+    /// </summary>
+    /// <param name="fresh">
+    /// The main archives <see cref="Record"/> put in the same transaction, which the transaction cannot read back: when
+    /// given, they are the truth for every group (a folder missing from it has none), otherwise the database is.
+    /// </param>
+    public static int Relink(ITransaction tx, IDb db, ILibraryArchiveLocator locator, EntityId modlistGroup, IReadOnlyDictionary<string, FileIdentity>? fresh = null)
+    {
+        var changed = 0;
+        foreach (var child in LoadoutItem.FindByParent(db, modlistGroup).OfTypeLoadoutItemGroup())
+        {
+            var group = WabbajackModGroup.Load(db, child.Id);
+            if (!group.IsValid()) continue;
+
+            FileIdentity? main;
+            if (fresh is null) main = WabbajackModGroup.MainArchive.TryGetValue(group, out var recorded) ? recorded : null;
+            else main = fresh.TryGetValue(group.Folder, out var named) ? named : null;
+
+            var hasLink = LibraryLinkedLoadoutItem.LibraryItem.TryGetValue(LibraryLinkedLoadoutItem.Load(db, group.Id), out var linked);
+            if (main is not { } archive)
+            {
+                if (!hasLink) continue;
+                tx.RetractCurrent(group.Id, LibraryLinkedLoadoutItem.LibraryItem);
+                changed++;
+                continue;
+            }
+
+            if (hasLink && HoldsArchive(db, linked, archive)) continue;
+
+            if (locator.FindTopLevelByXxHash64(db, archive) is { } file)
+            {
+                tx.Add(group.Id, LibraryLinkedLoadoutItem.LibraryItem, file.Id);
+                changed++;
+            }
+            else if (hasLink)
+            {
+                tx.RetractCurrent(group.Id, LibraryLinkedLoadoutItem.LibraryItem);
+                changed++;
+            }
+        }
+        return changed;
+    }
+
+    private static bool HoldsArchive(IDb db, EntityId candidate, FileIdentity archive)
+    {
+        var file = LibraryFile.Load(db, candidate);
+        return file.IsValid()
+               && !LibraryArchiveLocator.IsArchiveMember(db, file.Id)
+               && file.XxHash64Identity() is { } held
+               && held.Equals(archive);
     }
 
     private static void Count(Dictionary<FileIdentity, int> perArchive, FileIdentity archive)

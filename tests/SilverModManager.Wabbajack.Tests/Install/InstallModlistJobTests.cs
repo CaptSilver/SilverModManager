@@ -124,6 +124,78 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         job.Progress.DoneItems.Should().Be(job.Progress.TotalItems);
     }
 
+    private static readonly byte[] LinkedBytes = "linked"u8.ToArray();
+
+    private async Task<(WabbajackModlistLibraryFile.ReadOnly Modlist, ArchiveEntry Archive)> ListWithAFolderFromAnArchive()
+    {
+        var archive = await AddZip("linked.zip", new() { ["f.bin"] = LinkedBytes });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/f.bin", archive, "f.bin", LinkedBytes));
+        list.Directives.Add(list.Inline("mods/G/generated.txt", "generated"));
+        list.Directives.Add(list.Inline("profiles/Default/modlist.txt", "+G\n+A\n"));
+        return (await AddModlist(list.ToList("Link list"), list.Blobs), archive);
+    }
+
+    private WabbajackModGroup.ReadOnly ModGroupOf(WabbajackModlistLoadoutGroup.ReadOnly group, string folder)
+        => LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup()
+            .Select(g => WabbajackModGroup.Load(Connection.Db, g.Id))
+            .Single(g => g.IsValid() && g.Folder == folder);
+
+    private TxId[] LinkDatomTxs(EntityId group)
+    {
+        var db = Connection.Db;
+        db.AttributeCache.TryGetAttributeId(WabbajackModGroup.MainArchive.Id, out var main).Should().BeTrue();
+        db.AttributeCache.TryGetAttributeId(LibraryLinkedLoadoutItem.LibraryItem.Id, out var link).Should().BeTrue();
+        return db.Get(group).Where(d => d.A == main || d.A == link).Select(d => d.T).ToArray();
+    }
+
+    [Fact]
+    public async Task AModGroupIsLinkedToTheLibraryFileOfItsMainArchive()
+    {
+        var (modlist, archive) = await ListWithAFolderFromAnArchive();
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var mod = ModGroupOf(group, "A");
+        WabbajackModGroup.MainArchive.TryGetValue(mod, out var recorded).Should().BeTrue();
+        recorded.Should().Be(archive.XxHash64);
+        var expected = ServiceProvider.GetRequiredService<SilverModManager.Wabbajack.Library.ILibraryArchiveLocator>().FindTopLevelByXxHash64(Connection.Db, archive.XxHash64)!.Value.Id;
+        var link = LibraryLinkedLoadoutItem.Load(Connection.Db, mod.Id);
+        link.IsValid().Should().BeTrue();
+        link.LibraryItem.Id.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task AGeneratedFolderStaysUnlinked()
+    {
+        var (modlist, _) = await ListWithAFolderFromAnArchive();
+        var loadout = await CreateLoadout();
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var generated = ModGroupOf(group, "G");
+        WabbajackModGroup.MainArchive.TryGetValue(generated, out _).Should().BeFalse();
+        LibraryLinkedLoadoutItem.Load(Connection.Db, generated.Id).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task InstallingAgainWritesNoLinkDatoms()
+    {
+        var (modlist, _) = await ListWithAFolderFromAnArchive();
+        var loadout = await CreateLoadout();
+        var options = new InstallOptions(false, new HashSet<RelativePath>());
+        var (_, group) = await Install(loadout, modlist, options);
+        var mod = ModGroupOf(group, "A");
+        var before = LinkDatomTxs(mod.Id);
+        before.Should().HaveCount(2);
+
+        await Install(loadout, modlist, options);
+
+        LinkDatomTxs(mod.Id).Should().Equal(before, "a rerun over an unchanged list leaves the link and the recorded archive as they were");
+    }
+
     [Fact]
     public async Task ProfileInisBecomeTheLoadoutsBaselinesInsteadOfFilesAtTheirRealPaths()
     {
