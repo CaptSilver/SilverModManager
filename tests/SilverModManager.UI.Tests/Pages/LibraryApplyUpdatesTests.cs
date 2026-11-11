@@ -411,6 +411,26 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
     }
 
     [Fact]
+    public async Task UpdatingAModKeepsTheArchiveAModlistUses()
+    {
+        var a = new FakeModSource("a");
+        var harness = await CreateHarness(a);
+        var items = await SeedLibraryItems("old", "new");
+        var list = await WabbajackGroupSeed.AddList(Connection, "1");
+        var group = await WabbajackGroupSeed.AddGroup(Connection, list.Id, harness.Loadout.LoadoutId, "Yggdrasil");
+        var modlistCollection = CollectionGroup.Load(Connection.Db, group);
+        harness.Library.CollectionsWithLibraryItem(Arg.Is<LibraryItem.ReadOnly>(item => item.Id == items[0].Id), false)
+            .Returns([(modlistCollection, default(LibraryLinkedLoadoutItem.ReadOnly))]);
+        a.Outcome = _ => ModUpdateOutcome.Nothing with { Replacements = [new ModUpdateReplacement(items[0], items[1], LibraryItemReplacementResult.Success)] };
+
+        Send(harness, new FakeModUpdate(1, Source: "a"), replace: true);
+
+        await Eventually(() => harness.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!, default, default, default, default));
+        await Task.Delay(200);
+        await harness.Library.DidNotReceiveWithAnyArgs().RemoveLibraryItems(default!, default);
+    }
+
+    [Fact]
     public async Task UpdateAll_WhenOneSourceCannotDownload_StillAppliesTheOther_ThenShowsThePremiumDialog()
     {
         var nexus = new FakeModSource("nexus");

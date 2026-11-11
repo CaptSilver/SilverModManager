@@ -104,6 +104,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
     private readonly Loadout.ReadOnly _loadout;
     private readonly IWindowNotificationService _notificationService;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly ICollectionOwnership _ownership;
 
     public LibraryTreeDataGridAdapter Adapter { get; }
     private ReadOnlyObservableCollection<ILibraryCollectionCardViewModel> _collections = new([]);
@@ -126,7 +127,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
-        var ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
+        var ownership = _ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
 
         var collectionDownloader = new CollectionDownloader(serviceProvider);
         var tileImagePipeline = ImagePipelines.GetCollectionTileImagePipeline(serviceProvider);
@@ -408,7 +409,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         if (replacements.Any(replacement => replacement.Result != LibraryItemReplacementResult.Success))
             await ShowSomeInstallsFailedDialog(replacements);
 
-        await RemoveOldLibraryItemsIfNotInReadOnlyCollections(replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success));
+        await RemoveOldLibraryItemsIfNotInLockedCollections(replacements.Where(replacement => replacement.Result == LibraryItemReplacementResult.Success));
 
         if (outcomes.Any(outcome => outcome.AccountCannotDownload))
             await PremiumDialog.ShowUpdatePremiumDialog(WindowManager, _serviceProvider.GetRequiredService<IOSInterop>());
@@ -895,14 +896,15 @@ After asking design, we're choosing to simply open the mod page for now.
     }
 
     /// <summary>
-    /// Removes old library items that are not installed in any read-only (e.g. Nexus) collections.
+    /// Removes old library items that are not installed in any locked collection (a Nexus collection or a Wabbajack
+    /// modlist, per <see cref="ICollectionOwnership.WhyLocked(CollectionGroup.ReadOnly)"/>).
     /// This ensures collections 'remain' installed.
     /// 
     /// Old items where the new library item is invalid (e.g. Replace Failed), are preserved;
     /// cleaning those up happens in <see cref="ShowSomeInstallsFailedDialog"/> in partial fail scenarios.
     /// </summary>
     /// <param name="oldToNewLibraryMapping">The mapping of old library items to their new replacements.</param>
-    private async ValueTask RemoveOldLibraryItemsIfNotInReadOnlyCollections(IEnumerable<ModUpdateReplacement> oldToNewLibraryMapping)
+    private async ValueTask RemoveOldLibraryItemsIfNotInLockedCollections(IEnumerable<ModUpdateReplacement> oldToNewLibraryMapping)
     {
         var oldItemsToRemove = new List<LibraryItem.ReadOnly>();
         
@@ -915,9 +917,9 @@ After asking design, we're choosing to simply open the mod page for now.
             // Check if the old item is still linked to any collections
             var collectionsWithItem = _libraryService.CollectionsWithLibraryItem(item.Old, excludeLockedCollections: false);
             
-            // Only remove if the item is NOT in any read-only collections (i.e., only in modifiable collections or no collections)
-            var hasReadOnlyCollections = collectionsWithItem.Any(x => x.collection.IsReadOnly);
-            if (!hasReadOnlyCollections)
+            // Only remove if the item is NOT in any locked collection (i.e., only in modifiable collections or no collections)
+            var hasLockedCollections = collectionsWithItem.Any(x => _ownership.WhyLocked(x.collection) is not null);
+            if (!hasLockedCollections)
                 oldItemsToRemove.Add(item.Old);
         }
 
