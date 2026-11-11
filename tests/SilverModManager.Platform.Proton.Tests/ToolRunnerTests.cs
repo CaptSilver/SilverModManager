@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using CliWrap;
+using Microsoft.Extensions.Logging;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
@@ -22,6 +23,7 @@ public class ToolRunnerTests : IDisposable
     private readonly AbsolutePath _protonDir;
     private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
     private readonly List<Command> _commands = [];
+    private readonly ILogger<ToolRunner.ToolRunner> _logger = Substitute.For<ILogger<ToolRunner.ToolRunner>>();
 
     public ToolRunnerTests()
     {
@@ -53,7 +55,8 @@ public class ToolRunnerTests : IDisposable
             RegistryWithMetadata(),
             LaunchRoots(filesystemRoots ?? []),
             host ?? UnmanagedGames.X64Host(),
-            settings ?? UnmanagedGames.Settings());
+            settings ?? UnmanagedGames.Settings(),
+            _logger);
     }
 
     // Plan rows for two symlink roots, both needing the same store folder, as the deployment plan records them.
@@ -401,8 +404,76 @@ public class ToolRunnerTests : IDisposable
             => ToolRunPlan.Runnable("FakeLastResort", ["fake-last-resort"], prefix.Path, new Dictionary<string, string>());
     }
 
-    private ToolRunner.ToolRunner RunnerOf(HostExecution host, params IToolRunStrategy[] strategies) => new(
-        new PrefixResolver(), strategies, _processRunner, RegistryWithMetadata(), LaunchRoots([]), host, UnmanagedGames.Settings());
+    private ToolRunner.ToolRunner RunnerOf(HostExecution host, params IToolRunStrategy[] strategies) => RunnerOf(host, [], strategies);
+
+    private ToolRunner.ToolRunner RunnerOf(HostExecution host, IReadOnlyList<string> filesystemRoots, params IToolRunStrategy[] strategies) => new(
+        new PrefixResolver(), strategies, _processRunner, RegistryWithMetadata(), LaunchRoots(filesystemRoots), host, UnmanagedGames.Settings(), _logger);
+
+    private string[] WarningLogs() => _logger.ReceivedCalls()
+        .Where(call => call.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning)
+        .Select(call => call.GetArguments()[2]!.ToString()!)
+        .ToArray();
+
+    [Fact]
+    public void FallingBackToTheLastResortKeepsTheRegularStrategysReason()
+    {
+        var runner = RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+
+        var plan = runner.Plan(SteamGame(), Exe, [], null);
+
+        plan.Strategy.Should().Be("FakeLastResort");
+        plan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
+        WarningLogs().Should().ContainSingle().Which.Should().Be("Test Game: SteamProton cannot run: primary cannot run; falling back to FakeLastResort");
+    }
+
+    [Fact]
+    public void FallingBackInAPrefixCommandIsLoggedAndCarriedToo()
+    {
+        var runner = RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+
+        var plan = runner.PlanInPrefix(SteamGame(), PrefixCommand.ForVerb("regedit"));
+
+        plan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
+        WarningLogs().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void TheFallbackReasonSurvivesLaunchRootMerging()
+    {
+        var runner = RunnerOf(UnmanagedGames.X64Host(), ["/run/media/store"], new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+
+        var plan = runner.Plan(SteamGame(), Exe, [], null);
+
+        plan.FallbackReason.Should().Be("SteamProton cannot run: primary cannot run");
+        plan.Environment.Should().ContainKey("PRESSURE_VESSEL_FILESYSTEMS_RW");
+    }
+
+    [Fact]
+    public void ARegularStrategyThatRunsHasNoFallbackReason()
+    {
+        Runner().Plan(SteamGame(), Exe, [], null).FallbackReason.Should().BeNull();
+        WarningLogs().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AskingWhetherAToolCanRunDoesNotLogTheFallback()
+    {
+        var runner = RunnerOf(UnmanagedGames.X64Host(), new FakeStrategy(needsX86_64Host: false, notRunnable: "primary cannot run"), new FakeLastResort(needsX86_64Host: false));
+
+        runner.CanRun(SteamGame(), out _).Should().BeTrue();
+
+        WarningLogs().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AForcedStrategyThatCannotRunIsFailedWithoutAFallbackReason()
+    {
+        var plan = Runner().Plan(SteamGame(withProvider: false), Exe, [], null, ToolRunVia.SteamProton);
+
+        plan.IsRunnable.Should().BeFalse();
+        plan.Diagnostic.Should().Contain("Steam installation");
+        plan.FallbackReason.Should().BeNull();
+    }
 
     [Fact]
     public void AnX86_64LastResortIsRefusedWhenThePrimaryDoesNotNeedX86_64AndCannotRun()

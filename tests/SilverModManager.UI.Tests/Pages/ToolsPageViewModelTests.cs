@@ -166,6 +166,17 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task RunsWithShowsWhyTheRegularStrategyLost()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner { Strategy = "Protontricks", FallbackReason = "SteamProton cannot run: no build" }, new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.Strategy.Should().Be("Protontricks (SteamProton cannot run: no build)");
+    }
+
+    [Fact]
     public async Task DisablesRunningAProgramAndShowsTheDiagnosticWhenNothingCanRun()
     {
         var loadout = await CreateLoadout();
@@ -708,10 +719,11 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         public List<Call> Calls { get; } = [];
         public string? Diagnostic { get; init; }
         public string Strategy { get; init; } = "fake";
+        public string? FallbackReason { get; init; }
 
         public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
             => Diagnostic is null
-                ? ToolRunPlan.Runnable(Strategy, [exe.ToString()], exe.Parent, new Dictionary<string, string>())
+                ? ToolRunPlan.Runnable(Strategy, [exe.ToString()], exe.Parent, new Dictionary<string, string>(), FallbackReason)
                 : ToolRunPlan.Failed(Diagnostic);
 
         public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto)

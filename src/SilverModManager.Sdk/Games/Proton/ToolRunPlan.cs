@@ -32,6 +32,12 @@ public sealed record ToolRunPlan
     public IReadOnlyDictionary<string, string> Environment { get; private init; } = ImmutableDictionary<string, string>.Empty;
 
     /// <summary>
+    /// Why the strategy that normally runs this game was passed over for a last-resort one, as a full phrase
+    /// ("SteamProton cannot run: …"). Null when the regular strategy runs.
+    /// </summary>
+    public string? FallbackReason { get; private init; }
+
+    /// <summary>
     /// Why the program cannot be run, set when <see cref="IsRunnable"/> is not.
     /// </summary>
     public string? Diagnostic { get; private init; }
@@ -55,8 +61,9 @@ public sealed record ToolRunPlan
         string strategy,
         IReadOnlyList<string> argv,
         AbsolutePath workingDirectory,
-        IReadOnlyDictionary<string, string> environment)
-        => new() { Strategy = strategy, Argv = argv, WorkingDirectory = workingDirectory, Environment = environment };
+        IReadOnlyDictionary<string, string> environment,
+        string? fallbackReason = null)
+        => new() { Strategy = strategy, Argv = argv, WorkingDirectory = workingDirectory, Environment = environment, FallbackReason = fallbackReason };
 
     /// <summary/>
     public static ToolRunPlan Failed(string diagnostic, bool cannotRunX86_64 = false)

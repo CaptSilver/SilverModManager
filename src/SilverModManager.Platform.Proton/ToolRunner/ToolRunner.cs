@@ -46,10 +46,10 @@ public sealed class ToolRunner(
         IReadOnlyDictionary<string, string>? env,
         ToolRunVia via = ToolRunVia.Auto)
     {
-        if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64))
+        if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64, out var fallbackReason))
             return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
-        return WithLaunchRoots(installation, strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)));
+        return WithLaunchRoots(installation, WithFallbackReason(installation, strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)), fallbackReason));
     }
 
     /// <summary>
@@ -57,10 +57,20 @@ public sealed class ToolRunner(
     /// </summary>
     public ToolRunPlan PlanInPrefix(GameInstallation installation, PrefixCommand command)
     {
-        if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64))
+        if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64, out var fallbackReason))
             return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
-        return WithLaunchRoots(installation, strategy.Plan(installation, prefix, command));
+        return WithLaunchRoots(installation, WithFallbackReason(installation, strategy.Plan(installation, prefix, command), fallbackReason));
+    }
+
+    // The log line and the plan's reason are written here rather than in TryGetStrategy: the regular strategy and
+    // its last resort share a Kind, so only the plan the last resort built knows its own name.
+    private ToolRunPlan WithFallbackReason(GameInstallation installation, ToolRunPlan plan, string? fallbackReason)
+    {
+        if (fallbackReason is null || !plan.IsRunnable) return plan;
+
+        logger?.LogWarning("{Game}: {Reason}; falling back to {Strategy}", installation.Game.DisplayName, fallbackReason, plan.Strategy);
+        return ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, plan.Environment, fallbackReason);
     }
 
     private ToolRunPlan WithLaunchRoots(GameInstallation installation, ToolRunPlan plan)
@@ -79,7 +89,7 @@ public sealed class ToolRunner(
 
         var environment = new Dictionary<string, string>(plan.Environment);
         PressureVesselFilesystems.Merge(environment, roots);
-        return ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, environment);
+        return ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, environment, plan.FallbackReason);
     }
 
     /// <inheritdoc/>
@@ -132,7 +142,7 @@ public sealed class ToolRunner(
 
     /// <inheritdoc/>
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic, out bool cannotRunX86_64)
-        => TryGetStrategy(installation, ToolRunVia.Auto, out _, out _, out diagnostic, out cannotRunX86_64);
+        => TryGetStrategy(installation, ToolRunVia.Auto, out _, out _, out diagnostic, out cannotRunX86_64, out _);
 
     private bool TryGetStrategy(
         GameInstallation installation,
@@ -140,11 +150,13 @@ public sealed class ToolRunner(
         [NotNullWhen(true)] out IToolRunStrategy? strategy,
         [NotNullWhen(true)] out ResolvedPrefix? prefix,
         [NotNullWhen(false)] out string? diagnostic,
-        out bool cannotRunX86_64)
+        out bool cannotRunX86_64,
+        out string? fallbackReason)
     {
         strategy = null;
         prefix = null;
         cannotRunX86_64 = false;
+        fallbackReason = null;
 
         var resolution = prefixResolver.Resolve(installation);
         if (resolution.IsNative)
@@ -181,6 +193,8 @@ public sealed class ToolRunner(
                 return false;
             }
 
+            // Kind names the regular strategy here; the last resort has the same one.
+            fallbackReason = $"{strategy.Kind} cannot run: {diagnostic}";
             strategy = lastResort;
             diagnostic = null;
         }

@@ -141,9 +141,12 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         var prefixPath = prefix.IsResolved ? prefix.Prefix.Path.ToString() : null;
 
         // The plan only needs a program to name; the strategy does not depend on which one.
-        var strategy = canRun
-            ? _toolRunner.Plan(installation, installation.Locations[LocationId.Game].Path.Combine("program.exe"), [], null).Strategy
-            : null;
+        string? strategy = null;
+        if (canRun)
+        {
+            var plan = _toolRunner.Plan(installation, installation.Locations[LocationId.Game].Path.Combine("program.exe"), [], null);
+            strategy = plan.FallbackReason is null ? plan.Strategy : $"{plan.Strategy} ({plan.FallbackReason})";
+        }
 
         ApplyRunnability(canRun, diagnostic, prefixPath, strategy);
     }
