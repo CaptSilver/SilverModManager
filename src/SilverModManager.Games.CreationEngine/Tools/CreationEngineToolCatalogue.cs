@@ -10,7 +10,7 @@ namespace SilverModManager.Games.CreationEngine.Tools;
 /// <summary>
 /// The xEdit family: xEdit itself and the three LOD tools built on it. They take the same Data, ini and plugin list
 /// switches, run from the same Visual C++ runtime and want the same Wine compatibility setting, so they are rows
-/// over one set of helpers, not classes.
+/// over one set of helpers, not classes. The OpenComposite Unleashed configurator is a plain row beside them.
 /// </summary>
 /// <remarks>
 /// The switches (<c>-D:</c>, <c>-I:</c>, <c>-P:</c>, <c>-O:</c> and the game modes) are the ones xEdit's
@@ -47,6 +47,9 @@ public static class CreationEngineToolCatalogue
     private static readonly string[] XLodGenNames = ["xLODGen.exe", "xLODGenx64.exe"];
     private static readonly string[] TexGenNames = ["TexGen.exe", "TexGenx64.exe"];
     private static readonly string[] DynDolodNames = ["DynDOLOD.exe", "DynDOLODx64.exe"];
+
+    // Ships in the Data folder of OpenComposite Unleashed's Nexus archive; a self-contained .NET 9 program.
+    private static readonly string[] OcUnleashedConfiguratorNames = ["OC Unleashed Configurator for Skyrim VR.exe"];
 
     private static readonly string[] GameFolderSwitches = ["-D:{DataFolder}", "-I:{IniFile}", "-P:{PluginsFile}"];
 
@@ -92,6 +95,15 @@ public static class CreationEngineToolCatalogue
             LodTool("xlodgen", "xLODGen", XLodGenNames, HasStandardData, extraSwitches: ["-autoexit"]),
             LodTool("texgen", "TexGen", TexGenNames, game => LodGames.Contains(game.GameId)),
             LodTool("dyndolod", "DynDOLOD", DynDolodNames, game => LodGames.Contains(game.GameId)),
+            new ToolDefinition
+            {
+                Id = new ToolId("oc-unleashed-configurator"),
+                DisplayName = "OpenComposite Unleashed Configurator",
+                AppliesTo = game => game.GameId == SkyrimVR.SkyrimVR.GameId,
+                ExecutableNames = _ => OcUnleashedConfiguratorNames,
+                Arguments = ArgumentTemplate.Empty,
+                ExitCodes = ExitCodePolicy.AnyExitIsFine,
+            },
         ];
     }
 

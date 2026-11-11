@@ -19,9 +19,32 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
     private IGame Game(GameId id) => provider.GetServices<IGame>().Single(g => g.GameId == id);
 
     [Fact]
-    public void TheXEditFamilyIsRegisteredOnceEach()
+    public void EachCatalogueToolIsRegisteredOnce()
     {
-        provider.GetServices<ToolDefinition>().Select(d => d.Id?.Value).Should().BeEquivalentTo("xedit", "xlodgen", "texgen", "dyndolod");
+        provider.GetServices<ToolDefinition>().Select(d => d.Id?.Value).Should().BeEquivalentTo("xedit", "xlodgen", "texgen", "dyndolod", "oc-unleashed-configurator");
+    }
+
+    [Fact]
+    public void TheOpenCompositeUnleashedConfiguratorIsFoundByItsExeNameForSkyrimVrOnly()
+    {
+        var configurator = Definition("oc-unleashed-configurator");
+        var skyrimVr = Game(global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId);
+
+        configurator.ExecutableNames(skyrimVr).Should().Equal("OC Unleashed Configurator for Skyrim VR.exe");
+        configurator.AppliesTo(skyrimVr).Should().BeTrue();
+        configurator.AppliesTo(Game(global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId)).Should().BeFalse();
+        configurator.AppliesTo(Game(global::SilverModManager.Games.CreationEngine.Fallout4VR.Fallout4VR.GameId)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheConfiguratorTakesNoArgumentsAndNeedsNoPrefixSetup()
+    {
+        var configurator = Definition("oc-unleashed-configurator");
+
+        configurator.Arguments.Words.Should().BeEmpty();
+        configurator.Prefix.Should().Be(ToolPrefixRequirements.None);
+        configurator.Output.Should().Be(ToolOutput.None);
+        configurator.ExitCodes.Should().Be(ExitCodePolicy.AnyExitIsFine);
     }
 
     [Theory]
