@@ -132,13 +132,13 @@ internal static class LockVerbs
 
         // The verified files and the ones that were already there belong in the loadout; a failed entry never does.
         var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
+        var ownership = provider.GetRequiredService<ICollectionOwnership>();
         var installed = new List<string>();
         foreach (var outcome in summary.Verified.Concat(summary.Skipped))
         {
             if (outcome.File is not { } file) continue;
             var item = file.AsLibraryItem();
-            var linked = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item).Any(link => link.AsLoadoutItem().LoadoutId == loadout.LoadoutId);
-            if (linked) continue;
+            if (IsInLoadoutOfTheUser(connection.Db, ownership, item, loadout.LoadoutId)) continue;
 
             await loadoutManager.InstallItem(item, loadout.LoadoutId);
             installed.Add(outcome.Entry.Id);
@@ -156,4 +156,12 @@ internal static class LockVerbs
 
         return summary.Failed.Count == 0 ? 0 : 1;
     }
+
+    /// <summary>
+    /// Whether the user already has <paramref name="item"/> in the loadout. A link under a collection that owns its mods
+    /// is the collection's, not the user's: importing a lock still installs the user their own copy.
+    /// </summary>
+    internal static bool IsInLoadoutOfTheUser(IDb db, ICollectionOwnership ownership, LibraryItem.ReadOnly item, LoadoutId loadout)
+        => LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
+            .Any(link => link.AsLoadoutItem().LoadoutId == loadout && !ownership.OwnsLink(db, link));
 }
