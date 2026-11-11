@@ -91,22 +91,22 @@ public interface ILibraryService
     /// Returns all collections that contain the given library item.
     /// </summary>
     /// <param name="libraryItem">The item to search for.</param>
-    /// <param name="excludeReadOnlyCollections">If true, filters out read-only collections such as collections from Nexus Mods.</param>
+    /// <param name="excludeLockedCollections">If true, filters out locked collections: Nexus collections and the mods of a modlist.</param>
     /// <remarks>
     ///     Returns tuples containing the collection and the linked item within that collection.
     /// </remarks>
-    IEnumerable<(CollectionGroup.ReadOnly collection, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> CollectionsWithLibraryItem(LibraryItem.ReadOnly libraryItem, bool excludeReadOnlyCollections = false);
+    IEnumerable<(CollectionGroup.ReadOnly collection, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> CollectionsWithLibraryItem(LibraryItem.ReadOnly libraryItem, bool excludeLockedCollections = false);
 
     /// <summary>
     /// Returns all unique collections that contain any of the given library items.
     /// </summary>
     /// <param name="libraryItems">The items to search for.</param>
-    /// <param name="excludeReadOnlyCollections">If true, filters out read-only collections such as collections from Nexus Mods.</param>
+    /// <param name="excludeLockedCollections">If true, filters out locked collections: Nexus collections and the mods of a modlist.</param>
     /// <remarks>
     ///     Returns a dictionary where each key is a collection and the value is a list of 
     ///     tuples containing the library items found in that collection and their linked items.
     /// </remarks>
-    IReadOnlyDictionary<CollectionGroup.ReadOnly, IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>> CollectionsWithLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, bool excludeReadOnlyCollections = false);
+    IReadOnlyDictionary<CollectionGroup.ReadOnly, IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>> CollectionsWithLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, bool excludeLockedCollections = false);
 
     /// <summary>
     /// Removes a number of items from the library.
@@ -162,9 +162,9 @@ public enum LibraryItemReplacementResult
 public struct ReplaceLibraryItemOptions
 {
     /// <summary>
-    /// Skips items in ReadOnly collections such as collections from Nexus Mods.
+    /// Skips items in locked collections: Nexus collections and the mods of a modlist.
     /// </summary>
-    public bool IgnoreReadOnlyCollections { get; set; }
+    public bool SkipLockedCollections { get; set; }
 
     /// <summary>
     /// Installs the new item in the collection the old one was in, and switched off when the old one was. Without
@@ -179,12 +179,12 @@ public struct ReplaceLibraryItemOptions
 public struct ReplaceLibraryItemsOptions
 {
     /// <summary>
-    /// Skips items in ReadOnly collections such as collections from Nexus Mods.
+    /// Skips items in locked collections: Nexus collections and the mods of a modlist.
     /// </summary>
-    public bool IgnoreReadOnlyCollections { get; set; }
+    public bool SkipLockedCollections { get; set; }
     
     /// <summary>
     /// Gets the <see cref="ReplaceLibraryItemOptions"/> for this <see cref="ReplaceLibraryItemsOptions"/>
     /// </summary>
-    public ReplaceLibraryItemOptions ToReplaceLibraryItemOptions() => new() { IgnoreReadOnlyCollections = IgnoreReadOnlyCollections };
+    public ReplaceLibraryItemOptions ToReplaceLibraryItemOptions() => new() { SkipLockedCollections = SkipLockedCollections };
 }

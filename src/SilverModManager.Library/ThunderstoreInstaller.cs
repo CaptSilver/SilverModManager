@@ -143,7 +143,7 @@ internal sealed class ThunderstoreInstaller(
         if (result == LibraryItemReplacementResult.Success)
         {
             result = await provider.GetRequiredService<ILibraryService>()
-                .ReplaceLinkedItemsInAllLoadouts(current, root, new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true, KeepPlace = true });
+                .ReplaceLinkedItemsInAllLoadouts(current, root, new ReplaceLibraryItemOptions { SkipLockedCollections = true, KeepPlace = true });
         }
 
         return ModUpdateOutcome.Nothing with
@@ -159,10 +159,13 @@ internal sealed class ThunderstoreInstaller(
         await ThunderstoreLoadoutPackages.InstallOrEnable(connection, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
     }
 
-    // The links a replace that skips read-only collections would change.
+    // The links a replace that skips locked collections would change.
     private IEnumerable<LibraryLinkedLoadoutItem.ReadOnly> LinksReplacedFor(LibraryItem.ReadOnly item)
-        => LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
-            .Where(static link => link.AsLoadoutItem().Parent.ToCollectionGroup().IsReadOnly is false);
+    {
+        var ownership = provider.GetRequiredService<ICollectionOwnership>();
+        return LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
+            .Where(link => ownership.WhyLocked(connection.Db, link) is null);
+    }
 
     private IThunderstoreGame GameOfCommunity(string community)
         => ThunderstoreGame.ForCommunity(games, community) ?? throw new NoThunderstoreGameException(community);

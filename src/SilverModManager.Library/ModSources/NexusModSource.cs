@@ -216,7 +216,7 @@ internal sealed class NexusModSource(
                     foreach (var held in NexusModsLibraryItem.FindByFileMetadata(connection.Db, currentFile))
                     {
                         var old = held.AsLibraryItem();
-                        var result = await libraryService.ReplaceLinkedItemsInAllLoadouts(old, newItem, new ReplaceLibraryItemOptions { IgnoreReadOnlyCollections = true });
+                        var result = await libraryService.ReplaceLinkedItemsInAllLoadouts(old, newItem, new ReplaceLibraryItemOptions { SkipLockedCollections = true });
                         replacements.Add(new ModUpdateReplacement(old, newItem, result));
                     }
                 }

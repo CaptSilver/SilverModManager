@@ -121,7 +121,7 @@ public class NexusModSourceApplyTests(IConnection connection)
         await library.Received(2).ReplaceLinkedItemsInAllLoadouts(
             Arg.Any<LibraryItem.ReadOnly>(),
             Arg.Is<LibraryItem.ReadOnly>(item => item.Id == downloaded.Id),
-            Arg.Is<ReplaceLibraryItemOptions>(options => options.IgnoreReadOnlyCollections));
+            Arg.Is<ReplaceLibraryItemOptions>(options => options.SkipLockedCollections));
         outcome.Downloaded.Select(item => item.Id).Should().Equal(downloaded.Id);
         outcome.Replacements.Select(replacement => replacement.Old.Id).Should().BeEquivalentTo([first.Library.Id, second.Library.Id]);
         outcome.Replacements.Should().OnlyContain(replacement => replacement.Result == LibraryItemReplacementResult.Success && replacement.New.Id == downloaded.Id);

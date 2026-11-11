@@ -427,7 +427,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             .Where(item => item.IsValid())
             .ToArray();
 
-        var collectionsAffected = _libraryService.CollectionsWithLibraryItems(libraryItemsToUpdate, excludeReadOnlyCollections: true);
+        var collectionsAffected = _libraryService.CollectionsWithLibraryItems(libraryItemsToUpdate, excludeLockedCollections: true);
         if (collectionsAffected.Count < 2) return true;
 
         (ButtonDefinitionId updateButtonId, StandardDialogResult dialogResult) = await ShowInstalledInMultipleCollectionsDialog(collectionsAffected, collectionsAffected.Count);
@@ -913,7 +913,7 @@ After asking design, we're choosing to simply open the mod page for now.
                 continue;
             
             // Check if the old item is still linked to any collections
-            var collectionsWithItem = _libraryService.CollectionsWithLibraryItem(item.Old, excludeReadOnlyCollections: false);
+            var collectionsWithItem = _libraryService.CollectionsWithLibraryItem(item.Old, excludeLockedCollections: false);
             
             // Only remove if the item is NOT in any read-only collections (i.e., only in modifiable collections or no collections)
             var hasReadOnlyCollections = collectionsWithItem.Any(x => x.collection.IsReadOnly);

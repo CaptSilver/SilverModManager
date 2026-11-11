@@ -6,9 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -31,6 +33,18 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
     private readonly ILibraryService _libraryService;
     private readonly IFileStore _fileStore;
     private readonly IConnection _connection;
+
+    /// <summary>Stands in for the Wabbajack lock: a collection named "Owned: ..." belongs to its provider, mods and all.</summary>
+    private sealed class OwningLock : ICollectionLock
+    {
+        private static bool IsOwned(CollectionGroup.ReadOnly collection)
+            => collection.AsLoadoutItemGroup().AsLoadoutItem().Name.StartsWith("Owned:", StringComparison.Ordinal);
+
+        public string? WhyLocked(CollectionGroup.ReadOnly collection)
+            => IsOwned(collection) ? $"{collection.AsLoadoutItemGroup().AsLoadoutItem().Name} is a test modlist; it decides what it contains" : null;
+
+        public bool OwnsItsMods(CollectionGroup.ReadOnly collection) => IsOwned(collection);
+    }
 
     public LibraryServiceTests(ITestOutputHelper helper) : base(helper)
     {
@@ -214,7 +228,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         var options = new ReplaceLibraryItemsOptions
         {
-            IgnoreReadOnlyCollections = false,
+            SkipLockedCollections = false,
         };
         var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(replacements, options);
 
@@ -238,6 +252,83 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         loadoutsWithNewItem2.Should().ContainSingle()
             .Which.loadout.LoadoutId.Should().Be(loadout1.LoadoutId);
+    }
+
+    private async Task<(Loadout.ReadOnly Loadout, LibraryItem.ReadOnly Item, LoadoutItemGroupId Group)> InstalledUnder(string collectionName, bool isReadOnly = false, string archive = "nested_archive.zip")
+    {
+        var loadout = await CreateTestLoadout("Owned loadout");
+        var collection = await CreateCollectionInLoadout(loadout, collectionName, isReadOnly);
+        var path = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(archive);
+        var item = (await _libraryService.AddLocalFile(path, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        await LoadoutManager.InstallItem(item, loadout.LoadoutId, parent: collection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        var group = LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item).Single().AsLoadoutItemGroup().LoadoutItemGroupId;
+        return (loadout, Reload(item.Id), group);
+    }
+
+    [Fact]
+    public async Task RemovingAnArchiveOfAModlistUnlinksTheModAndKeepsIt()
+    {
+        var (_, item, group) = await InstalledUnder("Owned: list");
+        var fileIds = LoadoutItem.FindByParent(_connection.Db, group).Select(child => child.Id).ToArray();
+        fileIds.Should().NotBeEmpty();
+
+        await _libraryService.RemoveLibraryItems([item], GarbageCollectorRunMode.DoNotRun);
+
+        LibraryItem.Load(_connection.Db, item.Id).IsValid().Should().BeFalse();
+        LoadoutItemGroup.Load(_connection.Db, group).IsValid().Should().BeTrue();
+        fileIds.Should().OnlyContain(id => LoadoutItem.Load(_connection.Db, id).IsValid());
+        LibraryLinkedLoadoutItem.Load(_connection.Db, group).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemovingAnArchiveOfANexusCollectionStillUninstallsItsMod()
+    {
+        var (_, item, group) = await InstalledUnder("Nexus collection", isReadOnly: true);
+
+        await _libraryService.RemoveLibraryItems([item], GarbageCollectorRunMode.DoNotRun);
+
+        LibraryItem.Load(_connection.Db, item.Id).IsValid().Should().BeFalse();
+        LoadoutItemGroup.Load(_connection.Db, group).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemovingAListOwnedAndAUserArchiveTogetherUnlinksOneAndUninstallsTheOther()
+    {
+        var (_, listItem, listGroup) = await InstalledUnder("Owned: list");
+        var (_, userItem, userGroup) = await InstalledUnder("My mods", archive: "nested_game_archive.zip");
+
+        await _libraryService.RemoveLibraryItems([listItem, userItem], GarbageCollectorRunMode.DoNotRun);
+
+        LibraryItem.Load(_connection.Db, listItem.Id).IsValid().Should().BeFalse();
+        LibraryItem.Load(_connection.Db, userItem.Id).IsValid().Should().BeFalse();
+        LoadoutItemGroup.Load(_connection.Db, listGroup).IsValid().Should().BeTrue();
+        LibraryLinkedLoadoutItem.Load(_connection.Db, listGroup).IsValid().Should().BeFalse();
+        LoadoutItemGroup.Load(_connection.Db, userGroup).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReplaceLeavesAModlistModOnItsOldArchive()
+    {
+        var (_, oldItem, _) = await InstalledUnder("Owned: list");
+        var other = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_game_archive.zip");
+        var newItem = (await _libraryService.AddLocalFile(other, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+
+        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, new ReplaceLibraryItemOptions { SkipLockedCollections = true });
+
+        result.Should().Be(LibraryItemReplacementResult.Success);
+        _libraryService.LoadoutsWithLibraryItem(Reload(oldItem.Id)).Should().ContainSingle();
+        _libraryService.LoadoutsWithLibraryItem(Reload(newItem.Id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RemovingAGameFromAnArchiveAModlistUsesNamesTheList()
+    {
+        var (_, item, _) = await InstalledUnder("Owned: list");
+
+        var act = async () => await _libraryService.RemoveDestination([item], GameInstallation.Game.GameId);
+
+        var thrown = await act.Should().ThrowAsync<DestinationStillInstalledException>();
+        thrown.Which.Message.Should().Contain("is used by `Owned: list` in a loadout for").And.Contain("remove `Owned: list` first");
     }
 
     private async Task<(LibraryItem.ReadOnly Old, LibraryItem.ReadOnly New)> TwoLibraryItems()
@@ -387,10 +478,10 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             (oldItem2, newItem2),
         };
 
-        // Set IgnoreReadOnlyCollections to true to ignore read-only collections
+        // Set SkipLockedCollections to true to skip locked collections
         var options = new ReplaceLibraryItemsOptions
         {
-            IgnoreReadOnlyCollections = true,
+            SkipLockedCollections = true,
         };
         var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(replacements, options);
 
@@ -480,7 +571,9 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
     }
 
     protected override IServiceCollection AddServices(IServiceCollection services)
-        => base.AddServices(services).AddSingleton<ILibraryFileRecogniser, NamedGameRecogniser>();
+        => base.AddServices(services)
+            .AddSingleton<ILibraryFileRecogniser, NamedGameRecogniser>()
+            .AddSingleton<ICollectionLock>(new OwningLock());
 
     private async Task<AbsolutePath> WriteFile(string fileName)
     {

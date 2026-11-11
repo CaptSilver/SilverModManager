@@ -188,7 +188,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
 
     private ThunderstoreInstaller InstallerOver(IThunderstoreCatalogSource catalogs, IThunderstoreSource installs, ILoadoutManager loadoutManager, IGameData game)
     {
-        var services = new ServiceCollection().AddSingleton(installs).AddSingleton(loadoutManager).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(installs).AddSingleton(loadoutManager).AddSingleton<ICollectionOwnership>(new CollectionOwnership([])).BuildServiceProvider();
         return new ThunderstoreInstaller(services, Connection, [game], Substitute.For<IThunderstoreApi>(), catalogs, NullLogger<ThunderstoreInstaller>.Instance);
     }
 

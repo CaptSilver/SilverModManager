@@ -26,6 +26,7 @@ public sealed class LibraryService : ILibraryService
     private readonly ILoadoutManager _loadoutManager;
     private readonly IConnection _connection;
     private readonly IGarbageCollectorRunner _gcRunner;
+    private readonly ICollectionOwnership _ownership;
 
     /// <summary>
     /// Constructor.
@@ -36,6 +37,7 @@ public sealed class LibraryService : ILibraryService
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _gcRunner = serviceProvider.GetRequiredService<IGarbageCollectorRunner>();
+        _ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
     }
 
     public IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob, IAcquisitionContext acquisition)
@@ -73,7 +75,7 @@ public sealed class LibraryService : ILibraryService
 
         // Checked for every item before any is changed, so a refusal leaves the whole selection as it was.
         foreach (var item in targets)
-            RefuseIfInstalledFor(db, item, game, "this game");
+            RefuseIfInstalledFor(db, _ownership, item, game, "this game");
 
         using var tx = _connection.BeginTransaction();
         foreach (var item in targets)
@@ -89,7 +91,7 @@ public sealed class LibraryService : ILibraryService
         foreach (var item in targets)
         {
             foreach (var dropped in LibraryItem.Load(db, item.Id).DestinationGames.Where(other => other != game))
-                RefuseIfInstalledFor(db, item, dropped, "another game it is for");
+                RefuseIfInstalledFor(db, _ownership, item, dropped, "another game it is for");
         }
 
         using var tx = _connection.BeginTransaction();
@@ -109,12 +111,23 @@ public sealed class LibraryService : ILibraryService
     }
 
     /// <summary>A loadout's items stay in that loadout's game, so a game an item is installed for cannot be taken off it.</summary>
-    private static void RefuseIfInstalledFor(IDb db, LibraryItem.ReadOnly item, GameId game, string gameDescription)
+    private static void RefuseIfInstalledFor(IDb db, ICollectionOwnership ownership, LibraryItem.ReadOnly item, GameId game, string gameDescription)
     {
-        var installedHere = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
-            .Any(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game));
-        if (installedHere)
-            throw new DestinationStillInstalledException($"{MarkdownText.Code(item.Name)} is installed in a loadout for {MarkdownText.Code(gameDescription)}. Uninstall it first, then take the game off it.");
+        var offending = LibraryLinkedLoadoutItem.FindByLibraryItem(db, item)
+            .Where(link => new LoadoutAcquisition(link.AsLoadoutItem().LoadoutId).Destination(db).Games.Contains(game))
+            .Cast<LibraryLinkedLoadoutItem.ReadOnly?>()
+            .FirstOrDefault();
+        if (offending is not { } link) return;
+
+        // A locked collection puts its mods back on its own, so "uninstall it" would be a dead end.
+        if (ownership.WhyLocked(db, link) is not null
+            && CollectionOwnership.TryNearestCollection(db, link.AsLoadoutItem(), out var collection))
+        {
+            var collectionName = collection.AsLoadoutItemGroup().AsLoadoutItem().Name;
+            throw new DestinationStillInstalledException($"{MarkdownText.Code(item.Name)} is used by {MarkdownText.Code(collectionName)} in a loadout for {MarkdownText.Code(gameDescription)}; remove {MarkdownText.Code(collectionName)} first.");
+        }
+
+        throw new DestinationStillInstalledException($"{MarkdownText.Code(item.Name)} is installed in a loadout for {MarkdownText.Code(gameDescription)}. Uninstall it first, then take the game off it.");
     }
 
     public IEnumerable<(Loadout.ReadOnly loadout, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> LoadoutsWithLibraryItem(LibraryItem.ReadOnly libraryItem)
@@ -157,7 +170,7 @@ public sealed class LibraryService : ILibraryService
         );
     }
 
-    public IEnumerable<(CollectionGroup.ReadOnly collection, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> CollectionsWithLibraryItem(LibraryItem.ReadOnly libraryItem, bool excludeReadOnlyCollections = false)
+    public IEnumerable<(CollectionGroup.ReadOnly collection, LibraryLinkedLoadoutItem.ReadOnly linkedItem)> CollectionsWithLibraryItem(LibraryItem.ReadOnly libraryItem, bool excludeLockedCollections = false)
     {
         var dbToUse = _connection.Db;
 
@@ -166,25 +179,17 @@ public sealed class LibraryService : ILibraryService
 
         foreach (var linkedItem in linkedItems)
         {
-            // Walk up the parent chain to find the nearest collection group
-            foreach (var parent in linkedItem.AsLoadoutItem().GetThisAndParents())
-            {
-                // First check if it's a LoadoutItemGroup, then if it's a CollectionGroup
-                if (parent.TryGetAsLoadoutItemGroup(out var itemGroup) &&
-                    itemGroup.TryGetAsCollectionGroup(out var collectionGroup))
-                {
-                    // Filter out read-only collections if requested
-                    if (excludeReadOnlyCollections && collectionGroup.IsReadOnly)
-                        break; // Skip this collection but continue looking up the parent chain
-                    
-                    yield return (collectionGroup, linkedItem);
-                    break; // Found the nearest collection, no need to go further up
-                }
-            }
+            if (!CollectionOwnership.TryNearestCollection(dbToUse, linkedItem.AsLoadoutItem(), out var collectionGroup))
+                continue;
+
+            if (excludeLockedCollections && _ownership.WhyLocked(collectionGroup) is not null)
+                continue;
+
+            yield return (collectionGroup, linkedItem);
         }
     }
 
-    public IReadOnlyDictionary<CollectionGroup.ReadOnly, IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>> CollectionsWithLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, bool excludeReadOnlyCollections = false)
+    public IReadOnlyDictionary<CollectionGroup.ReadOnly, IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>> CollectionsWithLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, bool excludeLockedCollections = false)
     {
         var dbToUse = _connection.Db;
         var result = new Dictionary<CollectionGroup.ReadOnly, List<(LibraryItem.ReadOnly, LibraryLinkedLoadoutItem.ReadOnly)>>();
@@ -197,29 +202,21 @@ public sealed class LibraryService : ILibraryService
                 
             foreach (var linkedItem in linkedItems)
             {
-                // Walk up the parent chain to find the nearest collection group
-                foreach (var parent in linkedItem.AsLoadoutItem().GetThisAndParents())
+                if (!CollectionOwnership.TryNearestCollection(dbToUse, linkedItem.AsLoadoutItem(), out var collectionGroup))
+                    continue;
+
+                if (excludeLockedCollections && _ownership.WhyLocked(collectionGroup) is not null)
+                    continue;
+
+                if (!result.TryGetValue(collectionGroup, out var list))
                 {
-                    // First check if it's a LoadoutItemGroup, then if it's a CollectionGroup
-                    if (parent.TryGetAsLoadoutItemGroup(out var itemGroup) && 
-                        itemGroup.TryGetAsCollectionGroup(out var collectionGroup))
-                    {
-                        // Filter out read-only collections if requested
-                        if (excludeReadOnlyCollections && collectionGroup.IsReadOnly)
-                            break; // Skip this collection but continue looking up the parent chain
-                        
-                        if (!result.TryGetValue(collectionGroup, out var list))
-                        {
-                            list = new List<(LibraryItem.ReadOnly, LibraryLinkedLoadoutItem.ReadOnly)>();
-                            result[collectionGroup] = list;
-                        }
-                        list.Add((libraryItem, linkedItem));
-                        break; // Found the nearest collection, no need to go further up
-                    }
+                    list = new List<(LibraryItem.ReadOnly, LibraryLinkedLoadoutItem.ReadOnly)>();
+                    result[collectionGroup] = list;
                 }
+                list.Add((libraryItem, linkedItem));
             }
         }
-        
+
         return result.ToDictionary(
             kvp => kvp.Key,
             kvp => (IReadOnlyList<(LibraryItem.ReadOnly libraryItem, LibraryLinkedLoadoutItem.ReadOnly linkedItem)>)kvp.Value.AsReadOnly()
@@ -229,7 +226,21 @@ public sealed class LibraryService : ILibraryService
     public async Task RemoveLibraryItems(IEnumerable<LibraryItem.ReadOnly> libraryItems, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.RunAsynchronously)
     {
         var items = libraryItems.ToArray();
-        var groupIds = items.SelectMany(LoadoutsWithLibraryItem).Select(tuple => tuple.linkedItem.AsLoadoutItemGroup().LoadoutItemGroupId).ToArray();
+        var links = items.SelectMany(item => LoadoutsWithLibraryItem(item).Select(tuple => (item, link: tuple.linkedItem))).ToArray();
+        var db = _connection.Db;
+        var owned = links.Where(pair => _ownership.OwnsLink(db, pair.link)).ToArray();
+
+        // The group is the link entity, so unlinking is retracting LibraryItem from it. This commits before the delete
+        // below: DeleteRecursive follows LibraryItem into the group and would take its files with it.
+        if (owned.Length > 0)
+        {
+            using var unlink = _connection.BeginTransaction();
+            foreach (var (item, link) in owned)
+                unlink.Retract(link.Id, LibraryLinkedLoadoutItem.LibraryItem, item.Id);
+            await unlink.Commit();
+        }
+
+        var groupIds = links.Except(owned).Select(pair => pair.link.AsLoadoutItemGroup().LoadoutItemGroupId).ToArray();
         await _loadoutManager.RemoveItems(groupIds);
 
         using var tx = _connection.BeginTransaction();
@@ -249,14 +260,7 @@ public sealed class LibraryService : ILibraryService
             var itemsPerLoadout = LoadoutsWithLibraryItem(oldItem)
                 .Where(tuple =>
                 {
-                    if (options.IgnoreReadOnlyCollections)
-                    {
-                        var collection = tuple.linkedItem.AsLoadoutItem().Parent;
-                        var asCollectionGroup = collection.ToCollectionGroup();
-                        return !asCollectionGroup.IsReadOnly;
-                    }
-
-                    return true;
+                    return !options.SkipLockedCollections || _ownership.WhyLocked(_connection.Db, tuple.linkedItem) is null;
                 })
                 .GroupBy(tuple => tuple.loadout.LoadoutId)
                 .ToDictionary(grouping => grouping.Key, grouping => grouping.ToArray());
