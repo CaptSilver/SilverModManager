@@ -61,7 +61,8 @@ internal static class IniEncodings
     // as 0x80-0x9F bytes, which Latin-1 cannot write. The two agree on every other byte, and .NET maps the five
     // bytes 1252 leaves undefined to the matching control characters, so any bytes still round trip.
     private static readonly Encoding Windows1252 = CodePagesEncodingProvider.Instance.GetEncoding(
-        1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)!;
+        1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)
+        ?? throw new InvalidOperationException("The Windows-1252 code page is not available.");
 
     /// <summary>Picks the encoding of <paramref name="bytes"/> and decodes the text after any mark.</summary>
     public static (IniEncoding Encoding, string Text) Decode(byte[] bytes)
