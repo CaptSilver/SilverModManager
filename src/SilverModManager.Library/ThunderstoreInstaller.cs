@@ -73,7 +73,7 @@ internal sealed class ThunderstoreInstaller(
         foreach (var file in files)
         {
             var item = file.AsLibraryItem();
-            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(connection, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
+            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(connection, Ownership, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
             outcomes.Add(new ThunderstoreInstallOutcome(VersionOf(file), item, inLibraryBefore.Contains(file.Id) is false, outcome));
         }
 
@@ -156,13 +156,15 @@ internal sealed class ThunderstoreInstaller(
     private async Task LinkDependency(LibraryItem.ReadOnly item, LoadoutId loadoutId)
     {
         var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
-        await ThunderstoreLoadoutPackages.InstallOrEnable(connection, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
+        await ThunderstoreLoadoutPackages.InstallOrEnable(connection, Ownership, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
     }
+
+    private ICollectionOwnership Ownership => provider.GetRequiredService<ICollectionOwnership>();
 
     // The links a replace that skips locked collections would change.
     private IEnumerable<LibraryLinkedLoadoutItem.ReadOnly> LinksReplacedFor(LibraryItem.ReadOnly item)
     {
-        var ownership = provider.GetRequiredService<ICollectionOwnership>();
+        var ownership = Ownership;
         return LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
             .Where(link => ownership.WhyLocked(connection.Db, link) is null);
     }

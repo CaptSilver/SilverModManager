@@ -43,6 +43,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly ILoginManager _loginManager;
     private readonly ILibraryService _libraryService;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly ICollectionOwnership _ownership;
     private readonly TemporaryFileManager _temporaryFiles;
     private readonly IOSInterop _osInterop;
     private readonly IGameDomainToGameIdMappingCache _domains;
@@ -77,6 +78,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         ILoginManager loginManager,
         ILibraryService libraryService,
         ILoadoutManager loadoutManager,
+        ICollectionOwnership ownership,
         TemporaryFileManager temporaryFiles,
         IOSInterop osInterop,
         IGameDomainToGameIdMappingCache domains,
@@ -92,6 +94,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _loginManager = loginManager;
         _libraryService = libraryService;
         _loadoutManager = loadoutManager;
+        _ownership = ownership;
         _temporaryFiles = temporaryFiles;
         _osInterop = osInterop;
         _games = games;
@@ -265,7 +268,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
             }
 
             var item = FindInLibrary(game, row.Hit.ModId, fileId) ?? await DownloadAsync(game, row, fileId, cancellationToken);
-            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
+            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, _ownership, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
             if (outcome == LoadoutPackageOutcome.AlreadyEnabled) ErrorText = $"{row.Name} is already in this loadout.";
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -300,7 +303,8 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     }
 
     private bool IsLinkedIntoLoadout(LibraryItem.ReadOnly item)
-        => LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item).Any(link => link.AsLoadoutItem().LoadoutId == LoadoutId);
+        => LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item)
+            .Any(link => link.AsLoadoutItem().LoadoutId == LoadoutId && !_ownership.OwnsLink(_connection.Db, link));
 
     private async Task<LibraryItem.ReadOnly> DownloadAsync(NexusModsGameId game, NexusModsModRow row, FileId fileId, CancellationToken cancellationToken)
     {

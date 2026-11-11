@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using System.IO.Compression;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -127,8 +128,8 @@ public class ThunderstoreVerbTests(ITestOutputHelper helper) : AIsolatedGameTest
         await SetDisabled(loadout, "Zehs-REPOLib", true);
         var item = LinkedItems(loadout).Single(link => !link.AsLoadoutItem().IsEnabled()).LibraryItem;
 
-        var first = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
-        var second = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+        var first = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+        var second = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
 
         first.Should().Be(LoadoutPackageOutcome.Enabled);
         second.Should().Be(LoadoutPackageOutcome.AlreadyEnabled);

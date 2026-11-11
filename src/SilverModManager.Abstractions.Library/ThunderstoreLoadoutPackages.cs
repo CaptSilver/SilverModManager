@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
@@ -40,14 +41,18 @@ public static class ThunderstoreLoadoutPackages
     /// its group when that is disabled, and leaves it alone otherwise. A disabled dependency is not installed again,
     /// but a mod that needs it would be left with a dependency that is not in the game.
     /// </summary>
+    /// <param name="ownership">
+    /// A group a modlist owns is the list's, not the user's: it does not count as the item being in the loadout, so the
+    /// user gets their own copy and the list's folder stays as the list left it.
+    /// </param>
     /// <param name="install">Runs the install when the item has no group in the loadout.</param>
     /// <exception cref="ThunderstorePackageInDisabledGroupException">
     /// Every group of the item sits in a disabled parent, such as a disabled collection.
     /// </exception>
-    public static async Task<LoadoutPackageOutcome> InstallOrEnable(IConnection connection, LibraryItem.ReadOnly item, LoadoutId loadoutId, Func<Task> install)
+    public static async Task<LoadoutPackageOutcome> InstallOrEnable(IConnection connection, ICollectionOwnership ownership, LibraryItem.ReadOnly item, LoadoutId loadoutId, Func<Task> install)
     {
         var links = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
-            .Where(link => link.AsLoadoutItem().LoadoutId == loadoutId)
+            .Where(link => link.AsLoadoutItem().LoadoutId == loadoutId && !ownership.OwnsLink(connection.Db, link))
             .Select(link => link.AsLoadoutItem())
             .ToArray();
         if (links.Length == 0)

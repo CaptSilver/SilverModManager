@@ -25,6 +25,7 @@ using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Models;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -118,6 +119,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             fixture.Login,
             fixture.Library,
             fixture.Manager,
+            Provider.GetRequiredService<ICollectionOwnership>(),
             Provider.GetRequiredService<TemporaryFileManager>(),
             fixture.OsInterop,
             domains,
@@ -521,6 +523,39 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         Installed(f).Should().BeEmpty();
         DownloadsStarted(f).Should().Be(0);
         f.Vm.ErrorText.Should().Contain("already");
+    }
+
+    [Fact]
+    public async Task Install_OfAnArchiveAModlistUses_GivesTheUserTheirOwnCopy()
+    {
+        var f = await Open(premium: true);
+        var ids = NewIds();
+        Premium(f, ids);
+        var item = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+        var list = await WabbajackGroupSeed.AddList(Connection, "1.0");
+        var listGroup = await WabbajackGroupSeed.AddGroup(Connection, list.Id, f.LoadoutId, "Some list");
+        EntityId listMod;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var modId = tx.TempId();
+            var itemGroup = new LoadoutItemGroup.New(tx, modId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, modId)
+                {
+                    LoadoutId = f.LoadoutId, Name = "Some mod", ParentId = LoadoutItemGroupId.From(listGroup), IsDisabled = true,
+                },
+            };
+            _ = new WabbajackModGroup.New(tx, modId) { Folder = "Some mod", LoadoutItemGroup = itemGroup };
+            _ = new LibraryLinkedLoadoutItem.New(tx, modId) { LibraryItemId = item.Id, LoadoutItemGroup = itemGroup };
+            listMod = (await tx.Commit())[modId];
+        }
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.Vm.ErrorText.Should().BeEmpty();
+        Installed(f).Should().Equal((item.Id, f.LoadoutId));
+        LoadoutItem.Load(Connection.Db, listMod).IsDisabled.Should().BeTrue("the list's folder is the list's to switch");
     }
 
     private async Task LinkIntoLoadout(Fixture f, LibraryItem.ReadOnly item)
