@@ -302,4 +302,59 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
         var status = JsonNode.Parse(RawText(renderer))!.AsObject();
         ((bool)status["running"]!).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task Download_Json_CarriesTheStartedListAndTheCounts()
+    {
+        Arrange();
+
+        var (exitCode, renderer) = await Run("wabbajack", "download", "--modlist", "Skyrim list", "--json");
+
+        exitCode.Should().Be(0);
+        var start = JsonNode.Parse(RawText(renderer))!.AsObject();
+        ((string?)start["modlist"]).Should().Be("Skyrim list");
+        ((string?)start["id"]).Should().Be(Skyrim.HexId);
+        ((bool)start["alreadyRunning"]!).Should().BeFalse();
+        ((int)start["automatic"]!).Should().Be(2);
+        ((int)start["browser"]!).Should().Be(1);
+        ((int)start["manual"]!).Should().Be(1);
+        ((int)start["have"]!).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Download_Json_SaysAlreadyRunningWhenTheListIsOn()
+    {
+        Arrange(status: new AcquireStatus(Skyrim.Id, true, 1, 2, 0, TimeSpan.Zero, []), plan: MixedPlan() with { Modlist = Skyrim.Id });
+
+        var (exitCode, renderer) = await Run("wabbajack", "download", "--modlist", "Skyrim list", "--json");
+
+        exitCode.Should().Be(0);
+        var start = JsonNode.Parse(RawText(renderer))!.AsObject();
+        ((bool)start["alreadyRunning"]!).Should().BeTrue();
+        ((int)start["automatic"]!).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Cancel_Json_SaysItStoppedTheRunningDownload()
+    {
+        Arrange(status: new AcquireStatus(Skyrim.Id, true, 1, 2, 0, TimeSpan.Zero, []));
+
+        var (exitCode, renderer) = await Run("wabbajack", "cancel", "--json");
+
+        exitCode.Should().Be(0);
+        ((bool)JsonNode.Parse(RawText(renderer))!["cancelled"]!).Should().BeTrue();
+        Acquirer.Received(1).Cancel();
+    }
+
+    [Fact]
+    public async Task Cancel_Json_SaysNothingWasRunning()
+    {
+        Arrange();
+
+        var (exitCode, renderer) = await Run("wabbajack", "cancel", "--json");
+
+        exitCode.Should().Be(0);
+        ((bool)JsonNode.Parse(RawText(renderer))!["cancelled"]!).Should().BeFalse();
+        Acquirer.DidNotReceive().Cancel();
+    }
 }

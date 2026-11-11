@@ -118,16 +118,27 @@ public static class Verbs
     [Verb("wabbajack download", "Starts downloading a modlist's archives in the running app and returns at once. Progress shows on the modlist's page and in 'wabbajack status'")]
     private static async Task<int> Download([Injected] IRenderer renderer, [Injected] IModlistCatalog catalog, [Injected] ModlistDownloads downloads,
         [Injected] IServiceProvider services, [Injected] CancellationToken token,
-        [Option("m", "modlist", "The modlist: its name, its id from 'wabbajack list', or the file name of its .wabbajack in the library")] string modlist)
+        [Option("m", "modlist", "The modlist: its name, its id from 'wabbajack list', or the file name of its .wabbajack in the library")] string modlist,
+        [Option("j", "json", "Print what was started as JSON", true)] bool json)
     {
         // The batch outlives this command, which only the window process can allow: a headless main exits with the verb.
         if (services.GetService<WindowHost>() is null)
             throw new WindowRequiredException("Downloading a modlist needs the SilverModManager window to be open, because the downloads go on after this command ends. Open SilverModManager and try again.");
 
         var start = await downloads.Start(catalog.Find(modlist), token);
+        if (json)
+        {
+            var counts = start.Counts;
+            var started = new DownloadStartJson(start.Modlist.HexId, start.Modlist.Name, start.AlreadyRunning, counts.Automatic, counts.Browser, counts.Manual, counts.Have);
+            await renderer.TextLine(JsonSerializer.Serialize(started, CliJson.Options));
+            return 0;
+        }
+
         await renderer.TextLine("{0}", BatchStatusText.Started(start));
         return 0;
     }
+
+    private sealed record DownloadStartJson(string Id, string Modlist, bool AlreadyRunning, int Automatic, int Browser, int Manual, int Have);
 
     private sealed record BatchFailure(string Archive, string Reason);
 
@@ -170,18 +181,23 @@ public static class Verbs
     }
 
     [Verb("wabbajack cancel", "Stops the modlist download that is running, and does not resume it after a restart")]
-    private static async Task<int> Cancel([Injected] IRenderer renderer, [Injected] IArchiveAcquirer acquirer, [Injected] ModlistDownloads downloads)
+    private static async Task<int> Cancel([Injected] IRenderer renderer, [Injected] IArchiveAcquirer acquirer, [Injected] ModlistDownloads downloads,
+        [Option("j", "json", "Print whether a download was stopped as JSON", true)] bool json)
     {
-        if (acquirer.Status is not { IsRunning: true })
+        var running = acquirer.Status is { IsRunning: true };
+        if (running) downloads.Cancel();
+
+        if (json)
         {
-            await renderer.TextLine("No modlist download is running.");
+            await renderer.TextLine(JsonSerializer.Serialize(new CancelResultJson(running), CliJson.Options));
             return 0;
         }
 
-        downloads.Cancel();
-        await renderer.TextLine("Stopping the running modlist download.");
+        await renderer.TextLine(running ? "Stopping the running modlist download." : "No modlist download is running.");
         return 0;
     }
+
+    private sealed record CancelResultJson(bool Cancelled);
 
     private sealed record UpdateRow(string Modlist, string Installed, string Newer, bool Reupload, int Archives, long DownloadBytes, bool OfflineCopy, DateTimeOffset ListingFetchedAt);
 
