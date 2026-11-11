@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
@@ -85,20 +86,14 @@ public class ModsettingsResetTests(ITestOutputHelper helper) : ModsettingsFixtur
             OverridesGroupItems.AddFile(tx, Refresh(loadout), LoadoutOverridesGroupId.From(overrides.Id), ModsettingsPath, FileIdentity.XxHash3(hash), Size.FromLong(bytes.Length));
             await tx.Commit();
         }
-        OverridesPaths(loadout).Should().Contain("modsettings.lsx");
+        Connection.Db.OverridesPaths(loadout).Should().Contain("modsettings.lsx");
 
         await Apply(loadout);
 
-        OverridesPaths(loadout).Should().NotContain("modsettings.lsx");
+        Connection.Db.OverridesPaths(loadout).Should().NotContain("modsettings.lsx");
         // The sync did not take the file off disk: the version and base entries it held survive into the write.
         Disk().VersionAttributes["major"].Should().Be("4");
         Disk().VersionAttributes["minor"].Should().Be("9");
         DiskNames().Should().Equal("GustavX", "HonourX");
     }
-
-    private string[] OverridesPaths(Loadout.ReadOnly loadout) =>
-        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
-            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
-            .ToArray();
 }

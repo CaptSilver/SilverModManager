@@ -38,10 +38,6 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
 
     private AbsolutePath Pref(string rel) => GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Preferences, rel));
 
-    private static IEnumerable<string> OverridesPaths(Loadout.ReadOnly l) =>
-        LoadoutOverridesGroup.FindByOverridesFor(l.Db, l.Id)
-            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(f => ((GamePath)f.TargetPath).ToString());
 
     private async Task WriteGameFile(string rel, string content)
     {
@@ -87,7 +83,7 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
 
         var loadout = await Synchronizer.Synchronize(await CreateLoadout());
 
-        OverridesPaths(loadout).Should().NotContain(p => p.Contains("SKSE/"));
+        loadout.Db.OverridesPaths(loadout).Should().NotContain(p => p.Contains("SKSE/"));
         foreach (var (rel, content) in files)
         {
             (await FileStore.HaveFile(FileIdentity.XxHash3(Encoding.UTF8.GetBytes(content).xxHash3()))).Should().BeFalse(rel);
@@ -104,7 +100,7 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
 
         var applied = await Synchronizer.Synchronize(Refresh(loadout));
 
-        OverridesPaths(applied).Should().NotContain(p => p.Contains("crash-x.log"));
+        applied.Db.OverridesPaths(applied).Should().NotContain(p => p.Contains("crash-x.log"));
         Pref("SKSE/crash-x.log").FileExists.Should().BeTrue();
         (await Pref("SKSE/crash-x.log").ReadAllTextAsync()).Should().Be("SKSE/crash-x.log");
         DiskStateEntry.FindByGame(applied.Db, applied.Installation).Select(e => ((GamePath)e.Path).Path.ToString())
@@ -120,7 +116,7 @@ public class ScriptExtenderLogFolderSyncTests(ITestOutputHelper helper)
 
         var applied = await Synchronizer.Synchronize(Refresh(loadout));
 
-        OverridesPaths(applied).Should().NotContain(p => p.Contains("OCUGestureSpellList"));
+        applied.Db.OverridesPaths(applied).Should().NotContain(p => p.Contains("OCUGestureSpellList"));
         Pref("SKSE/OCUGestureSpellList.json").FileExists.Should().BeTrue("the game wrote it, so the sync must not delete it");
     }
 

@@ -84,12 +84,6 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
             .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemGroup().OfTypeGameInstalledItem())
             .ToArray();
 
-    private string[] OverridesPaths(Loadout.ReadOnly loadout) =>
-        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
-            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
-            .ToArray();
-
     [Fact]
     public async Task ARecognisedFile_WhoseRowCarriesOnlyAnXxHash3_IsStillLeftAloneBySyncsAfterTheMigration()
     {
@@ -112,7 +106,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         var tree = await TreeOf(loadout);
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
         Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
     }
 
     [Fact]
@@ -128,7 +122,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
         tree[CreationA].SourceItemType.Should().Be(LoadoutSourceItemType.Game);
         Installed(loadout).Should().ContainKey(CreationA).WhoseValue.Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 1")));
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty("the game owns the file, it is not an external change");
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty("the game owns the file, it is not an external change");
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse("nothing of the game's content is backed up");
         OnDisk(CreationA).FileExists.Should().BeTrue();
     }
@@ -147,7 +141,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         var tree = await TreeOf(loadout);
         tree[CreationA].Actions.Should().Be(Actions.DoNothing);
         Installed(loadout)[CreationA].Identity.Should().Be(FileIdentity.XxHash3(HashOf("alpha 2, updated by the game")), "the row follows the disk");
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 2, updated by the game")))).Should().BeFalse();
         (await OnDisk(CreationA).ReadAllTextAsync()).Should().Be("alpha 2, updated by the game");
     }
@@ -165,7 +159,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         Installed(loadout).Should().BeEmpty();
         Items(Refresh(loadout)).Should().BeEmpty("an item with no file left is dropped");
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
         var tree = await TreeOf(loadout);
         tree.Should().NotContainKey(CreationA);
     }
@@ -183,7 +177,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         OnDisk(CreationA).FileExists.Should().BeTrue("leaving the group never deletes a file");
         Installed(loadout).Should().BeEmpty();
-        OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeTrue("the overrides row has an archive like any ingested file");
         (await TreeOf(loadout))[CreationA].Actions.Should().Be(Actions.DoNothing);
     }
@@ -201,7 +195,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         await Apply(loadout);
 
         OnDisk(CreationA).FileExists.Should().BeTrue();
-        OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain(CreationA.Path.ToString());
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("alpha 1")))).Should().BeFalse("the game excludes this path from backups");
     }
 
@@ -211,12 +205,12 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         var loadout = await CreateLoadout();
         await WriteOnDisk(CatalogFile, "catalog 1");
         await Apply(loadout);
-        OverridesPaths(Refresh(loadout)).Should().Contain(CatalogFile.Path.ToString(), "before the game's records are known the file is an external change");
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain(CatalogFile.Path.ToString(), "before the game's records are known the file is an external change");
 
         Recognizer.Record.Add(CatalogFile);
         await Apply(loadout);
 
-        OverridesPaths(Refresh(loadout)).Should().NotContain(CatalogFile.Path.ToString());
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().NotContain(CatalogFile.Path.ToString());
         OnDisk(CatalogFile).FileExists.Should().BeTrue();
         (await TreeOf(loadout))[CatalogFile].Actions.Should().NotHaveFlag(Actions.DeleteFromDisk);
     }
@@ -253,7 +247,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         Installed(loadout).Should().ContainKey(CreationA);
         Items(Refresh(loadout)).Should().ContainSingle();
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
         OnDisk(CreationA).FileExists.Should().BeTrue();
     }
 
@@ -285,7 +279,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
 
         Items(Refresh(loadout)).Should().ContainSingle();
         (await TreeOf(loadout))[CreationA].Actions.Should().Be(Actions.DoNothing);
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
     }
 
     [Fact]
@@ -335,14 +329,14 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
             OverridesGroupItems.AddReifiedDelete(tx, fresh, overrides, CreationB);
             await tx.Commit();
         }
-        OverridesPaths(Refresh(loadout)).Should().Contain([CreationA.Path.ToString(), CatalogFile.Path.ToString(), CreationB.Path.ToString()]);
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain([CreationA.Path.ToString(), CatalogFile.Path.ToString(), CreationB.Path.ToString()]);
         Recognise("alpha", CreationA);
         Recognise("beta", CreationB);
         Recognizer.Record.Add(CatalogFile);
 
         await Apply(loadout);
 
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty("a file, a reified delete and a record file are all the game's now");
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty("a file, a reified delete and a record file are all the game's now");
         OnDisk(CreationA).FileExists.Should().BeTrue();
         OnDisk(CreationB).FileExists.Should().BeTrue("a reified delete of a recognised file loses");
         OnDisk(CatalogFile).FileExists.Should().BeTrue();
@@ -379,7 +373,7 @@ public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconc
         await Apply(loadout);
 
         (await TreeOf(loadout))[CreationA].Actions.Should().Be(Actions.DoNothing);
-        OverridesPaths(Refresh(loadout)).Should().BeEmpty();
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().BeEmpty();
         Items(Refresh(loadout)).Single().DepotShipped.Should().BeTrue();
         (await OnDisk(CreationA).ReadAllTextAsync()).Should().Be("alpha updated by the game");
     }

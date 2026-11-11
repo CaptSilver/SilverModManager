@@ -99,11 +99,6 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
     private GameInstalledItem.ReadOnly Item(Loadout.ReadOnly loadout, string pak) => Items(loadout).Single(i => i.SourceId == pak);
 
-    private string[] OverridesPaths(Loadout.ReadOnly loadout) =>
-        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
-            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
-            .ToArray();
 
     private static Hash HashOf(byte[] bytes) => bytes.xxHash3();
 
@@ -202,7 +197,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
         await Apply(loadout);
 
-        var overrides = OverridesPaths(Refresh(loadout));
+        var overrides = Connection.Db.OverridesPaths(Refresh(loadout));
         overrides.Should().NotContain(Pak(RecordedPak).Path.ToString());
         overrides.Should().NotContain(Pak(PatternPak).Path.ToString());
         (await FileStore.HaveFile(FileIdentity.XxHash3(await DiskHash(RecordedPak)))).Should().BeFalse();
@@ -233,7 +228,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
         await Apply(loadout);
 
         Items(loadout).Select(i => i.SourceId).Should().NotContain(HandDroppedPak);
-        OverridesPaths(Refresh(loadout)).Should().Contain(Pak(HandDroppedPak).Path.ToString());
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain(Pak(HandDroppedPak).Path.ToString());
     }
 
     [Fact]
