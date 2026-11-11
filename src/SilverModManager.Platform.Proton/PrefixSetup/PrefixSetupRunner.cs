@@ -148,7 +148,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     {
         var components = ids.Select(_component).DistinctBy(c => c.Id).ToList();
         if (components.FirstOrDefault(c => !c.Installable) is { } detectOnly)
-            throw new PrefixSetupRefusedException($"{MarkdownText.Code(detectOnly.Id.Value)} ({detectOnly.DisplayName}) can be detected but not installed by the app. Install it with {MarkdownText.Code(PrefixInstallCommand.For(prefix, detectOnly.Id.Value))}.");
+            throw new PrefixSetupRefusedException($"{MarkdownText.Code(detectOnly.Id.Value)} ({detectOnly.DisplayName}) can be detected but not installed by the app. {PrefixInstallCommand.InstallSentence(prefix, detectOnly.Id.Value)}");
 
         return components.Select(component => new PrefixSetupStep(
             component.Id,

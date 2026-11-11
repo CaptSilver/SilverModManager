@@ -139,6 +139,27 @@ public class WineOutputHintsTests
     }
 
     [Fact]
+    public void APrefixFolderWithALineBreakGetsASentenceInsteadOfAWrongCommand()
+    {
+        var prefix = new ResolvedPrefix(_fs.FromUnsanitizedFullPath("/p/one\ntwo"), CompatibilityLayerKind.PlainWine);
+
+        var hint = Explain(Result("PlainWine", ImportDll("MSVBVM60.DLL")), prefix)!;
+
+        hint.Should().Contain("can't be shown in a command").And.NotContain("winetricks -q").And.NotContain("one two");
+    }
+
+    [Fact]
+    public void AToolFolderWithALineBreakGetsASentenceInsteadOfAWrongFlatpakCommand()
+    {
+        var exe = _fs.FromUnsanitizedFullPath("/tools/one\ntwo/x.exe");
+        var result = Result("Protontricks", stdout: "Could not translate the specified Unix filename to a DOS filename.\n");
+
+        var hint = Explain(result, exe: exe)!;
+
+        hint.Should().Contain("can't be shown in a command").And.NotContain("flatpak override").And.NotContain("--filesystem");
+    }
+
+    [Fact]
     public void HidNoiseAloneExplainsNothing()
         => Explain(Result("SteamProton", "0024:err:hid:foo bar\n0024:err:hid:baz\n")).Should().BeNull();
 

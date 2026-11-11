@@ -211,4 +211,26 @@ public class MarkdownTextTests
     {
         MarkdownText.InlineKeepingCode("a `b` c` d").Should().Be("a `b` c\u02CB d");
     }
+
+    [Theory]
+    [InlineData("/p/plain name", true)]
+    [InlineData("/p/it's `x` \"q\"", true)]
+    [InlineData("", true)]
+    [InlineData("/p/one\ntwo", false)]
+    [InlineData("/p/one\ttwo", false)]
+    [InlineData("/p/one\rtwo", false)]
+    [InlineData("/p/bell\u0007", false)]
+    [InlineData("/p/zero\u200Bwidth", false)]
+    public void ShowsExactlyIsFalseWhenCodeWouldChangeTheText(string text, bool expected)
+    {
+        MarkdownText.ShowsExactly(text).Should().Be(expected);
+        (MarkdownText.PlainText(text) == text).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ShowsExactlyAcceptsNull() => MarkdownText.ShowsExactly(null).Should().BeTrue();
+
+    [Fact]
+    public void NoCommandForNamesWhatCannotBeShown()
+        => MarkdownText.NoCommandFor("prefix folder").Should().Be("The prefix folder name has characters that can't be shown in a command, so none is suggested here.");
 }

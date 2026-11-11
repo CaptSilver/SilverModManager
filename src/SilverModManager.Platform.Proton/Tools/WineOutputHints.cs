@@ -38,8 +38,9 @@ public static partial class WineOutputHints
         if (result.StdoutTail.Contains(UnixPathUnreadable, StringComparison.Ordinal) && result.Strategy == ProtontricksStrategy.StrategyName)
         {
             var folder = exe.Parent;
-            var command = MarkdownText.Code($"flatpak override --user --filesystem={ShellText.Quote(folder.ToString())} {ProtontricksFlatpakDependency.FlatpakPackageId}");
-            var sentence = $"protontricks runs in a Flatpak that cannot see {MarkdownText.Code(folder)}. Let it: {command}";
+            var command = $"flatpak override --user --filesystem={ShellText.Quote(folder.ToString())} {ProtontricksFlatpakDependency.FlatpakPackageId}";
+            var shown = MarkdownText.ShowsExactly(command) ? $"Let it: {MarkdownText.Code(command)}" : MarkdownText.NoCommandFor("folder");
+            var sentence = $"protontricks runs in a Flatpak that cannot see {MarkdownText.Code(folder)}. {shown}";
             if (result.FallbackReason is { } reason) sentence += $" Proton did not run it because {reason}.";
             sentences.Add(sentence);
         }
@@ -60,7 +61,7 @@ public static partial class WineOutputHints
 
         return prefix is null
             ? $"{needs} (the {component.DisplayName}), {missing}"
-            : $"{needs} (the {component.DisplayName}), {missing} Install it with {MarkdownText.Code(PrefixInstallCommand.For(prefix, component.Id.Value))}.";
+            : $"{needs} (the {component.DisplayName}), {missing} {PrefixInstallCommand.InstallSentence(prefix, component.Id.Value)}";
     }
 
     /// <summary>err: lines minus err:hid, newest last, at most max; the last max raw lines when there are none.</summary>

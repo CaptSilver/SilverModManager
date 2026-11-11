@@ -235,6 +235,19 @@ public class PrefixSetupRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task ADetectOnlyComponentInAPrefixWithALineBreakInItsNameGetsASentenceNotAWrongCommand()
+    {
+        var odd = _fs.GetKnownPath(KnownPath.HomeDirectory).Combine("games/one\ntwo/pfx");
+        BuildPrefix(odd);
+        _resolver.Resolve(Arg.Any<GameInstallation>()).Returns(_ => PrefixResolution.Resolved(_prefix with { Path = odd, Kind = CompatibilityLayerKind.PlainWine, ProtonAppId = null }));
+
+        var act = () => Runner().Run(_installation, Write("vb6run") with { ConfirmedPrefixPath = odd.ToString() }, CancellationToken.None);
+
+        var message = (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message;
+        message.Should().Contain("can't be shown in a command").And.NotContain("winetricks -q");
+    }
+
+    [Fact]
     public async Task Write_IsRefusedWithoutAConfirmation()
     {
         var request = Write("vcrun2022") with { ConfirmedPrefixPath = null };

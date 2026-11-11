@@ -17,4 +17,17 @@ public static class PrefixInstallCommand
         => prefix.Kind == CompatibilityLayerKind.SteamProton && prefix.ProtonAppId is { } appId
             ? $"protontricks {appId} -q {verb}"
             : $"WINEPREFIX={ShellText.Quote(prefix.Path.ToString())} winetricks -q {verb}";
+
+    /// <summary>
+    /// The Markdown sentence that tells the user to run <see cref="For"/>. A prefix folder whose name has a line break
+    /// or other control character cannot be shown in a code span without changing it, so the sentence says that
+    /// instead of showing a command that names a different folder.
+    /// </summary>
+    public static string InstallSentence(ResolvedPrefix prefix, string verb)
+    {
+        var command = For(prefix, verb);
+        return MarkdownText.ShowsExactly(command)
+            ? $"Install it with {MarkdownText.Code(command)}."
+            : MarkdownText.NoCommandFor("prefix folder");
+    }
 }

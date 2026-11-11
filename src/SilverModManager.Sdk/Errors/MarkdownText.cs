@@ -150,6 +150,20 @@ public static partial class MarkdownText
     /// </summary>
     public static string InsideCode(string? text) => PlainText(text).Replace('`', BacktickLookalike);
 
+    /// <summary>
+    /// Whether <see cref="Code(string?)"/> would show <paramref name="text"/> unchanged. It does not when a line break,
+    /// tab or other control character has to go, and a shell command built around such a path would then name a
+    /// different one. Check this before offering a command; <see cref="NoCommandFor"/> is the sentence to show instead.
+    /// </summary>
+    public static bool ShowsExactly(string? text) => string.Equals(PlainText(text), text ?? string.Empty, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The sentence that replaces a suggested shell command whose <paramref name="what"/> (such as "prefix folder")
+    /// fails <see cref="ShowsExactly(string?)"/>.
+    /// </summary>
+    public static string NoCommandFor(string what)
+        => $"The {what} name has characters that can't be shown in a command, so none is suggested here.";
+
     /// <summary><see cref="Code(string?)"/> for any value, such as a path or an id, through its <c>ToString()</c>.</summary>
     public static string Code(object? value) => Code(value?.ToString());
 
