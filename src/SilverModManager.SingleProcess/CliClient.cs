@@ -18,12 +18,15 @@ public class CliClient(
     SyncFile syncFile,
     IServiceProvider provider,
     AppBuild? build = null,
-    TimeSpan? greetingTimeout = null)
+    TimeSpan? greetingTimeout = null,
+    TimeSpan? connectTimeout = null)
 {
     private static readonly TimeSpan DefaultGreetingTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(10);
 
     private readonly AppBuild _build = build ?? AppBuild.Current;
     private readonly TimeSpan _greetingTimeout = greetingTimeout ?? DefaultGreetingTimeout;
+    private readonly TimeSpan _connectTimeout = connectTimeout ?? DefaultConnectTimeout;
 
     /// <summary>
     /// Starts the client process, connecting to the main process and running the console response loop. Returns the
@@ -68,7 +71,7 @@ public class CliClient(
         client.NoDelay = true; // Disable Nagle's algorithm to reduce delay.
         try
         {
-            await client.ConnectAsync(IPAddress.Loopback, port, token);
+            await ConnectAsync(client, port, token);
             await using var stream = client.GetStream();
 
             logger.LogDebug("Connected to main process {ProcessId} on port {Port}", process.Id, port);
@@ -83,6 +86,25 @@ public class CliClient(
         {
             logger.LogWarning("Failed to connect to main process {ProcessId} on port {Port}", process.Id, port);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Connects within the connect timeout, so a port that takes no connection is not mistaken for a verb that runs long.
+    /// </summary>
+    /// <exception cref="MainProcessNotAccepting">The connection was not taken in time.</exception>
+    private async Task ConnectAsync(TcpClient client, int port, CancellationToken token)
+    {
+        using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        connectTimeout.CancelAfter(_connectTimeout);
+        try
+        {
+            await client.ConnectAsync(IPAddress.Loopback, port, connectTimeout.Token);
+        }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested)
+        {
+            var seconds = (int)Math.Ceiling(_connectTimeout.TotalSeconds);
+            throw new MainProcessNotAccepting($"SilverModManager is running but did not accept the connection within {seconds} s. It may be busy. Try again in a moment.");
         }
     }
 

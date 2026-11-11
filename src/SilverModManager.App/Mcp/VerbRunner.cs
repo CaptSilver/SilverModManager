@@ -77,7 +77,7 @@ public sealed class VerbRunner(CliClient client)
         {
             return new ToolResult(e.Message, true);
         }
-        catch (Exception e) when (e is VersionMismatch or MainProcessSilent)
+        catch (Exception e) when (e is VersionMismatch or MainProcessSilent or MainProcessNotAccepting)
         {
             return new ToolResult(e.Message, true);
         }

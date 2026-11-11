@@ -164,6 +164,40 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task AMainThatNeverAcceptsTheConnection_IsRefusedInWords_WhenTheConnectTimesOut()
+    {
+        // A listener that never accepts, with its backlog filled, leaves the next connect hanging.
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start(1);
+        _listeners.Add(listener);
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var fillers = new List<TcpClient>();
+        for (var i = 0; i < 6; i++)
+        {
+            var filler = new TcpClient();
+            fillers.Add(filler);
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            try { await filler.ConnectAsync(IPAddress.Loopback, port, cts.Token); }
+            catch (OperationCanceledException) { }
+        }
+        SyncFile("backlog.sync").TrySetMain(MainKind.Gui, port).Should().BeTrue();
+        var client = new CliClient(NullLogger<CliClient>.Instance, SyncFile("backlog.sync"), Services(), Running, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(300));
+
+        try
+        {
+            var act = () => client.ExecuteCommand(["anything"], new TestConsole());
+
+            var refusal = (await act.Should().ThrowAsync<MainProcessNotAccepting>()).Which;
+            refusal.Message.Should().Be("SilverModManager is running but did not accept the connection within 1 s. It may be busy. Try again in a moment.");
+            CliErrors.ExitCode(refusal).Should().Be(CliErrors.RefusalExitCode);
+        }
+        finally
+        {
+            foreach (var filler in fillers) filler.Dispose();
+        }
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task ADifferentVersion_MakesAForwardedLaunchUnavailable_WithTheSameSentence()
     {
         var client = await StartMain(new AppBuild("0.1.2", null));
