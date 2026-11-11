@@ -90,6 +90,20 @@ public static class UnrealGames
         Ue4ssLayout = Ue4ssLayout.Ue4ss2,
     };
 
+    // Steam launches Expedition33_Steam.exe at the game root, a stub that starts
+    // Sandfall/Binaries/Win64/SandFall-Win64-Shipping.exe. It is an Unreal Engine 5 game, so UE4SS 3.x applies (the
+    // default layout). The game is also sold on GOG and Xbox/Game Pass; no public source for those store ids was found,
+    // so none are recorded.
+    public static readonly UnrealGameDefinition ClairObscurExpedition33 = new()
+    {
+        GameId = GameId.From("Unreal.ClairObscurExpedition33"),
+        DisplayName = "Clair Obscur: Expedition 33",
+        NexusModsGameId = NexusModsGameId.From(7635),
+        Executable = "Expedition33_Steam.exe",
+        ProjectFolder = "Sandfall",
+        SteamAppIds = [1903340],
+    };
+
     public static readonly IReadOnlyList<UnrealGameDefinition> All =
-        [FinalFantasy7Remake, FinalFantasy7Rebirth, Stalker2, Palworld, ReadyOrNot, Dispatch, HogwartsLegacy];
+        [FinalFantasy7Remake, FinalFantasy7Rebirth, Stalker2, Palworld, ReadyOrNot, Dispatch, HogwartsLegacy, ClairObscurExpedition33];
 }

@@ -1,5 +1,8 @@
 using FluentAssertions;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unreal.Tests.Fixtures;
@@ -120,5 +123,22 @@ public abstract class AUnrealRowTests<TTest>(ITestOutputHelper outputHelper, Unr
         var (result, _) = await TryInstall(Installer, archive);
 
         result.IsNotSupported(out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task APakAlreadyInTheModsFolderIsAdoptedIntoTheOverridesAndNeverDeleted()
+    {
+        var pak = GameInstallation.Locations[LocationId.Game].Path / $"{Project}/Content/Paks/~mods/Loose_P.pak";
+        pak.Parent.CreateDirectory();
+        await pak.WriteAllTextAsync("loose pak");
+
+        var loadout = await CreateLoadout();
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        var path = loadout.InstallationInstance.Locations.ToGamePath(pak);
+        var item = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().Single(f => f.TargetPath == path);
+        item.AsLoadoutItem().Parent.AsLoadoutItem().Name.Should().Be("Overrides");
+        pak.FileExists.Should().BeTrue("a file the app did not install is never deleted");
+        (await pak.ReadAllTextAsync()).Should().Be("loose pak");
     }
 }

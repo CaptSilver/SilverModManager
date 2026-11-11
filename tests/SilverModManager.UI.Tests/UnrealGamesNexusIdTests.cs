@@ -25,7 +25,7 @@ public class UnrealGamesNexusIdTests(IServiceProvider provider)
     public void EveryUnrealEngineGameIsRegisteredWithTheApp()
     {
         FamilyGames.Select(game => game.GameId).Should().BeEquivalentTo(
-            new[] { "Unreal.FinalFantasy7Remake", "Unreal.FinalFantasy7Rebirth", "Unreal.Stalker2", "Unreal.Palworld", "Unreal.ReadyOrNot", "Unreal.Dispatch", "Unreal.HogwartsLegacy" }.Select(GameId.From));
+            new[] { "Unreal.FinalFantasy7Remake", "Unreal.FinalFantasy7Rebirth", "Unreal.Stalker2", "Unreal.Palworld", "Unreal.ReadyOrNot", "Unreal.Dispatch", "Unreal.HogwartsLegacy", "Unreal.ClairObscurExpedition33" }.Select(GameId.From));
     }
 
     [Fact]
@@ -50,6 +50,7 @@ public class UnrealGamesNexusIdTests(IServiceProvider provider)
     [InlineData("Unreal.ReadyOrNot", 4205u)]
     [InlineData("Unreal.Dispatch", 8325u)]
     [InlineData("Unreal.HogwartsLegacy", 5113u)]
+    [InlineData("Unreal.ClairObscurExpedition33", 7635u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
         NexusModsGameScope.ResolveNxmGame(FamilyGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)

@@ -13,7 +13,8 @@ public class UnrealGamesTableTests
     {
         UnrealGames.All.Should().Equal(
             UnrealGames.FinalFantasy7Remake, UnrealGames.FinalFantasy7Rebirth, UnrealGames.Stalker2,
-            UnrealGames.Palworld, UnrealGames.ReadyOrNot, UnrealGames.Dispatch, UnrealGames.HogwartsLegacy);
+            UnrealGames.Palworld, UnrealGames.ReadyOrNot, UnrealGames.Dispatch, UnrealGames.HogwartsLegacy,
+            UnrealGames.ClairObscurExpedition33);
     }
 
     // Steam ids, names and launch executables from each app's Steam launch entry (api.steamcmd.net); project folders
@@ -27,6 +28,7 @@ public class UnrealGamesTableTests
         { "Unreal.ReadyOrNot", "Ready or Not", "ReadyOrNot.exe", "ReadyOrNot", 1144200, 4205 },
         { "Unreal.Dispatch", "Dispatch", "Dispatch.exe", "Dispatch", 2592160, 8325 },
         { "Unreal.HogwartsLegacy", "Hogwarts Legacy", "HogwartsLegacy.exe", "Phoenix", 990080, 5113 },
+        { "Unreal.ClairObscurExpedition33", "Clair Obscur: Expedition 33", "Expedition33_Steam.exe", "Sandfall", 1903340, 7635 },
     };
 
     [Theory]
