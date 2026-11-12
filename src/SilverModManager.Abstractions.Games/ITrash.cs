@@ -6,10 +6,10 @@ namespace SilverModManager.Abstractions.Games;
 public interface ITrash
 {
     /// <summary>
-    /// Moves the folder at <paramref name="path"/> into the trash, never deleting it.
+    /// Moves the file or folder at <paramref name="path"/> into the trash, never deleting it.
     /// </summary>
     /// <exception cref="HostFolderMoveRefusedException">
-    /// The folder could not be moved, for instance because it is on another file system than the trash. It is
+    /// It could not be moved, for instance because it is on another file system than the trash. It is
     /// left where it was.
     /// </exception>
     void MoveToTrash(string path);

@@ -6,11 +6,11 @@ using SilverModManager.Sdk.Errors;
 namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
-/// The home trash of the freedesktop.org Trash specification: <c>Trash/files/&lt;name&gt;</c> holds the folder and
+/// The home trash of the freedesktop.org Trash specification: <c>Trash/files/&lt;name&gt;</c> holds the file or folder and
 /// <c>Trash/info/&lt;name&gt;.trashinfo</c> records where it came from, which is what lets a file manager restore it.
 /// </summary>
 /// <remarks>
-/// Only the home trash is used. A folder on another file system than <c>$XDG_DATA_HOME</c> is refused rather than
+/// Only the home trash is used. A file or folder on another file system than <c>$XDG_DATA_HOME</c> is refused rather than
 /// copied: the spec keeps one trash per file system for this reason, and a copy-then-delete would be a delete.
 /// </remarks>
 public sealed class FreedesktopTrash : ITrash
@@ -40,7 +40,7 @@ public sealed class FreedesktopTrash : ITrash
     public void MoveToTrash(string path)
     {
         var source = path.TrimEnd('/');
-        if (!Directory.Exists(source)) throw new HostFolderMoveRefusedException($"{MarkdownText.Code(source)} is no longer there, so nothing was moved to the trash.");
+        if (!Path.Exists(source)) throw new HostFolderMoveRefusedException($"{MarkdownText.Code(source)} is no longer there, so nothing was moved to the trash.");
 
         var files = Path.Combine(_trashRoot, "files");
         var info = Path.Combine(_trashRoot, "info");

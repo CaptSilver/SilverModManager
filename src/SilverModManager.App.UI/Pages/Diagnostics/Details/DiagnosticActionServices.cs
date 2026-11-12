@@ -32,7 +32,7 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, VerifyGameFilesInSteamActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, OpenWabbajackModlistActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DiscardOverlayFindingActionHandler>());
-        services.TryAddSingleton<ITrash>(provider => new FreedesktopTrash(provider.GetRequiredService<IFileSystem>().GetKnownPath(KnownPath.XDG_DATA_HOME).GetFullPath()));
+        services.AddFreedesktopTrash();
         services.TryAddSingleton<IPrefixSetupLauncher, PrefixSetupLauncher>();
         services.AddView<PrefixSetupView, IPrefixSetupViewModel>();
 

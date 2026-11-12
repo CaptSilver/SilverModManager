@@ -41,11 +41,13 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
         public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
         public bool IsRefreshing => false;
         public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; } = ReactiveCommand.Create(() => { });
-        public string SupportBundleMessage => "";
-        public bool CanClear => false;
-        public string ClearLabel => "";
+        private string _supportBundleMessage = "";
+        public string SupportBundleMessage { get => _supportBundleMessage; set => this.RaiseAndSetIfChanged(ref _supportBundleMessage, value); }
+        public bool CanClear => true;
+        public string ClearLabel => "Clear crash reports";
         public ReactiveCommand<Unit, Unit> ClearCommand { get; } = ReactiveCommand.Create(() => { });
-        public string ClearMessage => "";
+        private string _clearMessage = "";
+        public string ClearMessage { get => _clearMessage; set => this.RaiseAndSetIfChanged(ref _clearMessage, value); }
     }
 
     private static IDiagnosticEntryViewModel[] Entries(int count) => Enumerable.Range(0, count)
@@ -77,6 +79,28 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
 
     private static int RealizedRows(DiagnosticListView view) =>
         view.GetVisualDescendants().OfType<DiagnosticEntryView>().Count();
+
+    // The messages carry paths into the Proton prefix, so they must wrap inside the page, not run off its edge.
+    [Theory]
+    [InlineData("ClearText")]
+    [InlineData("SupportBundleText")]
+    public async Task Test_ALongMessageWrapsInsideThePage(string name)
+    {
+        var (vm, view) = await ShowAsync(3);
+        var message = string.Join(" ", Enumerable.Repeat("Could not move crash-2026-11-09-15-30-26.log to the trash.", 12));
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            vm.ClearMessage = message;
+            vm.SupportBundleMessage = message;
+            Dispatcher.UIThread.RunJobs();
+            view.UpdateLayout();
+
+            var text = view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == name);
+            text.Text.Should().Be(message);
+            var right = Avalonia.VisualExtensions.TranslatePoint(text, new Avalonia.Point(text.Bounds.Width, 0), view)!.Value.X;
+            right.Should().BeLessThanOrEqualTo(view.Bounds.Width);
+        });
+    }
 
     [Fact]
     public async Task Test_AThousandEntries_RealizeOnlyTheRowsInView()

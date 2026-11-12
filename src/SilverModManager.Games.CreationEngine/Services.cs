@@ -20,6 +20,8 @@ public static class Services
 {
     public static IServiceCollection AddCreationEngine(this IServiceCollection services)
     {
+        // Clearing crash reports sends the logs to the trash.
+        services.AddFreedesktopTrash();
         services.AddBethesdaGame<SkyrimSE.SkyrimSE>(KnownPaths.SKSE64Loader);
         services.AddBethesdaGame<SkyrimLE.SkyrimLE>(KnownPaths.SKSELoader);
         services.AddBethesdaGame<SkyrimVR.SkyrimVR>(KnownPaths.SKSEVRLoader);

@@ -8,6 +8,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.CreationEngine.Abstractions;
@@ -28,11 +29,8 @@ namespace SilverModManager.Games.CreationEngine.Emitters;
 /// A log appears on disk without any loadout change, so crashes show up when Health Check is opened or refreshed
 /// after the game exits. The logs are read from disk, not from the sync tree: the logger's folder is the game's.
 /// </remarks>
-public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashReportEmitter> logger) : ASyncTreeEmitter, IClearableDiagnosticSource
+public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashReportEmitter> logger, ITrash trash) : ASyncTreeEmitter, IClearableDiagnosticSource
 {
-    /// <summary>The folder inside the crash logger's own that cleared logs are moved to.</summary>
-    public const string OldLogsFolderName = "crash-logs-old";
-
     /// <inheritdoc />
     public string ClearLabel => "Clear crash reports";
 
@@ -40,51 +38,36 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
     public bool HasAnythingToClear(Loadout.ReadOnly loadout) => _source.Find(loadout.InstallationInstance).Count > 0;
 
     /// <summary>
-    /// Moves every crash log, however old, into <see cref="OldLogsFolderName"/> next to them. The logs are kept, not
-    /// deleted: they are what a freeze or crash gets traced from later. The logger only lists its own folder, so a
-    /// moved log is off Health Check at the next refresh.
+    /// Sends every crash log, however old, to the desktop trash, where a file manager can still restore one. The
+    /// logger only lists its own folder, so a cleared log is off Health Check at the next refresh.
     /// </summary>
     public Task<string> ClearAsync(Loadout.ReadOnly loadout, CancellationToken cancellationToken) =>
-        Task.Run(() => MoveToOldLogs(loadout.InstallationInstance, cancellationToken), cancellationToken);
+        Task.Run(() => SendToTrash(loadout.InstallationInstance, cancellationToken), cancellationToken);
 
-    private string MoveToOldLogs(GameInstallation installation, CancellationToken cancellationToken)
+    private string SendToTrash(GameInstallation installation, CancellationToken cancellationToken)
     {
         var files = _source.Find(installation);
         if (files.Count == 0) return "There were no crash logs to clear.";
 
-        var folder = files[0].Path.Parent / OldLogsFolderName;
-        folder.CreateDirectory();
-
         var moved = 0;
-        var failures = new List<string>();
+        var failed = new List<string>();
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                file.Path.FileSystem.MoveFile(file.Path, FreeName(folder, file.Path.FileName), overwrite: false);
+                trash.MoveToTrash(file.Path.ToString());
                 moved++;
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (HostFolderMoveRefusedException e)
             {
-                logger.LogWarning(e, "Could not move crash log {Path} to {Folder}", file.Path, folder);
-                failures.Add($"{file.Path.FileName} ({e.Message})");
+                logger.LogWarning(e, "Could not move crash log {Path} to the trash", file.Path);
+                failed.Add(file.Path.FileName.ToString());
             }
         }
 
-        var done = $"Moved {moved} crash {(moved == 1 ? "log" : "logs")} to {OldLogsFolderName} in {files[0].Path.Parent}.";
-        return failures.Count == 0 ? done : $"{done} Could not move {string.Join(", ", failures)}.";
-    }
-
-    // A log cleared earlier under the same name stays as it is; this one gets a numbered name beside it.
-    private static AbsolutePath FreeName(AbsolutePath folder, RelativePath fileName)
-    {
-        var target = folder / fileName;
-        var stem = target.GetFileNameWithoutExtension();
-        var extension = target.Extension;
-        for (var n = 2; target.FileExists; n++)
-            target = folder / $"{stem} ({n}){extension}";
-        return target;
+        var done = $"Moved {moved} crash {(moved == 1 ? "log" : "logs")} to the trash.";
+        return failed.Count == 0 ? done : $"{done} Could not move {string.Join(", ", failed)}; the app log has the reason.";
     }
 
     /// <summary>Logs older than this are ignored.</summary>

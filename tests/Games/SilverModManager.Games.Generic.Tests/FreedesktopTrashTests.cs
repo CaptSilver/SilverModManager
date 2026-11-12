@@ -47,6 +47,23 @@ public class FreedesktopTrashTests : IDisposable
     }
 
     [Fact]
+    public void AFileMovesIntoFilesWithAnInfoFile_AndTwoOfTheSameNameAreBothKept()
+    {
+        var source = Path.Combine(_root, "source");
+        Directory.CreateDirectory(source);
+        var first = Path.Combine(source, "crash.log");
+        File.WriteAllText(first, "first");
+        Trash().MoveToTrash(first);
+        File.WriteAllText(first, "second");
+        Trash().MoveToTrash(first);
+
+        File.Exists(first).Should().BeFalse();
+        File.ReadAllText(Path.Combine(DataHome, "Trash", "files", "crash.log")).Should().Be("first");
+        File.ReadAllText(Path.Combine(DataHome, "Trash", "files", "crash.log.2")).Should().Be("second");
+        File.ReadAllLines(Path.Combine(DataHome, "Trash", "info", "crash.log.trashinfo"))[1].Should().Be($"Path={first}");
+    }
+
+    [Fact]
     public void TheInfoFileNamesTheOriginalPathAndTheTimeOfDeletion()
     {
         var folder = Folder("Skyrim");

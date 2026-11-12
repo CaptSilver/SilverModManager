@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
@@ -48,7 +49,11 @@ public class CrashReportEmitterTests(ITestOutputHelper helper)
     }
 
     // One per test, so a test counting parses starts from an empty cache.
-    private CrashReportEmitter Emitter => _emitter ??= new CrashReportEmitter(Game, ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<CrashReportEmitter>());
+    private CrashReportEmitter Emitter => _emitter ??= new CrashReportEmitter(Game, ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<CrashReportEmitter>(),
+        new FreedesktopTrash(TrashDataHome));
+
+    // Beside the test's game folder, on the same file system as the logs, and never the user's trash.
+    private string TrashDataHome => Path.GetFullPath(Path.Combine(GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "")).ToString(), "..", "trash-data"));
 
     private AbsolutePath LogFolder => GameInstallation.Locations.ToAbsolutePath(Game.ScriptExtenderLogFolder!.Value);
 
@@ -359,41 +364,27 @@ public class CrashReportEmitterTests(ITestOutputHelper helper)
         index.SkseDllNames.Should().BeEquivalentTo(["some.dll", "off.dll"]);
     }
 
-    private AbsolutePath OldLogsFolder => LogFolder / CrashReportEmitter.OldLogsFolderName;
+    private string TrashFiles => Path.Combine(TrashDataHome, "Trash", "files");
 
     [Fact]
-    public async Task ClearingMovesEveryCrashLogIntoTheOldLogsFolderAndTheCrashGoesAway()
+    public async Task ClearingSendsEveryCrashLogToTheTrashAndTheCrashGoesAway()
     {
         var loadout = await CreateLoadout();
         await TwoEnbLogsFor(loadout);
-        await WriteLog("light-list-bread.log", lastWriteUtc: DateTime.UtcNow.AddDays(-30));
+        var old = await WriteLog("light-list-bread.log", lastWriteUtc: DateTime.UtcNow.AddDays(-30));
         (await Diagnose(loadout)).Should().NotBeEmpty();
         Emitter.HasAnythingToClear(Refresh(loadout)).Should().BeTrue();
 
         var message = await Emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
 
-        message.Should().Contain("3 crash logs").And.Contain(CrashReportEmitter.OldLogsFolderName);
-        LogFolder.EnumerateFiles("crash-*.log", recursive: false).Should().BeEmpty();
-        OldLogsFolder.EnumerateFiles("*", recursive: false).Select(f => f.FileName.ToString()).Should().BeEquivalentTo(
+        message.Should().Be("Moved 3 crash logs to the trash.");
+        LogFolder.EnumerateFiles("*", recursive: false).Should().BeEmpty("nothing is left behind in the game's folder");
+        Directory.GetFiles(TrashFiles).Select(Path.GetFileName).Should().BeEquivalentTo(
             ["crash-enb-light-mushroom-a.log", "crash-enb-light-mushroom-b.log", "crash-light-list-bread.log"],
-            "a log older than the window is cleared too, and every one is kept");
+            "a log older than the window is cleared too");
+        File.ReadAllText(Path.Combine(TrashFiles, "..", "info", "crash-light-list-bread.log.trashinfo")).Should().Contain(old.FileName.ToString());
         (await Diagnose(loadout)).Should().BeEmpty();
         Emitter.HasAnythingToClear(Refresh(loadout)).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ClearingKeepsALogOfTheSameNameAlreadyInTheOldLogsFolder()
-    {
-        var loadout = await CreateLoadout();
-        OldLogsFolder.CreateDirectory();
-        await (OldLogsFolder / "crash-light-list-bread.log").WriteAllTextAsync("cleared before");
-        await WriteLog("light-list-bread.log");
-
-        await Emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
-
-        (await (OldLogsFolder / "crash-light-list-bread.log").ReadAllTextAsync()).Should().Be("cleared before");
-        (await (OldLogsFolder / "crash-light-list-bread (2).log").ReadAllBytesAsync()).Should().Equal(await File.ReadAllBytesAsync(Fixtures.Path("light-list-bread.log")));
-        OldLogsFolder.EnumerateFiles("*", recursive: false).Should().HaveCount(2);
     }
 
     [Fact]

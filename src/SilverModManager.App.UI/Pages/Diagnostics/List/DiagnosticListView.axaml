@@ -58,13 +58,17 @@
                 <controls:StandardButton x:Name="RefreshButton" Text="Refresh" Type="Secondary" />
                 <controls:StandardButton x:Name="SupportBundleButton" Text="Copy support bundle" Type="Secondary" />
                 <controls:StandardButton x:Name="ClearButton" Type="Secondary" IsVisible="False" />
-                <TextBlock x:Name="ClearText"
-                           VerticalAlignment="Center"
+            </StackPanel>
+
+            <!-- Below the buttons, not beside them: a horizontal row gives text unlimited width, so it never wraps. -->
+            <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+                <TextBlock x:Name="SupportBundleText"
+                           IsVisible="{Binding $self.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            Theme="{StaticResource BodyMDNormalTheme}"
                            Foreground="{StaticResource NeutralSubduedBrush}"
                            TextWrapping="Wrap" />
-                <TextBlock x:Name="SupportBundleText"
-                           VerticalAlignment="Center"
+                <TextBlock x:Name="ClearText"
+                           IsVisible="{Binding $self.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            Theme="{StaticResource BodyMDNormalTheme}"
                            Foreground="{StaticResource NeutralSubduedBrush}"
                            TextWrapping="Wrap" />
