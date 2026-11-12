@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -92,12 +93,6 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
     private static string[] FilesOf(ForeignDeploymentGroup.ReadOnly group)
         => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().Select(file => ((GamePath)file.TargetPath).Path.ToString()).Order(StringComparer.Ordinal).ToArray();
 
-    private static string[] OverridesPaths(Loadout.ReadOnly loadout)
-        => LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id)
-            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(file => ((GamePath)file.TargetPath).Path.ToString())
-            .Order(StringComparer.Ordinal).ToArray();
-
     [Fact]
     public async Task CreatingALoadoutAdoptsEachVortexSourceAsAGroup()
     {
@@ -121,7 +116,7 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
         var pak = Groups(Connection.Db, loadout).Single(group => group.Source == Pak);
         pak.AsLoadoutItemGroup().AsLoadoutItem().Name.Should().Be("Apparition");
         FilesOf(pak).Should().Equal($"Mods/~pak/{Pak}/a.pak", $"Mods/~pak/{Pak}/b.pak");
-        OverridesPaths(loadout).Should().NotContain(path => path.StartsWith("Mods/"), "the files and the record were not left as unknown files");
+        loadout.Db.OverridesPaths(loadout).Should().NotContain(path => path.StartsWith("Mods/"), "the files and the record were not left as unknown files");
         OnDisk("Mods/~pak/vortex.deployment.stub-PAK-modtype.json").FileExists.Should().BeTrue();
     }
 
@@ -160,7 +155,7 @@ public class ForeignDeploymentAdoptionTests(ITestOutputHelper helper) : AStubbed
     {
         var loadout = await CreateLoadout();
 
-        OverridesPaths(loadout).Should().NotContain(["Data/combat.pak", "Data/combat_extra.pak", "Merged/skin.dll"]);
+        loadout.Db.OverridesPaths(loadout).Should().NotContain(["Data/combat.pak", "Data/combat_extra.pak", "Merged/skin.dll"]);
     }
 
     [Fact]

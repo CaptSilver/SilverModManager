@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.FolderCase;
@@ -534,12 +535,6 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
         GameFolders().Should().NotContain("mods");
     }
 
-    private string[] OverridesPaths(Loadout.ReadOnly loadout)
-        => LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
-            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
-            .ToArray();
-
     [Fact]
     public async Task Synchronize_ProtonGameWithATwinTheLoadoutDoesNotHoldYet_LeavesItOnThatApply_MergesOnTheNext()
     {
@@ -609,8 +604,8 @@ public class ProtonPreflightTests(ITestOutputHelper helper) : AStubbedGameTest<P
 
         GameFolders().Should().NotContain("Data/interface");
         (await GameDir.Combine("Data/Interface/a.swf").ReadAllTextAsync()).Should().Be("from the mod");
-        OverridesPaths(loadout).Should().NotContain("Data/Interface/a.swf", "the mod's bytes are what was applied, so nothing on disk reads as an edit of it");
-        OverridesPaths(loadout).Should().NotContain("Data/interface/a.swf");
+        Connection.Db.OverridesPaths(loadout).Should().NotContain("Data/Interface/a.swf", "the mod's bytes are what was applied, so nothing on disk reads as an edit of it");
+        Connection.Db.OverridesPaths(loadout).Should().NotContain("Data/interface/a.swf");
     }
 
     [Fact]

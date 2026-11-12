@@ -35,14 +35,6 @@ public class GameWithoutNeverWrittenPathsTests(ITestOutputHelper helper) : AStea
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library) => CyberpunkSteamInstall.Install(library);
 
-    private IReadOnlyList<string> OverridesPaths(Loadout.ReadOnly loadout)
-    {
-        return LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
-            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Select(item => ((GamePath)item.TargetPath).Path.ToString())
-            .ToArray();
-    }
-
     [Fact]
     public async Task ALoadoutFileInTheGameFolderIsDeployedThere()
     {
@@ -69,6 +61,6 @@ public class GameWithoutNeverWrittenPathsTests(ITestOutputHelper helper) : AStea
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        OverridesPaths(Refresh(loadout)).Should().Contain("r6/scripts/dropped.reds");
+        Connection.Db.OverridesPaths(Refresh(loadout)).Should().Contain("r6/scripts/dropped.reds");
     }
 }
