@@ -18,6 +18,9 @@ public sealed class VerifyGameFilesInSteamActionHandler(IOSInterop osInterop) : 
     public string ActionId => DiagnosticActions.VerifyGameFilesInSteamId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         // The id goes into a URL, so only digits get through.

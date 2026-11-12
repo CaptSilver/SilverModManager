@@ -21,7 +21,8 @@ public sealed class McpToolListTests : IAsyncDisposable
             "wabbajack_list", "wabbajack_status", "wabbajack_download", "wabbajack_cancel",
             "loadout_revisions", "loadout_priority_list", "loadout_plugins_list",
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
-            "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace");
+            "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace",
+            "loadout_diagnostic_fix", "loadout_diagnostic_clear");
     }
 
     [Fact]
@@ -51,7 +52,21 @@ public sealed class McpToolListTests : IAsyncDisposable
         all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo(
             "settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel",
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
-            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace");
+            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace", "loadout_diagnostic_fix", "loadout_diagnostic_clear");
+    }
+
+    [Fact]
+    public void AReadOnlyServer_LeavesOutTheHealthCheckToolsThatWrite()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().NotContain(["loadout_diagnostic_fix", "loadout_diagnostic_clear"]);
+    }
+
+    [Fact]
+    public void TheHealthCheckFixTool_TakesTheDiagnosticAndAnOptionalAction()
+    {
+        var tool = Tools(readOnly: false).Single(t => t.Name == "loadout_diagnostic_fix");
+
+        tool.Params.Select(p => (p.Name, p.Required)).Should().Equal(("loadout", true), ("diagnostic", true), ("action", false));
     }
 
     [Fact]

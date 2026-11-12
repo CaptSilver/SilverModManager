@@ -22,6 +22,9 @@ public sealed class MoveHostFolderIntoGameActionHandler(IServiceProvider service
     public string ActionId => DiagnosticActions.MoveHostFolderIntoGameId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         if (arguments.Length != 2) throw new ArgumentException("Expected the host folder and the folder in the prefix.", nameof(arguments));

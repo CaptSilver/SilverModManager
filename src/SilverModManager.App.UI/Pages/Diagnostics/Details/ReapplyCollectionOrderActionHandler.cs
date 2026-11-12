@@ -21,6 +21,9 @@ public sealed class ReapplyCollectionOrderActionHandler(IServiceProvider service
     public string ActionId => DiagnosticActions.ReapplyCollectionOrderId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public string? LabelFor(DiagnosticAction action) => Language.DiagnosticAction_ReapplyCollectionOrder;
 
     /// <inheritdoc />

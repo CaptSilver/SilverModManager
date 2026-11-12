@@ -20,6 +20,9 @@ public sealed class DismissGameMovedActionHandler(IConnection connection, IDiagn
     public string ActionId => DiagnosticActions.DismissGameMovedId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         var loadout = Loadout.Load(connection.Db, loadoutId);

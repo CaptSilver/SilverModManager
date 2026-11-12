@@ -18,6 +18,9 @@ public sealed class InstallMe3ActionHandler(Me3HostProvisioner provisioner, IDia
     public string ActionId => Me3HostMissingEmitter.InstallActionId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         await provisioner.EnsureInstalled(loadoutId, CancellationToken.None);

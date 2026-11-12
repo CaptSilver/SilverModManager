@@ -17,6 +17,9 @@ public sealed class RestampBuildActionHandler(BuildStampStore stamps, IDiagnosti
     public string ActionId => BuildDriftEmitter.RestampActionId;
 
     /// <inheritdoc />
+    public bool RunsUnattended => true;
+
+    /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         await stamps.Restamp(loadoutId);

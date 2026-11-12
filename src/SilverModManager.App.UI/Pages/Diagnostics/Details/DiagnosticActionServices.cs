@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup;
 using SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary;

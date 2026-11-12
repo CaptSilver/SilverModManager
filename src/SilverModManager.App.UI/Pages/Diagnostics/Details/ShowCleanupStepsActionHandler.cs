@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Windows;

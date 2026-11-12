@@ -58,6 +58,19 @@ public static class MutatingTools
             readOnly: false, ["loadout", "revert"], takesLoadout: true, context.Limits.ReadTimeout,
             options: [new ToolParam("revision", "The revision number from loadout_revisions.", Required: true, Type: "integer", CliName: "revisionNumber")],
             emptyText: args => $"Reverted {args.String("loadout")} to revision {args.Int("revision")}."),
+        VerbTool.Create(context, "loadout_diagnostic_fix",
+            "Runs a fix the Health Check offers, the same as its button. Read loadout_health_check first: each problem has an index and a list of fixes, and only a fix whose canRunHere is true can run here; " +
+            "the others ask a question in the app and are refused. A restore point is written first." + UndoNote,
+            readOnly: false, ["loadout", "diagnostic", "fix"], takesLoadout: true, context.Limits.SlowReadTimeout,
+            options:
+            [
+                new ToolParam("diagnostic", "The problem's index from loadout_health_check, or its id when only one problem has it.", Required: true),
+                new ToolParam("action", "The fix's id from loadout_health_check. Needed only when the problem offers several."),
+            ],
+            emptyText: args => $"Ran the fix on {args.String("loadout")}."),
+        VerbTool.Create(context, "loadout_diagnostic_clear",
+            "Clears what the Health Check offers to clear, such as old crash logs, then runs its checks again. It deletes files, with no restore point to undo it. Find the loadout with loadouts_list.",
+            readOnly: false, ["loadout", "diagnostic", "clear"], takesLoadout: true, context.Limits.SlowReadTimeout),
         VerbTool.Create(context, "loadout_ini_set",
             "Sets one key in the loadout's own INI tweak, the same as the INI page's Settings tab: for example section Papyrus, key bEnableLogging, value 1 in SkyrimVR.ini. " +
             "The tweak is merged over the game's INI on the next Apply (run loadout_apply) and wins over any mod's or modlist's tweak, except keys the app sets itself, which are refused and named. " +
