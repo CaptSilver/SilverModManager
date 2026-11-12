@@ -85,7 +85,9 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
     {
         ((IGameUserDataFolders)Game).UserDataFolders.Should().Equal(
             new UserDataFolder(KnownPath.HomeDirectory, "Saved Games/CD Projekt Red/Cyberpunk 2077"));
-        Game.DiagnosticEmitters.OfType<SilverModManager.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().ContainSingle();
+        // The check is registered once for every game, so the game must not carry a second copy.
+        Game.DiagnosticEmitters.OfType<SilverModManager.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().BeEmpty();
+        ServiceProvider.GetServices<SilverModManager.Abstractions.Diagnostics.Emitters.IDiagnosticEmitter>().OfType<SilverModManager.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().ContainSingle();
     }
 
     [Fact]

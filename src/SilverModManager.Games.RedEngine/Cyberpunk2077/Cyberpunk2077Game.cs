@@ -98,7 +98,6 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
             provider.GetRequiredService<WineDllOverrideEmitter>(),
             provider.GetRequiredService<WinePrefixComponentsEmitter>(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
-            new UserDataLinkEmitter(),
         ];
 
         LibraryItemInstallers =

@@ -56,6 +56,14 @@ public class DanglingUserDataLinkTests : IDisposable
         => UserDataLinkEmitter.DiagnoseFolders("Test Game", folders);
 
     [Fact]
+    public void TheBrokenLinkCheckIsRegisteredOnceForEveryGame()
+    {
+        using var provider = new ServiceCollection().AddGenericGameSupport().BuildServiceProvider();
+
+        provider.GetServices<IDiagnosticEmitter>().OfType<UserDataLinkEmitter>().Should().ContainSingle();
+    }
+
+    [Fact]
     public void ADanglingFolderLinkIsCritical_NamingThePathAndTheMissingTarget()
     {
         var parent = Dir("saves");
