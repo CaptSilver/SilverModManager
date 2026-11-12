@@ -6,7 +6,6 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
-using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;

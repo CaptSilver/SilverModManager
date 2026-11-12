@@ -314,7 +314,27 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         var diagnostic = (await Diagnose(Tree(dependant))).Should().ContainSingle(d => d.Id == MissingMasterId).Subject;
 
         Summary(diagnostic).Should().Contain("Absent.esm");
-        ModLinks(diagnostic).Should().Equal(default(LoadoutItemGroupId));
+        ModLinks(diagnostic).Should().BeEmpty("a link to the zero id would show as an invalid entity");
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_ADisabledMasterStillNamesItsGroupWhenTheDependantHasNoGroupToLinkTo()
+    {
+        var loadout = await EnsureLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(OverridesGroupLookup.Find(Refresh(loadout)), recursive: true);
+            var disabledMod = AddEmptyGroup(tx, loadout, "Disabled mod");
+            AddFile(tx, loadout, disabledMod, DataPath("Disabled.esm"), content: "Disabled.esm");
+            tx.Add(disabledMod.Value, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+        var dependant = await StoredPlugin("Dependant.esp", "Disabled.esm");
+
+        var diagnostic = (await Diagnose(Tree(dependant))).Should().ContainSingle(d => d.Id == DisabledMasterId).Subject;
+
+        ModLinks(diagnostic).Should().BeEmpty();
+        diagnostic.FormatSummary(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("Disabled mod");
     }
 
     [Fact]

@@ -2,7 +2,7 @@ using System.Collections.Frozen;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.References;
-
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -51,12 +51,20 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         var overrides = OverridesGroupLookup.Find(loadout);
         // The mod link names the group holding the plugin's loadout row. A plugin with no row of its own (a file found
         // in the game folder) falls back to the Overrides group. A loadout with neither still gets the diagnostic,
-        // since the master is missing regardless, but its mod link has no group to point at and shows as an invalid entity.
-        LoadoutItemGroupReference GroupOf(in SyncNode node) => new()
+        // since the master is missing regardless, but it links no mod: a reference to the zero id would show as an
+        // invalid entity.
+        EntityId? GroupOf(in SyncNode node) => OwningGroup.Of(loadout.Db, node) ?? (overrides.Value == 0 ? null : overrides);
+        LoadoutItemGroupReference ReferenceTo(EntityId id) => new()
         {
             TxId = loadout.Db.BasisTxId,
-            DataId = LoadoutItemGroupId.From(OwningGroup.Of(loadout.Db, node) ?? overrides),
+            DataId = LoadoutItemGroupId.From(id),
         };
+        // The templates require a mod reference, so a diagnostic with no group gets the zero one and drops it here.
+        Diagnostic Linked(Diagnostic diagnostic, EntityId? group)
+        {
+            if (group is null) diagnostic.DataReferences.Remove(DataReferenceDescription.Mod);
+            return diagnostic;
+        }
         foreach (var (key, node) in plugins)
         {
             var header = await _game.ParseNode(node, node.Loadout.Identity, key, installation);
@@ -92,25 +100,23 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                 // If the master is disabled, emit a diagnostic
                 if (pluginsInLoadout.TryGetValue(master, out var disabled))
                 {
-                    yield return Diagnostics.CreateMissingMasterIsDisabled(
-                        GroupOf(header.Value.Node),
+                    var group = GroupOf(header.Value.Node);
+                    yield return Linked(Diagnostics.CreateMissingMasterIsDisabled(
+                        ReferenceTo(group ?? default),
                         header.Key,
                         master,
-                        new LoadoutItemGroupReference()
-                            {
-                                TxId = loadout.Db.BasisTxId,
-                                DataId = disabled.LoadoutItemGroupId,
-                            }
-                    );
+                        ReferenceTo(disabled.Id)
+                    ), group);
                 }
                 // Otherwise, emit a diagnostic that the master is missing
                 else
                 {
-                    yield return Diagnostics.CreateMissingMaster(
-                        GroupOf(header.Value.Node),
+                    var group = GroupOf(header.Value.Node);
+                    yield return Linked(Diagnostics.CreateMissingMaster(
+                        ReferenceTo(group ?? default),
                         header.Key,
                         master
-                    );
+                    ), group);
                 }
             }
         }
