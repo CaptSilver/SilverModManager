@@ -214,7 +214,7 @@ public class GameIniBakeTests(ITestOutputHelper helper) : IniTweakTestBase<GameI
         using var tx = Connection.BeginTransaction();
         using var pins = TransactionPins.Hold(tx);
 
-        var act = () => ((IIntrinsicFileWithWriteRecord)file).RecordWrite(new IntrinsicWrite(UserIni, UserIni.xxHash3(), loadout, tx));
+        var act = () => ((IIntrinsicFileWithWriteRecord)file).RecordWrite(new IntrinsicWrite(UserIni, loadout, tx));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         FileStorePins.Pinned().Should().NotContain(FileIdentity.XxHash3(UserIni.xxHash3()), "nothing is stored for a row that does not exist");

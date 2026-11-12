@@ -275,7 +275,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             var bytes = rendered.ToArray();
             var hash = bytes.xxHash3();
             if (instance is IIntrinsicFileWithWriteRecord recording)
-                await recording.RecordWrite(new IntrinsicWrite(bytes, hash, loadout, context.Transaction));
+                await recording.RecordWrite(new IntrinsicWrite(bytes, loadout, context.Transaction));
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
             resolvedPath.Parent.CreateDirectory();

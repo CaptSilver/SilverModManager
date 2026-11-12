@@ -1,4 +1,3 @@
-using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 
@@ -15,5 +14,5 @@ public interface IIntrinsicFileWithWriteRecord : IIntrinsicFile
     Task RecordWrite(IntrinsicWrite write);
 }
 
-/// <summary>One write of an intrinsic file: the rendered bytes, their xxHash3, and the apply writing them.</summary>
-public sealed record IntrinsicWrite(byte[] Bytes, Hash Hash, Loadout.ReadOnly Loadout, ITransaction Transaction);
+/// <summary>One write of an intrinsic file: the rendered bytes and the apply writing them.</summary>
+public sealed record IntrinsicWrite(byte[] Bytes, Loadout.ReadOnly Loadout, ITransaction Transaction);

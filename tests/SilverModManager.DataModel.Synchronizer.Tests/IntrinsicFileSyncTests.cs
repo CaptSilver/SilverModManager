@@ -175,7 +175,6 @@ public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTes
 
         var write = writes.Should().ContainSingle().Subject;
         write.Bytes.Should().Equal(await Listing.ReadAllBytesAsync(), "the record is what landed on disk");
-        write.Hash.Should().Be(write.Bytes.xxHash3());
         write.Loadout.LoadoutId.Should().Be(loadout.LoadoutId);
         FileStorePins.Pinned().Should().NotContain(pinned, "the hold on the apply's transaction released it after the commit");
     }

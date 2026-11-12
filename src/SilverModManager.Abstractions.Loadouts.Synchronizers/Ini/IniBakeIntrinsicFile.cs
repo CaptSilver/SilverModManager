@@ -39,10 +39,11 @@ public sealed class IniBakeIntrinsicFile(GamePath path, IGameIniFiles game, IFil
                     ?? throw new InvalidOperationException($"{Path} is written for loadout {write.Loadout.LoadoutId}, which has no INI state row for it");
         // An intrinsic node is written whenever the loadout provides the file, changed or not, so most writes repeat
         // the recorded bake; those add no datom.
-        if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var last) && last == write.Hash) return;
+        var hash = write.Bytes.xxHash3();
+        if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var last) && last == hash) return;
 
         TransactionPins.Keep(write.Transaction, await IniEdits.Store(fileStore, Path, write.Bytes));
-        write.Transaction.Add(state.Id, LoadoutIniState.LastBakedHash, write.Hash);
+        write.Transaction.Add(state.Id, LoadoutIniState.LastBakedHash, hash);
     }
 
     /// <summary>
