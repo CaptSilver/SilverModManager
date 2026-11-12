@@ -24,6 +24,8 @@ public class HeadlessUiIsolationTests(IServiceProvider provider) : AUiTest(provi
     [InlineData(typeof(WindowChromeResizeGripTests))]
     [InlineData(typeof(MainWindowDropTargetTests))]
     [InlineData(typeof(LoadoutLeftMenuDragTests))]
+    [InlineData(typeof(ApplyDiffRemoveTests))]
+    [InlineData(typeof(CollectionToggleTests))]
     public void ClassesThatDriveHeadlessInput_RunOneAtATime(Type testClass)
     {
         var collection = testClass.GetCustomAttribute<CollectionAttribute>();

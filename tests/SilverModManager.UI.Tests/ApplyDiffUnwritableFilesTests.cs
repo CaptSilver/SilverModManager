@@ -157,7 +157,8 @@ public class ApplyDiffUnwritableFilesTests(IServiceProvider provider) : AUiTest(
 
         await Run(h.Page.KeepDiskFilesCommand);
 
-        await h.Sync.Received(1).ResolveUnwritableFiles(h.Loadout.LoadoutId, null, UnwritableResolution.KeepDiskFile, Arg.Any<CancellationToken>());
+        // The command hands the call to the thread pool, so it can land after Run returns.
+        await Eventually(() => h.Sync.Received(1).ResolveUnwritableFiles(h.Loadout.LoadoutId, null, UnwritableResolution.KeepDiskFile, Arg.Any<CancellationToken>()));
         await Eventually(() => h.Page.UnwritableFiles.Should().ContainSingle().Which.File.Path.Should().Be(Missing));
         h.Toasts.Received().ShowToast(Language.ApplyDiff_Unwritable_Toast);
     }
@@ -170,7 +171,8 @@ public class ApplyDiffUnwritableFilesTests(IServiceProvider provider) : AUiTest(
 
         await Run(h.Page.ForgetFilesCommand);
 
-        await h.Sync.Received(1).ResolveUnwritableFiles(h.Loadout.LoadoutId, null, UnwritableResolution.Forget, Arg.Any<CancellationToken>());
+        // The command hands the call to the thread pool, so it can land after Run returns.
+        await Eventually(() => h.Sync.Received(1).ResolveUnwritableFiles(h.Loadout.LoadoutId, null, UnwritableResolution.Forget, Arg.Any<CancellationToken>()));
         await Eventually(() => h.Page.UnwritableFiles.Should().BeEmpty());
     }
 

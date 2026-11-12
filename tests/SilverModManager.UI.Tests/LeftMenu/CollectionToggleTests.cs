@@ -20,6 +20,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Tests.Framework;
 using SilverModManager.UI.Tests.Pages.Collections;
 using ReactiveUI;
 
@@ -29,6 +30,7 @@ namespace SilverModManager.UI.Tests.LeftMenu;
 /// The switch on an installed collection's left-menu entry. The ToggleSwitch writes its new state into IsEnabled
 /// before its command runs, so the command must not depend on what IsEnabled holds: it flips the state the database has.
 /// </summary>
+[Collection(HeadlessUi.Collection)]
 public class CollectionToggleTests(IServiceProvider provider) : AUiTest(provider)
 {
     private sealed class OverridingServiceProvider(IServiceProvider inner, params (Type Type, object Instance)[] overrides) : IServiceProvider

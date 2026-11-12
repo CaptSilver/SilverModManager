@@ -28,6 +28,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Tests.Framework;
 using ReactiveUI;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
@@ -39,6 +40,7 @@ namespace SilverModManager.UI.Tests;
 /// The Delete command of the Apply preview: when it can run, what the click plans and asks, what an accepted
 /// removal does to the loadout and the tree, and where failures go.
 /// </summary>
+[Collection(HeadlessUi.Collection)]
 public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static readonly GamePath GameRoot = new(LocationId.Game, "");

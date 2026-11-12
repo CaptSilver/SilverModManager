@@ -128,6 +128,8 @@ public class ApplyControlInstallTests(IServiceProvider provider) : AUiTest(provi
         var mine = await SeedLoadoutRow(GameStore.Unknown, $"Mine {Guid.NewGuid():N}");
         var other = await SeedLoadoutRow(GameStore.Unknown, $"Other {Guid.NewGuid():N}");
         var vm = await OpenFor(mine);
+        // Apply starts off until the loadout's status arrives; without this wait the check below can read that start.
+        await EventuallyOnUi(async () => (await CanApply(vm)).Should().BeTrue("nothing else holds Apply back"));
 
         var (install, gate) = await BeginInstall(other);
 
