@@ -39,6 +39,7 @@ public static class Startup
 
         container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, RecordingLoadoutEmitter>());
         container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ScriptedLoadoutEmitter>());
+        container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ScriptedClearableSource>());
 
         return container
             .AddGameServices()

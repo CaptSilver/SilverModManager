@@ -42,6 +42,26 @@ public interface IDiagnosticListViewModel : IPageViewModelInterface
     /// What the last <see cref="CopySupportBundleCommand"/> run did; empty before the first run.
     /// </summary>
     public string SupportBundleMessage { get; }
+
+    /// <summary>
+    /// Whether the loadout's game has something the user can clear from Health Check, such as old crash logs.
+    /// </summary>
+    public bool CanClear { get; }
+
+    /// <summary>
+    /// The text of the clear button, from what there is to clear.
+    /// </summary>
+    public string ClearLabel { get; }
+
+    /// <summary>
+    /// Clears what <see cref="CanClear"/> found, then refreshes the diagnostics.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> ClearCommand { get; }
+
+    /// <summary>
+    /// What the last <see cref="ClearCommand"/> run did; empty before the first run.
+    /// </summary>
+    public string ClearMessage { get; }
 }
 
 [Flags]

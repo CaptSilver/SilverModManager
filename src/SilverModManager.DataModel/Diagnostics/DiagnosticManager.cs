@@ -45,6 +45,32 @@ internal sealed class DiagnosticManager : IDiagnosticManager
         }
     }
 
+    public DiagnosticClearAction[] GetClearActions(LoadoutId loadoutId)
+    {
+        var loadout = Loadout.Load(_connection.Db, loadoutId);
+        if (!loadout.IsValid()) return [];
+
+        return loadout.InstallationInstance.GetGame().DiagnosticEmitters.Concat(_sharedEmitters)
+            .OfType<IClearableDiagnosticSource>()
+            .Where(source => HasAnythingToClear(source, loadout))
+            .Select(source => new DiagnosticClearAction(source.ClearLabel, token => source.ClearAsync(loadout, token)))
+            .ToArray();
+    }
+
+    // Same as a failing emitter in a run: one source that cannot read its folder leaves the others' buttons alone.
+    private bool HasAnythingToClear(IClearableDiagnosticSource source, Loadout.ReadOnly loadout)
+    {
+        try
+        {
+            return source.HasAnythingToClear(loadout);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Could not tell whether {Source} has anything to clear", source.GetType());
+            return false;
+        }
+    }
+
     public Task RefreshAsync(LoadoutId loadoutId)
     {
         LoadoutDiagnostics entry;

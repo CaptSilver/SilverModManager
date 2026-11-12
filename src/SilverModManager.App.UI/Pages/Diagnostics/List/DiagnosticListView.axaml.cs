@@ -72,6 +72,18 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                 this.OneWayBind(ViewModel, vm => vm.SupportBundleMessage, view => view.SupportBundleText.Text)
                     .DisposeWith(disposable);
 
+                this.BindCommand(ViewModel, vm => vm.ClearCommand, view => view.ClearButton)
+                    .DisposeWith(disposable);
+
+                this.OneWayBind(ViewModel, vm => vm.CanClear, view => view.ClearButton.IsVisible)
+                    .DisposeWith(disposable);
+
+                this.OneWayBind(ViewModel, vm => vm.ClearLabel, view => view.ClearButton.Text)
+                    .DisposeWith(disposable);
+
+                this.OneWayBind(ViewModel, vm => vm.ClearMessage, view => view.ClearText.Text)
+                    .DisposeWith(disposable);
+
                 // Every refresh replaces the entries. The same diagnostics (id, title and summary: an id only names the kind of diagnostic) keep the scroll offset; another set (a tab switch, a fix) starts at the top.
                 this.WhenAnyValue(view => view.ViewModel)
                     .WhereNotNull()

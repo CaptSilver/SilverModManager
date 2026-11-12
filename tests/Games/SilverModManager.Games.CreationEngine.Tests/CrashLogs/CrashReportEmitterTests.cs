@@ -358,4 +358,58 @@ public class CrashReportEmitterTests(ITestOutputHelper helper)
         index.PluginNames.Should().BeEquivalentTo(["Some Mod.esp", "Off.esp"]);
         index.SkseDllNames.Should().BeEquivalentTo(["some.dll", "off.dll"]);
     }
+
+    private AbsolutePath OldLogsFolder => LogFolder / CrashReportEmitter.OldLogsFolderName;
+
+    [Fact]
+    public async Task ClearingMovesEveryCrashLogIntoTheOldLogsFolderAndTheCrashGoesAway()
+    {
+        var loadout = await CreateLoadout();
+        await TwoEnbLogsFor(loadout);
+        await WriteLog("light-list-bread.log", lastWriteUtc: DateTime.UtcNow.AddDays(-30));
+        (await Diagnose(loadout)).Should().NotBeEmpty();
+        Emitter.HasAnythingToClear(Refresh(loadout)).Should().BeTrue();
+
+        var message = await Emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
+
+        message.Should().Contain("3 crash logs").And.Contain(CrashReportEmitter.OldLogsFolderName);
+        LogFolder.EnumerateFiles("crash-*.log", recursive: false).Should().BeEmpty();
+        OldLogsFolder.EnumerateFiles("*", recursive: false).Select(f => f.FileName.ToString()).Should().BeEquivalentTo(
+            ["crash-enb-light-mushroom-a.log", "crash-enb-light-mushroom-b.log", "crash-light-list-bread.log"],
+            "a log older than the window is cleared too, and every one is kept");
+        (await Diagnose(loadout)).Should().BeEmpty();
+        Emitter.HasAnythingToClear(Refresh(loadout)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ClearingKeepsALogOfTheSameNameAlreadyInTheOldLogsFolder()
+    {
+        var loadout = await CreateLoadout();
+        OldLogsFolder.CreateDirectory();
+        await (OldLogsFolder / "crash-light-list-bread.log").WriteAllTextAsync("cleared before");
+        await WriteLog("light-list-bread.log");
+
+        await Emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
+
+        (await (OldLogsFolder / "crash-light-list-bread.log").ReadAllTextAsync()).Should().Be("cleared before");
+        (await (OldLogsFolder / "crash-light-list-bread (2).log").ReadAllBytesAsync()).Should().Equal(await File.ReadAllBytesAsync(Fixtures.Path("light-list-bread.log")));
+        OldLogsFolder.EnumerateFiles("*", recursive: false).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task WithNoLogFolderThereIsNothingToClearAndClearingCreatesNothing()
+    {
+        var loadout = await CreateLoadout();
+
+        Emitter.HasAnythingToClear(Refresh(loadout)).Should().BeFalse();
+        await Emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
+
+        LogFolder.DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheButtonSaysWhatItClears()
+    {
+        Emitter.ClearLabel.Should().Be("Clear crash reports");
+    }
 }

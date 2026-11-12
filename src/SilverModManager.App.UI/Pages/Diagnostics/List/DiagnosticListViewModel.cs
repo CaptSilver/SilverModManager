@@ -38,6 +38,13 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
 
     public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }
 
+    [Reactive] private partial DiagnosticClearAction[] ClearActions { get; set; } = [];
+    private int _clearsRun;
+    [Reactive] public partial bool CanClear { get; private set; }
+    [Reactive] public partial string ClearLabel { get; private set; } = "";
+    [Reactive] public partial string ClearMessage { get; private set; } = "";
+    public ReactiveCommand<Unit, Unit> ClearCommand { get; }
+
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
     private readonly ObservableAsPropertyHelper<bool> _isRefreshing;
@@ -68,6 +75,13 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
         _isRefreshing = RefreshCommand.IsExecuting.ToProperty(this, vm => vm.IsRefreshing);
 
         CopySupportBundleCommand = ReactiveCommand.CreateFromTask(() => CopySupportBundle(supportBundleWriter, interop));
+        ClearCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            Interlocked.Increment(ref _clearsRun);
+            ClearMessage = await Clear(ClearActions);
+            ClearActions = await Task.Run(() => diagnosticManager.GetClearActions(LoadoutId));
+            RefreshCommand.Execute().SubscribeWithErrorLogging();
+        });
 
         TabIcon = IconValues.Cardiology;
         TabTitle = Language.DiagnosticListViewModel_DiagnosticListViewModel_Diagnostics;
@@ -111,6 +125,26 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
             switchedWindow.Merge(regainedFocus)
                 .Throttle(ActivationDebounce)
                 .Subscribe(_ => RefreshCommand.Execute().SubscribeWithErrorLogging())
+                .DisposeWith(disposable);
+
+            // What can be cleared is read from disk again after every run, since a run is what notices new files.
+            this.WhenAnyValue(vm => vm.Diagnostics, vm => vm.LoadoutId)
+                .Select(tuple => tuple.Item2)
+                .ObserveOn(RxApp.TaskpoolScheduler)
+                .Select(loadoutId => (ClearsRun: Volatile.Read(ref _clearsRun), Actions: diagnosticManager.GetClearActions(loadoutId)))
+                .OnUI()
+                // A look that started before a clear read the folder before it was emptied.
+                .Where(look => look.ClearsRun == Volatile.Read(ref _clearsRun))
+                .Select(look => look.Actions)
+                .BindToVM(this, vm => vm.ClearActions)
+                .DisposeWith(disposable);
+
+            this.WhenAnyValue(vm => vm.ClearActions)
+                .Subscribe(actions =>
+                {
+                    CanClear = actions.Length > 0;
+                    ClearLabel = string.Join(", ", actions.Select(action => action.Label));
+                })
                 .DisposeWith(disposable);
 
             // filter diagnostics
@@ -236,6 +270,24 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
         {
             SupportBundleMessage = $"Support bundle written to {path}. Could not copy the path to the clipboard.";
         }
+    }
+
+    // A failure is shown on the page: clearing is the user's own request, so an error here is not a crash.
+    private static async Task<string> Clear(DiagnosticClearAction[] actions)
+    {
+        var results = new List<string>();
+        foreach (var action in actions)
+        {
+            try
+            {
+                results.Add(await action.ClearAsync(CancellationToken.None));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                results.Add($"Could not clear: {ex.Message}");
+            }
+        }
+        return string.Join(" ", results);
     }
 
     private static DiagnosticFilter SeverityToFilter(DiagnosticSeverity severity)

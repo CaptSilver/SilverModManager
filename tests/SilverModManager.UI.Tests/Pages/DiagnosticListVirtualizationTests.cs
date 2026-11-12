@@ -42,6 +42,10 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
         public bool IsRefreshing => false;
         public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; } = ReactiveCommand.Create(() => { });
         public string SupportBundleMessage => "";
+        public bool CanClear => false;
+        public string ClearLabel => "";
+        public ReactiveCommand<Unit, Unit> ClearCommand { get; } = ReactiveCommand.Create(() => { });
+        public string ClearMessage => "";
     }
 
     private static IDiagnosticEntryViewModel[] Entries(int count) => Enumerable.Range(0, count)

@@ -383,6 +383,49 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
             .FirstAsync();
     }
 
+    [Fact]
+    public async Task GetClearActions_OffersASourceWithSomethingToClearAndClearsItForThatLoadout()
+    {
+        var source = ClearableSource();
+        var loadout = await CreateLoadout();
+        source.Clearable[loadout.LoadoutId] = true;
+
+        var action = DiagnosticManager.GetClearActions(loadout.LoadoutId).Should().ContainSingle().Subject;
+        action.Label.Should().Be(ScriptedClearableSource.Label);
+
+        (await action.ClearAsync(CancellationToken.None)).Should().Be("cleared");
+        source.Cleared.Should().Equal(loadout.LoadoutId);
+    }
+
+    [Fact]
+    public async Task GetClearActions_LeavesOutASourceWithNothingToClear()
+    {
+        ClearableSource();
+        var loadout = await CreateLoadout();
+
+        DiagnosticManager.GetClearActions(loadout.LoadoutId).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetClearActions_LeavesOutASourceThatCannotTellWhetherItHasAnythingToClear()
+    {
+        var source = ClearableSource();
+        var loadout = await CreateLoadout();
+        source.Clearable[loadout.LoadoutId] = true;
+        source.Unreadable[loadout.LoadoutId] = true;
+
+        DiagnosticManager.GetClearActions(loadout.LoadoutId).Should().BeEmpty("a folder it cannot list is not worth an error dialog");
+    }
+
+    [Fact]
+    public void GetClearActions_IsEmptyForALoadoutThatDoesNotExist()
+    {
+        DiagnosticManager.GetClearActions(LoadoutId.From(EntityId.From(0xDEAD))).Should().BeEmpty();
+    }
+
+    private ScriptedClearableSource ClearableSource() =>
+        provider.GetServices<IDiagnosticEmitter>().OfType<ScriptedClearableSource>().Should().ContainSingle().Subject;
+
     private ScriptedLoadoutEmitter ScriptedEmitter() =>
         provider.GetServices<IDiagnosticEmitter>().OfType<ScriptedLoadoutEmitter>().Should().ContainSingle().Subject;
 }
@@ -443,5 +486,27 @@ public sealed class RecordingLoadoutEmitter : ILoadoutDiagnosticEmitter
         await Task.Yield();
         Loadouts.Add(loadout.LoadoutId);
         yield break;
+    }
+}
+
+/// <summary>Has something to clear for the loadouts a test marks, and records which loadouts it cleared.</summary>
+public sealed class ScriptedClearableSource : IClearableDiagnosticSource
+{
+    public const string Label = "Clear test reports";
+
+    public ConcurrentDictionary<LoadoutId, bool> Clearable { get; } = new();
+    public ConcurrentDictionary<LoadoutId, bool> Unreadable { get; } = new();
+    public ConcurrentQueue<LoadoutId> Cleared { get; } = new();
+
+    public string ClearLabel => Label;
+
+    public bool HasAnythingToClear(Loadout.ReadOnly loadout) => Unreadable.GetValueOrDefault(loadout.LoadoutId)
+        ? throw new UnauthorizedAccessException("Access to the path is denied.")
+        : Clearable.GetValueOrDefault(loadout.LoadoutId);
+
+    public Task<string> ClearAsync(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    {
+        Cleared.Enqueue(loadout.LoadoutId);
+        return Task.FromResult("cleared");
     }
 }

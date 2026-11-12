@@ -30,4 +30,11 @@ public interface IDiagnosticManager : IDisposable
     /// Returns the counts of the diagnostics per severity level.
     /// </summary>
     IObservable<(int NumSuggestions, int NumWarnings, int NumCritical)> CountDiagnostics(LoadoutId loadoutId);
+
+    /// <summary>
+    /// What the user can clear from the loadout's diagnostics now, such as old crash logs: one action for each of the
+    /// game's emitters that has something to clear. Reads the disk, so call it off the UI thread. Clearing does not
+    /// refresh; call <see cref="RefreshAsync"/> after it.
+    /// </summary>
+    DiagnosticClearAction[] GetClearActions(LoadoutId loadoutId);
 }
