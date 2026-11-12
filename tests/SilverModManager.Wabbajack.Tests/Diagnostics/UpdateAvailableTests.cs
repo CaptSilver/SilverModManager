@@ -27,6 +27,7 @@ public class UpdateAvailableTests(ITestOutputHelper helper) : UpdateCheckTestBas
             return Task.CompletedTask;
         }
         public IObservable<(int NumSuggestions, int NumWarnings, int NumCritical)> CountDiagnostics(LoadoutId loadoutId) => throw new NotSupportedException();
+        public DiagnosticClearAction[] GetClearActions(LoadoutId loadoutId) => throw new NotSupportedException();
         public void Dispose() { }
     }
 
