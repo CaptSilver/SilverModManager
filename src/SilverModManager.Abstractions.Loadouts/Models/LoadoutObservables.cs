@@ -1,6 +1,7 @@
 using DynamicData;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Loadouts;
@@ -23,7 +24,7 @@ public class LoadoutQueries2
                 loadouts.TrackedEntitiesForLoadout({connection}, {id}) ents
                 LEFT JOIN mdb_Datoms() d ON d.E = ents.Id
                 """)
-            .Observe(x => x.LoadoutId)
+            .ObserveInBackground(x => x.LoadoutId)
             .QueryWhenChanged(_ => Loadout.Load(connection.Db, id));
     }
 
@@ -49,7 +50,7 @@ public class LoadoutQueries2
                 ) ents
                 LEFT JOIN mdb_Datoms() d ON d.E = ents.Id
                 """)
-            .Observe(x => x.LoadoutId)
+            .ObserveInBackground(x => x.LoadoutId)
             .QueryWhenChanged(query => query.Items.Select(row => (row.Max, row.Count)).FirstOrDefault());
     }
 
@@ -64,7 +65,7 @@ public class LoadoutQueries2
                 loadouts.SyncInputsForLoadout({connection}, {id}) ents
                 LEFT JOIN mdb_Datoms() d ON d.E = ents.Id
                 """)
-            .Observe(x => x.LoadoutId)
+            .ObserveInBackground(x => x.LoadoutId)
             .QueryWhenChanged(_ => Loadout.Load(connection.Db, id));
     }
 }

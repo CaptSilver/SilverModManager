@@ -37,6 +37,7 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using NexusMods.Paths;
@@ -115,6 +116,12 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
 
     [Reactive] public partial InstallationTarget? SelectedInstallationTarget { get; set; }
 
+    /// <summary>
+    /// False until the first installation target has been bound. The targets arrive from a background query after the
+    /// page activates, so for a moment there are none to install into.
+    /// </summary>
+    [Reactive] public partial bool HasInstallationTargets { get; private set; }
+
     public LibraryViewModel(
         IWindowManager windowManager,
         IServiceProvider serviceProvider,
@@ -174,14 +181,22 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             .ObserveCountChanged()
             .Select(count => count > 0);
         
-        InstallSelectedItemsCommand = hasSelection.ToReactiveCommand<Unit>(
+        // Targets fill in the background after activation. Until one exists an Install press would only queue
+        // (Parallel lets every press queue), so the commands stay disabled instead.
+        var canInstall = R3.Observable.CombineLatest(
+            hasSelection,
+            this.WhenAnyValue(vm => vm.HasInstallationTargets).ToObservable(),
+            (selected, hasTargets) => selected && hasTargets
+        );
+
+        InstallSelectedItemsCommand = canInstall.ToReactiveCommand<Unit>(
             executeAsync: (_, cancellationToken) => InstallSelectedItems(useAdvancedInstaller: false, cancellationToken),
             awaitOperation: AwaitOperation.Parallel,
             initialCanExecute: false,
             configureAwait: false
         );
 
-        InstallSelectedItemsWithAdvancedInstallerCommand = hasSelection.ToReactiveCommand<Unit>(
+        InstallSelectedItemsWithAdvancedInstallerCommand = canInstall.ToReactiveCommand<Unit>(
             executeAsync: (_, cancellationToken) => InstallSelectedItems(useAdvancedInstaller: true, cancellationToken),
             awaitOperation: AwaitOperation.Parallel,
             initialCanExecute: false,
@@ -258,6 +273,9 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
         this.WhenActivated(disposables =>
         {
             Disposable.Create(this, static vm => vm.StorageProvider = null).AddTo(disposables);
+            // The collection below is replaced on every activation; a flag left over from the last one would
+            // claim targets that are not bound yet.
+            HasInstallationTargets = false;
             Adapter.Activate().AddTo(disposables);
 
             Adapter.MessageSubject.SubscribeAwait(
@@ -270,7 +288,7 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
                             {
                                 var libraryItem = LibraryItem.Load(_connection.Db, id);
                                 if (!libraryItem.IsValid()) continue;
-                                await InstallLibraryItem(libraryItem, _loadout, GetInstallationTarget(), cancellationToken);
+                                await InstallLibraryItem(libraryItem, _loadout, await GetInstallationTarget(cancellationToken), cancellationToken);
                             }
                         },
                         async updateAndReplaceMessage => await HandleUpdateAndReplaceMessage(updateAndReplaceMessage, cancellationToken),
@@ -287,13 +305,14 @@ public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibr
             ).AddTo(disposables);
 
             LoadoutQueries2.MutableCollections(_connection, _loadout.LoadoutId)
-                .Observe(r => r.GroupId)
+                .ObserveInBackground(r => r.GroupId)
                 .FilterImmutable(r => IsInstallTarget(ownership, CollectionGroup.Load(_connection.Db, r.GroupId)))
                 .Transform(r => new InstallationTarget(r.GroupId, r.Name))
                 .SortBy(target => target.Id.Value.Value)
                 .DistinctUntilChanged()
+                .OnUI()
                 .Bind(out _installationTargets)
-                .Subscribe()
+                .Subscribe(_ => HasInstallationTargets = _installationTargets.Count > 0)
                 .AddTo(disposables);
 
             var nexusCards = CollectionRevisionMetadata.ObserveAll(_connection)
@@ -775,11 +794,25 @@ After asking design, we're choosing to simply open the mod page for now.
             });
     }
 
-    private LoadoutItemGroupId GetInstallationTarget() => (SelectedInstallationTarget?.Id ?? _installationTargets[0].Id).Value;
-
-    private ValueTask InstallSelectedItems(bool useAdvancedInstaller, CancellationToken cancellationToken)
+    /// <summary>
+    /// The selected target, or the first one. Waits for the first target to be bound when the page has only just
+    /// activated and the background query has not answered yet.
+    /// </summary>
+    private async ValueTask<LoadoutItemGroupId> GetInstallationTarget(CancellationToken cancellationToken)
     {
-        return InstallItems(GetSelectedIds(), GetInstallationTarget(), useAdvancedInstaller, cancellationToken);
+        if (SelectedInstallationTarget is { } selected) return selected.Id.Value;
+        if (_installationTargets.Count == 0)
+        {
+            await System.Reactive.Threading.Tasks.TaskObservableExtensions.ToTask(
+                System.Reactive.Linq.Observable.FirstAsync(this.WhenAnyValue(vm => vm.HasInstallationTargets), has => has),
+                cancellationToken);
+        }
+        return SelectedInstallationTarget?.Id.Value ?? _installationTargets[0].Id.Value;
+    }
+
+    private async ValueTask InstallSelectedItems(bool useAdvancedInstaller, CancellationToken cancellationToken)
+    {
+        await InstallItems(GetSelectedIds(), await GetInstallationTarget(cancellationToken), useAdvancedInstaller, cancellationToken);
     }
 
     private async ValueTask InstallLibraryItem(

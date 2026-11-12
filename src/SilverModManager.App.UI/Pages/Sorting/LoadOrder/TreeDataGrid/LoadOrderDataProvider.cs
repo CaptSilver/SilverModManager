@@ -65,8 +65,9 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
             .RefCount();
 
         // Scanning the order for its last index would run on the caller's thread, the UI thread when the page opens.
-        // The first change set already carries every row, so the index is read from it and the query is subscribed on
-        // the task pool.
+        // The first change set already carries every row, so the index is read from it. The varieties whose rows come
+        // from a query already subscribe it on the task pool; this hop covers the ones that read the order inside
+        // Subscribe.
         return System.Reactive.Linq.Observable.Defer(() =>
             {
                 var initialLastIndex = 0;

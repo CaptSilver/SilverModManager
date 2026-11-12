@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -47,7 +48,7 @@ public static class RedModExtensions
             SELECT * FROM redmod.RedModSortOrderWithLoadoutData({connection}, {sortOrderId.Value}, {loadoutId}, {LocationId.Game.Value})
             """
             )
-            .Observe(table => new SortItemKey<string>(table.FolderName));
+            .ObserveInBackground(table => new SortItemKey<string>(table.FolderName));
     }
     
 }

@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
@@ -94,7 +95,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                     CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
                 FROM bg3.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {ModsLocation})
                 """)
-            .Observe(row => Bg3PakSortData.KeyFor(row.PakName))
+            .ObserveInBackground(row => Bg3PakSortData.KeyFor(row.PakName))
             .Transform(row =>
             {
                 var data = new Bg3PakLoadoutData(row.PakName, FileIdentity.ParseHex(row.Identity), (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
@@ -233,7 +234,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public IObservable<string?> HoldSummary(SortOrderId sortOrderId) =>
         Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
-            .Observe(row => row.Id)
+            .ObserveInBackground(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
             .DistinctUntilChanged();
@@ -267,7 +268,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public IObservable<string?> ReplacedEditSummary(SortOrderId sortOrderId) =>
         Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.Notices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
-            .Observe(row => row.Id)
+            .ObserveInBackground(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
             .DistinctUntilChanged();

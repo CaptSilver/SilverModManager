@@ -1,5 +1,6 @@
 using DynamicData;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Abstractions.Games;
@@ -16,6 +17,6 @@ public static class SortOrderQueries
                                                  SELECT * FROM sortorder.TrackLoadoutItemChanges({connection}, {gameId.Value})
                                                  """
             )
-            .Observe(x => x.ItemId);
+            .ObserveInBackground(x => x.ItemId);
     }
 }

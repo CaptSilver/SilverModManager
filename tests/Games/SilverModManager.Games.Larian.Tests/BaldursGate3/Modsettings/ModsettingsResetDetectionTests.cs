@@ -47,12 +47,8 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
     private int ResetCount(Loadout.ReadOnly loadout) =>
         Notice(loadout) is { } notice && notice.ResetCount.HasValue ? notice.ResetCount.Value : 0;
 
-    private string? HoldSummary(Loadout.ReadOnly loadout)
-    {
-        string? summary = null;
-        using var _ = ((IHeldGameEditSource)Variety).HoldSummary(SortOrderOf(loadout)).Subscribe(s => summary = s);
-        return summary;
-    }
+    private Task<string?> HoldSummary(Loadout.ReadOnly loadout) =>
+        SettledSummary(((IHeldGameEditSource)Variety).HoldSummary(SortOrderOf(loadout)), "bg3.HeldNotices");
 
     private async Task<List<Diagnostic>> Diagnose<TEmitter>(Loadout.ReadOnly loadout) where TEmitter : ILoadoutDiagnosticEmitter
     {
@@ -71,7 +67,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
 
         ResetCount(loadout).Should().Be(1);
         DiskNames().Should().Equal("GustavX", "HonourX", "Alpha", "Beta");
-        HoldSummary(loadout).Should().BeNull();
+        (await HoldSummary(loadout)).Should().BeNull();
     }
 
     [Fact]
@@ -91,7 +87,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
 
         ResetCount(loadout).Should().Be(2);
         DiskNames().Should().Equal("GustavX", "HonourX");
-        HoldSummary(loadout).Should().NotBeNullOrEmpty().And.Contain("alpha.pak");
+        (await HoldSummary(loadout)).Should().NotBeNullOrEmpty().And.Contain("alpha.pak");
     }
 
     [Fact]
@@ -104,7 +100,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
 
         ResetCount(loadout).Should().Be(2);
         DiskNames().Should().Equal("GustavX", "HonourX");
-        HoldSummary(loadout).Should().NotBeNullOrEmpty();
+        (await HoldSummary(loadout)).Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -127,7 +123,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         await ((IHeldGameEditSource)Variety).Release(SortOrderOf(loadout));
 
         ResetCount(loadout).Should().Be(0);
-        HoldSummary(loadout).Should().BeNull();
+        (await HoldSummary(loadout)).Should().BeNull();
         await Apply(loadout);
         DiskNames().Should().Equal("GustavX", "HonourX", "Alpha", "Beta");
         ResetCount(loadout).Should().Be(0, "putting the list back is not the game throwing it away");
@@ -141,7 +137,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         await Variety.SetEnabled(SortOrderOf(loadout), new SortItemKey<string>("beta.pak"), false);
 
         ResetCount(loadout).Should().Be(0);
-        HoldSummary(loadout).Should().BeNull();
+        (await HoldSummary(loadout)).Should().BeNull();
         await Apply(loadout);
         DiskNames().Should().Equal("GustavX", "HonourX", "Alpha");
     }
@@ -154,7 +150,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         await ((Bg3PakSortOrderVariety)Variety).MoveItemDelta(SortOrderOf(loadout), new SortItemKey<string>("alpha.pak"), 1);
 
         ResetCount(loadout).Should().Be(0);
-        HoldSummary(loadout).Should().BeNull();
+        (await HoldSummary(loadout)).Should().BeNull();
     }
 
     [Fact]

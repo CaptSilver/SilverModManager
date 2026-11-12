@@ -25,6 +25,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.Games.FromSoft.Merge;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using Humanizer;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -403,9 +404,9 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)
     {
-        // The shared-file counts are worked out before the hop to the UI thread; the first set of rows arrives on the
-        // subscribing thread, so the hop off it is explicit.
-        var mods = ObservePriorityGroups(_connection, _loadoutId).OffUi().Transform(AddSharedFiles, transformOnRefresh: true).OnUI().TransformWithInlineUpdate(CreateItemModel, UpdateItemModel);
+        // The shared-file counts are worked out before the hop to the UI thread. The priority groups are observed
+        // in the background, so the rows already arrive off it.
+        var mods = ObservePriorityGroups(_connection, _loadoutId).Transform(AddSharedFiles, transformOnRefresh: true).OnUI().TransformWithInlineUpdate(CreateItemModel, UpdateItemModel);
         var collections = ObserveCollections(_connection, _loadoutId).OnUI().TransformWithInlineUpdate(CreateCollectionModel, UpdateCollectionModel);
 
         // A collection is a row of its own among the mods: moving it moves all of its mods.
@@ -615,7 +616,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
              WHERE priority.Loadout = {loadoutId}
              GROUP BY item.Parent;
              """
-        ).Observe(tuple => tuple.Id);
+        ).ObserveInBackground(tuple => tuple.Id);
     }
 
     private static IObservable<IChangeSet<(EntityId Id, long Index, EntityId Prev, EntityId Next, long NumWinningFiles, long NumLosingFiles), EntityId>> ObservePriorityGroups(IConnection connection, LoadoutId loadoutId)
@@ -627,7 +628,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
                synchronizer.PriorityGroups({connection})
              WHERE Loadout = {loadoutId};
              """
-        ).Observe(tuple => tuple.Id);
+        ).ObserveInBackground(tuple => tuple.Id);
     }
 
     protected override IColumn<CompositeItemModel<EntityId>>[] CreateColumns(bool viewHierarchical)

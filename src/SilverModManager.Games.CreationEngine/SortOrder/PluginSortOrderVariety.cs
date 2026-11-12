@@ -14,6 +14,7 @@ using SilverModManager.Games.CreationEngine.Models;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Games;
@@ -132,7 +133,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                     CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
                 FROM plugins.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {DataLocation}, {DataFolder})
                 """)
-            .Observe(row => PluginSortData.KeyFor(row.PluginName))
+            .ObserveInBackground(row => PluginSortData.KeyFor(row.PluginName))
             .TransformAsync(async row =>
             {
                 // Rows can arrive before the reconciliation that would warm their headers has run.
@@ -233,7 +234,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public IObservable<string?> ReplacedEditSummary(SortOrderId sortOrderId) =>
         Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM plugins.Notices({Connection}, {sortOrderId.Value})")
-            .Observe(row => row.Id)
+            .ObserveInBackground(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
             .DistinctUntilChanged();

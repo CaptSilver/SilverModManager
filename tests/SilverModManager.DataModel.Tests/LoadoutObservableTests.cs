@@ -1,3 +1,4 @@
+using System.Reactive.Linq;
 using FluentAssertions;
 
 using SilverModManager.Abstractions.Loadouts;
@@ -42,11 +43,16 @@ public class LoadoutObservableTests(IServiceProvider provider) : AGameTest<Cyber
 
         var lastTimestamp = DateTimeOffset.UtcNow;
         var lastId = EntityId.From(0);
+        var firstValue = new TaskCompletionSource();
         using var loadouts = LoadoutQueries2.RevisionsWithChildUpdates(Connection, loadout).Subscribe(l =>
         {
             lastId = l.Id;
             lastTimestamp = DateTimeOffset.UtcNow;
+            firstValue.TrySetResult();
         });
+
+        // The first evaluation runs in the background, so Subscribe returns before there is a value.
+        await firstValue.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         fileId = result[fileId];
         groupId = result[groupId];
@@ -63,5 +69,25 @@ public class LoadoutObservableTests(IServiceProvider provider) : AGameTest<Cyber
         await Connection.FlushQueries();
         lastId.Should().Be(loadout.Id);
         lastTimestamp.Should().BeAfter(originalTimestamp);
+    }
+
+    // A view model that subscribes while its view activates must not run these queries on the activating thread.
+    [Fact]
+    public async Task TheLoadoutStreamsAnswerOffTheSubscribersThread()
+    {
+        var loadout = await CreateLoadout();
+
+        var streams = new (string Name, Func<IObservable<object>> Create)[]
+        {
+            (nameof(LoadoutQueries2.RevisionsWithChildUpdates), () => LoadoutQueries2.RevisionsWithChildUpdates(Connection, loadout).Select(x => (object)x)),
+            (nameof(LoadoutQueries2.SyncInputRevisions), () => LoadoutQueries2.SyncInputRevisions(Connection, loadout).Select(x => (object)x)),
+            (nameof(LoadoutQueries2.RevisionStamps), () => LoadoutQueries2.RevisionStamps(Connection, loadout).Select(x => (object)x)),
+        };
+
+        foreach (var (name, create) in streams)
+        {
+            var (subscriber, value) = await QueryObservableTests.FirstValueThreads(create());
+            value.Should().NotBe(subscriber, $"{name} produced its first value inside Subscribe");
+        }
     }
 }

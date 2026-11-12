@@ -20,12 +20,8 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
         return loadout;
     }
 
-    private string? ReplacedSummary(Loadout.ReadOnly loadout)
-    {
-        string? summary = null;
-        using var _ = ((IReplacedGameEditSource)Variety).ReplacedEditSummary(SortOrderOf(loadout)).Subscribe(s => summary = s);
-        return summary;
-    }
+    private Task<string?> ReplacedSummary(Loadout.ReadOnly loadout) =>
+        SettledSummary(((IReplacedGameEditSource)Variety).ReplacedEditSummary(SortOrderOf(loadout)), "bg3.Notices");
 
     [Fact]
     public async Task ALeftAloneFileLeavesNoNotice()
@@ -34,7 +30,7 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
 
         await Apply(loadout);
 
-        ReplacedSummary(loadout).Should().BeNull();
+        (await ReplacedSummary(loadout)).Should().BeNull();
     }
 
     [Fact]
@@ -46,7 +42,7 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
         await Apply(loadout);
 
         DiskNames().Should().Equal("GustavX", "HonourX", "Alpha", "Beta");
-        ReplacedSummary(loadout).Should().NotBeNullOrEmpty().And.Contain("order");
+        (await ReplacedSummary(loadout)).Should().NotBeNullOrEmpty().And.Contain("order");
     }
 
     [Fact]
@@ -58,7 +54,7 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
         await Apply(loadout);
 
         DiskNames().Should().Equal("GustavX", "HonourX", "Alpha", "Beta");
-        ReplacedSummary(loadout).Should().NotBeNullOrEmpty().And.Contain("beta.pak");
+        (await ReplacedSummary(loadout)).Should().NotBeNullOrEmpty().And.Contain("beta.pak");
     }
 
     [Fact]
@@ -67,11 +63,11 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
         var loadout = await AppliedTwoPaks();
         await WriteModsettings([.. BaseEntries, Entry("Alpha", "Alpha", "0", AlphaUuid)]);
         await Apply(loadout);
-        ReplacedSummary(loadout).Should().NotBeNullOrEmpty();
+        (await ReplacedSummary(loadout)).Should().NotBeNullOrEmpty();
 
         await Apply(loadout);
 
-        ReplacedSummary(loadout).Should().BeNull();
+        (await ReplacedSummary(loadout)).Should().BeNull();
     }
 
     [Fact]
@@ -88,6 +84,6 @@ public class ModsettingsFileIngestTests(ITestOutputHelper helper) : ModsettingsF
 
         await Apply(loadout);
 
-        ReplacedSummary(loadout).Should().BeNull();
+        (await ReplacedSummary(loadout)).Should().BeNull();
     }
 }

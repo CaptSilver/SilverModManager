@@ -12,6 +12,7 @@ using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
@@ -149,4 +150,27 @@ public abstract class ModsettingsFixture(ITestOutputHelper helper)
         GameInstalledGroup.FindByInstalledFor(Connection.Db, loadout.Id).Single();
 
     protected static string[] Lines(Optional<string> text) => !text.HasValue || text.Value.Length == 0 ? [] : text.Value.Split('\n');
+
+    /// <summary>
+    /// The value a summary stream settles on. The stream's query evaluates on the thread pool after Subscribe, and an
+    /// empty answer emits nothing, so the stream cannot say "no notice" itself. HyperDuck delivers a query's first value
+    /// before it registers the query for updates; waiting until one more query whose SQL contains
+    /// <paramref name="querySql"/> is registered therefore means the first answer is already in.
+    /// </summary>
+    protected async Task<string?> SettledSummary(IObservable<string?> summaries, string querySql)
+    {
+        var engine = (QueryEngine)ServiceProvider.GetRequiredService<IQueryEngine>();
+        var registeredBefore = engine.RegisteredLiveQueries(querySql);
+        var latest = new Box();
+        using var _ = summaries.Subscribe(s => latest.Value = s);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (engine.RegisteredLiveQueries(querySql) <= registeredBefore) await Task.Delay(10, timeout.Token);
+        return latest.Value;
+    }
+
+    private sealed class Box
+    {
+        private string? _value;
+        public string? Value { get => Volatile.Read(ref _value); set => Volatile.Write(ref _value, value); }
+    }
 }

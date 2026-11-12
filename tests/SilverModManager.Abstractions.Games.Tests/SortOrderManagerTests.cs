@@ -184,8 +184,13 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
 
         var file = await SeedGameInstalledFile(own);
 
-        var tracked = SortOrderQueries.TrackLoadoutItemChanges(Connection, StubbedGame.GameId).AsObservableCache().Items
-            .Single(row => row.ItemId == file.File);
+        // The query's first evaluation runs in the background, so the row is there a moment after the subscription.
+        using var trackedRows = SortOrderQueries.TrackLoadoutItemChanges(Connection, StubbedGame.GameId).AsObservableCache();
+        using (var rowsCts = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
+        {
+            while (!trackedRows.Items.Any(row => row.ItemId == file.File)) await Task.Delay(25, rowsCts.Token);
+        }
+        var tracked = trackedRows.Items.Single(row => row.ItemId == file.File);
         tracked.GroupId.Should().Be(file.Item, "the sort order row belongs to the item, not to the group");
         tracked.CollectionId.Should().Be(EntityId.From(0), "a game-installed group is not a collection group");
         tracked.LoadoutId.Should().Be(own.Value);

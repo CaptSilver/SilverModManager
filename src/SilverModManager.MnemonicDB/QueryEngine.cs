@@ -171,6 +171,33 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
         return lazy is { IsValueCreated: true } ? lazy.Value : null;
     }
 
+    // Resolved on first use, so a renamed field fails the tests that count queries rather than the app at startup.
+    private static readonly Lazy<FieldInfo> LiveQueriesField = new(() =>
+        typeof(LiveQueryUpdater).GetField("_liveQueries", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("HyperDuck's LiveQueryUpdater no longer has a field named _liveQueries; registered live queries cannot be counted"));
+
+    /// <summary>
+    /// How many live queries whose SQL contains <paramref name="sqlFragment"/> have been registered for updates.
+    /// HyperDuck's <c>Observe</c> delivers a query's first value before it registers the query, and the subscription it
+    /// returns never disposes that registration, so the count only goes up and a rise means that
+    /// subscription's first value is already out.
+    /// </summary>
+    internal int RegisteredLiveQueries(string sqlFragment)
+    {
+        var updater = LiveQueryUpdaterIfStarted();
+        if (updater is null) return 0;
+        var queries = (System.Collections.IDictionary)LiveQueriesField.Value.GetValue(updater)!;
+        var count = 0;
+        foreach (System.Collections.DictionaryEntry entry in queries)
+        {
+            var query = entry.Value!.GetType().GetProperty("Query")!.GetValue(entry.Value)!;
+            // The SQL is kept as the null-terminated bytes DuckDB is handed.
+            var sql = (HashedQuery)query.GetType().GetProperty("Sql")!.GetValue(query)!;
+            if (System.Text.Encoding.UTF8.GetString(sql.Sql).Contains(sqlFragment, StringComparison.Ordinal)) count++;
+        }
+        return count;
+    }
+
     private async ValueTask StopLiveQueryUpdater()
     {
         var updater = LiveQueryUpdaterIfStarted();
