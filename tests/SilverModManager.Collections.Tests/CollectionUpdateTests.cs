@@ -423,6 +423,7 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
     public async Task PlanningASwitchWritesNothing()
     {
         var s = await InstalledFirstRevision();
+        await SettleLoadOrders(s.Loadout, CollectionGroupId.From(s.Group.Id));
         var basis = Connection.Db.BasisTxId;
 
         var plan = await CollectionUpdater.PlanSwitch(ServiceProvider, s.Group, s.Second.Revision);
@@ -442,6 +443,7 @@ public class CollectionUpdateTests(ITestOutputHelper helper) : ACyberpunkIsolate
         var second = await Publish(2, [a, await MakeMod("b", 11, inLibrary: false)], []);
         var loadout = await CreateLoadout();
         var group = await Await(InstallCollectionJob.Create(ServiceProvider, loadout, first.File, first.Revision, first.Items));
+        await SettleLoadOrders(loadout.LoadoutId, CollectionGroupId.From(group.Id));
         var basis = Connection.Db.BasisTxId;
 
         var plan = await CollectionUpdater.PlanSwitch(ServiceProvider, group, second.Revision);

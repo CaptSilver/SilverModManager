@@ -434,6 +434,17 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// <summary>
     /// Reloads the entity from the database.
     /// </summary>
+    /// <summary>
+    /// Brings the load orders of a loadout, and of a collection in it, up to date. Installing queues a background
+    /// pass that does the same a moment later; once the orders are current that pass writes nothing, so a test that
+    /// checks a step writes nothing can take the database's position after this.
+    /// </summary>
+    protected async Task SettleLoadOrders(LoadoutId loadout, Optional<CollectionGroupId> collection = default)
+    {
+        await Game.SortOrderManager.UpdateLoadOrders(loadout);
+        if (collection.HasValue) await Game.SortOrderManager.UpdateLoadOrders(loadout, collection);
+    }
+
     protected T Refresh<T>(T entity) where T : IReadOnlyModel<T>
         => T.Create(Connection.Db, entity.Id);
     

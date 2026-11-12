@@ -102,6 +102,7 @@ public class CollectionUpdateNexusAdapterTests(ITestOutputHelper helper) : ACybe
     public async Task TheNexusAdapterReviewsWithoutWriting()
     {
         var s = await InstalledFirstRevision();
+        await SettleLoadOrders(s.Group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId, CollectionGroupId.From(s.Group.Id));
         var basis = Connection.Db.BasisTxId;
 
         var review = await s.Update.Review(null, CancellationToken.None);
