@@ -191,22 +191,46 @@ public class OldVcRuntimeEmitterTests(ITestOutputHelper helper)
         Details(diagnostic).Should().Contain("winetricks").And.Contain("vcrun2022").And.NotContain("protontricks 611670");
     }
 
-    [Fact]
-    public async Task AHostilePrefixPathIsOneSingleQuotedWordInTheWinetricksFix()
+    // The expected word is written out by hand: the quoting rule is what is under test, so it is not repeated here.
+    // {root} stands for the fixture's prefix root.
+    [Theory]
+    [InlineData("""a $(touch x) `id` "q" 'single'""", """WINEPREFIX='{root}/a $(touch x) `id` "q" '\''single'\''' winetricks -q vcrun2022""")]
+    [InlineData("back`tick", "WINEPREFIX='{root}/back`tick' winetricks -q vcrun2022")]
+    [InlineData("double\"quote", "WINEPREFIX='{root}/double\"quote' winetricks -q vcrun2022")]
+    [InlineData("it's", """WINEPREFIX='{root}/it'\''s' winetricks -q vcrun2022""")]
+    public async Task AHostilePrefixPathIsOneSingleQuotedWordInTheWinetricksFix(string folder, string expectedCommand)
     {
         var loadout = await CreateLoadout();
         await DeployMod(loadout, "plugin.dll");
         _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
-        var prefixPath = Resolver.DefaultPrefix.Path / "a $(touch x) `id` \"q\" 'single'";
+        var prefixPath = Resolver.DefaultPrefix.Path / folder;
         await Install(prefixPath / "drive_c/windows/system32/msvcp140.dll");
         _images.Versions["msvcp140.dll"] = new Version(14, 0, 24215, 1);
         Resolver.Resolution = _ => PrefixResolution.Resolved(new ResolvedPrefix(prefixPath, CompatibilityLayerKind.Heroic));
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        // A literal, so the test does not repeat the quoting algorithm it checks; only the prefix root comes from the fixture.
-        var root = Resolver.DefaultPrefix.Path.GetFullPath();
-        Details(diagnostic).Should().Contain($$"""WINEPREFIX='{{root}}/a $(touch x) `id` "q" '\''single'\''' winetricks -q vcrun2022""");
+        Details(diagnostic).Should().Contain(expectedCommand.Replace("{root}", Resolver.DefaultPrefix.Path.GetFullPath()));
+    }
+
+    [Theory]
+    [InlineData("tab\there")]
+    [InlineData("line\nbreak")]
+    [InlineData("bell\u0007here")]
+    public async Task APrefixPathThatCannotBeShownExactlyGetsANoteInsteadOfAWinetricksCommand(string folder)
+    {
+        var loadout = await CreateLoadout();
+        await DeployMod(loadout, "plugin.dll");
+        _images.Imports["plugin.dll"] = ["MSVCP140.dll"];
+        var prefixPath = Resolver.DefaultPrefix.Path / folder;
+        await Install(prefixPath / "drive_c/windows/system32/msvcp140.dll");
+        _images.Versions["msvcp140.dll"] = new Version(14, 0, 24215, 1);
+        Resolver.Resolution = _ => PrefixResolution.Resolved(new ResolvedPrefix(prefixPath, CompatibilityLayerKind.Heroic));
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("The prefix folder name has characters that can't be shown in a command, so none is suggested here.")
+            .And.NotContain("WINEPREFIX=").And.NotContain("winetricks -q");
     }
 
     [Fact]

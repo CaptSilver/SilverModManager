@@ -166,6 +166,12 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
 
             Steam's launch options now: {(string.IsNullOrWhiteSpace(currentLine) ? "empty" : MarkdownText.Code(currentLine))}
 
-            "Use this loadout from Steam" writes: {MarkdownText.Code(lineToWrite)}
+            {WrittenLine(lineToWrite)}
             """;
+
+    // A tab or line break in the loadout name would show as a space, naming a different loadout than the line writes.
+    private static string WrittenLine(string lineToWrite)
+        => MarkdownText.ShowsExactly(lineToWrite)
+            ? $"\"Use this loadout from Steam\" writes: {MarkdownText.Code(lineToWrite)}"
+            : MarkdownText.NoCommandFor("loadout");
 }

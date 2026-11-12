@@ -199,6 +199,19 @@ public class SteamLaunchOptionEmitterTests
         diagnostic.MoreDetails.Should().Contain($"Steam's launch options now: {MarkdownText.Code(current)}");
     }
 
+    [Theory]
+    [InlineData("tab\there")]
+    [InlineData("line\nbreak")]
+    public void ALineWhoseLoadoutNameCannotBeShownExactlyIsNotShownAtAll(string loadoutName)
+    {
+        var line = $"'/home/u/shim' run '{loadoutName}' -- %command%";
+
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding(null, null), "* x", line);
+
+        diagnostic.MoreDetails.Should().Contain(MarkdownText.NoCommandFor("loadout"))
+            .And.NotContain("writes:", "a line with the tab or line break turned into a space would name a different loadout");
+    }
+
     [Fact]
     public void EmptyLaunchOptionsAreCalledEmptyInTheMoreDetails()
     {

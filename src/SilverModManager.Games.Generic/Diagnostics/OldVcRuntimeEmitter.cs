@@ -174,9 +174,19 @@ public class OldVcRuntimeEmitter(IPrefixResolver prefixResolver, INativeImageRea
         if (prefix.Kind == CompatibilityLayerKind.SteamProton)
         {
             var appId = prefix.ProtonAppId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? installation.LocatorResult.StoreIdentifier;
-            return new MarkdownFragment($"Run [protontricks](https://github.com/Matoking/protontricks) with the game's Steam app id:\n\n{MarkdownText.CodeBlock($"protontricks {appId} -q {FixComponent}")}");
+            return Fix("[protontricks](https://github.com/Matoking/protontricks) with the game's Steam app id", $"protontricks {appId} -q {FixComponent}", "app id");
         }
 
-        return new MarkdownFragment($"Run [winetricks](https://github.com/Winetricks/winetricks) against the prefix:\n\n{MarkdownText.CodeBlock($"WINEPREFIX={ShellText.Quote(prefix.Path.GetFullPath())} winetricks -q {FixComponent}")}");
+        return Fix("[winetricks](https://github.com/Winetricks/winetricks) against the prefix", $"WINEPREFIX={ShellText.Quote(prefix.Path.GetFullPath())} winetricks -q {FixComponent}", "prefix folder");
     }
+
+    /// <summary>
+    /// The sentence and command block for a fix. A command the code block cannot show unchanged (a tab or control
+    /// character in the prefix path, say) would run against a different folder than the one it names, so the
+    /// reader gets a note instead.
+    /// </summary>
+    private static MarkdownFragment Fix(string tool, string command, string what)
+        => MarkdownText.ShowsExactly(command)
+            ? new MarkdownFragment($"Run {tool}:\n\n{MarkdownText.CodeBlock(command)}")
+            : new MarkdownFragment(MarkdownText.NoCommandFor(what));
 }

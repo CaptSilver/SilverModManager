@@ -129,7 +129,9 @@ public static partial class MarkdownText
 
     /// <summary>
     /// An inline code span. The fence is one backtick longer than the longest run inside, so the text cannot close the
-    /// span; nothing inside a span is interpreted, which keeps the text readable (paths, file names).
+    /// span; nothing inside a span is interpreted, which keeps the text readable (paths, file names). A line break,
+    /// tab or other control character is replaced or dropped, so do not put a path into a command that is offered for
+    /// running without checking <see cref="ShowsExactly(string?)"/> first.
     /// </summary>
     public static string Code(string? text)
     {
