@@ -45,30 +45,38 @@ public static class PluginRecordWalker
 
     private static void ReadGroupContents(HeaderReader reader, uint contentSize, List<uint> formIds, string fileName)
     {
-        // Sizes are checked in 64 bits: a group can claim more than the file holds.
-        long consumed = 0;
-        while (consumed < contentSize)
+        // The bytes left in each open group, innermost on top. An explicit stack rather than recursion: a plugin can
+        // nest groups as deep as its size allows, and a stack overflow would end the process instead of throwing.
+        // Sizes are kept in 64 bits: a group can claim more than the file holds.
+        var left = new Stack<long>();
+        left.Push(contentSize);
+        while (left.Count > 0)
         {
+            var remaining = left.Pop();
+            if (remaining == 0) continue;
+
             var header = reader.ReadHeader();
-            consumed += reader.HeaderLength;
+            remaining -= reader.HeaderLength;
 
             if (header.IsType("GRUP"u8))
             {
                 var inner = header.GroupContentSize(reader.HeaderLength, fileName);
-                consumed += inner;
-                if (consumed > contentSize)
+                remaining -= inner;
+                if (remaining < 0)
                     throw new InvalidPluginException($"{fileName}: a group runs past the end of the group that holds it");
 
-                ReadGroupContents(reader, inner, formIds, fileName);
+                left.Push(remaining);
+                left.Push(inner);
             }
             else
             {
-                consumed += header.Size;
-                if (consumed > contentSize)
+                remaining -= header.Size;
+                if (remaining < 0)
                     throw new InvalidPluginException($"{fileName}: a record runs past the end of the group that holds it");
 
                 reader.Skip(header.Size);
                 if (header.FormId != 0) formIds.Add(header.FormId);
+                left.Push(remaining);
             }
         }
     }

@@ -100,6 +100,37 @@ public class PluginRecordWalkerTests
     }
 
     [Fact]
+    public void ReadsGroupsNestedFarDeeperThanAnyGameWritesWithoutRunningOutOfStack()
+    {
+        // A stack overflow cannot be caught and would take the app down with it, so a hostile plugin nesting tens of
+        // thousands of groups must still be walked. The walk runs on a small stack to make any recursion overflow.
+        const int depth = 50_000;
+        const int headerLength = 24;
+        var bytes = new List<byte>(PluginBytes.Write(PluginFormat.Tes4, new PluginSpec()));
+        for (var level = 0; level < depth; level++)
+        {
+            // Each group holds the groups below it and the one record at the bottom.
+            var size = (uint)((depth - level) * headerLength + headerLength);
+            bytes.AddRange("GRUP"u8.ToArray());
+            bytes.AddRange(BitConverter.GetBytes(size));
+            bytes.AddRange(new byte[headerLength - 8]);
+        }
+
+        bytes.AddRange("STAT"u8.ToArray());
+        bytes.AddRange(BitConverter.GetBytes(0u));
+        bytes.AddRange(BitConverter.GetBytes(0u));
+        bytes.AddRange(BitConverter.GetBytes(0x0000_0850u));
+        bytes.AddRange(new byte[headerLength - 16]);
+
+        uint[]? ids = null;
+        var walk = new Thread(() => ids = PluginRecordWalker.ReadFormIds(new MemoryStream([.. bytes]), PluginFormat.Tes4, "Deep.esp"), maxStackSize: 256 * 1024);
+        walk.Start();
+        walk.Join();
+
+        ids.Should().Equal(0x850u);
+    }
+
+    [Fact]
     public void RefusesMorrowindPlugins()
     {
         var act = () => PluginRecordWalker.ReadFormIds(new MemoryStream(PluginBytes.Write(PluginFormat.Tes3, new PluginSpec())), PluginFormat.Tes3, "Morrowind.esm");
