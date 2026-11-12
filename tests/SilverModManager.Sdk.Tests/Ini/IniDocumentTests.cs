@@ -83,6 +83,32 @@ public class IniDocumentTests
     }
 
     [Fact]
+    public void TheRefusalForAnUnencodableCharacterNamesTheKeyAndTheCharacter()
+    {
+        var document = IniDocument.Parse(Fixture("latin1.ini"));
+        document.Set("General", "sPlayerName", "Kenji ツ");
+
+        var act = () => document.ToBytes();
+
+        act.Should().Throw<IniEncodingException>().WithMessage("*sPlayerName*").And.Message.Should().Contain("ツ");
+    }
+
+    [Theory]
+    [InlineData("lf-only.ini")]
+    [InlineData("latin1.ini")]
+    public void TheRefusalForAHalfSurrogatePairNamesItsCodeUnit(string fixture)
+    {
+        // A value cut in the middle of an emoji leaves half a pair, which no encoding can hold and which the user
+        // would not recognise if it were shown as the replacement character.
+        var document = IniDocument.Parse(Fixture(fixture));
+        document.Set("General", "sPlayerName", "Kenji \uD83D");
+
+        var act = () => document.ToBytes();
+
+        act.Should().Throw<IniEncodingException>().WithMessage("*sPlayerName*U+D83D*");
+    }
+
+    [Fact]
     public void SetKeepsTheLinePositionAndTheInlineComment()
     {
         var document = IniDocument.Parse(Fixture("inline-comment.ini"));

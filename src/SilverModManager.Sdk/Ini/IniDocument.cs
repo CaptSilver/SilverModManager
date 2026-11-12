@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 
 namespace SilverModManager.Sdk.Ini;
@@ -80,7 +81,7 @@ public sealed class IniDocument
         catch (EncoderFallbackException)
         {
             var offender = _lines.First(l => !Encodes(encoding, l.Text));
-            throw new IniEncodingException(offender.Kind == IniLineKind.KeyValue ? offender.Name : offender.Text.Trim(), Encoding);
+            throw new IniEncodingException(offender.Kind == IniLineKind.KeyValue ? offender.Name : offender.Text.Trim(), FirstUnencodable(encoding, offender.Text), Encoding);
         }
     }
 
@@ -235,6 +236,22 @@ public sealed class IniDocument
         if (section.Length != 0) lines.Add(IniLine.NewSection(section, NewLine));
         lines.AddRange(keys.Select(e => IniLine.NewKey(e.Key, e.Value, NewLine)));
         Insert(_lines.Count, lines);
+    }
+
+    /// <summary>The first character of <paramref name="text"/> that <paramref name="encoding"/> cannot hold, as the user should see it.</summary>
+    private static string FirstUnencodable(Encoding encoding, string text)
+    {
+        for (var at = 0; at < text.Length;)
+        {
+            // Half a surrogate pair has no character to show; the replacement character would name something the
+            // user never typed, and UTF-8 would even accept it.
+            if (Rune.DecodeFromUtf16(text.AsSpan(at), out var rune, out var used) != OperationStatus.Done)
+                return $"U+{(int)text[at]:X4}";
+            if (!Encodes(encoding, rune.ToString())) return rune.ToString();
+            at += used;
+        }
+
+        throw new InvalidOperationException("The line did not encode, yet each of its characters does.");
     }
 
     private static bool Encodes(Encoding encoding, string text)
