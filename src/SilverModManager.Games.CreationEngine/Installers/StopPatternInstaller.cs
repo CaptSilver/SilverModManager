@@ -181,13 +181,15 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
             return ValueTask.FromResult(FailWithReason("The provided library archive has no files"));
 
         // Root Builder's root/ folder goes to the game folder and takes no part in working out the mod's layout.
-        var modFiles = allFiles.Where(file => !RootBuilderConvention.TryMap(file.Path, out _)).ToArray();
+        // It can also sit one level down, inside a wrapper folder or a folder named after the game.
+        var wrapperFolders = RootBuilderWrapperFolders(allFiles.Select(f => f.Path));
+        var modFiles = allFiles.Where(file => !RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out _)).ToArray();
         var rootPrefix = modFiles.Length == 0 ? RelativePath.Empty : ComputeEffectiveRootPrefix(built, modFiles);
 
         foreach (var file in allFiles)
         {
             GamePath target;
-            if (RootBuilderConvention.TryMap(file.Path, out var underGameFolder))
+            if (RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out var underGameFolder))
             {
                 // The game folder itself, not EnginePath: a game whose engine folder is a subfolder still wants root/ at the top.
                 target = new GamePath(LocationId.Game, underGameFolder);
@@ -221,6 +223,12 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         }
 
         return ValueTask.FromResult<InstallerResult>(new Success());
+    }
+
+    private string[] RootBuilderWrapperFolders(IEnumerable<RelativePath> paths)
+    {
+        var common = RootBuilderConvention.CommonWrapperFolder(paths, [DataFolderName, ..TopLevelDirs]);
+        return common is null ? GameAliases : [.. GameAliases, common];
     }
 
     private RelativePath ComputeEffectiveRootPrefix(BuiltState built, LibraryArchiveFileEntry.ReadOnly[] files)

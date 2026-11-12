@@ -50,8 +50,16 @@ public class OblivionRemasteredInstaller(IServiceProvider serviceProvider)
     /// <summary>The target of each file, in the order given.</summary>
     public IReadOnlyList<GamePath> Route(IReadOnlyList<RelativePath> files)
     {
-        var root = EffectiveRoot(files);
-        return files.Select(f => Route(f, root)).ToArray();
+        // Root Builder's root/ folder goes to the game folder and takes no part in working out the mod's layout.
+        // It can also sit one level down, inside a wrapper folder or a folder named after the game.
+        var common = RootBuilderConvention.CommonWrapperFolder(files, [DataFolderName, ProjectFolder, ..TopLevelDirs]);
+        string[] wrapperFolders = common is null ? GameAliases : [.. GameAliases, common];
+
+        var modFiles = files.Where(f => !RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out _)).ToArray();
+        var root = EffectiveRoot(modFiles);
+        return files.Select(f => RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out var underGameFolder)
+            ? new GamePath(LocationId.Game, underGameFolder)
+            : Route(f, root)).ToArray();
     }
 
     private GamePath Route(RelativePath path, RelativePath root)

@@ -135,7 +135,7 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
 
     protected virtual ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
-        FomodXmlInstaller.Create(provider, DataPath),
+        FomodXmlInstaller.Create(provider, DataPath, rootFolderIsGameFolder: true),
         CreateStopPatternInstaller(provider),
     ];
 

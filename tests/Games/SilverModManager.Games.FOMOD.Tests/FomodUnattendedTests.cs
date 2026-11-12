@@ -35,6 +35,16 @@ public class FomodUnattendedTests(ITestOutputHelper outputHelper) : ALibraryArch
         </config>
         """;
 
+    private const string RootFolderOutput = """
+        <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+            <moduleName>Root output</moduleName>
+            <requiredInstallFiles>
+                <file source="plain.esp" destination="plain.esp"/>
+                <file source="dll.dll" destination="root/bin/dll.dll"/>
+            </requiredInstallFiles>
+        </config>
+        """;
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
@@ -122,5 +132,52 @@ public class FomodUnattendedTests(ITestOutputHelper outputHelper) : ALibraryArch
         exception.Kind.Should().Be(ReviewKind.NeedsChoices);
         exception.Reason.Should().Contain("No such option");
         exception.InnerException.Should().BeOfType<SavedChoicesDoNotApplyException>();
+    }
+
+    [Fact]
+    public async Task ARootFolderDestinationGoesToTheGameFolderWhenTheInstallerIsAskedToHonourIt()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddArchiveWithContents("root.zip",
+            ("fomod/ModuleConfig.xml", RootFolderOutput),
+            ("plain.esp", "plain"),
+            ("dll.dll", "dll"));
+        var (group, tx) = NewGroup(loadout);
+        using var _ = tx;
+        var installer = FomodXmlInstaller.Create(ServiceProvider, new GamePath(LocationId.Game, "Data"), rootFolderIsGameFolder: true);
+
+        var result = await installer
+            .ExecuteUnattendedAsync(archive.AsLibraryFile().AsLibraryItem(), group, tx, loadout, CancellationToken.None)
+            .AsTask().WaitAsync(Timeout);
+
+        result.IsSuccess.Should().BeTrue();
+        var committed = await tx.Commit();
+        committed.Remap(group).Children
+            .Select(x => ((GamePath)x.ToLoadoutItemWithTargetPath().TargetPath).ToString())
+            .Order(StringComparer.Ordinal)
+            .Should().Equal("{Game}/Data/plain.esp", "{Game}/bin/dll.dll");
+    }
+
+    [Fact]
+    public async Task ARootFolderDestinationStaysUnderTheInstallPathByDefault()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddArchiveWithContents("root.zip",
+            ("fomod/ModuleConfig.xml", RootFolderOutput),
+            ("plain.esp", "plain"),
+            ("dll.dll", "dll"));
+        var (group, tx) = NewGroup(loadout);
+        using var _ = tx;
+        var installer = FomodXmlInstaller.Create(ServiceProvider, new GamePath(LocationId.Game, "Data"));
+
+        await installer
+            .ExecuteUnattendedAsync(archive.AsLibraryFile().AsLibraryItem(), group, tx, loadout, CancellationToken.None)
+            .AsTask().WaitAsync(Timeout);
+
+        var committed = await tx.Commit();
+        committed.Remap(group).Children
+            .Select(x => ((GamePath)x.ToLoadoutItemWithTargetPath().TargetPath).ToString())
+            .Order(StringComparer.Ordinal)
+            .Should().Equal("{Game}/Data/plain.esp", "{Game}/Data/root/bin/dll.dll");
     }
 }

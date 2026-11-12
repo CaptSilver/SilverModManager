@@ -92,7 +92,7 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
 
     protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
-        FomodXmlInstaller.Create(provider, DataPath),
+        FomodXmlInstaller.Create(provider, DataPath, rootFolderIsGameFolder: true),
         new OblivionRemasteredInstaller(provider)
         {
             ProjectFolder = ProjectFolder,

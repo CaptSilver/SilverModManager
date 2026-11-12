@@ -31,6 +31,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller, IUnattendedInstaller
     private readonly XmlScriptType _scriptType = new();
     private readonly ILogger<FomodXmlInstaller> _logger;
     private readonly GamePath _fomodInstallationPath;
+    private readonly bool _rootFolderIsGameFolder;
     private readonly IFileSystem _fileSystem;
     private readonly TemporaryFileManager _temporaryFileManager;
     private readonly IFileStore _fileStore;
@@ -40,19 +41,25 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller, IUnattendedInstaller
     /// </summary>
     /// <param name="provider"></param>
     /// <param name="fomodInstallationPath"></param>
+    /// <param name="rootFolderIsGameFolder">
+    /// Root Builder's convention: a destination under <c>root/</c> is installed at the game folder instead of under
+    /// <paramref name="fomodInstallationPath"/>. Off by default, because only some games use the convention.
+    /// </param>
     /// <returns></returns>
-    public static FomodXmlInstaller Create(IServiceProvider provider, GamePath fomodInstallationPath)
+    public static FomodXmlInstaller Create(IServiceProvider provider, GamePath fomodInstallationPath, bool rootFolderIsGameFolder = false)
     {
-        return new FomodXmlInstaller(provider, provider.GetRequiredService<ILogger<FomodXmlInstaller>>(), fomodInstallationPath);
+        return new FomodXmlInstaller(provider, provider.GetRequiredService<ILogger<FomodXmlInstaller>>(), fomodInstallationPath, rootFolderIsGameFolder);
     }
 
     private FomodXmlInstaller(
         IServiceProvider serviceProvider,
         ILogger<FomodXmlInstaller> logger,
-        GamePath fomodInstallationPath) : base(serviceProvider, logger)
+        GamePath fomodInstallationPath,
+        bool rootFolderIsGameFolder) : base(serviceProvider, logger)
     {
         _logger = logger;
         _fomodInstallationPath = fomodInstallationPath;
+        _rootFolderIsGameFolder = rootFolderIsGameFolder;
 
         _delegates = serviceProvider.GetRequiredService<ICoreDelegates>();
         _temporaryFileManager = serviceProvider.GetRequiredService<TemporaryFileManager>();
@@ -392,6 +399,11 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller, IUnattendedInstaller
             return;
         }
 
+        // The FOMOD runs before any Root Builder mapping, so its root/ output has to be sent to the game folder here.
+        var target = _rootFolderIsGameFolder && RootBuilderConvention.TryMap(dest, out var underGameFolder)
+            ? new GamePath(LocationId.Game, underGameFolder)
+            : new GamePath(gamePath.LocationId, gamePath.Path.Join(dest));
+
         _ = new LoadoutFile.New(transaction, out var id)
         {
             LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(transaction, id)
@@ -402,7 +414,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller, IUnattendedInstaller
                     Name = libraryArchiveFile.Path.FileName,
                     ParentId = loadoutGroup,
                 },
-                TargetPath = new GamePath(gamePath.LocationId, gamePath.Path.Join(dest)).ToGamePathParentTuple(loadoutId),
+                TargetPath = target.ToGamePathParentTuple(loadoutId),
             },
             Hash = libraryArchiveFile.AsLibraryFile().Hash,
             Size = libraryArchiveFile.AsLibraryFile().Size,

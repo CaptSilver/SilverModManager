@@ -66,6 +66,35 @@ public class SkyrimSEInstallerRoutingTests(ITestOutputHelper helper)
             .Should().Equal("Game/Data/mod.esp", "Game/Data/root");
 
     [Fact]
+    public async Task ARootFolderInAWrapperGoesToTheGameFolderAndItsDataToData() =>
+        (await InstallLayout("ModName/root/openvr_api.dll", "ModName/Data/mod.esp", "ModName/Data/meshes/a.nif"))
+            .Should().Equal("Game/Data/meshes/a.nif", "Game/Data/mod.esp", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task ARootFolderAloneInAWrapperGoesToTheGameFolder() =>
+        (await InstallLayout("ModName/root/bin/x.dll")).Should().Equal("Game/bin/x.dll");
+
+    [Theory]
+    [InlineData("Skyrim Special Edition")]
+    [InlineData("SSE")]
+    public async Task ARootFolderInAFolderNamedAfterTheGameGoesToTheGameFolder(string folder) =>
+        (await InstallLayout($"{folder}/root/openvr_api.dll", $"{folder}/Data/mod.esp"))
+            .Should().Equal("Game/Data/mod.esp", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task ARootFolderBesideDataContentInAGameFolderGoesToTheGameFolder() =>
+        (await InstallLayout("Skyrim Special Edition/root/openvr_api.dll", "Skyrim Special Edition/meshes/a.nif"))
+            .Should().Equal("Game/Data/meshes/a.nif", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task AFolderNamedRootBelowADataContentFolderIsNotARootFolder() =>
+        (await InstallLayout("meshes/root/a.nif")).Should().Equal("Game/Data/meshes/root/a.nif");
+
+    [Fact]
+    public async Task AFolderNamedRootInsideTheDataFolderStaysInData() =>
+        (await InstallLayout("Data/root/a.txt", "Data/mod.esp")).Should().Equal("Game/Data/mod.esp", "Game/Data/root/a.txt");
+
+    [Fact]
     public async Task ARootFolderGoesToTheGameFolderEvenWhenTheEngineFolderIsElsewhere()
     {
         var installer = new StopPatternInstaller(ServiceProvider)
