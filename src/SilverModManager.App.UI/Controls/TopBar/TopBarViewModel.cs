@@ -239,7 +239,8 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to load image: {Uri}", uri);
+            // The avatar is decoration: without it the bar shows no picture. An error here would be shown as a dialog.
+            _logger.LogWarning(e, "Failed to load image: {Uri}", uri);
             return null;
         }
     }
