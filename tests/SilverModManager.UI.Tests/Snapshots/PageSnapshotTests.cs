@@ -280,7 +280,8 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         var review = WabbajackCollectionUpdate.ReviewOf(preview, 16);
         var (dialog, _) = CollectionUpdateReviewDialog.Create(new SnapshotUpdate(), review, isDownloaded: false);
 
-        var png = await CaptureDialog(dialog, width: 800, isReady: ChevronsSettledCollapsed());
+        var chevrons = ChevronsSettledCollapsed();
+        var png = await CaptureDialog(dialog, width: 800, isReady: chevrons.IsSettled, whyNotReady: chevrons.Describe);
         await VerifyPng(png);
     }
 
@@ -291,19 +292,24 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
     /// cannot tell "finished" from "not started". A chevron counts as settled at 0 once it was seen away from 0 (the
     /// animation ran and came back), or once it has sat at 0 under Tag=collapsed for four animation lengths of
     /// rendered time, which a cold window that skips straight to the end needs. Returns a checker that keeps that
-    /// history between polls.
+    /// history between polls, and a description of what the last poll saw for the failure message.
     /// </summary>
-    private static Func<Window, bool> ChevronsSettledCollapsed()
+    private static (Func<Window, bool> IsSettled, Func<string> Describe) ChevronsSettledCollapsed()
     {
         var animation = TimeSpan.FromMilliseconds(62.5);
         var seenAway = new HashSet<Visual>();
         var collapsedSince = new Dictionary<Visual, long>();
-        return window =>
+        var lastPoll = "not polled yet";
+        Func<Window, bool> isSettled = window =>
         {
             var chevrons = window.GetVisualDescendants().OfType<SilverModManager.UI.Sdk.Icons.UnifiedIcon>().Where(icon => icon.Name == "ExpandCollapseChevron").ToList();
             var settled = chevrons.Count > 0;
+            var seen = new List<string>();
             foreach (var chevron in chevrons)
             {
+                var tag = chevron.FindAncestorOfType<ToggleButton>()?.Tag;
+                var angle = (chevron.RenderTransform as Avalonia.Media.RotateTransform)?.Angle;
+                seen.Add($"tag={tag ?? "none"} angle={angle?.ToString() ?? "no rotate transform"} seenAway={seenAway.Contains(chevron)}");
                 if (chevron.FindAncestorOfType<ToggleButton>() is not { Tag: "collapsed" } || chevron.RenderTransform is not Avalonia.Media.RotateTransform rotate)
                 {
                     settled = false;
@@ -315,8 +321,10 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
                 var waited = System.Diagnostics.Stopwatch.GetElapsedTime(collapsedSince[chevron]);
                 if (rotate.Angle != 0 || !(seenAway.Contains(chevron) || waited >= 4 * animation)) settled = false;
             }
+            lastPoll = $"{chevrons.Count} chevrons in the window: [{string.Join("; ", seen)}]";
             return settled;
         };
+        return (isSettled, () => lastPoll);
     }
 
     /// <summary>The header of an installed list's page when the gallery has a newer version: the update pill beside the badge.</summary>
@@ -498,7 +506,7 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
     /// A dialog in its own window, sized the way <c>Dialog.Show</c> sizes it (the width of its size class, the height
     /// of its content), and captured as the window's own frame.
     /// </summary>
-    private async Task<byte[]> CaptureDialog(IDialog dialog, int width, Func<Window, bool>? isReady = null)
+    private async Task<byte[]> CaptureDialog(IDialog dialog, int width, Func<Window, bool>? isReady = null, Func<string>? whyNotReady = null)
     {
         var window = await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -518,7 +526,7 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
             await EventuallyOnUi(() =>
             {
                 Render(window);
-                isReady(window).Should().BeTrue("the dialog has to finish loading before it is captured");
+                isReady(window).Should().BeTrue($"the dialog has to finish loading before it is captured ({whyNotReady?.Invoke()})");
             });
 
         return await Dispatcher.UIThread.InvokeAsync(() =>
