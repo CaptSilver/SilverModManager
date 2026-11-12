@@ -49,7 +49,8 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
         var files = _source.Find(installation);
         if (files.Count == 0) return "There were no crash logs to clear.";
 
-        var moved = 0;
+        var trashed = 0;
+        var deleted = 0;
         var failed = new List<string>();
         foreach (var file in files)
         {
@@ -57,17 +58,47 @@ public sealed class CrashReportEmitter(ICreationEngineGame game, ILogger<CrashRe
             try
             {
                 trash.MoveToTrash(file.Path.ToString());
-                moved++;
+                trashed++;
             }
-            catch (HostFolderMoveRefusedException e)
+            catch (HostFolderMoveRefusedException refused)
+            {
+                // Gone since the listing: nothing left to clear.
+                if (!file.Path.FileExists) continue;
+
+                // The home trash only takes files from its own drive, and a Steam library on another drive holds
+                // the prefix. A crash log is not worth keeping at the cost of a button that never works there.
+                logger.LogInformation(refused, "The trash refused crash log {Path}, so it is deleted instead", file.Path);
+                if (TryDelete(file)) deleted++;
+                else failed.Add(file.Path.FileName.ToString());
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 logger.LogWarning(e, "Could not move crash log {Path} to the trash", file.Path);
                 failed.Add(file.Path.FileName.ToString());
             }
         }
 
-        var done = $"Moved {moved} crash {(moved == 1 ? "log" : "logs")} to the trash.";
-        return failed.Count == 0 ? done : $"{done} Could not move {string.Join(", ", failed)}; the app log has the reason.";
+        var parts = new List<string>();
+        if (trashed > 0) parts.Add($"Moved {trashed} crash {Logs(trashed)} to the trash.");
+        if (deleted > 0) parts.Add($"Deleted {deleted} crash {Logs(deleted)} the trash could not take.");
+        if (failed.Count > 0) parts.Add($"Could not clear {string.Join(", ", failed)}; the app log has the reason.");
+        return parts.Count == 0 ? "There were no crash logs to clear." : string.Join(" ", parts);
+    }
+
+    private static string Logs(int count) => count == 1 ? "log" : "logs";
+
+    private bool TryDelete(CrashLogFile file)
+    {
+        try
+        {
+            file.Path.Delete();
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Could not delete crash log {Path}", file.Path);
+            return false;
+        }
     }
 
     /// <summary>Logs older than this are ignored.</summary>

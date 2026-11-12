@@ -388,6 +388,23 @@ public class CrashReportEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ALogTheTrashRefusesIsDeletedInstead()
+    {
+        // A prefix in a Steam library on another drive than the home trash: rename(2) fails with EXDEV.
+        var refusing = new FreedesktopTrash(TrashDataHome, TimeProvider.System, (_, _) => throw new IOException("the folders are on different file systems"));
+        var emitter = new CrashReportEmitter(Game, ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<CrashReportEmitter>(), refusing);
+        var loadout = await CreateLoadout();
+        await WriteLog("light-list-bread.log");
+        await WriteLog("enb-light-mushroom-a.log");
+
+        var message = await emitter.ClearAsync(Refresh(loadout), CancellationToken.None);
+
+        message.Should().Be("Deleted 2 crash logs the trash could not take.");
+        LogFolder.EnumerateFiles("*", recursive: false).Should().BeEmpty();
+        emitter.HasAnythingToClear(Refresh(loadout)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task WithNoLogFolderThereIsNothingToClearAndClearingCreatesNothing()
     {
         var loadout = await CreateLoadout();

@@ -61,7 +61,7 @@ public sealed class FreedesktopTrash : ITrash
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            File.Delete(infoPath);
+            TryDelete(infoPath);
             throw Refused(source, e);
         }
     }
@@ -106,9 +106,22 @@ public sealed class FreedesktopTrash : ITrash
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                File.Delete(infoPath);
+                TryDelete(infoPath);
                 throw Refused(source, e);
             }
+        }
+    }
+
+    // Cleanup after a refusal: an error here must not replace the refusal the caller handles.
+    private static void TryDelete(string infoPath)
+    {
+        try
+        {
+            File.Delete(infoPath);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // A stray info file without its entry is ignored by file managers.
         }
     }
 
