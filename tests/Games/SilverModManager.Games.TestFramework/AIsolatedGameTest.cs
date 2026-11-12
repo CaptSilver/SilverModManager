@@ -259,15 +259,20 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// of the name, and the size will be the length of the name. 
     /// </summary>
     public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out FileIdentity identity, out Size size)
-    {
-        content ??= path.Path.ToString();
-        var contentArray = Encoding.UTF8.GetBytes(content);
+        => AddFile(tx, loadoutId, groupId, path, Encoding.UTF8.GetBytes(content ?? path.Path.ToString()), out identity, out size);
 
-        var hash = contentArray.xxHash3();
+    /// <summary>
+    /// Creates a file in the loadout for the given mod with exactly these bytes. Like the string overload it writes rows
+    /// only; back the bytes up with <see cref="FileStore"/> when the test reads them.
+    /// </summary>
+    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] content, out FileIdentity identity, out Size size)
+    {
+        var hash = content.xxHash3();
         identity = FileIdentity.XxHash3(hash);
-        size = Size.FromLong(contentArray.Length);
+        size = Size.FromLong(content.Length);
         return AddFileInternal(tx, loadoutId, groupId, path, hash, size).Id;
     }
+
     /// <summary>
     /// Puts a file in the loadout's Overrides group, creating the group if needed, the way an adopted game-folder
     /// file is held.

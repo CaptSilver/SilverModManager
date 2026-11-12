@@ -194,6 +194,16 @@ public class DatabaseSortTests
     }
 
     [Fact]
+    public void ShouldNotReportOverlapEdgesSkippedWhenTheCallerReadTheOverlapInputsAndFoundNone()
+    {
+        // Zero counts from a caller that read the records and archives mean nothing overlaps, not that nothing was read.
+        var result = PluginSorter.Sort<ISortingPlugin>(
+            [new TestPlugin("A.esp"), new TestPlugin("B.esp")], new LootDatabase(), [], overlapInputsRead: true);
+
+        result.Divergences.OverlapEdgesSkipped.Should().BeFalse();
+    }
+
+    [Fact]
     public void ShouldSortNothingToAnEmptyOrderWithoutReportingSkippedOverlap()
     {
         var result = PluginSorter.Sort<ISortingPlugin>([], new LootDatabase(), []);

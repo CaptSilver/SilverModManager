@@ -244,6 +244,44 @@ public class PluginQueriesTests(ITestOutputHelper helper)
         row.ModGroupId.Should().Be(mod);
     }
 
+    private List<(string Name, string Identity)> LoadoutArchives(Loadout.ReadOnly loadout, string extension) =>
+        Connection.Query<(string Name, string Identity)>(
+                $"SELECT Name, Identity FROM plugins.LoadoutArchives({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder}, {extension})")
+            .ToList();
+
+    [Fact]
+    public async Task LoadoutArchives_ListsTheGameFilesAndTheModFilesOfThatExtensionDirectlyInTheDataFolder()
+    {
+        var loadout = await CreateLoadout();
+        await SeedGameFiles(loadout, "Data/Skyrim.esm", "Data/Skyrim - Textures0.bsa", "Data/Skyrim - Main.ba2");
+        await AddMod(loadout, "Mod", "Data/Mod.bsa", "Data/UPPER.BSA", "Data/Mod.ba2", "Data/Mod.esp", "Data/Sub/Deep.bsa");
+
+        var rows = LoadoutArchives(Refresh(loadout), ".bsa");
+
+        rows.Select(r => r.Name).Should().BeEquivalentTo("Skyrim - Textures0.bsa", "Mod.bsa", "UPPER.BSA");
+        rows.Should().OnlyContain(r => FileIdentity.ParseHex(r.Identity).Kind == HashKind.XxHash3);
+    }
+
+    [Fact]
+    public async Task LoadoutArchives_TakesTheExtensionWithoutRegardToItsCase()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, "Mod", "Data/Mod - Main.BA2", "Data/Mod.bsa");
+
+        LoadoutArchives(Refresh(loadout), ".BA2").Select(r => r.Name).Should().Equal("Mod - Main.BA2");
+    }
+
+    [Fact]
+    public async Task LoadoutArchives_LeavesOutTheArchivesOfADisabledMod()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, "On", "Data/On.bsa");
+        var off = await AddMod(loadout, "Off", "Data/Off.bsa");
+        await DisableItem(off);
+
+        LoadoutArchives(Refresh(loadout), ".bsa").Select(r => r.Name).Should().Equal("On.bsa");
+    }
+
     [Fact]
     public async Task SortOrderItems_SplitIntoLiveAndTombstones_ByWhetherTheLoadoutStillHasThePlugin()
     {

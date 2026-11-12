@@ -69,7 +69,10 @@ public static class PluginSorter
     /// current order is the order of <paramref name="pluginsInCurrentOrder"/>. Conditioned metadata
     /// whose condition is false is dropped; metadata the database cannot evaluate is dropped too, and
     /// the result's divergences count it. <paramref name="recordEdges"/> fills
-    /// <see cref="SortResult.Edges"/>.
+    /// <see cref="SortResult.Edges"/>. <paramref name="overlapInputsRead"/> says the plugins' override counts,
+    /// asset counts and overlap answers come from reading their records and archives, so zeroes mean nothing
+    /// overlaps; without it, a list where no plugin reports anything is taken to have been sorted without
+    /// overlap edges.
     /// </summary>
     /// <exception cref="BuildGroupsGraphException">The database's groups do not form a valid graph.</exception>
     /// <exception cref="UndefinedGroupException">A plugin is in a group that does not exist.</exception>
@@ -78,7 +81,7 @@ public static class PluginSorter
     /// <exception cref="SortingException">The plugins cannot be sorted for another reason.</exception>
     public static SortResult Sort<T>(
         IReadOnlyList<T> pluginsInCurrentOrder, LootDatabase database, IReadOnlyList<string> earlyLoadingPlugins,
-        bool recordEdges = false)
+        bool recordEdges = false, bool overlapInputsRead = false)
         where T : ISortingPlugin
     {
         var unevaluated = 0;
@@ -95,8 +98,8 @@ public static class PluginSorter
         var result = Sort(data, groupsGraph, earlyLoadingPlugins, recordEdges);
 
         // Overlap edges come from what the plugins report, so a list where none reports anything
-        // was sorted without them.
-        var overlapEdgesSkipped = data.Count > 0 && data.All(d => d.OverrideRecordCount == 0 && d.AssetCount == 0);
+        // was sorted without them, unless the caller read the inputs and there was nothing to report.
+        var overlapEdgesSkipped = !overlapInputsRead && data.Count > 0 && data.All(d => d.OverrideRecordCount == 0 && d.AssetCount == 0);
 
         return result with { Divergences = new KnownDivergences(overlapEdgesSkipped, unevaluated) };
     }

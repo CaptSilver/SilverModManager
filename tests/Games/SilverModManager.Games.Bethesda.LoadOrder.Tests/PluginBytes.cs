@@ -11,7 +11,19 @@ internal sealed record PluginSpec
     public uint? RecordCount { get; init; } = 0;
     public string? Description { get; init; }
     public string? Author { get; init; }
+
+    /// <summary>What follows the header record: top-level groups, written in the layout of the format. TES4 formats only.</summary>
+    public IReadOnlyList<PluginBlock> Blocks { get; init; } = [];
 }
+
+/// <summary>A group or a record in the body of a synthetic plugin.</summary>
+internal abstract record PluginBlock;
+
+/// <summary>A record header with <paramref name="DataSize"/> bytes of filler behind it, so the walker has a body to skip.</summary>
+internal sealed record RecordBlock(string Type, uint FormId, uint Flags = 0, int DataSize = 0) : PluginBlock;
+
+/// <summary>A group holding <paramref name="Children"/>. The size in its header counts the header itself, as in a real plugin.</summary>
+internal sealed record GroupBlock(string Label, params PluginBlock[] Children) : PluginBlock;
 
 /// <summary>
 /// Writes minimal plugins holding just the header record, in the byte layout the three
@@ -32,6 +44,7 @@ internal static class PluginBytes
 
     public static byte[] Tes3(PluginSpec spec)
     {
+        if (spec.Blocks.Count > 0) throw new NotSupportedException("Synthetic TES3 plugins hold only the header record");
         // The TES3 flag word that marks a master lives in HEDR, not in the record header.
         var hedr = new byte[300];
         BitConverter.GetBytes(spec.HeaderVersion ?? 0f).CopyTo(hedr, 0);
@@ -82,7 +95,36 @@ internal static class PluginBytes
         file.Write(BitConverter.GetBytes(0u));
         file.Write(new byte[oblivion ? 4 : 8]);
         body.WriteTo(file);
+        foreach (var block in spec.Blocks) WriteBlock(file, block, oblivion);
         return file.ToArray();
+    }
+
+    private static void WriteBlock(Stream to, PluginBlock block, bool oblivion)
+    {
+        // Record headers are 20 bytes on Oblivion and 24 elsewhere; group headers are the same length as records'.
+        var headerLength = oblivion ? 20 : 24;
+        switch (block)
+        {
+            case RecordBlock record:
+                to.Write(Encoding.ASCII.GetBytes(record.Type));
+                to.Write(BitConverter.GetBytes((uint)record.DataSize));
+                to.Write(BitConverter.GetBytes(record.Flags));
+                to.Write(BitConverter.GetBytes(record.FormId));
+                to.Write(new byte[headerLength - 16]);
+                to.Write(new byte[record.DataSize]);
+                break;
+            case GroupBlock group:
+                var children = new MemoryStream();
+                foreach (var child in group.Children) WriteBlock(children, child, oblivion);
+                to.Write("GRUP"u8);
+                to.Write(BitConverter.GetBytes((uint)(headerLength + children.Length)));
+                to.Write(Encoding.ASCII.GetBytes(group.Label));
+                to.Write(new byte[headerLength - 12]);
+                children.WriteTo(to);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(block));
+        }
     }
 
     /// <summary>A TES4 header whose SNAM is larger than a u16 length can hold, preceded by an XXXX size subrecord.</summary>

@@ -12,6 +12,7 @@ using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.Loot;
 using SilverModManager.Games.CreationEngine.Models;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -42,6 +43,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     private readonly IServiceProvider _serviceProvider;
     private readonly ICreationEngineGame _game;
     private readonly PluginHeaderCache _headers;
+    private LootOverlapSource? _overlapSource;
     private readonly ILogger<PluginSortOrderVariety> _logger;
     private readonly ConcurrentDictionary<FileIdentity, byte> _reportedUnreadable = new();
 
@@ -247,7 +249,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     {
         var store = _serviceProvider.GetRequiredService<IMasterlistStore>();
         var dataDirectory = _serviceProvider.GetRequiredService<LootDataDirectory>().Path;
-        return new LootSortService(_game, this, Connection, store, dataDirectory, MasterlistRefresh(store), _logger).SortAsync(sortOrderId, token);
+        return new LootSortService(_game, this, Connection, store, dataDirectory, MasterlistRefresh(store), _logger, OverlapSource).SortAsync(sortOrderId, token);
     }
 
     /// <summary>
@@ -484,6 +486,24 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var tombstones = StoredRows(sortOrder.SortOrderId, latestDb);
         return Reconcile(current, loadoutData, key => !visible.Contains(key) ? tombstones.GetValueOrDefault(key) : null);
     }
+
+    /// <summary>
+    /// What LOOT's overlap rules read: plugin records and archive listings, cached for the life of the game across
+    /// sorts, and the archives of the loadout.
+    /// </summary>
+    internal LootOverlapSource OverlapSource => _overlapSource ??= CreateOverlapSource();
+
+    private LootOverlapSource CreateOverlapSource()
+    {
+        var cache = new PluginOverlapCache(_serviceProvider.GetRequiredService<IStreamSourceDispatcher>(), _game.HeaderFormat, _logger);
+        return new LootOverlapSource(new LootOverlapReader(cache, _game.HeaderFormat, _logger), QueryLoadoutArchives);
+    }
+
+    // An archive of a switched-off mod is not in the Data folder, so it does not count for the plugin that names it.
+    private IReadOnlyList<(string Name, FileIdentity Identity)> QueryLoadoutArchives(LoadoutId loadoutId, IDb db, LootGame game) =>
+        [.. db.Connection.Query<(string Name, string Identity)>(
+                $"SELECT Name, Identity FROM plugins.LoadoutArchives({db}, {loadoutId}, {DataLocation}, {DataFolder}, {AssociatedArchives.ArchiveExtension(game)})")
+            .Select(row => (row.Name, FileIdentity.ParseHex(row.Identity)))];
 
     private IEnumerable<(string Name, FileIdentity Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
         db.Connection.Query<(string Name, string Identity, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(

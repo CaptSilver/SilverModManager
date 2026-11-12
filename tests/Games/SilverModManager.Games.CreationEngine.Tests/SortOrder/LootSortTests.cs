@@ -5,6 +5,9 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Tests;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.Loot;
 using SilverModManager.Games.CreationEngine.SortOrder;
@@ -332,7 +335,7 @@ public class LootSortTests(ITestOutputHelper helper)
     }
 
     private LootSortService ServiceWith(PluginSortOrderVariety variety, AbsolutePath dataDirectory, Func<LootGame, CancellationToken, Task>? refresh = null, TimeSpan? timeout = null) =>
-        new(Game, variety, Connection, Store, dataDirectory, refresh, NullLogger.Instance, timeout);
+        new(Game, variety, Connection, Store, dataDirectory, refresh, NullLogger.Instance, variety.OverlapSource, timeout);
 
     [Fact]
     public async Task TheUserlistInTheDataFolder_AddsItsRulesToTheMasterlists()
@@ -435,5 +438,95 @@ public class LootSortTests(ITestOutputHelper helper)
         var sort = () => ServiceWith(variety, dataDirectory).SortAsync(SortOrderId.From(1UL), CancellationToken.None);
 
         await sort.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    /// <summary>Puts files with real bytes in the loadout's Data folder and in the file store, so the sorter can read them.</summary>
+    private async Task AddStoredFiles(Loadout.ReadOnly loadout, params (string Name, byte[] Bytes)[] files)
+    {
+        var entries = new List<ArchivedFileEntry>();
+        using var tx = Connection.BeginTransaction();
+        var group = AddEmptyGroup(tx, loadout.LoadoutId, "Mods");
+        foreach (var (name, bytes) in files)
+        {
+            _ = AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, $"{DataFolder}/{name}"), bytes, out var identity, out var size);
+            entries.Add(new ArchivedFileEntry(new MemoryStreamFactory(name, new MemoryStream(bytes)), identity, size));
+        }
+
+        await FileStore.BackupFiles(entries);
+        await tx.Commit();
+    }
+
+    /// <summary>A plugin of Skyrim.esm whose records are the given FormIDs; an index of 0 names Skyrim.esm.</summary>
+    private static byte[] PluginWithRecords(params uint[] formIds) => PluginBytes.Write(PluginFormat.Tes4, new PluginSpec
+    {
+        Masters = ["Skyrim.esm"],
+        Blocks = [new GroupBlock("WEAP", [.. formIds.Select(id => new RecordBlock("WEAP", id))])],
+    });
+
+    private async Task<byte[]> ArchiveOf(params string[] files)
+    {
+        await using var builder = BethesdaArchiveBuilder.Create(new Tes5ArchiveState("BSA\0", 104, 0x3, 0), TemporaryFileManager);
+        foreach (var file in files)
+            await builder.AddFile(new Tes5FileState(0, RelativePath.FromUnsanitizedInput(file), false), new MemoryStream("data"u8.ToArray()), CancellationToken.None);
+
+        var output = new MemoryStream();
+        await builder.Build(output, CancellationToken.None);
+        return output.ToArray();
+    }
+
+    private async Task<(PluginSortOrderVariety Variety, SortOrderId Id)> Loadout_SkyrimThen(params (string Name, byte[] Bytes)[] files)
+    {
+        // Created before the files are stored: creating a loadout runs the garbage collector.
+        var loadout = await CreateLoadout();
+        await SkyrimBaseline.SeedSkyrimEsm(ServiceProvider, loadout);
+        await AddStoredFiles(loadout, files);
+        var variety = new PluginSortOrderVariety(ServiceProvider, Game);
+        var id = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        await variety.ReconcileSortOrder(id);
+        return (variety, id);
+    }
+
+    [Fact]
+    public async Task SortAsync_PutsThePluginThatOverridesMoreOfTheSameRecordsFirst()
+    {
+        var (variety, id) = await Loadout_SkyrimThen(
+            ("A.esp", PluginWithRecords(0x0000_0D62)),
+            ("Z.esp", PluginWithRecords(0x0000_0D62, 0x0000_0D63)));
+        StoredNames(id).Should().Equal("Skyrim.esm", "A.esp", "Z.esp");
+
+        var outcome = await ((ILootSortSource)variety).SortAsync(id);
+
+        outcome.Succeeded.Should().BeTrue();
+        outcome.OverlapEdgesSkipped.Should().BeFalse();
+        StoredNames(id).Should().Equal("Skyrim.esm", "Z.esp", "A.esp");
+    }
+
+    [Fact]
+    public async Task SortAsync_KeepsTheOrderOfPluginsThatOverrideDifferentRecords()
+    {
+        var (variety, id) = await Loadout_SkyrimThen(
+            ("A.esp", PluginWithRecords(0x0000_0D62)),
+            ("Z.esp", PluginWithRecords(0x0000_0D70, 0x0000_0D71)));
+
+        var outcome = await ((ILootSortSource)variety).SortAsync(id);
+
+        outcome.OverlapEdgesSkipped.Should().BeFalse();
+        StoredNames(id).Should().Equal("Skyrim.esm", "A.esp", "Z.esp");
+    }
+
+    [Fact]
+    public async Task SortAsync_PutsThePluginThatLoadsMoreArchiveFilesFirstWhenBothLoadTheSameFile()
+    {
+        var (variety, id) = await Loadout_SkyrimThen(
+            ("A.esp", PluginWithRecords()),
+            ("A.bsa", await ArchiveOf("meshes/x.nif")),
+            ("Z.esp", PluginWithRecords()),
+            ("Z.bsa", await ArchiveOf("meshes/x.nif", "meshes/y.nif")));
+        StoredNames(id).Should().Equal("Skyrim.esm", "A.esp", "Z.esp");
+
+        var outcome = await ((ILootSortSource)variety).SortAsync(id);
+
+        outcome.OverlapEdgesSkipped.Should().BeFalse();
+        StoredNames(id).Should().Equal("Skyrim.esm", "Z.esp", "A.esp");
     }
 }

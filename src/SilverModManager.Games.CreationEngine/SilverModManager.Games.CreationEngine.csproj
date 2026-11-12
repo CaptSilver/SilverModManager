@@ -2,6 +2,7 @@
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Bethesda.Archives\SilverModManager.Games.Bethesda.Archives.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Bethesda.LoadOrder\SilverModManager.Games.Bethesda.LoadOrder.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Bethesda.Loot\SilverModManager.Games.Bethesda.Loot.csproj" />
         <ProjectReference Include="..\SilverModManager.Games.Unreal\SilverModManager.Games.Unreal.csproj" />

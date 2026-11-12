@@ -3,7 +3,8 @@
 
 CREATE SCHEMA IF NOT EXISTS plugins;
 
--- Every plugin file directly in the data folder of a loadout, one row per file name (ignoring case).
+-- Every file with one of the given extensions directly in the data folder of a loadout, one row per file name
+-- (ignoring case). extensions is a comma separated list of lower-case extensions with their dot.
 -- Three sources feed it: loadout items (mod files), the game's own files, which are not loadout items and only
 -- exist as rows of file_hashes.loadout_files, and GameInstalledFile rows, the plugins the game put there itself
 -- (Creations). IsGameInstalled marks the third source; its IsEnabled is the "Installed by the game" group's switch.
@@ -14,7 +15,7 @@ CREATE SCHEMA IF NOT EXISTS plugins;
 -- active plugin that the plugin list writer then unstars. A mod copy and a game-installed copy of one name never
 -- coexist, because a reconcile leaves a path a mod supplies out of the game-installed content.
 -- A game file the loadout deletes is dropped.
-CREATE MACRO plugins.LoadoutPlugins(db, loadoutId, gameLocationId, dataFolder) AS TABLE
+CREATE MACRO plugins.LoadoutDataFiles(db, loadoutId, gameLocationId, dataFolder, extensions) AS TABLE
 WITH candidates AS (
     SELECT
         regexp_extract(file.TargetPath.Item3, '[^/]+$') AS Name,
@@ -31,7 +32,7 @@ WITH candidates AS (
         AND enabledState.Identity IS NOT NULL
         AND NOT enabledState.IsDeleted
         AND lower(regexp_replace(file.TargetPath.Item3, '/?[^/]+$', '')) = lower(dataFolder)
-        AND lower(regexp_extract(file.TargetPath.Item3, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')
+        AND list_contains(string_split(extensions, ','), lower(regexp_extract(file.TargetPath.Item3, '\.[^./]+$')))
     UNION ALL
     SELECT
         regexp_extract(gameFile.Path, '[^/]+$') AS Name,
@@ -45,7 +46,7 @@ WITH candidates AS (
     JOIN mdb_GameInstallMetadata(Db=>db) AS installation ON loadout.Installation = installation.Id
     WHERE gameFile.Loadout = loadoutId
         AND lower(regexp_replace(gameFile.Path, '/?[^/]+$', '')) = lower(dataFolder)
-        AND lower(regexp_extract(gameFile.Path, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')
+        AND list_contains(string_split(extensions, ','), lower(regexp_extract(gameFile.Path, '\.[^./]+$')))
         -- A vanilla plugin the loadout deletes is gone from the game folder, so it is not offered.
         AND NOT EXISTS (
             SELECT 1
@@ -71,7 +72,7 @@ WITH candidates AS (
     WHERE installedFile.Loadout = loadoutId
         AND installedFile.Path.Item2 = gameLocationId
         AND lower(regexp_replace(installedFile.Path.Item3, '/?[^/]+$', '')) = lower(dataFolder)
-        AND lower(regexp_extract(installedFile.Path.Item3, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')
+        AND list_contains(string_split(extensions, ','), lower(regexp_extract(installedFile.Path.Item3, '\.[^./]+$')))
 )
 SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
 FROM (
@@ -91,6 +92,20 @@ FROM (
     FROM candidates
 ) ranked
 WHERE ranking = 1;
+
+
+-- Every plugin file directly in the data folder of a loadout, one row per file name (ignoring case).
+CREATE MACRO plugins.LoadoutPlugins(db, loadoutId, gameLocationId, dataFolder) AS TABLE
+SELECT Name, Identity, IsEnabled, ModName, ModGroupId, IsGameInstalled
+FROM plugins.LoadoutDataFiles(db, loadoutId, gameLocationId, dataFolder, '.esm,.esp,.esl,.omwaddon,.omwgame,.omwscripts');
+
+
+-- The archives of one extension (".bsa" or ".ba2") directly in the data folder of a loadout that the game will see:
+-- those of a switched-off mod are not in the folder once the loadout is applied.
+CREATE MACRO plugins.LoadoutArchives(db, loadoutId, gameLocationId, dataFolder, extension) AS TABLE
+SELECT Name, Identity
+FROM plugins.LoadoutDataFiles(db, loadoutId, gameLocationId, dataFolder, lower(extension))
+WHERE IsEnabled;
 
 
 -- Every persisted row of a plugin sort order, whether or not the loadout still has the plugin.

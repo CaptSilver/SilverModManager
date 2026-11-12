@@ -10,6 +10,7 @@ using SilverModManager.Games.CreationEngine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
@@ -21,6 +22,7 @@ namespace SilverModManager.Games.CreationEngine.Loot;
 /// <paramref name="dataDirectory"/> when it exists.
 /// </summary>
 /// <param name="refresh">Brings the store's copy up to date; null when refreshing is off or the store has no network.</param>
+/// <param name="overlap">Reads the records and archives behind LOOT's overlap rules.</param>
 internal sealed class LootSortService(
     ICreationEngineGame game,
     IPluginSortOrderVariety variety,
@@ -29,6 +31,7 @@ internal sealed class LootSortService(
     AbsolutePath dataDirectory,
     Func<LootGame, CancellationToken, Task>? refresh,
     ILogger logger,
+    LootOverlapSource overlap,
     TimeSpan? refreshTimeout = null)
 {
     /// <summary>A sort is waiting on the user, so a slow connection must not hold it up for long.</summary>
@@ -56,15 +59,15 @@ internal sealed class LootSortService(
             .Select(item => (Item: item, Data: item.LoadoutData as PluginLoadoutData
                 ?? throw new InvalidOperationException($"The plugin row '{item.DisplayName}' has no plugin data to sort by")))
             .ToList();
-        var plugins = items.Select(i => new LootSortPlugin(i.Data)).ToList();
 
         var earlyLoading = game.EarlyLoadingPlugins(installation);
         var activeNames = items.Where(i => i.Item.IsActive).Select(i => i.Data.Name).ToList();
         var loadoutData = items.Select(i => i.Data).ToList();
+        var archives = overlap.Covers(lootGame) ? overlap.Archives(sortOrder.LoadoutId, db, lootGame) : [];
 
-        // Hashing cleaned plugins and reading headers is synchronous disk I/O, and the command that calls this
-        // starts on the UI thread.
-        return await Task.Run(() => SortPlugins(sortOrderId, installation, lootGame, activeNames, loadoutData, plugins, earlyLoading, token), token);
+        // Hashing cleaned plugins, reading headers and walking every plugin's records is synchronous disk I/O, and
+        // the command that calls this starts on the UI thread.
+        return await Task.Run(() => SortPlugins(sortOrderId, installation, lootGame, activeNames, loadoutData, archives, earlyLoading, token), token);
     }
 
     private async Task<LootSortOutcome> SortPlugins(
@@ -73,10 +76,11 @@ internal sealed class LootSortService(
         LootGame lootGame,
         List<string> activeNames,
         List<PluginLoadoutData> loadoutData,
-        List<LootSortPlugin> plugins,
+        IReadOnlyList<(string Name, FileIdentity Identity)> archives,
         IReadOnlyList<string> earlyLoading,
         CancellationToken token)
     {
+        var (plugins, overlapInputsRead) = await ReadPlugins(lootGame, loadoutData, archives, token);
         var context = new LootConditionContext(
             game,
             installation,
@@ -96,7 +100,7 @@ internal sealed class LootSortService(
 
         try
         {
-            var result = PluginSorter.Sort(plugins, database, earlyLoading);
+            var result = PluginSorter.Sort(plugins, database, earlyLoading, overlapInputsRead: overlapInputsRead);
 
             using var tx = connection.BeginTransaction();
             variety.StageOrder(sortOrderId, result.Order, tx);
@@ -109,8 +113,29 @@ internal sealed class LootSortService(
             // The sorter never got as far as a result, so the divergences come from the same per-plugin
             // preparation it does first.
             var unevaluated = plugins.Select((plugin, index) => PluginSorter.ToPluginSortingData(database, plugin, index).UnevaluatedConditions).Sum();
-            return new LootSortOutcome(false, cycle.Message, plugins.Count > 0, unevaluated, content.Revision);
+            return new LootSortOutcome(false, cycle.Message, plugins.Count > 0 && !overlapInputsRead, unevaluated, content.Revision);
         }
+    }
+
+    /// <summary>
+    /// The plugins as the sorter sees them. For a game whose overlap is read, each carries its resolved records and
+    /// the files of its archives, and the flag says every plugin's records could be read; for any other game they
+    /// carry nothing and the flag is false, so the outcome reports overlap as skipped.
+    /// </summary>
+    private async Task<(List<LootSortPlugin> Plugins, bool OverlapInputsRead)> ReadPlugins(
+        LootGame lootGame,
+        IReadOnlyList<PluginLoadoutData> loadoutData,
+        IReadOnlyList<(string Name, FileIdentity Identity)> archives,
+        CancellationToken token)
+    {
+        if (!overlap.Covers(lootGame))
+            return ([.. loadoutData.Select(d => new LootSortPlugin(d))], false);
+
+        var read = await overlap.Reader.Read(lootGame, loadoutData, archives, token);
+        var plugins = loadoutData
+            .Select(d => read.Plugins.TryGetValue(d.Name, out var found) ? new LootSortPlugin(d, found.Records, found.Assets) : new LootSortPlugin(d))
+            .ToList();
+        return (plugins, read.Complete);
     }
 
     private async Task RefreshAsync(LootGame lootGame, CancellationToken token)
