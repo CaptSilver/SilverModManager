@@ -80,6 +80,24 @@ public class OpenUriFallbackTests
 
         _failures.Should().Equal(Link);
         _logger.Entries.Should().Contain(e => e.Message.Contains(Link.AbsoluteUri) && e.Message.Contains("xdg-open"));
+        _logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Message.StartsWith("xdg-open"), "the link did not open at all");
+    }
+
+    // The app shows an Error-level log entry as a dialog, so a portal failure the fallback recovers from must not be one.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task APortalFailureThatXdgOpenRecoversFrom_IsAWarningNotAnError(bool portalThrows)
+    {
+        var interop = CreateInterop(
+            _ => portalThrows ? throw new InvalidOperationException("portal is down") : Task.FromResult(ResponseStatus.Aborted),
+            _ => Exit(0));
+
+        await interop.OpenUriAsync(Link);
+
+        _failures.Should().BeEmpty();
+        _logger.Entries.Should().Contain(e => e.Level == LogLevel.Warning && e.Message.Contains("trying xdg-open"));
+        _logger.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
     }
 
     [Fact]

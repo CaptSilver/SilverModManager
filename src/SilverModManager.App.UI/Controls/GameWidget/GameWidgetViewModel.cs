@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Helpers;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -80,18 +81,7 @@ public partial class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGa
 
     private async Task<Bitmap?> LoadImage(GameInstallation? source)
     {
-        if (source is null) return null;
-
-        try
-        {
-            var stream = await source.Game.TileImage.GetStreamAsync();
-            return Bitmap.DecodeToWidth(stream, (int) ImageSizes.GameTile.Width);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "While loading game image for {GameName}", source.Game.DisplayName);
-            return null;
-        }
+        return await ImageHelper.LoadGameTileAsync(source?.Game, (int) ImageSizes.GameTile.Width, _logger);
     }
 
     /// <summary>

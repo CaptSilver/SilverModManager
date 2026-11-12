@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Helpers;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -193,19 +194,7 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
 
     private async Task<Bitmap?> LoadImage(GameInstallation source)
     {
-        return await Task.Run(async () =>
-        {
-            try
-            {
-                var stream = await source.GetGame().IconImage.GetStreamAsync();
-                return Bitmap.DecodeToWidth(stream, (int) ImageSizes.GameThumbnail.Width);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "While loading game image for {GameName}", source.Game.DisplayName);
-                return null;
-            }
-        });
+        return await Task.Run(async () => await ImageHelper.LoadGameIconAsync(source.GetGame(), (int) ImageSizes.GameThumbnail.Width, _logger));
     }
     
     private async Task DeleteLoadout(Loadout.ReadOnly loadout)

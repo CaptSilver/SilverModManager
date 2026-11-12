@@ -1,6 +1,7 @@
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
-using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 using SilverModManager.UI.Sdk.Icons;
 
 namespace SilverModManager.App.UI.Helpers;
@@ -11,25 +12,28 @@ namespace SilverModManager.App.UI.Helpers;
 public static class ImageHelper
 {
     /// <summary>
-    /// Loads a game icon as a Bitmap from the game's icon stream.
+    /// Loads a game's icon, decoded to <paramref name="width"/>, or null when there is no game or its icon can't be read.
     /// </summary>
-    /// <param name="game">The game to load the icon for.</param>
-    /// <param name="width">The width to decode the image to.</param>
-    /// <param name="logger">Logger for error handling.</param>
-    /// <returns>A Bitmap if successful, null otherwise.</returns>
-    public static async ValueTask<Bitmap?> LoadGameIconAsync(IGame? game, int width, ILogger logger)
-    {
-        if (game is null)
-            return null;
+    public static ValueTask<Bitmap?> LoadGameIconAsync(IGameData? game, int width, ILogger logger)
+        => game is null ? ValueTask.FromResult<Bitmap?>(null) : LoadAsync(game.IconImage, game.DisplayName, width, logger);
 
+    /// <summary>
+    /// Loads a game's tile, decoded to <paramref name="width"/>, or null when there is no game or its tile can't be read.
+    /// </summary>
+    public static ValueTask<Bitmap?> LoadGameTileAsync(IGameData? game, int width, ILogger logger)
+        => game is null ? ValueTask.FromResult<Bitmap?>(null) : LoadAsync(game.TileImage, game.DisplayName, width, logger);
+
+    private static async ValueTask<Bitmap?> LoadAsync(IStreamFactory image, string gameName, int width, ILogger logger)
+    {
         try
         {
-            await using var iconStream = await game.IconImage.GetStreamAsync();
-            return Bitmap.DecodeToWidth(iconStream, width);
+            await using var stream = await image.GetStreamAsync();
+            return Bitmap.DecodeToWidth(stream, width);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "While loading game image for {GameName}", game.DisplayName);
+            // The card shows without the picture; an Error-level entry would be shown as a dialog.
+            logger.LogWarning(ex, "While loading game image for {GameName}", gameName);
             return null;
         }
     }

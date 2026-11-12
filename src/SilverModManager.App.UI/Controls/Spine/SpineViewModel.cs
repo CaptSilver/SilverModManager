@@ -279,7 +279,8 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Skia image load error, while loading image from stream");
+            // The button keeps a blank icon; an Error-level entry would be shown as a dialog.
+            _logger.LogWarning(ex, "Skia image load error, while loading image from stream");
             // The same blank image a button shows before it has an icon.
             return Initializers.IImage;
         }

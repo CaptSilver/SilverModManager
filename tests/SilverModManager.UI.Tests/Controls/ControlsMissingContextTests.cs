@@ -143,6 +143,7 @@ public class ControlsMissingContextTests(IServiceProvider provider) : AUiTest(pr
     [Fact]
     public async Task AnIconThatCannotBeDecoded_GetsAPlaceholderImage()
     {
+        var logger = new RecordingLogger<SpineViewModel>();
         var windows = Substitute.For<IWindowManager>();
         var controller = Substitute.For<IWorkspaceController>();
         controller.AllWorkspaces.Returns(new System.Collections.ObjectModel.ReadOnlyObservableCollection<IWorkspaceViewModel>([]));
@@ -150,7 +151,7 @@ public class ControlsMissingContextTests(IServiceProvider provider) : AUiTest(pr
 
         var image = await OnUi(() => Task.FromResult(new SpineViewModel(
             Provider,
-            Provider.GetRequiredService<ILogger<SpineViewModel>>(),
+            logger,
             Connection,
             windows,
             new IconButtonViewModel(),
@@ -159,5 +160,20 @@ public class ControlsMissingContextTests(IServiceProvider provider) : AUiTest(pr
             Substitute.For<IWorkspaceAttachmentsFactoryManager>()).LoadImageFromStream(new MemoryStream([1, 2, 3]))));
 
         image.Should().NotBeNull();
+        // The app shows an Error-level log entry as a dialog; a placeholder icon is not worth one.
+        logger.Entries.Should().Contain(e => e.Level == LogLevel.Warning);
+        logger.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Message)> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Enqueue((logLevel, formatter(state, exception)));
     }
 }

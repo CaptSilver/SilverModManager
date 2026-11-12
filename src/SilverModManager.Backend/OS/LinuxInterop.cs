@@ -119,12 +119,13 @@ internal partial class LinuxInterop : IOSInterop
             }
 
             // An aborted request comes back as a normal response, so without this it ended in nothing and no log line.
-            _logger.LogError("The desktop portal answered {Status} for `{Uri}`, trying xdg-open", status, uri.AbsoluteUri);
+            _logger.LogWarning("The desktop portal answered {Status} for `{Uri}`, trying xdg-open", status, uri.AbsoluteUri);
         }
         catch (Exception e)
         {
-            // Inside an AppImage the session bus variables are the first suspect, so they go in the log.
-            _logger.LogError(e, "The desktop portal failed to open `{Uri}`, trying xdg-open (DBUS_SESSION_BUS_ADDRESS={DBusAddress}, XDG_RUNTIME_DIR={RuntimeDir}, APPIMAGE={AppImage})",
+            // Inside an AppImage the session bus variables are the first suspect, so they go in the log. A warning,
+            // because xdg-open usually recovers; an Error-level entry is shown as a dialog, so only the fallback failing is one.
+            _logger.LogWarning(e, "The desktop portal failed to open `{Uri}`, trying xdg-open (DBUS_SESSION_BUS_ADDRESS={DBusAddress}, XDG_RUNTIME_DIR={RuntimeDir}, APPIMAGE={AppImage})",
                 uri.AbsoluteUri,
                 Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS") ?? "<unset>",
                 Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") ?? "<unset>",
