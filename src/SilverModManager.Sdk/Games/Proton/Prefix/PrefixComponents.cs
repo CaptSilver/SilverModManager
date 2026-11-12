@@ -203,7 +203,7 @@ public static class PrefixComponents
 
     /// <summary>
     /// The .NET 8 desktop runtime, which WPF and WinForms apps such as Pandora Behaviour Engine+ need. The
-    /// installer is the x64 one Microsoft lists for 8.0.33 in its release metadata (releases.json for 8.0).
+    /// installer is the x64 one Microsoft lists for 8.0.34 in its release metadata (releases.json for 8.0).
     /// </summary>
     public static readonly PrefixComponent DotNetDesktop8 = new()
     {
@@ -212,13 +212,13 @@ public static class PrefixComponents
         Downloads =
         [
             new PrefixDownload(
-                "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.33/windowsdesktop-runtime-8.0.33-win-x64.exe",
-                "4de14de0b327e801d7a691cb1afc8a00db5313a698ef53b979fc6f84fce631de",
-                "windowsdesktop-runtime-8.0.33-win-x64.exe"),
+                "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.34/windowsdesktop-runtime-8.0.34-win-x64.exe",
+                "37aa8a02acc1973ddd7e3de993a02007ccef26b48fa35b09d087fa8ab4602795",
+                "windowsdesktop-runtime-8.0.34-win-x64.exe"),
         ],
         InstallSteps =
         [
-            new PrefixInstallStep(PrefixInstallStepKind.RunInstaller, "windowsdesktop-runtime-8.0.33-win-x64.exe", PrefixArchitecture.X64, SilentInstall),
+            new PrefixInstallStep(PrefixInstallStepKind.RunInstaller, "windowsdesktop-runtime-8.0.34-win-x64.exe", PrefixArchitecture.X64, SilentInstall),
         ],
         // The runtime lives under Program Files\dotnet and puts nothing in system32.
         NativeFiles = [],

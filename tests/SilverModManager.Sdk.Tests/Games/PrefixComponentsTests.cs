@@ -181,8 +181,8 @@ public partial class PrefixComponentsTests
         var component = PrefixComponents.DotNetDesktop8;
 
         var download = component.Downloads.Should().ContainSingle().Subject;
-        download.Url.Should().Be("https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.33/windowsdesktop-runtime-8.0.33-win-x64.exe");
-        download.Sha256.Should().Be("4de14de0b327e801d7a691cb1afc8a00db5313a698ef53b979fc6f84fce631de");
+        download.Url.Should().Be("https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.34/windowsdesktop-runtime-8.0.34-win-x64.exe");
+        download.Sha256.Should().Be("37aa8a02acc1973ddd7e3de993a02007ccef26b48fa35b09d087fa8ab4602795");
         var step = component.InstallSteps.Should().ContainSingle().Subject;
         step.Kind.Should().Be(PrefixInstallStepKind.RunInstaller);
         step.FileName.Should().Be(download.FileName);
