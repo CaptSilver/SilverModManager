@@ -58,6 +58,23 @@ public class LoadoutCreateVerbTests(ITestOutputHelper helper) : AIsolatedGameTes
     }
 
     [Fact]
+    public async Task WithJson_PrintsTheNewLoadoutAsOneObject()
+    {
+        await GenerateGameFiles();
+
+        var (exit, output) = await Run("loadout", "create", "-g", EldenRingGame.GameId.ToString(), "-n", "Scripted", "--json");
+
+        exit.Should().Be(0, output);
+        var loadout = Loadout.All(Connection.Db).Where(l => l.IsVisible()).Should().ContainSingle().Which;
+        var row = System.Text.Json.Nodes.JsonNode.Parse(output)!.AsObject();
+        ((string)row["id"]!).Should().Be(loadout.LoadoutId.ToString());
+        ((string)row["name"]!).Should().Be("Scripted");
+        ((string)row["game"]!).Should().Be(loadout.Installation.Name);
+        ((string)row["store"]!).Should().Be(GameStore.Steam.ToString());
+        ((string)row["path"]!).Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
     public async Task AGameThatIsNotLocatedSaysSoAndCreatesNothing()
     {
         var (exit, output) = await Run("loadout", "create", "-g", "Not.Installed");

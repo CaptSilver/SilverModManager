@@ -137,13 +137,16 @@ public static class LoadoutManagementVerbs
         return 0;
     }
 
+    private sealed record CreatedLoadoutRow(string Id, string Name, string Game, string Store, string Path);
+
     [Verb("loadout create", "Creates a loadout for a game found on this machine, managing it if it is not managed yet")]
     private static async Task<int> Create([Injected] IRenderer renderer,
         [Injected] IGameRegistry registry,
         [Injected] ILoadoutManager loadoutManager,
         [Option("g", "game", "The game id, as `games list --json` prints it")] string gameId,
         [Option("n", "name", "Loadout name", true)] string? name,
-        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles)
+        [Option("large-files", "large-files", LargeFilesHelp, true)] string? largeFiles,
+        [Option("j", "json", "Print the new loadout as JSON", true)] bool json)
     {
         var choice = BackupOverflowChoices.Parse(largeFiles);
         var installations = GameVerbs.Located(registry, gameId);
@@ -156,6 +159,13 @@ public static class LoadoutManagementVerbs
         // A game found in two stores gets the first one the registry lists; the output names it.
         var installation = installations[0];
         var loadout = await loadoutManager.CreateLoadout(installation, name, choice);
+        if (json)
+        {
+            var row = new CreatedLoadoutRow(loadout.LoadoutId.ToString(), loadout.Name, loadout.Installation.Name, loadout.Installation.Store.ToString(), installation.LocatorResult.Path.ToString());
+            await renderer.TextLine(JsonSerializer.Serialize(row, CliJson.Options));
+            return 0;
+        }
+
         await renderer.TextLine($"Created loadout {loadout.Name} ({loadout.LoadoutId}) for {installation.Game.DisplayName} at {installation.LocatorResult.Path}");
         return 0;
     }
