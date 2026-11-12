@@ -189,7 +189,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
         return await monitor.Begin(new CleanupFixJob(loadoutId), async context =>
         {
             await context.YieldAsync();
-            return await fixer.FixAsync(loadout, plan, AskUserToRun, context.CancellationToken);
+            return await fixer.FixAsync(loadout, plan, (command, why, isCleared, token) => AskUserToRun(loadoutId, command, why, isCleared, token), context.CancellationToken);
         });
     }
 
@@ -218,8 +218,10 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     /// Shown when the password prompt cannot run: the exact command with a copy button, asked again until the
     /// attribute is gone or the user cancels.
     /// </summary>
-    private async Task<bool> AskUserToRun(string command, string? why, Func<bool> isCleared, CancellationToken cancellationToken)
+    private async Task<bool> AskUserToRun(LoadoutId loadoutId, string command, string? why, Func<bool> isCleared, CancellationToken cancellationToken)
     {
+        // The password prompt did not work out, so the button must stop talking about it while the manual dialog is open.
+        SetStatus(loadoutId, null);
         while (!isCleared())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -232,6 +234,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             why = "The attribute is still set";
         }
 
+        SetStatus(loadoutId, "Applying the cleanup\u2026");
         return true;
     }
 

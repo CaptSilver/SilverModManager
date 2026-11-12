@@ -787,6 +787,34 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
+    public async Task Test_FixShowsNoPasswordStatusWhileTheManualCommandDialogIsOpen()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var privileged = new CleanupStep(CleanupStepKind.Privileged, "Clear the immutable attribute", "/game/a.dll", Command: PrivilegedCommand.ClearImmutable("/game/a.dll"));
+        var fixer = FixerPlanning(new CleanupPlan([privileged, new CleanupStep(CleanupStepKind.Delete, "Delete mods/a", "mods/a")]));
+        var asked = 0;
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await call.Arg<ManualCommandPrompt>()("sudo chattr -i /game/a.dll", "pkexec is not installed", () => asked++ > 0, CancellationToken.None);
+                return Applied("mods/a");
+            });
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer);
+        var seen = new List<string?>();
+        using var subscription = handler.StatusOf(seeded.LoadoutId).Subscribe(seen.Add);
+        var shownWith = new List<string?>();
+        windows.When(w => w.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>())).Do(_ => shownWith.Add(seen.Last()));
+
+        await handler.ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        // The confirmation, then the manual command: neither may sit under a status that talks about a password prompt.
+        shownWith.Should().HaveCount(2).And.OnlyContain(s => s == null);
+        var afterManual = seen.SkipWhile(s => s is null || !s.Contains("password")).Skip(1).First(s => s is not null);
+        afterManual.Should().Be("Applying the cleanup\u2026");
+    }
+
+    [Fact]
     public async Task Test_FixClearsItsStatusWhenTheCleanupThrows()
     {
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
