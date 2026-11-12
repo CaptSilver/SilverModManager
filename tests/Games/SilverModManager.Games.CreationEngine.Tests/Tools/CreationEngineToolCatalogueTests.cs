@@ -21,7 +21,7 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
     [Fact]
     public void EachCatalogueToolIsRegisteredOnce()
     {
-        provider.GetServices<ToolDefinition>().Select(d => d.Id?.Value).Should().BeEquivalentTo("xedit", "xlodgen", "texgen", "dyndolod", "oc-unleashed-configurator");
+        provider.GetServices<ToolDefinition>().Select(d => d.Id?.Value).Should().BeEquivalentTo("xedit", "xlodgen", "texgen", "dyndolod", "pandora", "nemesis", "bodyslide", "outfit-studio", "oc-unleashed-configurator");
     }
 
     [Fact]
@@ -166,6 +166,101 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
         var skyrim = Game(global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId);
 
         Definition("dyndolod").ExtraArguments!(skyrim, "DynDOLODx64.exe").Should().Equal("-sse");
+    }
+
+    [Theory]
+    [InlineData("pandora", "Pandora Behaviour Engine+.exe")]
+    [InlineData("nemesis", "Nemesis Unlimited Behavior Engine.exe")]
+    public void TheBehaviourEnginesAreFoundByTheirOwnExeName(string id, string exe)
+    {
+        Definition(id).ExecutableNames(Game(global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId)).Should().Equal(exe);
+    }
+
+    [Fact]
+    public void BodySlideIsFoundByItsTwoExeNamesForEveryGameItAppliesTo()
+    {
+        var names = new[] { "BodySlide x64.exe", "BodySlide.exe" };
+
+        Definition("bodyslide").ExecutableNames(Game(global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4.GameId)).Should().Equal(names);
+        Definition("bodyslide").ExecutableNames(Game(global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId)).Should().Equal(names);
+    }
+
+    // Outfit Studio ships beside BodySlide in the same folder; as its own entry, a scan of that folder saves it
+    // under its own name instead of a second "BodySlide".
+    [Fact]
+    public void OutfitStudioIsItsOwnToolForTheSameGamesAsBodySlide()
+    {
+        var outfitStudio = Definition("outfit-studio");
+
+        outfitStudio.DisplayName.Should().Be("Outfit Studio");
+        outfitStudio.ExecutableNames(Game(global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4.GameId)).Should().Equal("Outfit Studio x64.exe");
+        AppliesTo("outfit-studio").Should().BeEquivalentTo(AppliesTo("bodyslide"));
+    }
+
+    [Fact]
+    public void PandoraAppliesToSkyrimSeAndVrOnly()
+    {
+        AppliesTo("pandora").Should().BeEquivalentTo(new[] { global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId });
+    }
+
+    [Fact]
+    public void NemesisAppliesToSkyrimSeLeAndVr()
+    {
+        AppliesTo("nemesis").Should().BeEquivalentTo(new[] { global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimLE.SkyrimLE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId });
+    }
+
+    [Fact]
+    public void BodySlideAppliesToSkyrimSeVrAndFallout4WithItsVrBuild()
+    {
+        AppliesTo("bodyslide").Should().BeEquivalentTo(new[] { global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId, global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4.GameId, global::SilverModManager.Games.CreationEngine.Fallout4VR.Fallout4VR.GameId });
+    }
+
+    private IEnumerable<GameId> AppliesTo(string id)
+    {
+        var definition = Definition(id);
+        return provider.GetServices<IGame>().Where(definition.AppliesTo).Select(g => g.GameId);
+    }
+
+    [Fact]
+    public void PandoraNeedsTheDotNet8DesktopRuntimeAndNoWindowDecorations()
+    {
+        var prefix = Definition("pandora").Prefix;
+
+        prefix.Components.Should().Equal(PrefixComponents.DotNetDesktop8.Id);
+        prefix.RegistryDefaults.Should().Equal(new PrefixRegistryDefault("Pandora Behaviour Engine+.exe", "Decorated", "N"));
+    }
+
+    [Fact]
+    public void EveryComponentAToolRequiresResolvesThroughThePrefixComponentTable()
+    {
+        foreach (var id in provider.GetServices<ToolDefinition>().SelectMany(d => d.Prefix.Components))
+            PrefixComponents.TryResolve(id.Value, out _).Should().BeTrue(id.Value);
+    }
+
+    [Theory]
+    [InlineData("nemesis")]
+    [InlineData("bodyslide")]
+    [InlineData("outfit-studio")]
+    public void NemesisAndBodySlideNeedTheVisualCppRuntimeOnly(string id)
+    {
+        var prefix = Definition(id).Prefix;
+
+        prefix.Components.Should().Equal(PrefixComponents.VisualCppRuntime.Id);
+        prefix.RegistryDefaults.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("pandora", "Pandora Output")]
+    [InlineData("nemesis", "Nemesis Output")]
+    [InlineData("bodyslide", "BodySlide Output")]
+    [InlineData("outfit-studio", "Outfit Studio Output")]
+    public void TheseToolsWriteIntoTheGameFolderAndTakeNoArguments(string id, string group)
+    {
+        var definition = Definition(id);
+
+        definition.Output.Should().Be(new ToolOutput.GameFolder(group));
+        definition.Arguments.Words.Should().BeEmpty();
+        definition.ExitCodes.Should().Be(ExitCodePolicy.AnyExitIsFine);
     }
 
     [Fact]

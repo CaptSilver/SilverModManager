@@ -51,7 +51,29 @@ public static class CreationEngineToolCatalogue
     // Ships in the Data folder of OpenComposite Unleashed's Nexus archive; a self-contained .NET 9 program.
     private static readonly string[] OcUnleashedConfiguratorNames = ["OC Unleashed Configurator for Skyrim VR.exe"];
 
+    // Pandora's Nexus archive ships one exe, a .NET 8 WPF app. Nemesis is a native Qt program built against the
+    // shared Visual C++ runtime. BodySlide's archive holds BodySlide and Outfit Studio side by side in
+    // Data/CalienteTools/BodySlide; they are separate entries so a scan of that folder saves each under its own name.
+    private static readonly string[] PandoraNames = ["Pandora Behaviour Engine+.exe"];
+    private static readonly string[] NemesisNames = ["Nemesis Unlimited Behavior Engine.exe"];
+    private static readonly string[] BodySlideNames = ["BodySlide x64.exe", "BodySlide.exe"];
+    private static readonly string[] OutfitStudioNames = ["Outfit Studio x64.exe"];
+
+    private static readonly GameId[] PandoraGames = [SkyrimSE.SkyrimSE.GameId, SkyrimVR.SkyrimVR.GameId];
+    private static readonly GameId[] NemesisGames = [SkyrimSE.SkyrimSE.GameId, SkyrimLE.SkyrimLE.GameId, SkyrimVR.SkyrimVR.GameId];
+
+    private static readonly GameId[] BodySlideGames =
+    [
+        SkyrimSE.SkyrimSE.GameId,
+        SkyrimVR.SkyrimVR.GameId,
+        Fallout4.Fallout4.GameId,
+        Fallout4VR.Fallout4VR.GameId,
+    ];
+
     private static readonly string[] GameFolderSwitches = ["-D:{DataFolder}", "-I:{IniFile}", "-P:{PluginsFile}"];
+
+    // Declared before All: static fields initialise in order, and Build reads it.
+    private static readonly ToolPrefixRequirements VisualCppOnly = new() { Components = [PrefixComponents.VisualCppRuntime.Id] };
 
     public static IReadOnlyList<ToolDefinition> All { get; } = Build();
 
@@ -95,6 +117,14 @@ public static class CreationEngineToolCatalogue
             LodTool("xlodgen", "xLODGen", XLodGenNames, HasStandardData, extraSwitches: ["-autoexit"]),
             LodTool("texgen", "TexGen", TexGenNames, game => LodGames.Contains(game.GameId)),
             LodTool("dyndolod", "DynDOLOD", DynDolodNames, game => LodGames.Contains(game.GameId)),
+            PatcherTool("pandora", "Pandora Behaviour Engine+", "Pandora Output", PandoraNames, PandoraGames, new ToolPrefixRequirements
+            {
+                Components = [PrefixComponents.DotNetDesktop8.Id],
+                RegistryDefaults = [new PrefixRegistryDefault(PandoraNames[0], "Decorated", "N")],
+            }),
+            PatcherTool("nemesis", "Nemesis Unlimited Behavior Engine", "Nemesis Output", NemesisNames, NemesisGames, VisualCppOnly),
+            PatcherTool("bodyslide", "BodySlide", "BodySlide Output", BodySlideNames, BodySlideGames, VisualCppOnly),
+            PatcherTool("outfit-studio", "Outfit Studio", "Outfit Studio Output", OutfitStudioNames, BodySlideGames, VisualCppOnly),
             new ToolDefinition
             {
                 Id = new ToolId("oc-unleashed-configurator"),
@@ -117,6 +147,20 @@ public static class CreationEngineToolCatalogue
         ExtraArguments = (game, exe) => XEditGameMode.Arguments(game, exe),
         Prefix = XEditPrefix(exeNames),
         Output = new ToolOutput.DeclaredFolder($"{name} Output", StandardData),
+    };
+
+    // Tools that read and write the game's Data folder on their own, from their own settings, so they take no
+    // switches; what they write is picked up from the game folder after the run.
+    private static ToolDefinition PatcherTool(string id, string name, string outputGroup, string[] exeNames, GameId[] games, ToolPrefixRequirements prefix) => new()
+    {
+        Id = new ToolId(id),
+        DisplayName = name,
+        AppliesTo = game => games.Contains(game.GameId),
+        ExecutableNames = _ => exeNames,
+        Arguments = ArgumentTemplate.Empty,
+        Prefix = prefix,
+        Output = new ToolOutput.GameFolder(outputGroup),
+        ExitCodes = ExitCodePolicy.AnyExitIsFine,
     };
 
     private static ToolPrefixRequirements XEditPrefix(IEnumerable<string> exeNames) => new()
