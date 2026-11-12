@@ -12,6 +12,8 @@
     <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
     <!-- An in-memory MnemonicDB for the loadout resolver tests. -->
     <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+    <!-- A real game row for the built-in dxgi check, so the test does not rely on a substitute's interfaces. -->
+    <ProjectReference Include="..\..\src\SilverModManager.Games.Unreal\SilverModManager.Games.Unreal.csproj" />
   </ItemGroup>
 
   <ItemGroup>

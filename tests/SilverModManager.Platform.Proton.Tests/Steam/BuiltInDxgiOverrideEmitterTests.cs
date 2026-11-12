@@ -4,6 +4,7 @@ using FluentAssertions;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Unreal;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -67,7 +68,6 @@ public class BuiltInDxgiOverrideEmitterTests
 
     private GameInstallation Install(IGameData game, AbsolutePath? localConfig, bool withProvider = true)
     {
-        game.DisplayName.Returns("Test Game");
         var provider = Substitute.For<ILinuxCompatabilityDataProvider>();
         provider.SteamLocalConfigPath.Returns(localConfig ?? _fs.FromUnsanitizedFullPath("/home/u/.steam/steam/userdata/1/config/localconfig.vdf"));
 
@@ -86,7 +86,13 @@ public class BuiltInDxgiOverrideEmitterTests
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
     }
 
-    private static IGameData DxgiGame() => Substitute.For<IGameData, IDxgiGame>();
+    private static IGameData DxgiGame() => Named(Substitute.For<IGameData, IDxgiGame>());
+
+    private static IGameData Named(IGameData game)
+    {
+        game.DisplayName.Returns("Test Game");
+        return game;
+    }
 
     [Fact]
     public void ADxgiGameWithTheOverrideForcedIsReported()
@@ -100,12 +106,22 @@ public class BuiltInDxgiOverrideEmitterTests
     }
 
     [Fact]
+    public void AnUnrealDx12GameWithTheOverrideForcedIsReported()
+    {
+        var config = WriteLocalConfig(Forced);
+        // Clair Obscur renders through DX12 and ships an OptiScaler dxgi.dll in its Win64 folder.
+        var game = new UnrealGame(Substitute.For<IServiceProvider>(), UnrealGames.ClairObscurExpedition33);
+
+        BuiltInDxgiOverrideEmitter.Evaluate(Install(game, config)).Should().NotBeNull();
+    }
+
+    [Fact]
     public void AGameThatNeverLoadsDxgiIsNotReportedForTheSameLine()
     {
         var config = WriteLocalConfig(Forced);
 
         // A DirectX 9 or older title such as Oblivion implements no IDxgiGame.
-        BuiltInDxgiOverrideEmitter.Evaluate(Install(Substitute.For<IGameData>(), config)).Should().BeNull();
+        BuiltInDxgiOverrideEmitter.Evaluate(Install(Named(Substitute.For<IGameData>()), config)).Should().BeNull();
     }
 
     [Fact]

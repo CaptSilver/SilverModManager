@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
@@ -18,6 +19,13 @@ public abstract class AUnrealRowTests<TTest>(ITestOutputHelper outputHelper, Unr
     private string Project => Definition.ProjectFolder.ToString();
 
     private ALibraryArchiveInstaller Installer => Game.LibraryItemInstallers.OfType<UnrealModInstaller>().Single();
+
+    [Fact]
+    public void TheGameOptsIntoTheForcedBuiltInDxgiCheck()
+    {
+        // Every row renders through DX11 or DX12, so a dxgi=b launch option kills it at renderer start-up.
+        Game.Should().BeAssignableTo<IDxgiGame>();
+    }
 
     [Fact]
     public void TheLocatedFolderHoldsTheExecutableTheGameLaunches()
