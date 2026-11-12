@@ -65,28 +65,42 @@ public class DiagnosticListViewModelTests(IServiceProvider provider) : AUiTest(p
     ];
 
     /// <summary>
-    /// Formats through the real writer, after waiting <see cref="Delay"/>. Rows are built off the UI thread while they
-    /// format their summaries, so this makes a refresh take as long as a loaded machine would.
+    /// Formats through the real writer. Rows are built off the UI thread while they format their summaries; once
+    /// <see cref="Delay"/> is set, the first write of the next rebuild waits that long, so a refresh takes as long as
+    /// a loaded machine would. Only that first write waits: a row makes several, and sleeping on each would stretch
+    /// the rebuild past the polling timeout on a slow machine.
     /// </summary>
     private sealed class SlowDiagnosticWriter(IDiagnosticWriter inner) : IDiagnosticWriter
     {
-        public TimeSpan Delay { get; set; }
+        private long _delayTicks;
+
+        public TimeSpan Delay
+        {
+            get => TimeSpan.FromTicks(Interlocked.Read(ref _delayTicks));
+            set => Interlocked.Exchange(ref _delayTicks, value.Ticks);
+        }
+
+        private void WaitOnce()
+        {
+            var ticks = Interlocked.Exchange(ref _delayTicks, 0);
+            if (ticks > 0) Thread.Sleep(TimeSpan.FromTicks(ticks));
+        }
 
         public void Write<T>(ref DiagnosticWriterState state, T value) where T : notnull
         {
-            Thread.Sleep(Delay);
+            WaitOnce();
             inner.Write(ref state, value);
         }
 
         public void WriteValueType<T>(ref DiagnosticWriterState state, T value) where T : struct
         {
-            Thread.Sleep(Delay);
+            WaitOnce();
             inner.WriteValueType(ref state, value);
         }
 
         public void Write(ref DiagnosticWriterState state, ReadOnlySpan<char> value)
         {
-            Thread.Sleep(Delay);
+            WaitOnce();
             inner.Write(ref state, value);
         }
     }

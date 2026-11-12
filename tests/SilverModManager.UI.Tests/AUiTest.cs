@@ -342,9 +342,11 @@ public class AUiTest : IAsyncDisposable
     /// <c>RxApp.MainThreadScheduler</c>, which posts at Background, below everything the tests' own awaits post. All
     /// UI tests share one dispatcher, so while other tests keep it busy with Normal jobs a Background job can wait
     /// for tens of seconds, and a poll that only looks at the page sees values that were emitted long ago but not
-    /// delivered yet. Polling for the page's state therefore drains that queue first. Must run on the UI thread.
+    /// delivered yet. Polling for the page's state therefore drains that queue first. The test host's own scheduler
+    /// (<see cref="Framework.DefaultPriorityScheduler"/>) posts at Default instead, which is what keeps a sustained
+    /// stream of other jobs from starving the page; this covers jobs other code posts at Background. Must run on the UI thread.
     /// </summary>
-    private static void RunBackgroundJobs() => Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+    protected static void RunBackgroundJobs() => Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
 
     /// <summary>
     /// Drains the Background queue (see <see cref="RunBackgroundJobs"/>), then runs the assertion. Every poll goes

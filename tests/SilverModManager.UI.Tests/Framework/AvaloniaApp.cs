@@ -6,6 +6,7 @@ using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReactiveUI;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk;
 
@@ -57,6 +58,9 @@ public class AvaloniaApp : IDisposable
             {
                 BuildAvaloniaApp()
                     .SetupWithoutStarting();
+
+                // ReactiveUI keeps this per thread under a test runner, and the view models read the UI thread's.
+                RxApp.MainThreadScheduler = new DefaultPriorityScheduler(RxApp.MainThreadScheduler);
 
                 // Keep this here to make sure we at least create the dispatcher before
                 // reporting that we have started

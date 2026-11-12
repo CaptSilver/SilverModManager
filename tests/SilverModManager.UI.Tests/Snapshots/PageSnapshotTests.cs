@@ -478,8 +478,12 @@ LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadou
         {
             if (beforeCapture is not null)
             {
+                // A value or ticker tick still queued would put the live text back if it ran after the pin, so queued
+                // jobs run first and none runs between the pin and the frame.
+                RunBackgroundJobs();
                 beforeCapture(window);
-                Render(window);
+                window.UpdateLayout();
+                Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             }
 
             using var bitmap = new RenderTargetBitmap(new PixelSize(Width, Height));
