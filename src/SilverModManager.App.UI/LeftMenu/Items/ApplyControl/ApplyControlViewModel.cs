@@ -149,8 +149,10 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                     .Prepend(ChangeSet<IJob, JobId>.Empty)
                     .QueryWhenChanged(jobs =>
                         {
-                            if (jobs.Items.FirstOrDefault()?.Definition is SynchronizeLoadoutJob sJob && sJob.LoadoutId == loadoutId)
-                                return sJob.Progress.AsSystemObservable();
+                            // Another loadout's apply can be running too, and may be listed first.
+                            var ours = jobs.Items.Select(job => job.Definition).OfType<SynchronizeLoadoutJob>().FirstOrDefault(sJob => sJob.LoadoutId == loadoutId);
+                            if (ours is not null)
+                                return ours.Progress.AsSystemObservable();
                             return new BindableReactiveProperty<SyncProgress>().AsSystemObservable();
                         }
                     ).Switch()
