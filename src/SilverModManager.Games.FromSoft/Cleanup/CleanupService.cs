@@ -70,13 +70,18 @@ public sealed class CleanupService(
             immutable = launcher.FileExists && immutableProbe.IsImmutable(launcher);
         }
 
+        var layout = game.Layout;
+        var cleanupFolder = FromSoftPaths.CleanupFolder(layout, settings.Get<FromSoftSettings>(), fileSystem, FromSoftPaths.InstallationFolderName(layout, installation.LocatorResult));
+        var ini = IniFile(gameFolder);
         return CleanupPlanner.Build(new CleanupInput(
             gameFolder.GetFullPath(),
             GameFolderInventory.Take(gameFolder),
             Baseline(loadout),
             immutable,
             LaunchOptionChange(installation, loadout),
-            installation.LocatorResult.StoreUpdatePending), game.Cleanup, game.Definition);
+            installation.LocatorResult.StoreUpdatePending,
+            ini is null ? null : ModEngineIni.OverrideDirectory(File.ReadAllText(ini)),
+            FreeSetAsideFolder(cleanupFolder).GetFullPath()), game.Cleanup, game.Definition);
     }
 
     /// <summary>
@@ -291,6 +296,28 @@ public sealed class CleanupService(
         return folder.GetFullPath();
     }
 
+    private const string IniName = "modengine.ini";
+
+    /// <summary>Mod Engine 1's ini in the game folder, whatever its case, or null.</summary>
+    private static string? IniFile(AbsolutePath gameFolder)
+        => Directory.Exists(gameFolder.GetFullPath())
+            ? Directory.EnumerateFiles(gameFolder.GetFullPath()).FirstOrDefault(f => Path.GetFileName(f).Equals(IniName, StringComparison.OrdinalIgnoreCase))
+            : null;
+
+    /// <summary>
+    /// The numbered folder under the cleanup folder's <c>set-aside</c> that nothing has used yet. It is a function of
+    /// what is on disk, so planning twice gives the same path and the confirmed plan still matches at apply time.
+    /// </summary>
+    private static AbsolutePath FreeSetAsideFolder(AbsolutePath cleanupFolder)
+    {
+        var root = cleanupFolder / "set-aside";
+        for (var n = 1;; n++)
+        {
+            var candidate = root / n.ToString();
+            if (!candidate.DirectoryExists() && !candidate.FileExists) return candidate;
+        }
+    }
+
     /// <summary>Runs one step that changes the folder or Steam's config. Returns why it failed, or null.</summary>
     private string? Run(GameInstallation installation, Loadout.ReadOnly loadout, AbsolutePath gameFolder, CleanupStep step)
     {
@@ -300,6 +327,9 @@ public sealed class CleanupService(
             {
                 case CleanupStepKind.Move:
                     File.Move((gameFolder / step.RequiredSource).GetFullPath(), (gameFolder / step.RequiredTarget).GetFullPath(), overwrite: true);
+                    return null;
+                case CleanupStepKind.SetAside:
+                    SetAside(gameFolder, step);
                     return null;
                 case CleanupStepKind.Delete:
                     Remove((gameFolder / step.RequiredSource).GetFullPath());
@@ -316,6 +346,19 @@ public sealed class CleanupService(
             logger.LogError(e, "Cleanup step failed: {Step}", step.Description);
             return $"{step.Description} failed: {e.Message}";
         }
+    }
+
+    /// <summary>
+    /// Moves an override tree out of the game folder, then copies <c>modengine.ini</c> beside it: the ini says which
+    /// folder the tree was for, and its own Delete step runs after this one.
+    /// </summary>
+    private static void SetAside(AbsolutePath gameFolder, CleanupStep step)
+    {
+        var target = step.RequiredTarget;
+        var parent = Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"The set-aside target {target} has no folder.");
+        Directory.CreateDirectory(parent);
+        TreeMove.Move((gameFolder / step.RequiredSource).GetFullPath(), target);
+        if (IniFile(gameFolder) is { } ini) File.Copy(ini, Path.Combine(parent, IniName), overwrite: true);
     }
 
     /// <summary>Removes a link, a file or a folder. A link is unlinked without looking at what it points to.</summary>

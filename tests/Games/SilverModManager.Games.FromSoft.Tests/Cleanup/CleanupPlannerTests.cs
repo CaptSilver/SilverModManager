@@ -9,6 +9,7 @@ namespace SilverModManager.Games.FromSoft.Tests.Cleanup;
 public class CleanupPlannerTests
 {
     private const string Folder = "/steam/ELDEN RING/Game";
+    private const string SetAsideRoot = "/data/cleanup/set-aside/1";
 
     private static readonly string[] Vanilla =
     [
@@ -27,8 +28,8 @@ public class CleanupPlannerTests
         return entries;
     }
 
-    private static CleanupInput Input(IEnumerable<InventoryEntry> inventory, bool immutable = false, LaunchOptionChange? launchOption = null, bool updatePending = false, bool baseline = true)
-        => new(Folder, inventory.OrderBy(e => e.Path, StringComparer.Ordinal).ToArray(), baseline ? Vanilla.ToHashSet(StringComparer.OrdinalIgnoreCase) : null, immutable, launchOption, updatePending);
+    private static CleanupInput Input(IEnumerable<InventoryEntry> inventory, bool immutable = false, LaunchOptionChange? launchOption = null, bool updatePending = false, bool baseline = true, string? iniOverrideTree = null)
+        => new(Folder, inventory.OrderBy(e => e.Path, StringComparer.Ordinal).ToArray(), baseline ? Vanilla.ToHashSet(StringComparer.OrdinalIgnoreCase) : null, immutable, launchOption, updatePending, iniOverrideTree, SetAsideRoot);
 
     private static CleanupPlan Build(CleanupInput input)
         => CleanupPlanner.Build(input, EldenRingGame.Definition.Cleanup, EldenRingGame.Definition);
@@ -185,8 +186,58 @@ public class CleanupPlannerTests
 
         var plan = Build(Input(inventory));
 
-        plan.Steps.Should().OnlyContain(s => s.Kind == CleanupStepKind.Delete);
-        plan.Steps.Select(s => s.Source).Should().BeEquivalentTo("ReShade2.ini", "ersc_launcher.exe", "DINPUT8.dll", "winhttp.dll", "modengine2.dll", "modengine.toml", "mod", "crash.dmp");
+        plan.Steps.Where(s => s.Kind == CleanupStepKind.Delete).Select(s => s.Source).Should().BeEquivalentTo("ReShade2.ini", "ersc_launcher.exe", "DINPUT8.dll", "winhttp.dll", "modengine2.dll", "modengine.toml", "crash.dmp");
+        plan.Steps.Should().ContainSingle(s => s.Kind != CleanupStepKind.Delete).Which.Should().Match<CleanupStep>(s => s.Kind == CleanupStepKind.SetAside && s.Source == "mod");
+    }
+
+    [Fact]
+    public void ModEngine2sOverrideTreeIsSetAsideNeverDeleted()
+    {
+        var plan = Build(Input(VanillaInventory().Concat([Dir("mod"), File("mod/parts/x.dcx")])));
+
+        var step = plan.Steps.Should().ContainSingle().Subject;
+        step.Kind.Should().Be(CleanupStepKind.SetAside);
+        step.Source.Should().Be("mod");
+        step.Target.Should().Be($"{SetAsideRoot}/mod");
+        plan.Steps.Should().NotContain(s => s.Kind == CleanupStepKind.Delete);
+    }
+
+    [Fact]
+    public void TheIniNamedOverrideTreeIsSetAside()
+    {
+        var plan = Build(Input(VanillaInventory().Concat([Dir("Mods2"), File("Mods2/param/x.parambnd.dcx")]), iniOverrideTree: "mods2"));
+
+        plan.Steps.Should().ContainSingle().Which.Should().Match<CleanupStep>(s => s.Kind == CleanupStepKind.SetAside && s.Source == "Mods2" && s.Target == $"{SetAsideRoot}/Mods2");
+    }
+
+    [Fact]
+    public void AnOverrideTreeNamedByTheIniButAbsentDoesNothing()
+        => Build(Input(VanillaInventory(), iniOverrideTree: "mods2")).IsEmpty.Should().BeTrue();
+
+    [Fact]
+    public void TheSetAsideDescriptionSaysNothingIsDeleted()
+    {
+        var plan = Build(Input(VanillaInventory().Concat([Dir("mod"), File("mod/a.dcx"), File("mod/b.dcx")])));
+
+        plan.Steps[0].Description.Should().Contain("nothing is deleted").And.Contain($"{SetAsideRoot}/mod").And.Contain("2 files");
+        plan.Steps[0].Acts.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnIniThatNamesOneOfTheGamesOwnFoldersMovesNothing()
+    {
+        var plan = Build(Input(VanillaInventory().Concat([File("movie/extra.bk2")]), iniOverrideTree: "MOVIE"));
+
+        // A stray video in the game's movie folder is game media, which the review never lists either.
+        plan.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnIniTreeThatIsTheModsFolderIsLeftToTheModSteps()
+    {
+        var plan = Build(Input(ErmInstall(), iniOverrideTree: "mods"));
+
+        plan.Steps.Should().NotContain(s => s.Kind == CleanupStepKind.SetAside);
     }
 
     [Fact]

@@ -16,13 +16,17 @@ public sealed record LaunchOptionChange(string OldLine, string NewLine);
 /// <param name="LauncherImmutable">Whether the launcher carries the immutable attribute.</param>
 /// <param name="LaunchOption">Set when Steam's launch options for the game start another manager.</param>
 /// <param name="UpdatePending">Whether Steam has an update for the game it has not applied yet.</param>
+/// <param name="IniOverrideTree">The override folder Mod Engine 1's <c>modengine.ini</c> names, when the folder has one.</param>
+/// <param name="SetAsideRoot">The absolute folder an override tree is moved into, one subfolder per tree.</param>
 public sealed record CleanupInput(
     string GameFolder,
     IReadOnlyList<InventoryEntry> Inventory,
     IReadOnlySet<string>? Baseline,
     bool LauncherImmutable,
     LaunchOptionChange? LaunchOption,
-    bool UpdatePending);
+    bool UpdatePending,
+    string? IniOverrideTree,
+    string SetAsideRoot);
 
 /// <summary>
 /// Works out the steps that turn a game folder left by another mod manager back into a plain Steam install. Reads
@@ -39,6 +43,7 @@ public static class CleanupPlanner
         var steps = new List<CleanupStep>();
 
         steps.AddRange(LauncherSteps(folder, input, rules));
+        steps.AddRange(OverrideTreeSteps(folder, rules, input));
         steps.AddRange(ModSteps(folder, rules));
         steps.AddRange(LinkSteps(folder));
         steps.AddRange(LeftoverSteps(folder, rules));
@@ -90,6 +95,28 @@ public static class CleanupPlanner
             backup.Path,
             target,
             launcher is not null && input.LauncherImmutable ? $"{target} still has the immutable attribute" : null);
+    }
+
+    private static IEnumerable<CleanupStep> OverrideTreeSteps(Folder folder, CleanupRules rules, CleanupInput input)
+    {
+        // The mods folder is not an override tree: ModSteps keeps its .ini files and deletes it, so an ini that names
+        // it must not also set it aside.
+        var names = new[] { rules.OverrideTree, input.IniOverrideTree }
+            .OfType<string>()
+            .Where(n => !n.Equals(rules.ModsFolder, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var name in names)
+        {
+            if (folder.Find(name) is not { Kind: InventoryKind.Directory } tree) continue;
+            // The ini can name any folder, including one the game ships; moving that would break the install.
+            if (folder.Under(tree.Path).Any(e => folder.InBaseline(e.Path))) continue;
+
+            var files = folder.Under(tree.Path).Count(e => e.Kind != InventoryKind.Directory);
+            var target = $"{input.SetAsideRoot}/{tree.Path}";
+            folder.Handle(tree.Path);
+            yield return new CleanupStep(CleanupStepKind.SetAside, $"Move {tree.Path}/ ({Count(files, "file")}) to {target}; nothing is deleted", tree.Path, target);
+        }
     }
 
     private static IEnumerable<CleanupStep> ModSteps(Folder folder, CleanupRules rules)

@@ -186,6 +186,75 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
         JsonDocument.Parse(await (folder / "links.json").ReadAllTextAsync()).RootElement.GetArrayLength().Should().Be(1);
     }
 
+    private AbsolutePath CleanupFolder
+        => EldenRingPaths.CleanupFolder(ServiceProvider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>(), ServiceProvider.GetRequiredService<IFileSystem>(), EldenRingPaths.InstallationFolderName(GameInstallation.LocatorResult));
+
+    private void WriteOverrideTrees()
+    {
+        (Game / "mod/parts").CreateDirectory();
+        File.WriteAllText((Game / "mod/parts/x.dcx").ToString(), "override");
+        (Game / "Mods2/param").CreateDirectory();
+        File.WriteAllText((Game / "Mods2/param/x.parambnd.dcx").ToString(), "param");
+        File.WriteAllText((Game / "modengine.ini").ToString(), "[files]\nmodOverrideDirectory=\\mods2\n");
+    }
+
+    [Fact]
+    public async Task ApplyingASetAsideMovesTheTreesAndCopiesTheIniBesideThem()
+    {
+        WriteOverrideTrees();
+        var loadout = await CreateLoadout();
+        var plan = Service.Plan(loadout);
+
+        var result = await Service.ApplyAsync(loadout, plan);
+
+        result.Succeeded.Should().BeTrue(result.Failure);
+        var setAside = plan.Steps.Where(s => s.Kind == CleanupStepKind.SetAside).ToArray();
+        setAside.Select(s => s.Source).Should().Equal("mod", "Mods2");
+        (Game / "mod").DirectoryExists().Should().BeFalse();
+        (Game / "Mods2").DirectoryExists().Should().BeFalse();
+        File.ReadAllText(Path.Combine(setAside[0].RequiredTarget, "parts/x.dcx")).Should().Be("override");
+        File.ReadAllText(Path.Combine(setAside[1].RequiredTarget, "param/x.parambnd.dcx")).Should().Be("param");
+        File.ReadAllText(Path.Combine(Path.GetDirectoryName(setAside[0].RequiredTarget)!, "modengine.ini")).Should().Contain("mods2");
+        setAside[0].RequiredTarget.Should().StartWith(CleanupFolder.ToString());
+    }
+
+    [Fact]
+    public async Task ASecondSetAsideGoesToAFolderOfItsOwn()
+    {
+        WriteOverrideTrees();
+        var loadout = await CreateLoadout();
+        var first = Service.Plan(loadout);
+        await Service.ApplyAsync(loadout, first);
+        (Game / "mod/parts").CreateDirectory();
+        File.WriteAllText((Game / "mod/parts/y.dcx").ToString(), "again");
+
+        var second = Service.Plan(loadout);
+        var result = await Service.ApplyAsync(loadout, second);
+
+        result.Succeeded.Should().BeTrue(result.Failure);
+        var firstTarget = first.Steps.First(s => s.Kind == CleanupStepKind.SetAside).RequiredTarget;
+        var secondTarget = second.Steps.First(s => s.Kind == CleanupStepKind.SetAside).RequiredTarget;
+        secondTarget.Should().NotBe(firstTarget);
+        File.ReadAllText(Path.Combine(firstTarget, "parts/x.dcx")).Should().Be("override");
+        File.ReadAllText(Path.Combine(secondTarget, "parts/y.dcx")).Should().Be("again");
+    }
+
+    [Fact]
+    public async Task AFailedSetAsideLeavesTheTreeWhereItWas()
+    {
+        WriteOverrideTrees();
+        var loadout = await CreateLoadout();
+        // A file where the set-aside folder belongs makes the move impossible.
+        CleanupFolder.CreateDirectory();
+        File.WriteAllText((CleanupFolder / "set-aside").ToString(), "in the way");
+
+        var result = await Service.ApplyAsync(loadout, Service.Plan(loadout));
+
+        result.Succeeded.Should().BeFalse();
+        result.Failure.Should().Contain("mod");
+        File.ReadAllText((Game / "mod/parts/x.dcx").ToString()).Should().Be("override");
+    }
+
     [Fact]
     public async Task ApplyRefusesWhileTheInstallationLockIsHeld()
     {

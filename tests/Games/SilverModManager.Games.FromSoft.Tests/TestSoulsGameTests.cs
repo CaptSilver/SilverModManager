@@ -114,7 +114,7 @@ public class TestSoulsGameTests(ITestOutputHelper helper) : AModdedTestSoulsTest
             new InventoryEntry("SeamlessCoop", InventoryKind.Directory, 0),
             new InventoryEntry("SeamlessCoop/ersc.dll", InventoryKind.File, 10),
         };
-        var input = new CleanupInput("/steam/TEST SOULS/Bin", inventory, new HashSet<string> { "testsouls.exe" }, false, null, false);
+        var input = new CleanupInput("/steam/TEST SOULS/Bin", inventory, new HashSet<string> { "testsouls.exe" }, false, null, false, null, "/data/cleanup/set-aside/1");
 
         var plan = CleanupPlanner.Build(input, TestSoulsDefinition.Definition.Cleanup, TestSoulsDefinition.Definition);
 

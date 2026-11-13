@@ -20,6 +20,12 @@ public enum CleanupStepKind
     /// <summary>Removes <see cref="CleanupStep.Source"/> from the game folder. A link is removed, never followed.</summary>
     Delete,
 
+    /// <summary>
+    /// Moves the folder <see cref="CleanupStep.Source"/> out of the game folder to the absolute path
+    /// <see cref="CleanupStep.Target"/>; nothing under it is deleted.
+    /// </summary>
+    SetAside,
+
     /// <summary>Lists something the cleanup does not recognise and leaves alone.</summary>
     Review,
 
@@ -50,7 +56,7 @@ public sealed record CleanupStep(CleanupStepKind Kind, string Description, strin
     public PrivilegedCommand RequiredCommand => Command ?? throw new InvalidOperationException($"The {Kind} step '{Description}' carries no command.");
 
     /// <summary>Whether running the step changes anything.</summary>
-    public bool Acts => Kind is CleanupStepKind.Move or CleanupStepKind.Copy or CleanupStepKind.Delete or CleanupStepKind.ReplaceLaunchOption;
+    public bool Acts => Kind is CleanupStepKind.Move or CleanupStepKind.SetAside or CleanupStepKind.Copy or CleanupStepKind.Delete or CleanupStepKind.ReplaceLaunchOption;
 }
 
 /// <summary>The ordered steps that turn a game folder left by another mod manager back into a plain Steam install.</summary>
