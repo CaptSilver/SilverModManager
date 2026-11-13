@@ -698,10 +698,9 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         WithoutCodeSpans(body).Should().NotContain("](");
     }
 
-    [Fact]
-    public async Task Test_FixManualCommandDialog_ShowsTheCommandInAFenceItCannotClose()
+    /// <summary>Runs the fix until it asks for the command by hand and returns the body of the "Run this command" dialog.</summary>
+    private async Task<string> ManualCommandBodyFor(string command)
     {
-        const string command = "sudo chattr -i \"a```b\"\n```\n[x](http://evil.example)";
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
         var fixer = FixerPlanning(PlanOf("a"));
         var asked = 0;
@@ -719,8 +718,28 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
 
         var manual = shown.Select(d => d.ViewModel).Single(v => v.WindowTitle == "Run this command");
-        var body = PresenterRig.Body(manual);
+        return PresenterRig.Body(manual);
+    }
+
+    [Fact]
+    public async Task Test_FixManualCommandDialog_ShowsTheCommandInAFenceItCannotClose()
+    {
+        const string command = "sudo chattr -i 'a```b'";
+
+        var body = await ManualCommandBodyFor(command);
+
         body.Should().Be(MarkdownText.CodeBlock(command)).And.StartWith("````\n").And.EndWith("\n````");
+    }
+
+    [Theory]
+    [InlineData("sudo chattr -i 'a\nb'")]
+    [InlineData("sudo chattr -i 'a\tb'")]
+    [InlineData("sudo chattr -i 'a`b\n```\n[x](http://evil.example)'")]
+    public async Task Test_FixManualCommandDialog_ShowsANoteInsteadOfACommandItCannotShowExactly(string command)
+    {
+        var body = await ManualCommandBodyFor(command);
+
+        body.Should().Be(MarkdownText.NoCommandFor("file")).And.NotContain("chattr");
     }
 
     [Fact]

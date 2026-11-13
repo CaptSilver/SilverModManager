@@ -240,15 +240,20 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
 
     private IDialog ManualCommandDialog(string command, string? why)
     {
+        // A path with a line break or tab would show as a different path than the one the command names, so the
+        // command is not offered; the same rule as every other site that suggests a shell command.
+        var shows = MarkdownText.ShowsExactly(command);
         var markdown = serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdown.Contents = MarkdownText.CodeBlock(command);
+        markdown.Contents = shows ? MarkdownText.CodeBlock(command) : MarkdownText.NoCommandFor("file");
         return DialogFactory.CreateStandardDialog(
             title: "Run this command",
             new StandardDialogParameters
             {
-                Text = $"{(why is null ? "" : why + ". ")}The app could not ask for your password, so run this in a terminal and press Continue.",
+                Text = $"{(why is null ? "" : why + ". ")}The app could not ask for your password, so " + (shows
+                    ? "run this in a terminal and press Continue."
+                    : "clear the immutable attribute of the launcher yourself with chattr -i and press Continue."),
                 Markdown = markdown,
-                ShowMarkdownCopyButton = true,
+                ShowMarkdownCopyButton = shows,
             },
             buttonDefinitions:
             [
