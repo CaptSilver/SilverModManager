@@ -10,6 +10,9 @@ public enum ModLocationRoot
     Documents,
     LocalAppData,
     RoamingAppData,
+
+    /// <summary>The <c>LocalLow</c> folder beside Local AppData, where Unity games keep their data.</summary>
+    LocalAppDataLow,
 }
 
 /// <summary>

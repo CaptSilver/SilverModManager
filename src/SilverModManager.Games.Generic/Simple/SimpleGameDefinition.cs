@@ -62,5 +62,5 @@ public sealed record SimpleGameDefinition : IGameDefinition
     private AbsolutePath ModFolder(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) =>
         NativeLinuxDataFolder is { } nativeFolder && gameLocatorResult is { WinePrefixPath: null }
             ? fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(nativeFolder)
-            : fileSystem.GetKnownPath(SimpleLocations.KnownFolderOf(ModRoot.Root)).Combine(ModRoot.Folder);
+            : SimpleLocations.Resolve(fileSystem, ModRoot.Root).Combine(ModRoot.Folder);
 }

@@ -24,6 +24,7 @@ public class SimpleGamesTableTests(IServiceProvider serviceProvider, IFileSystem
         SimpleDefinitions.With(new ModLocation(ModLocationRoot.Documents, "Tests/Mods"), "Tests.Documents"),
         SimpleDefinitions.With(new ModLocation(ModLocationRoot.LocalAppData, "Tests/Mods"), "Tests.LocalAppData"),
         SimpleDefinitions.With(new ModLocation(ModLocationRoot.RoamingAppData, "Tests/Mods"), "Tests.RoamingAppData"),
+        SimpleDefinitions.With(new ModLocation(ModLocationRoot.LocalAppDataLow, "Tests/Mods"), "Tests.LocalAppDataLow"),
     ];
 
     [Fact]
