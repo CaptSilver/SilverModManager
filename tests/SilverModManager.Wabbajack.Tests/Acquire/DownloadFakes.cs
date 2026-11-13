@@ -55,12 +55,12 @@ internal sealed class FakePlanner : IModlistPlanner
 
     public Task<HeldArchiveCheck> ReadHeldCheck(LibraryFileId file, CancellationToken cancellationToken) => Task.FromResult(HeldArchiveCheck.NothingNeeded);
 
-    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
+    public async Task<PlannedModlist> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
     {
         lock (Built) Built.Add((file, target));
         if (Gate is { } gate) await gate.Task;
         if (Failure is { } failure) throw failure;
-        return (Plan ?? new ArchivePlan([])) with { Modlist = file };
+        return new PlannedModlist((Plan ?? new ArchivePlan([])) with { Modlist = file }, null, null);
     }
 }
 

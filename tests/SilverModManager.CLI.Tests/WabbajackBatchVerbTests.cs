@@ -45,7 +45,7 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
         Acquirer.Plan.Returns(plan ?? new ArchivePlan([]));
         Acquirer.Run(Arg.Any<ArchivePlan>(), Arg.Any<IProgress<AcquireProgress>?>(), Arg.Any<CancellationToken>()).Returns(new TaskCompletionSource().Task);
         Planner.BuildPlan(Arg.Any<LibraryFileId>(), Arg.Any<SilverModManager.Sdk.Loadouts.LoadoutId?>(), Arg.Any<IProgress<PlanProgress>?>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(MixedPlan() with { Modlist = call.Arg<LibraryFileId>() }));
+            .Returns(call => Task.FromResult(new PlannedModlist(MixedPlan() with { Modlist = call.Arg<LibraryFileId>() }, null, null)));
     }
 
     private static ArchivePlanRow Row(ArchiveState state, string name, string? reason = null)

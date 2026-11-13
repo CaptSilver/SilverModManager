@@ -251,14 +251,20 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     internal static async Task<Classified> ClassifyList(
         LoadoutId target, WabbajackModlistLibraryFile.ReadOnly modlist, IConnection connection, IFileStore fileStore, CancellationToken cancellationToken)
     {
+        if (!modlist.AsLibraryFile().TryGetAsLibraryArchive(out var listArchive))
+            throw new UnsupportedModlistException("The modlist file is not an expanded archive, so it cannot be read");
+        var list = await ModlistArchive.ReadModlist(fileStore, listArchive, cancellationToken);
+        return await ClassifyList(target, list, listArchive, connection, fileStore, cancellationToken);
+    }
+
+    /// <summary>Lays out an already read <paramref name="list"/> (held in <paramref name="listArchive"/>) for <paramref name="target"/>.</summary>
+    internal static async Task<Classified> ClassifyList(
+        LoadoutId target, ModList list, LibraryArchive.ReadOnly listArchive, IConnection connection, IFileStore fileStore, CancellationToken cancellationToken)
+    {
         var loadout = Loadout.Load(connection.Db, target);
         var installation = loadout.InstallationInstance;
         var mo2Target = RequireTarget(installation);
         _ = RequirePluginVariety(installation);
-
-        if (!modlist.AsLibraryFile().TryGetAsLibraryArchive(out var listArchive))
-            throw new UnsupportedModlistException("The modlist file is not an expanded archive, so it cannot be read");
-        var list = await ModlistArchive.ReadModlist(fileStore, listArchive, cancellationToken);
         RequireGame(installation, list);
 
         var unified = PathCasing.Unify(list.Directives.Select(d => d.To));

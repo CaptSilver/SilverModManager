@@ -52,7 +52,7 @@ public sealed class ModlistDownloads(
 
         try
         {
-            var plan = await planner.BuildPlan(modlist.Id, target, null, cancellationToken);
+            var plan = (await planner.BuildPlan(modlist.Id, target, null, cancellationToken)).Plan;
             var counts = PlanCounts.Of(plan);
             var run = acquirer.Run(plan, null, CancellationToken.None);
             _ = Observe(run, modlist.Name);
@@ -123,7 +123,7 @@ public sealed class ModlistDownloads(
             Task run;
             try
             {
-                var plan = await planner.BuildPlan(id, null, null, cancellationToken);
+                var plan = (await planner.BuildPlan(id, null, null, cancellationToken)).Plan;
                 run = acquirer.Run(plan, null, cancellationToken);
             }
             finally

@@ -56,7 +56,7 @@ public interface IWabbajackModlistService
     /// loadout that does not exist yet: the game files come from the game's installation.
     /// </summary>
     /// <param name="progress">Told how far the check has got; may be called from any thread.</param>
-    Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);
+    Task<PlannedModlist> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);
 
     /// <summary>The files of the game folder the list would overwrite, which exist in the loadout's game folder now.</summary>
     Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);

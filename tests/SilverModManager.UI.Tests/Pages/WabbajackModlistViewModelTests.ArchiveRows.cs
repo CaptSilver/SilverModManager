@@ -1,4 +1,5 @@
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -7,9 +8,12 @@ using FluentAssertions;
 using ReactiveUI;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
 
 namespace SilverModManager.UI.Tests.Pages;
 
@@ -208,5 +212,132 @@ public partial class WabbajackModlistViewModelTests
             block.TextLayout.TextLines.Count.Should().BeLessThanOrEqualTo(2);
             line.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Open page")).IsVisible.Should().BeTrue();
         });
+    }
+
+    private static Dictionary<string, ModInstallState> RowStates(WabbajackModlistViewModel vm)
+        => ((ModInstallRows)vm.Mods).Snapshot().ToDictionary(row => row.Key, row => row.Current.State);
+
+    private static ModFolderPlan Folder(string name, int index) => new(name, index, 1, 0, 0, 0);
+
+    // One folder per archive of the plan, named after it, so a test reads the folder's state off the archive's.
+    private static void PlanFolders(FakeService service, params ArchivePlanRow[] mainArchives)
+    {
+        service.MainArchiveByFolder = mainArchives.ToDictionary(row => row.Archive.Name, row => row.Archive.XxHash64);
+        service.Folders = mainArchives.Select((row, i) => Folder(row.Archive.Name, i)).ToArray();
+    }
+
+    [Fact]
+    public async Task RowsAppearFromThePlanAsWaitingDownloadingOrNeedsUser()
+    {
+        var held = Row(ArchiveState.Have, "held");
+        var automatic = Row(ArchiveState.Automatic, "automatic");
+        var manual = Row(ArchiveState.Manual, "manual");
+        var (vm, service, _) = await Open(Plan(held, automatic, manual), load: false);
+        PlanFolders(service, held, automatic, manual);
+        service.Folders = [.. service.Folders!, Folder("no main archive", 3)];
+
+        await vm.LoadAsync(CancellationToken.None);
+
+        RowStates(vm).Should().BeEquivalentTo(new Dictionary<string, ModInstallState>
+        {
+            ["held"] = ModInstallState.Waiting,
+            ["automatic"] = ModInstallState.Downloading,
+            ["manual"] = ModInstallState.NeedsUser,
+            ["no main archive"] = ModInstallState.Waiting,
+        });
+    }
+
+    [Fact]
+    public async Task AnAcquirerPlanWithoutTheMapKeepsTheDownloadingRows()
+    {
+        var automatic = Row(ArchiveState.Automatic, "automatic");
+        var (vm, service, acquirer) = await Open(Plan(automatic), load: false);
+        PlanFolders(service, automatic);
+        await vm.LoadAsync(CancellationToken.None);
+        using var activation = vm.Activator.Activate();
+        var rows = vm.Mods;
+        RowStates(vm)["automatic"].Should().Be(ModInstallState.Downloading);
+
+        // The acquirer's plans carry archives only; the folder map stays what the pick brought.
+        acquirer.Change(Plan(automatic with { State = ArchiveState.Have }));
+
+        vm.Mods.Should().BeSameAs(rows);
+        RowStates(vm)["automatic"].Should().Be(ModInstallState.Waiting);
+    }
+
+    [Fact]
+    public async Task PickingAnotherLoadoutRebuildsTheRows()
+    {
+        var automatic = Row(ArchiveState.Automatic, "automatic");
+        var (vm, service, _) = await Open(Plan(automatic), load: false);
+        PlanFolders(service, automatic);
+        await vm.LoadAsync(CancellationToken.None);
+        var first = vm.Mods;
+
+        service.Folders = [Folder("automatic", 0), Folder("another", 1)];
+        await vm.SelectLoadoutAsync(vm.SelectedLoadout!, CancellationToken.None);
+
+        vm.Mods.Should().NotBeSameAs(first);
+        RowStates(vm).Keys.Should().BeEquivalentTo("automatic", "another");
+    }
+
+    [Fact]
+    public async Task APickWithoutAFolderMapShowsNoRows()
+    {
+        var automatic = Row(ArchiveState.Automatic, "automatic");
+        var (vm, service, _) = await Open(Plan(automatic), load: false);
+        PlanFolders(service, automatic);
+        await vm.LoadAsync(CancellationToken.None);
+
+        service.MainArchiveByFolder = null;
+        service.Folders = null;
+        await vm.SelectLoadoutAsync(vm.SelectedLoadout!, CancellationToken.None);
+
+        vm.Mods.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PickingALoadoutWithoutTheListAfterOneWithItShowsWhatIsDownloading()
+    {
+        var automatic = Row(ArchiveState.Automatic, "automatic");
+        var (vm, service, _) = await Open(Plan(automatic), load: false);
+        PlanFolders(service, automatic);
+        var holder = await SeedLoadoutRow(GameStore.Steam, "Holds the list");
+        await WabbajackGroupSeed.AddGroup(Connection, SomeFile.Value, holder.LoadoutId, "Installed list");
+        var without = await SeedLoadoutRow(GameStore.Steam, "Without the list");
+        await vm.LoadAsync(CancellationToken.None);
+
+        await vm.SelectLoadoutAsync(vm.LoadoutChoices.Single(choice => choice.Id == holder.LoadoutId), CancellationToken.None);
+        vm.IsInstalled.Should().BeTrue();
+        await vm.SelectLoadoutAsync(vm.LoadoutChoices.Single(choice => choice.Id == without.LoadoutId), CancellationToken.None);
+
+        vm.IsInstalled.Should().BeFalse();
+        RowStates(vm).Should().ContainSingle().Which.Value.Should().Be(ModInstallState.Downloading);
+    }
+
+    [Fact]
+    public async Task ADownloadPlanThatFinishesAfterAnotherPickLeavesThatPicksMap()
+    {
+        var first = Row(ArchiveState.Automatic, "first");
+        var second = Row(ArchiveState.Automatic, "second");
+        var (vm, service, acquirer) = await Open(Plan(first, second), load: false);
+        PlanFolders(service, first);
+        await vm.LoadAsync(CancellationToken.None);
+        using var activation = vm.Activator.Activate();
+
+        var gate = new TaskCompletionSource();
+        service.PlanGate = gate;
+        var download = vm.DownloadCommand.Execute().ToTask();
+        await WaitUntil(() => service.PlanGate is null);
+        PlanFolders(service, second);
+        await vm.SelectLoadoutAsync(vm.SelectedLoadout!, CancellationToken.None);
+        gate.SetResult();
+        await download;
+
+        acquirer.Change(Plan(first, second));
+
+        await EventuallyOnUi(() => RowStates(vm).Should().ContainSingle().Which.Should().Be(
+            new KeyValuePair<string, ModInstallState>("second", ModInstallState.Downloading),
+            "the rows and the map are the newer pick's"));
     }
 }

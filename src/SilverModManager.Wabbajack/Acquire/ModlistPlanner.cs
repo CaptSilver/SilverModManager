@@ -1,12 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack.Acquire;
@@ -18,7 +21,7 @@ public interface IModlistPlanner
     /// Matches the list's archives against the library and the game folder. <paramref name="target"/> is the loadout
     /// the list will install into, or null for one that does not exist yet.
     /// </summary>
-    Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);
+    Task<PlannedModlist> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken);
 
     /// <summary>
     /// The test of which held archives are complete for the list (see <see cref="HeldArchiveCheck"/>), without a
@@ -26,6 +29,13 @@ public interface IModlistPlanner
     /// </summary>
     Task<HeldArchiveCheck> ReadHeldCheck(LibraryFileId file, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// What a list needs (<paramref name="Plan"/>) and which archive each of its mod folders is mostly built from, so a page can
+/// show a folder as downloading while its archive is. <paramref name="MainArchiveByFolder"/> and <paramref name="Folders"/>
+/// are null when there is no loadout to lay the list out for, or the installer refuses the list.
+/// </summary>
+public sealed record PlannedModlist(ArchivePlan Plan, IReadOnlyDictionary<string, FileIdentity>? MainArchiveByFolder, IReadOnlyList<ModFolderPlan>? Folders);
 
 /// <summary>The list's game is not installed, so there is no game folder to check its files against.</summary>
 public sealed class ModlistGameMissingException(string message) : UserFacingException(message)
@@ -75,7 +85,7 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
         lock (_lock) return _checks.TryAdd(file, check) ? check : _checks[file];
     }
 
-    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
+    public async Task<PlannedModlist> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(new PlanProgress(PlanPhase.ReadingList));
         var list = await ReadList(file, cancellationToken);
@@ -86,7 +96,28 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
             // The loadout does not exist yet; it will be created on this installation.
             : inventory.GameFilesFor(InstallationFor(file));
         StartWatchingForDownloads();
-        return (await inventory.Build(list, db, gameFiles, cancellationToken, progress)) with { Modlist = file };
+        var plan = (await inventory.Build(list, db, gameFiles, cancellationToken, progress)) with { Modlist = file };
+        if (target is not { } loadout) return new PlannedModlist(plan, null, null);
+        return await WithFolders(plan, loadout, list, file, cancellationToken);
+    }
+
+    // The folder map is for the page's rows only; a list the installer refuses is still planned and downloaded.
+    private async Task<PlannedModlist> WithFolders(ArchivePlan plan, LoadoutId target, ModList list, LibraryFileId file, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var classified = await InstallModlistJob.ClassifyList(target, list, ArchiveOf(Modlist(file)), _connection, _fileStore, cancellationToken);
+            var executable = InstallModlistJob.Executable(classified.Placements);
+            return new PlannedModlist(
+                plan,
+                ModGroupArchives.MainArchiveByFolder(classified.Placements, classified.BsaInputs, list.Archives),
+                InstallModlistJob.FolderPlans(executable, executable));
+        }
+        catch (UnsupportedModlistException e)
+        {
+            provider.GetService<ILogger<ModlistPlanner>>()?.LogDebug(e, "No mod rows for '{List}': {Reason}", list.Name, e.Message);
+            return new PlannedModlist(plan, null, null);
+        }
     }
 
     // The first point a plan can exist. Both calls do nothing until a row waits for the user, and repeat calls change nothing.

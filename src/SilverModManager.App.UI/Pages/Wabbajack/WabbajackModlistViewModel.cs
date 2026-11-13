@@ -66,6 +66,11 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
     // The rows this page built from the store and so disposes; the running install's own rows belong to the job.
     private ModInstallRows? _storeRows;
+
+    // The rows of a list that is not installing yet, and the folder-to-archive map that sets their state from the archive
+    // table. Both belong to the picked loadout and are null while the pick has no map.
+    private ModInstallRows? _planRows;
+    private IReadOnlyDictionary<string, FileIdentity>? _mainArchiveByFolder;
     private bool _loadStarted;
 
     // The phase the log last named, so it says each once rather than at every count.
@@ -532,6 +537,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         // Downloads for the previous pick are not wanted any more, and neither is its check. A run this page did not
         // start is not the previous pick's.
         _acquireCancellation?.Cancel();
+        ClearPlanRows();
         var pick = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _acquireCancellation = pick;
         var token = pick.Token;
@@ -548,7 +554,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         ShowCheck(new PlanProgress(PlanPhase.ReadingList));
         try
         {
-            var plan = await OffUi(progress => _service.BuildPlan(FileId, choice.Id, progress, token), token);
+            var planned = await OffUi(progress => _service.BuildPlan(FileId, choice.Id, progress, token), token);
             var replaced = await OffUi(progress => _service.GameFilesReplaced(FileId, choice.Id, progress, token), token);
             if (token.IsCancellationRequested)
             {
@@ -559,6 +565,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             }
 
             GameFilesReplaced = replaced.Select(path => new WabbajackGameFileChoice(path)).ToArray();
+            var plan = UsePlanned(planned, rebuildRows: true);
 
             // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
             // reaches the library, without fetching anything.
@@ -659,19 +666,21 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
         Recompute();
         try
         {
-            ArchivePlan plan;
+            PlannedModlist planned;
             try
             {
                 _loggedPhase = null;
                 ShowCheck(new PlanProgress(PlanPhase.ReadingList));
-                plan = await OffUi(progress => _service.BuildPlan(FileId, SelectedLoadout?.Id, progress, token), token);
+                planned = await OffUi(progress => _service.BuildPlan(FileId, SelectedLoadout?.Id, progress, token), token);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
                 return;
             }
-            // Another loadout was picked while planning; its own plan is the one on the page now.
+            // Another loadout was picked while planning; its own plan and folder map are the ones on the page now.
             if (token.IsCancellationRequested) return;
+            // Only a pick builds rows; this plan is for the loadout that pick already built them for.
+            var plan = UsePlanned(planned, rebuildRows: false);
 
             MarkDownloadsStarted();
             var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
@@ -758,6 +767,10 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         _plan = plan;
         ShowArchives(plan);
+        // Kept current even while a run's or the store's rows are shown: the page swaps back to them without a new
+        // plan when the pick changes to a loadout without the list, a run ends without one, or the list is removed.
+        if (_planRows is { } planRows && _mainArchiveByFolder is { } mainArchives)
+            WabbajackPlanRows.Update(planRows, mainArchives, plan);
 
         var (estimate, isLowerBound) = WabbajackModlistText.ExtractedSize(plan);
         ExtractedSizeText = estimate.ToString();
@@ -915,13 +928,39 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     {
         if (_groupId is not { } group)
         {
-            ShowMods(ModInstallRows.Empty, owned: null);
+            // Nothing is installed here, so the rows are the plan's, or none when the pick has no folder map.
+            IModInstallRows planned = _planRows ?? ModInstallRows.Empty;
+            if (!ReferenceEquals(Mods, planned)) ShowMods(planned, owned: null);
             return;
         }
 
         var read = InstalledModRows.Read(db, group);
         if (_storeRows is { } shown && InstalledModRows.Same(shown, read)) read.Dispose();
         else ShowMods(read, read);
+    }
+
+    // Keeps the rows and map a check brought for the page. A pick builds new rows from the folders; a later plan of the
+    // same pick only refreshes the map, so the rows the page shows stay the same objects.
+    private ArchivePlan UsePlanned(PlannedModlist planned, bool rebuildRows)
+    {
+        _mainArchiveByFolder = planned.MainArchiveByFolder;
+        if (planned.Folders is null) ClearPlanRows();
+        else if (rebuildRows || _planRows is null)
+        {
+            ClearPlanRows();
+            _planRows = WabbajackPlanRows.Build(planned.Folders);
+        }
+        return planned.Plan;
+    }
+
+    private void ClearPlanRows()
+    {
+        var replaced = _planRows;
+        if (replaced is null) return;
+        _planRows = null;
+        _mainArchiveByFolder = null;
+        if (ReferenceEquals(Mods, replaced)) ShowMods(ModInstallRows.Empty, owned: null);
+        replaced.Dispose();
     }
 
     // Swaps the rows the page shows and lets go of the store rows it replaced.

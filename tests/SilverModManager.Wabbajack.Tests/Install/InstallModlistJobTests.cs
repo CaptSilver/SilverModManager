@@ -1074,6 +1074,23 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
+    public async Task ClassifyListFromAReadListMatchesClassifyListFromTheFile()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
+        modlist.AsLibraryFile().TryGetAsLibraryArchive(out var archive).Should().BeTrue();
+        var list = await ModlistArchive.ReadModlist(fileStore, archive, TestContext.Current.CancellationToken);
+
+        var fromFile = await InstallModlistJob.ClassifyList(loadout.LoadoutId, modlist, Connection, fileStore, TestContext.Current.CancellationToken);
+        var fromList = await InstallModlistJob.ClassifyList(loadout.LoadoutId, list, archive, Connection, fileStore, TestContext.Current.CancellationToken);
+
+        fromList.Placements.Should().NotBeEmpty();
+        fromList.Placements.Select(p => (p.Index, p.Group)).Should().Equal(fromFile.Placements.Select(p => (p.Index, p.Group)));
+    }
+
+    [Fact]
     public void FolderPlansCountEachFolderOnceAndSkipDroppedPaths()
     {
         var list = new ListBuilder();

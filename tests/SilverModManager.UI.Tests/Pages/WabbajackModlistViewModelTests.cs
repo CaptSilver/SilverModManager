@@ -157,6 +157,11 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         /// <summary>When set, planning fails with it, like a list whose game is not installed.</summary>
         public Exception? PlanFailure { get; set; }
 
+        /// <summary>The folder map and folders a planned list carries; null like a list planned without a loadout.</summary>
+        public IReadOnlyDictionary<string, FileIdentity>? MainArchiveByFolder { get; set; }
+
+        public IReadOnlyList<ModFolderPlan>? Folders { get; set; }
+
         /// <summary>What the page handed the last plan to report its progress through.</summary>
         public IProgress<PlanProgress>? LastProgress { get; private set; }
 
@@ -167,12 +172,15 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
 
         public Task<WabbajackModlistBlurb> ReadBlurb(LibraryFileId file, CancellationToken cancellationToken) => Task.FromResult(Blurb);
 
-        public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
+        public async Task<PlannedModlist> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
             LastProgress = progress;
             PlannedOnUiThread = Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
+            // Captured when asked, so a plan held at the gate answers for the pick that asked for it.
             var plan = Plan;
+            var mainArchiveByFolder = MainArchiveByFolder;
+            var folders = Folders;
             if (PlanGate is { } gate)
             {
                 PlanGate = null;
@@ -180,7 +188,7 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
                 await gate.Task;
             }
             if (PlanFailure is { } failure) throw failure;
-            return plan;
+            return new PlannedModlist(plan, mainArchiveByFolder, folders);
         }
 
         public Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken) => Task.FromResult(GameFiles);

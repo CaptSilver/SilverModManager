@@ -101,7 +101,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         return banner;
     }
 
-    public Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
+    public Task<PlannedModlist> BuildPlan(LibraryFileId file, LoadoutId? target, IProgress<PlanProgress>? progress, CancellationToken cancellationToken)
         => _planner.BuildPlan(file, target, progress, cancellationToken);
 
     private GameInstallation InstallationOf(GameId game)
