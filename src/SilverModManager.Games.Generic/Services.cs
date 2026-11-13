@@ -15,6 +15,7 @@ public static class Services
         services.AddSingleton<WineDllOverrideEmitter>();
         services.AddSingleton<WinePrefixComponentsEmitter>();
         services.AddSingleton<INativeImageReader, NativeImageReader>();
+        services.AddSingleton<GameRootLibraries>();
         services.AddSingleton<IOpenXrConfig, XdgOpenXrConfig>();
         services.AddSingleton<OldVcRuntimeEmitter>();
         services.AddSingleton<OpenXrRuntimeEmitter>();

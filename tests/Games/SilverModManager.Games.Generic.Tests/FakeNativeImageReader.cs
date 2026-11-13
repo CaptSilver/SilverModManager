@@ -14,12 +14,20 @@ internal sealed class FakeNativeImageReader : INativeImageReader
     public Dictionary<string, Version> VersionsByPath { get; } = new();
     /// <summary>Names of the images that are 32-bit; every other image is 64-bit.</summary>
     public HashSet<string> ThirtyTwoBit { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Delay-load table libraries by image file name.</summary>
+    public Dictionary<string, string[]> DelayImports { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Names of the images whose import read fails with an <see cref="IOException"/>.</summary>
+    public HashSet<string> Unreadable { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ImportReads { get; } = [];
 
     public NativeImageImports ReadImports(AbsolutePath file)
     {
         ImportReads.Add(file.FileName);
-        return new NativeImageImports(Imports.GetValueOrDefault(file.FileName) ?? [], Is64Bit: !ThirtyTwoBit.Contains(file.FileName));
+        if (Unreadable.Contains(file.FileName)) throw new IOException($"Cannot read {file.FileName}");
+        return new NativeImageImports(
+            Imports.GetValueOrDefault(file.FileName) ?? [],
+            Is64Bit: !ThirtyTwoBit.Contains(file.FileName),
+            DelayLoaded: DelayImports.GetValueOrDefault(file.FileName));
     }
 
     public Version? FileVersion(AbsolutePath file)
