@@ -10,7 +10,7 @@ namespace SilverModManager.Games.Unreal;
 public sealed class UnrealModInstaller(IServiceProvider serviceProvider, UnrealModLayout layout)
     : ARoutedArchiveInstaller(serviceProvider, serviceProvider.GetRequiredService<ILogger<UnrealModInstaller>>())
 {
-    protected override string ExpectedFiles => "paks, LogicMods or UE4SS mods";
+    protected override string ExpectedFiles => "paks, LogicMods, UE4SS mods or an ASI loader with its plugins";
 
-    protected override bool TryRoute(IReadOnlyList<RelativePath> archive, RelativePath path, out GamePath target) => layout.TryRoute(path, out target);
+    protected override bool TryRoute(IReadOnlyList<RelativePath> archive, RelativePath path, out GamePath target) => layout.TryRoute(archive, path, out target);
 }

@@ -180,4 +180,60 @@ public class UnrealModLayoutTests
         pak.Should().Be(new GamePath(LocationId.Game, "Other/Content/Paks/~mods/Mod_P.pak"));
         loader.Should().Be(new GamePath(LocationId.Game, "Other/Binaries/WinGDK/dwmapi.dll"));
     }
+
+    private static string?[] RouteArchive(params string[] files)
+    {
+        var archive = files.Select(file => RelativePath.FromUnsanitizedInput(file)).ToArray();
+        return archive.Select(file => Layout.TryRoute(archive, file, out var target) ? $"{target.LocationId}/{target.Path}" : null).ToArray();
+    }
+
+    [Theory]
+    [InlineData("dsound.dll")]
+    [InlineData("dinput8.dll")]
+    [InlineData("version.dll")]
+    [InlineData("winmm.dll")]
+    [InlineData("xinput1_3.dll")]
+    public void ALoaderProxyWithAnAsiLandsBesideTheGameBinary(string proxy) =>
+        RouteArchive(proxy, "Fix.asi", "Fix.ini").Should().Equal(
+            "Game/Fake/Binaries/Win64/" + proxy,
+            "Game/Fake/Binaries/Win64/Fix.asi",
+            "Game/Fake/Binaries/Win64/Fix.ini");
+
+    [Fact]
+    public void ALoaderProxyOnItsOwnLandsBesideTheGameBinary() =>
+        RouteArchive("DSOUND.DLL", "UltimateASILoader_LICENSE.md").Should().Equal("Game/Fake/Binaries/Win64/DSOUND.DLL", null);
+
+    [Fact]
+    public void AnAsiOnItsOwnLandsBesideTheGameBinary() =>
+        RouteArchive("Fix.asi").Should().Equal("Game/Fake/Binaries/Win64/Fix.asi");
+
+    [Fact]
+    public void PluginsAndScriptsFoldersOfAsiFilesKeepTheirPlaceBelowTheBinary() =>
+        RouteArchive("dsound.dll", "plugins/Fix.asi", "Scripts/Other.asi", "scripts/Other.ini").Should().Equal(
+            "Game/Fake/Binaries/Win64/dsound.dll",
+            "Game/Fake/Binaries/Win64/plugins/Fix.asi",
+            "Game/Fake/Binaries/Win64/Scripts/Other.asi",
+            "Game/Fake/Binaries/Win64/scripts/Other.ini");
+
+    [Fact]
+    public void AnAsiArchiveAlsoTakesTheOtherDllsBesideIt() =>
+        RouteArchive("dsound.dll", "Fix.asi", "helper.dll").Should().Equal(
+            "Game/Fake/Binaries/Win64/dsound.dll", "Game/Fake/Binaries/Win64/Fix.asi", "Game/Fake/Binaries/Win64/helper.dll");
+
+    [Fact]
+    public void ADllThatIsNotALoaderProxyAndHasNoAsiBesideItIsLeftToTheGame() =>
+        RouteArchive("helper.dll", "helper.ini").Should().Equal(null, null);
+
+    [Fact]
+    public void AnIniOrAPluginsFolderWithoutAnAsiOrProxyIsLeftToTheGame() =>
+        RouteArchive("settings.ini", "plugins/readme.cfg").Should().Equal(null, null);
+
+    [Fact]
+    public void AnAsiBelowAWrapperFolderIsLeftToTheGame() =>
+        RouteArchive("Wrapper/dsound.dll", "Wrapper/Fix.asi").Should().Equal(null, null);
+
+    [Fact]
+    public void ThePakAndUe4ssRulesStillWinInAnArchiveThatAlsoHoldsAnAsi() =>
+        RouteArchive("Mod_P.pak", "dwmapi.dll", "Fix.asi").Should().Equal(
+            "Game/Fake/Content/Paks/~mods/Mod_P.pak", "Game/Fake/Binaries/Win64/dwmapi.dll", "Game/Fake/Binaries/Win64/Fix.asi");
 }

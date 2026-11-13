@@ -18,6 +18,7 @@ namespace SilverModManager.Games.Unreal;
 /// ue4ss folder keeps that place under both layouts.</item>
 /// <item>The UE4SS loader (dwmapi.dll, UE4SS.dll, UE4SS-settings.ini, and xinput1_3.dll, the proxy of UE4SS 2.x, for a
 /// game on <see cref="Ue4ssLayout.Ue4ss2"/>) goes next to the game binary, or into ue4ss when the archive packs it that way.</item>
+/// <item>A bare ASI loader archive (see the archive overload of TryRoute) goes beside the game binary.</item>
 /// </list>
 /// Paths are matched without regard to case. Both roots are constructor parameters because the project folder
 /// name, and the platform folder under Binaries, differ between games.
@@ -34,6 +35,10 @@ public sealed class UnrealModLayout(GamePath contentRoot, GamePath binariesRoot,
 
     // UE4SS 2.x loads through xinput1_3.dll; 3.x switched the proxy to dwmapi.dll.
     private const string Ue4ss2Proxy = "xinput1_3.dll";
+
+    // Proxy DLLs an ASI loader (Ultimate ASI Loader and the like) installs itself as; the game loads one in place of the system DLL.
+    private static readonly string[] AsiLoaderProxies = ["dsound.dll", "dinput8.dll", "version.dll", "winmm.dll", "xinput1_3.dll"];
+    private static readonly string[] AsiPluginFolders = ["plugins", "scripts"];
     private static readonly string[] PakFamilyExtensions = [".pak", ".utoc", ".ucas"];
 
     /// <summary>The standard project layout: Content and Binaries/Win64 under the project folder.</summary>
@@ -46,6 +51,45 @@ public sealed class UnrealModLayout(GamePath contentRoot, GamePath binariesRoot,
 
     // UE4SS 2.x reads Mods from the folder of the binary; 3.x moved everything into ue4ss.
     private GamePath Ue4ssModsRoot => (ue4ss == Ue4ssLayout.Ue4ss2 ? binariesRoot : Ue4ssRoot) / ModsFolder;
+
+    /// <summary>
+    /// Like <see cref="TryRoute(RelativePath, out GamePath)"/>, but with the whole archive in view so a bare ASI loader archive
+    /// can be recognised: loader proxy DLLs, .asi and .ini files at the archive root, other root DLLs when an .asi is
+    /// there too, and anything inside a root plugins or scripts folder, all kept in place beside the game binary. An
+    /// archive with neither an .asi nor a loader proxy at its root is not one, so a lone unrelated DLL is left to the game.
+    /// </summary>
+    public bool TryRoute(IReadOnlyList<RelativePath> archive, RelativePath path, out GamePath target)
+    {
+        if (TryRoute(path, out target)) return true;
+        if (IsBareAsiFile(archive, path) is false) return false;
+
+        return Found(binariesRoot, path.Parts.Select(p => p.ToString()).ToArray(), 0, out target);
+    }
+
+    // The path is checked before the archive is scanned: this runs for every file the other rules miss, readmes and
+    // pictures included, and a scan per file would make a large archive quadratic.
+    private static bool IsBareAsiFile(IReadOnlyList<RelativePath> archive, RelativePath path)
+    {
+        if (path.Depth > 0)
+            return IsInAsiPluginFolder(path) && archive.Any(IsAsiPlugin);
+
+        if (IsLoaderProxy(path) || HasExtension(path, ".asi")) return true;
+        if (HasExtension(path, ".ini")) return archive.Any(file => IsAsiPlugin(file) || IsLoaderProxy(file));
+        return HasExtension(path, ".dll") && archive.Any(IsAsiPlugin);
+    }
+
+    private static bool IsLoaderProxy(RelativePath file) =>
+        file.Depth == 0 && AsiLoaderProxies.Contains(file.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsInAsiPluginFolder(RelativePath file) =>
+        file.Depth > 0 && AsiPluginFolders.Contains(file.Parts.First().ToString(), StringComparer.OrdinalIgnoreCase);
+
+    // An .asi at the root or in a root plugins/scripts folder, where loaders look for them.
+    private static bool IsAsiPlugin(RelativePath file) =>
+        HasExtension(file, ".asi") && (file.Depth == 0 || IsInAsiPluginFolder(file));
+
+    private static bool HasExtension(RelativePath file, string extension) =>
+        file.Extension.ToString().Equals(extension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Where the archive file at <paramref name="path"/> belongs, or false when this layout has no rule for it.</summary>
     public bool TryRoute(RelativePath path, out GamePath target)

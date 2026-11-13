@@ -8,7 +8,7 @@ namespace SilverModManager.Games.Unreal.Tests;
 /// <summary>
 /// Clair Obscur: Expedition 33 on top of the shared row tests. The game ships IoStore paks (.pak with .utoc and .ucas)
 /// and is commonly patched with an Ultimate ASI Loader (dsound.dll) plus .asi plugins beside the shipping binary; the
-/// module has no rule for a bare ASI, so only an archive that packs the game's own Binaries folder installs one.
+/// module installs a bare loader/ASI archive beside the shipping binary as well as one that packs the game's own Binaries folder.
 /// </summary>
 public class ClairObscurTests(ITestOutputHelper outputHelper) : AUnrealRowTests<ClairObscurTests>(outputHelper, UnrealGames.ClairObscurExpedition33)
 {
@@ -59,9 +59,23 @@ public class ClairObscurTests(ITestOutputHelper outputHelper) : AUnrealRowTests<
     }
 
     [Fact]
-    public async Task ABareAsiWithItsLoaderIsNotSupportedBecauseTheModuleHasNoRuleForIt()
+    public async Task ABareAsiWithItsLoaderInstallsBesideTheShippingBinary()
     {
-        var archive = await AddFromPaths("dsound.dll", "ClairObscurFix.asi");
+        var archive = await AddFromPaths("dsound.dll", "ClairObscurFix.asi", "plugins/Extra.asi");
+
+        var (result, targets) = await TryInstall(Installer, archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(
+            OnGame("Sandfall/Binaries/Win64/dsound.dll"),
+            OnGame("Sandfall/Binaries/Win64/ClairObscurFix.asi"),
+            OnGame("Sandfall/Binaries/Win64/plugins/Extra.asi"));
+    }
+
+    [Fact]
+    public async Task AnArchiveOfOnlyAnUnrelatedDllIsNotSupported()
+    {
+        var archive = await AddFromPaths("helper.dll");
 
         var (result, _) = await TryInstall(Installer, archive);
 
