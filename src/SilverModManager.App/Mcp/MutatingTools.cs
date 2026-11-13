@@ -118,6 +118,26 @@ public static class MutatingTools
                 new ToolParam("modId", "The mod's id on Nexus Mods, as nexus_search shows it.", Type: "integer"),
                 new ToolParam("fileId", "The file's id, as nexus_files shows it. Needed when the mod has no single main file.", Type: "integer"),
             ]),
+        VerbTool.Create(context, "fromsoft_merge_choice_set",
+            "Makes one mod win a contested entry of a FromSoft loadout's merged file, whatever the load order says. Read the entries and their candidates with fromsoft_merge_choices_list first; " +
+            "a mod that does not edit the entry, an entry nothing contests and binder members are refused. It takes effect on the next loadout_apply. A restore point is written first." + UndoNote,
+            readOnly: false, ["fromsoft", "merge", "choices", "set"], takesLoadout: true, context.Limits.SlowReadTimeout,
+            options:
+            [
+                new ToolParam("path", "The merged file, as fromsoft_merge_choices_list spells it.", Required: true),
+                new ToolParam("entry", "The entry's key from fromsoft_merge_choices_list, e.g. param:12/3400, fmg:1/10 or tpf:icon.", Required: true),
+                new ToolParam("winner", "The mod that should win: its group name as loadout groups lists it, or its id when two groups share a name.", Required: true),
+            ]),
+        VerbTool.Create(context, "fromsoft_merge_choice_clear",
+            "Removes a merge choice so the load order decides that entry again: give path and entry for one, or all true for every choice of the loadout (with path, only that file's). " +
+            "It takes effect on the next loadout_apply. A restore point is written first." + UndoNote,
+            readOnly: false, ["fromsoft", "merge", "choices", "clear"], takesLoadout: true, context.Limits.ReadTimeout,
+            options:
+            [
+                new ToolParam("path", "The merged file; with entry it names one choice, with all it limits the removal to that file."),
+                new ToolParam("entry", "The entry's key from fromsoft_merge_choices_list."),
+                new ToolParam("all", "true to remove every choice instead of one.", Type: "boolean"),
+            ]),
         VerbTool.Create(context, "game_launch",
             "Applies a loadout and starts its game, the same as the Play button, and returns once the launch is under way, not when the game exits. " +
             "It needs the SilverModManager window to be open. Check app_status afterwards for the game process. Find the loadout with loadouts_list.",

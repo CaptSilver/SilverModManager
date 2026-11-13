@@ -23,7 +23,8 @@ public sealed class McpToolListTests : IAsyncDisposable
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
             "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace",
             "loadout_diagnostic_fix", "loadout_diagnostic_clear",
-            "nexus_search", "nexus_files", "nexus_install");
+            "nexus_search", "nexus_files", "nexus_install",
+            "fromsoft_merge_choices_list", "fromsoft_merge_choice_set", "fromsoft_merge_choice_clear");
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public sealed class McpToolListTests : IAsyncDisposable
         all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo(
             "settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel",
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
-            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace", "loadout_diagnostic_fix", "loadout_diagnostic_clear", "nexus_install");
+            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace", "loadout_diagnostic_fix", "loadout_diagnostic_clear", "nexus_install", "fromsoft_merge_choice_set", "fromsoft_merge_choice_clear");
     }
 
     [Fact]
@@ -150,6 +151,29 @@ public sealed class McpToolListTests : IAsyncDisposable
         tool.Description.Should().Contain("Only when the user asked for this install").And.Contain("chain installs")
             .And.Contain("Stopping the call does not stop the download").And.Contain("needsBrowser").And.Contain("loadout_revert");
         tool.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("modId", "integer", false), ("fileId", "integer", false));
+    }
+
+    [Fact]
+    public void AReadOnlyServer_ListsMergeChoicesButCannotChangeThem()
+    {
+        var names = Tools(readOnly: true).Select(t => t.Name).ToList();
+
+        names.Should().Contain("fromsoft_merge_choices_list").And.NotContain(["fromsoft_merge_choice_set", "fromsoft_merge_choice_clear"]);
+        Tools(readOnly: true).Single(t => t.Name == "fromsoft_merge_choices_list").Params.Select(p => (p.Name, p.Type, p.Required))
+            .Should().Equal(("loadout", "string", true), ("path", "string", false));
+    }
+
+    [Fact]
+    public void TheMergeChoiceWriteTools_TakeTheirArgumentsAndPointAtRevert()
+    {
+        var all = Tools(readOnly: false);
+        var set = all.Single(t => t.Name == "fromsoft_merge_choice_set");
+        var clear = all.Single(t => t.Name == "fromsoft_merge_choice_clear");
+
+        set.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("path", "string", true), ("entry", "string", true), ("winner", "string", true));
+        clear.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("path", "string", false), ("entry", "string", false), ("all", "boolean", false));
+        set.Description.Should().Contain("loadout_revert").And.Contain("fromsoft_merge_choices_list");
+        clear.Description.Should().Contain("loadout_revert");
     }
 
     [Fact]

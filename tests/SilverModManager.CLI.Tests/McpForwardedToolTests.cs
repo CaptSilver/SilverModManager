@@ -68,6 +68,24 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task TheMergeChoiceTools_PassTheirArguments_AndAllOnlyWhenTrue()
+    {
+        var tools = await ToolsAsync();
+
+        var list = await McpTestHost.CallAsync(tools, "fromsoft_merge_choices_list", new JsonObject { ["loadout"] = "elden-ring/main", ["path"] = "regulation.bin" });
+        var set = await McpTestHost.CallAsync(tools, "fromsoft_merge_choice_set",
+            new JsonObject { ["loadout"] = "elden-ring/main", ["path"] = "regulation.bin", ["entry"] = "param:1/2", ["winner"] = "Alpha" });
+        var clearOne = await McpTestHost.CallAsync(tools, "fromsoft_merge_choice_clear",
+            new JsonObject { ["loadout"] = "elden-ring/main", ["path"] = "regulation.bin", ["entry"] = "param:1/2" });
+        var clearAll = await McpTestHost.CallAsync(tools, "fromsoft_merge_choice_clear", new JsonObject { ["loadout"] = "elden-ring/main", ["all"] = true });
+
+        list.Text.Trim().Should().Be("choices list loadout=elden-ring/main path=regulation.bin json=True");
+        set.Text.Trim().Should().Be("choices set loadout=elden-ring/main path=regulation.bin entry=param:1/2 winner=Alpha");
+        clearOne.Text.Trim().Should().Be("choices clear loadout=elden-ring/main path=regulation.bin entry=param:1/2 all=False");
+        clearAll.Text.Trim().Should().Be("choices clear loadout=elden-ring/main path= entry= all=True");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task TheNexusFilesTool_PassesTheModIdAndJson()
     {
         var result = await McpTestHost.CallAsync(await ToolsAsync(), "nexus_files", new JsonObject { ["loadout"] = "cyberpunk/main", ["modId"] = 107 });

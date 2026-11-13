@@ -60,6 +60,11 @@ public static class ReadOnlyTools
             "Shows the steps that would bring a FromSoft loadout's merged regulation onto the installed game build, without changing anything. " +
             "Find the loadout with loadouts_list.",
             readOnly: true, ["fromsoft", "heal"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--dry-run"], reportedExitCodes: VerbTool.ExitOneIsAResult),
+        VerbTool.Create(context, "fromsoft_merge_choices_list",
+            "Lists, as JSON, the contested entries of a FromSoft loadout's merged files (param rows, texts, textures): the mods that edit each, the one that wins and whether a choice or the load order decided it. " +
+            "Entries a choice names but nothing contests any more are listed with chosen false and a choiceId. Plans the merges, so it can take a while. Find the loadout with loadouts_list.",
+            readOnly: true, ["fromsoft", "merge", "choices", "list"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--json"],
+            options: [new ToolParam("path", "Only this merged file, as loadout_merge_report spells it.")]),
         VerbTool.Create(context, "games_list",
             "Lists, as JSON, the games found on this machine with their store and install folder.",
             readOnly: true, ["games", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),

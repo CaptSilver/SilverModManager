@@ -48,10 +48,14 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddModule("nexus", "Nexus verbs")
             .AddModule("fromsoft", "FromSoft verbs")
             .AddModule("fromsoft merge", "Merge verbs")
+            .AddModule("fromsoft merge choices", "Merge choice verbs")
             .AddModule("fromsoft vanilla", "Vanilla verbs")
             .AddVerb(() => Verbs.Synchronize)
             .AddVerb(() => Verbs.ListLoadouts)
             .AddVerb(() => Verbs.MergeList)
+            .AddVerb(() => Verbs.MergeChoicesList)
+            .AddVerb(() => Verbs.MergeChoiceSet)
+            .AddVerb(() => Verbs.MergeChoiceClear)
             .AddVerb(() => Verbs.VanillaList)
             .AddVerb(() => Verbs.Heal)
             .AddVerb(() => Verbs.NexusSearch)
@@ -193,6 +197,41 @@ public sealed class McpTestHost : IAsyncDisposable
         public static async Task<int> SettingsList([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
         {
             await renderer.TextLine($"settings list json={json}");
+            return 0;
+        }
+
+        [Verb("fromsoft merge choices list", "Stand-in for the merge choices list")]
+        public static async Task<int> MergeChoicesList(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("p", "path", "Path", true)] string? path,
+            [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"choices list loadout={loadout} path={path} json={json}");
+            return 0;
+        }
+
+        [Verb("fromsoft merge choices set", "Stand-in for the merge choice set")]
+        public static async Task<int> MergeChoiceSet(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("p", "path", "Path")] string path,
+            [Option("e", "entry", "Entry")] string entry,
+            [Option("w", "winner", "Winner")] string winner)
+        {
+            await renderer.TextLine($"choices set loadout={loadout} path={path} entry={entry} winner={winner}");
+            return 0;
+        }
+
+        [Verb("fromsoft merge choices clear", "Stand-in for the merge choice clear")]
+        public static async Task<int> MergeChoiceClear(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("p", "path", "Path", true)] string? path,
+            [Option("e", "entry", "Entry", true)] string? entry,
+            [Option("a", "all", "All", true)] bool all)
+        {
+            await renderer.TextLine($"choices clear loadout={loadout} path={path} entry={entry} all={all}");
             return 0;
         }
 
