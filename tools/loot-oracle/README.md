@@ -108,6 +108,28 @@ using the real masterlist with its conditions:
 Use it to compare the app's Sort with LOOT against libloot on your own plugins. The plugins are
 header-only stubs, so conditions that read versions or checksums cannot match what the real files would.
 
+## Comparing with an installed game
+
+The real corpus cases are header-only, so they never exercise overlap edges. To check those, sort a real
+install, records and archives included, with both sides and compare the orders. Nothing is written to the
+game folder and nothing from it is committed.
+
+    export LOOT_ORACLE_STRIP_DIR=$(mktemp -d)
+    scripts/test.sh --project tests/Games/SilverModManager.Games.Bethesda.Loot.Tests    # writes the condition-free masterlists
+    GAME=~/.local/share/Steam/steamapps/common/SkyrimVR
+    "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/sort_installed.py skyrimse --game-path "$GAME" --game-type SkyrimVR \
+        --plugins-txt <prefix>/AppData/Local/"Skyrim VR"/plugins.txt \
+        --implicit Skyrim.esm,Update.esm,Dawnguard.esm,HearthFires.esm,Dragonborn.esm,SkyrimVR.esm \
+        --stripped-dir "$LOOT_ORACLE_STRIP_DIR" --out <scratch>/installed.json
+    LOOT_ORACLE_INSTALLED_GAME="$GAME" LOOT_ORACLE_INSTALLED_EXPECTED=<scratch>/installed.json \
+        scripts/test.sh --project tests/Games/SilverModManager.Games.CreationEngine.Tests --filter-class '*InstalledLoadOrderComparisonTests'
+
+`sort_installed.py` sorts the implicit plugins followed by the `*` lines of plugins.txt with libloot's
+`load_plugins`, which reads every plugin's records and the archives it loads. `InstalledLoadOrderComparisonTests`
+reads the same files through the app's own overlap reader (`LootOverlapReader`), sorts with the port and fails
+at the first index where the orders differ, listing the edges on both plugins. Both print their timings.
+Without `--stripped-dir` the script keeps the masterlist's conditions, which the test cannot match.
+
 ## Load time
 
 `MasterlistLoadTimingTests` parses the Skyrim SE masterlist with the prelude three times and asserts
