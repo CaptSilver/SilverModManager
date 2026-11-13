@@ -38,6 +38,12 @@ public sealed class ModsettingsDocument
     /// <summary>Every module entry, in file order.</summary>
     public required IReadOnlyList<ModuleEntry> Entries { get; init; }
 
+    /// <summary>
+    /// The module UUIDs of a separate order list (Divinity: Original Sin 2's <c>ModOrder</c> node), as read, or null
+    /// for a dialect that has only the one list. <see cref="Entries"/> is the order the game loads.
+    /// </summary>
+    public IReadOnlyList<string>? OrderUuids { get; init; }
+
     /// <summary>Whether the text started with a byte order mark, which a rewrite keeps.</summary>
     public bool HasBom { get; init; }
 

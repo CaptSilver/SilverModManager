@@ -7,7 +7,8 @@ namespace SilverModManager.Games.Larian.Engine.ModList;
 /// </summary>
 /// <param name="IsActive">Whether the pak should be in the mod list: the order's verdict, owning mod's state included.</param>
 /// <param name="Entry">The module entry the pak gets, or null when the pak could not be read.</param>
-public sealed record LarianPakCandidate(string Name, bool IsGameInstalled, bool IsActive, ModsettingsDocument.ModuleEntry? Entry);
+/// <param name="IsAdventure">Whether the pak is a campaign the player picks in the game, which the app lists but never switches on.</param>
+public sealed record LarianPakCandidate(string Name, bool IsGameInstalled, bool IsActive, ModsettingsDocument.ModuleEntry? Entry, bool IsAdventure = false);
 
 /// <summary>Two active paks that provide the same module; only <paramref name="KeptPak"/> is written.</summary>
 public sealed record LarianDuplicateModule(string Uuid, string ModuleName, string KeptPak, IReadOnlyList<string> IgnoredPaks);

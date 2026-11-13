@@ -32,7 +32,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         .AddBaldursGate3()
         .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.61"), locationsFileSystem: IsolatedKnownFolders.Create);
 
-    private LarianPakSortOrderVariety NewVariety() => new(ServiceProvider, Game);
+    private LarianPakSortOrderVariety NewVariety() => new(ServiceProvider, Game, new LarianPakModules(ServiceProvider, Game.Profile));
 
     private IDb Db => Connection.Db;
 

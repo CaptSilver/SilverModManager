@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Larian.Engine.Modsettings;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Games.Larian.Engine;
 
@@ -25,6 +26,7 @@ public sealed record LarianScriptExtender(GamePath DllPath, WineDllOverride? Ove
 /// <param name="LarianFolder">The game's folder under <paramref name="LarianRoot"/>.</param>
 /// <param name="ModsFolder">Where the game loads paks from, under the Larian folder.</param>
 /// <param name="Profiles">Where the folder with <c>modsettings.lsx</c> is, under the Larian folder.</param>
+/// <param name="ProfileSetting">Reads the player profile the player picked in the settings; empty when none is picked or the game has one fixed profile.</param>
 /// <param name="GameData">The game's data folder, relative to the game folder; its paks are the game's own modules.</param>
 /// <param name="Executables">The game's executables relative to the game folder: the primary one first, the engine's last.</param>
 /// <param name="PakVersions">The LSPK versions the game's paks have.</param>
@@ -41,6 +43,7 @@ public sealed record LarianGameProfile(
     RelativePath LarianFolder,
     RelativePath ModsFolder,
     LarianProfileLayout Profiles,
+    Func<ISettingsManager, string> ProfileSetting,
     RelativePath GameData,
     IReadOnlyList<RelativePath> Executables,
     IReadOnlyList<int> PakVersions,

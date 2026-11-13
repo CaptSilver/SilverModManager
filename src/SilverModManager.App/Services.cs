@@ -272,6 +272,7 @@ public static class Services
         Games.RedEngine.Services.AddRedEngineGames(services);
         Games.StardewValley.Services.AddStardewValley(services);
         Games.Larian.BaldursGate3.Services.AddBaldursGate3(services);
+        Games.Larian.DivinityOriginalSin2DE.Services.AddDivinityOriginalSin2DE(services);
         Games.CreationEngine.Services.AddCreationEngine(services);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);

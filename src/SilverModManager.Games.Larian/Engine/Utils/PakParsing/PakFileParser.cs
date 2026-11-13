@@ -44,6 +44,7 @@ public static class PakFileParser
         return new LspkPackageFormat.PakMetaData
         {
             MetaFileData = metaFile,
+            PakVersion = (int)headerData.Version,
             ScriptExtenderConfigs = GetScriptExtenderConfigs(fileList, br),
         };
     }

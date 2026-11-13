@@ -185,7 +185,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
     }
 
     private sealed class SynchronizerProbe(IServiceProvider provider, ILarianGame game)
-        : LarianSynchronizer(provider, game, new LarianPakModules(provider))
+        : LarianSynchronizer(provider, game, new LarianPakModules(provider, game.Profile))
     {
         public bool ExtrasDiffer(IDb db, EntityId itemId, GameInstalledContent content) => GameInstalledExtrasDiffer(db, itemId, content);
     }

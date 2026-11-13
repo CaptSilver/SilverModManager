@@ -15,6 +15,7 @@ using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Games.Larian.Engine;
 
@@ -28,14 +29,21 @@ public abstract class ALarianGame<TSelf>(IServiceProvider provider) : AGame<TSel
     private LarianGameProfile? _profileValue;
     // One instance, so the synchronizer and the diagnostic read each pak from disk once between them. Built on first
     // use, which can come from either of them on different threads, so it must not be built twice.
-    private readonly Lazy<LarianPakModules> _modules = new(() => new LarianPakModules(provider));
+    private readonly object _modulesLock = new();
+    private LarianPakModules? _modulesValue;
 
     protected abstract LarianGameProfile CreateProfile();
 
     // Built on first read: CreateProfile is virtual and this constructor runs before a derived one.
     public LarianGameProfile Profile => _profileValue ??= CreateProfile();
 
-    private LarianPakModules Modules => _modules.Value;
+    private LarianPakModules Modules
+    {
+        get
+        {
+            lock (_modulesLock) return _modulesValue ??= new LarianPakModules(provider, Profile);
+        }
+    }
 
     public abstract bool DoFullGameBackup { get; }
 
@@ -100,7 +108,7 @@ public abstract class ALarianGame<TSelf>(IServiceProvider provider) : AGame<TSel
     }
 
     protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) =>
-        Profile.Schema is null ? [] : [new LarianPakSortOrderVariety(provider, this)];
+        Profile.Schema is null ? [] : [new LarianPakSortOrderVariety(provider, this, Modules)];
 
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider)
     {
@@ -109,6 +117,8 @@ public abstract class ALarianGame<TSelf>(IServiceProvider provider) : AGame<TSel
         yield return ActivatorUtilities.CreateInstance<LarianDependencyEmitter>(provider, Profile, TSelf.NexusModsGameId);
         if (Profile.Schema is null) yield break;
 
+        if (Profile.Profiles is LarianProfileLayout.PerProfileFolder)
+            yield return new LarianProfileEmitter(this, () => Profile.ProfileSetting(provider.GetRequiredService<ISettingsManager>()));
         yield return new DuplicateModuleEmitter(this, Modules);
         yield return new LarianModListReplacedEmitter(this);
         yield return new LarianModListResetEmitter(this);

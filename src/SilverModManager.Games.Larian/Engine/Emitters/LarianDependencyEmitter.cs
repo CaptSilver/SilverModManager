@@ -56,6 +56,10 @@ public class LarianDependencyEmitter : ILoadoutDiagnosticEmitter
             ? ScriptExtenderFile.Find(loadout, extender.DllPath)
             : Optional<LoadoutFile.ReadOnly>.None;
 
+        // A game with no extender of its own still has OsiTools' updater beside its executable when the player put it there.
+        if (_profile.ScriptExtender is null && OsiToolsUpdaterIsInstalled(loadout))
+            yield return Diagnostics.CreateScriptExtenderOverrideUnknown(GameName: _profile.GameName);
+
         if (extenderFile.HasValue && LarianBuild.IsNative(loadout.InstallationInstance.LocatorResult))
             yield return Diagnostics.CreateBg3SeOnNativeBuild(GameName: _profile.GameName);
 
@@ -77,6 +81,12 @@ public class LarianDependencyEmitter : ILoadoutDiagnosticEmitter
         {
             yield return diagnostic;
         }
+    }
+
+    private bool OsiToolsUpdaterIsInstalled(Loadout.ReadOnly loadout)
+    {
+        var binaries = _profile.Executables[^1].Parent;
+        return loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, binaries.Join("DXGI.dll"))).FileExists;
     }
 
 #region Diagnosers
@@ -113,7 +123,8 @@ public class LarianDependencyEmitter : ILoadoutDiagnosticEmitter
                 diagnostics.Add(Diagnostics.CreateInvalidPakFile(
                         ModName: loadoutItemGroup.ToReference(loadout),
                         PakFileName: mod.FileName,
-                        GameName: _profile.GameName
+                        GameName: _profile.GameName,
+                        Detail: ""
                     )
                 );
                 continue;
@@ -121,6 +132,17 @@ public class LarianDependencyEmitter : ILoadoutDiagnosticEmitter
 
             // non error case
             var pakMetaData = metadataOrError.Result;
+
+            // A pak of another Larian game reads fine, and is no use here.
+            if (LarianPakVersions.WhyForeign(_profile, pakMetaData.PakVersion) is { } foreign)
+            {
+                diagnostics.Add(Diagnostics.CreateInvalidPakFile(
+                    ModName: loadoutItemGroup.ToReference(loadout),
+                    PakFileName: mod.FileName,
+                    GameName: _profile.GameName,
+                    Detail: foreign));
+                continue;
+            }
 
             // check if the mod requires the script extender and if SE is missing; a game with no extender has no page to send the player to
             if (_profile.ScriptExtender is { } extender &&

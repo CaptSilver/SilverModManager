@@ -10,7 +10,9 @@ using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Games.Larian.Engine.Modsettings;
 
@@ -24,23 +26,20 @@ public class LarianSynchronizer : ALoadoutSynchronizer
     private readonly LarianGameProfile _profile;
     private readonly ILarianGame _game;
     private readonly LarianPakModules _modules;
-    private readonly ModsettingsFile? _modsettings;
-    private readonly GamePath? _modsettingsPath;
+    private readonly ISettingsManager _settings;
+    private readonly ILogger<ModsettingsFile> _logger;
+
+    // The mod list this sync writes. IsNeverWritten has no loadout to ask, so ModsettingsPath, which every entry
+    // point resolves the player profile through, leaves the answer here.
+    private GamePath? _resolvedModsettings;
 
     public LarianSynchronizer(IServiceProvider provider, ILarianGame game, LarianPakModules modules) : base(provider)
     {
         _game = game;
         _profile = game.Profile;
         _modules = modules;
-
-        if (_profile.Schema is { } schema)
-        {
-            if (_profile.Profiles is not LarianProfileLayout.Fixed)
-                throw new NotSupportedException($"{_profile.GameName} keeps its mod list in a folder per player profile, which this synchronizer does not resolve yet");
-
-            _modsettingsPath = new GamePath(LarianConstants.PlayerProfilesLocationId, "modsettings.lsx");
-            _modsettings = new ModsettingsFile(game, _modules, schema, _modsettingsPath.Value, provider.GetRequiredService<ILogger<ModsettingsFile>>());
-        }
+        _settings = provider.GetRequiredService<ISettingsManager>();
+        _logger = provider.GetRequiredService<ILogger<ModsettingsFile>>();
 
         // Everything inside the player profiles folder is the game's (saves, settings) and stays out of the loadout,
         // except the mod list the app writes.
@@ -48,7 +47,82 @@ public class LarianSynchronizer : ALoadoutSynchronizer
             path.InFolder(PlayerProfiles) && !IsModsettings(path));
     }
 
-    private bool IsModsettings(GamePath path) => _modsettingsPath is { } modsettings && path.Equals(modsettings);
+    /// <summary>
+    /// Whether the path is a mod list, of the player profile in use or another one. Which one is in use is decided
+    /// per loadout, so this says only where a game's mod lists can be.
+    /// </summary>
+    private bool IsModsettings(GamePath path)
+    {
+        if (path.LocationId != LarianConstants.PlayerProfilesLocationId) return false;
+
+        var segments = path.Path.ToString().Split('/');
+        return _profile.Profiles switch
+        {
+            LarianProfileLayout.Fixed => segments.Length == 1 && IsModsettingsName(segments[0]),
+            _ => segments.Length == 2 && IsModsettingsName(segments[1]),
+        };
+    }
+
+    private static bool IsModsettingsName(string name) => name.Equals(LarianProfileResolver.ModsettingsFileName, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The mod list of the player profile in use, or null when the game keeps none or the profile is not settled.
+    /// </summary>
+    private GamePath? ModsettingsPath(Loadout.ReadOnly loadout)
+    {
+        if (_profile.Schema is null) return null;
+
+        // One fixed profile folder: the path does not depend on the installation.
+        if (_profile.Profiles is LarianProfileLayout.Fixed) return new GamePath(LarianConstants.PlayerProfilesLocationId, LarianProfileResolver.ModsettingsFileName);
+
+        var profiles = loadout.InstallationInstance.Locations.ToAbsolutePath(PlayerProfiles);
+        var profile = LarianProfileResolver.Resolve(_profile.Profiles, profiles, _profile.ProfileSetting(_settings));
+        _resolvedModsettings = profile is { } resolved
+            ? new GamePath(LarianConstants.PlayerProfilesLocationId, $"{resolved}/{LarianProfileResolver.ModsettingsFileName}")
+            : null;
+        return _resolvedModsettings;
+    }
+
+    private ModsettingsFile? ModsettingsFor(Loadout.ReadOnly loadout)
+    {
+        var path = ModsettingsPath(loadout);
+        return path is { } found && _profile.Schema is { } schema ? new ModsettingsFile(_game, _modules, schema, found, _logger) : null;
+    }
+
+    /// <summary>The refusal for a game whose mod list cannot be written yet, or null when it can be.</summary>
+    private UserFacingException? WhyModsettingsCannotBeWritten(Loadout.ReadOnly loadout)
+    {
+        if (_profile.Schema is not { } schema) return null;
+
+        if (ModsettingsPath(loadout) is not { } path)
+        {
+            var profiles = loadout.InstallationInstance.Locations.ToAbsolutePath(PlayerProfiles);
+            return LarianProfileResolver.CountProfiles(profiles) > 1
+                ? new LarianProfileUnresolvedException(_profile.GameName)
+                : new LarianModListMissingException(_profile.GameName);
+        }
+
+        return !schema.CanCreateFromNothing && !loadout.InstallationInstance.Locations.ToAbsolutePath(path).FileExists
+            ? new LarianModListMissingException(_profile.GameName)
+            : null;
+    }
+
+    /// <summary>
+    /// Refuses before anything is written when the game's mod list cannot be, so a player who has not picked a
+    /// profile, or whose game has not made a list yet, is told so and the loadout is left as it was.
+    /// </summary>
+    protected override Task PreflightLoadout(Loadout.ReadOnly loadout)
+    {
+        if (WhyModsettingsCannotBeWritten(loadout) is { } refusal) throw refusal;
+        return base.PreflightLoadout(loadout);
+    }
+
+    /// <summary>
+    /// The mod lists of the player profiles the app is not writing are never touched: switching the profile leaves
+    /// the previous profile's list as it was, with the app's paks in it.
+    /// </summary>
+    protected override bool IsNeverWritten(GamePath path) =>
+        _profile.Profiles is LarianProfileLayout.PerProfileFolder && IsModsettings(path) && _resolvedModsettings != path;
 
     // The native build keeps these under XDG_DATA_HOME, the Windows build in its Proton prefix, so a game that was
     // managed in the prefix finds them in a new folder once it is recognised as native.
@@ -104,7 +178,7 @@ public class LarianSynchronizer : ALoadoutSynchronizer
     private static bool Same(Optional<string> stored, string value) => stored.HasValue && stored.Value == value;
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) =>
-        _modsettings is null ? new() : new() { [_modsettings.Path] = _modsettings };
+        ModsettingsFor(loadout) is { } modsettings ? new() { [modsettings.Path] = modsettings } : new();
 
     /// <summary>
     /// Works out the mod list before the sync tree is built: brings the pak order up to date, fills it from the
@@ -118,7 +192,13 @@ public class LarianSynchronizer : ALoadoutSynchronizer
         loadout = await base.PrepareLoadoutForSync(loadout);
 
         // A game the app writes no mod list for has no pak order to work out.
-        if (_modsettings is not { } modsettings) return loadout;
+        if (_profile.Schema is null) return loadout;
+        var modsettings = ModsettingsFor(loadout);
+        if (modsettings is null)
+        {
+            if (WhyModsettingsCannotBeWritten(loadout) is { } refusal) throw refusal;
+            throw new InvalidOperationException("The mod list's player profile resolved to nothing, though nothing refuses the loadout");
+        }
 
         await _game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
         loadout = loadout.Rebase();

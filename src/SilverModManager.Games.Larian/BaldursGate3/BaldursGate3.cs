@@ -44,6 +44,7 @@ public class BaldursGate3(IServiceProvider provider) : ALarianGame<BaldursGate3>
         LarianFolder: RelativePath.FromUnsanitizedInput("Larian Studios/Baldur's Gate 3"),
         ModsFolder: RelativePath.FromUnsanitizedInput("Mods"),
         Profiles: new LarianProfileLayout.Fixed(RelativePath.FromUnsanitizedInput("PlayerProfiles/Public")),
+        ProfileSetting: _ => "",
         GameData: RelativePath.FromUnsanitizedInput("Data"),
         Executables: [Launcher, NativeExecutable],
         PakVersions: [15, 16, 18],

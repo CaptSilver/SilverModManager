@@ -69,7 +69,7 @@ internal static partial class Diagnostics
         .WithSummary("Invalid .pak File Detected in {ModName}")
         .WithDetails("""
                      The mod contains a .pak file, typically used to store mod data for {GameName}. However,
-                     this one appears to be invalid or incompatible: '{PakFileName}'.
+                     this one appears to be invalid or incompatible: '{PakFileName}'. {Detail}
                      
                      
                      ## Recommended Actions
@@ -80,6 +80,7 @@ internal static partial class Diagnostics
             .AddDataReference<LoadoutItemGroupReference>("ModName")
             .AddValue<string>("PakFileName")
             .AddValue<string>("GameName")
+            .AddValue<string>("Detail")
         )
         .Finish();
 
@@ -349,6 +350,44 @@ internal static partial class Diagnostics
                      Set the game to use Proton in Steam, let it install the Windows files, and manage that install instead.
                      #### Or remove the Script Extender
                      Disable it in your Loadout, along with the mods that depend on it.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate LarianProfileUnsetTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 15))
+        .WithTitle("Pick a player profile")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{GameName} has more than one player profile; pick one under Settings")
+        .WithDetails("""
+                     {GameName} keeps one mod list for each player profile, and the app writes only one of them. Until you say which, applying the loadout is refused.
+
+
+                     ## Recommended Actions
+                     Open Settings and enter the name of the profile you play with, the folder name under `PlayerProfiles` in the game's documents folder. The other profiles' mod lists are left exactly as they are.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate ScriptExtenderOverrideUnknownTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 18))
+        .WithTitle("Script extender not configured")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{GameName}'s script extender (OsiTools) is not configured by the app yet; a DXGI.dll beside the game's executable needs a Wine override the app does not write")
+        .WithDetails("""
+                     A `DXGI.dll` sits beside {GameName}'s executable, which is how OsiTools loads. Under Wine that file only loads when the prefix overrides `dxgi` to prefer the native one, and the app does not set that up for this game yet.
+
+
+                     ## Recommended Actions
+                     If the script extender does not start, set the Wine override for `dxgi` to `native, builtin` in the game's prefix.
                      """
         )
         .WithMessageData(messageBuilder => messageBuilder

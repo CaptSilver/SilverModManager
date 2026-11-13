@@ -22,12 +22,12 @@ namespace SilverModManager.Games.Larian.Engine.Modsettings;
 /// </summary>
 public sealed class ModsettingsFile : IIntrinsicFileWithReset
 {
-    private readonly IGame _game;
+    private readonly ILarianGame _game;
     private readonly LarianPakModules _modules;
     private readonly IModsettingsSchema _schema;
     private readonly ILogger<ModsettingsFile> _logger;
 
-    public ModsettingsFile(IGame game, LarianPakModules modules, IModsettingsSchema schema, GamePath path, ILogger<ModsettingsFile> logger)
+    public ModsettingsFile(ILarianGame game, LarianPakModules modules, IModsettingsSchema schema, GamePath path, ILogger<ModsettingsFile> logger)
     {
         _game = game;
         _modules = modules;
@@ -50,12 +50,13 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         var byName = ByName(candidates);
 
         var disk = ReadDocument(loadout);
-        if (disk is null && !_schema.CanCreateFromNothing) throw new LarianModListMissingException(_game.DisplayName);
+        if (disk is null && !_schema.CanCreateFromNothing) throw new LarianModListMissingException(_game.Profile.GameName);
 
-        var pakUuids = UuidsOf(candidates);
+        // A campaign is in the game's list already and is kept there, so it is not one of the paks written after it.
+        var pakUuids = UuidsOf(AddOns(candidates));
         var baseEntries = disk is null
             ? _schema.EntriesWhenNoFile
-            : _schema.GameEntries(disk, NoAdventures).Where(e => !pakUuids.Contains(e.Uuid)).ToList();
+            : _schema.GameEntries(disk, AdventureUuids(candidates)).Where(e => !pakUuids.Contains(e.Uuid)).ToList();
 
         var pakEntries = LarianModListNotices.LastWritten(loadout.Db, sortOrderId)
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant())?.Entry)
@@ -112,7 +113,7 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
             .ToList();
 
         // The paks that were written come first, so an entry that two paks provide is taken for the one written.
-        var byUuid = ByUuid(expected.Concat(candidates));
+        var byUuid = ByUuid(expected.Concat(AddOns(candidates)));
 
         // Base entries and modules the loadout has no pak for are the game's business, not part of the comparison.
         var onDisk = new List<LarianPakCandidate>();
@@ -180,8 +181,8 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         if (writtenAndOnDisk.Count == 0) return false;
 
         if (ReadDocument(loadout) is not { } disk) return false;
-        var pakUuids = UuidsOf(candidates);
-        var gameEntries = _schema.GameEntries(disk, NoAdventures).ToHashSet();
+        var pakUuids = UuidsOf(AddOns(candidates));
+        var gameEntries = _schema.GameEntries(disk, AdventureUuids(candidates)).ToHashSet();
         return !disk.Entries.Any(e => !gameEntries.Contains(e) || pakUuids.Contains(e.Uuid));
     }
 
@@ -190,7 +191,7 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
     {
         if (ReadDocument(loadout) is not { } disk) return [];
 
-        var byUuid = ByUuid(candidates);
+        var byUuid = ByUuid(AddOns(candidates));
         var names = new List<string>();
         foreach (var entry in disk.Entries)
         {
@@ -234,8 +235,11 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
     private IReadOnlyDictionary<string, string> VersionOf(ModsettingsDocument? disk) =>
         disk is { VersionAttributes.Count: > 0 } ? disk.VersionAttributes : _schema.DefaultVersion;
 
-    // Only a dialect that tells the game's entries apart by adventure reads this; Baldur's Gate 3's does not.
-    private static readonly IReadOnlySet<string> NoAdventures = new HashSet<string>();
+    /// <summary>The paks that are not campaigns: the ones the app orders and writes.</summary>
+    private static IEnumerable<LarianPakCandidate> AddOns(IEnumerable<LarianPakCandidate> candidates) => candidates.Where(p => !p.IsAdventure);
+
+    private static HashSet<string> AdventureUuids(IEnumerable<LarianPakCandidate> candidates) =>
+        candidates.Where(p => p.IsAdventure).Select(p => p.Entry?.Uuid).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static Dictionary<string, LarianPakCandidate> ByName(IEnumerable<LarianPakCandidate> candidates) =>
         candidates.ToDictionary(p => p.Name.ToLowerInvariant());

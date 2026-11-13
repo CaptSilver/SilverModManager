@@ -27,8 +27,11 @@ public sealed class LarianPakSortOrderVariety : ASortOrderVariety<SortItemKey<st
     // Reconciling stores an order too, but it is the app tidying up, not the user changing anything.
     private static readonly AsyncLocal<bool> Reconciling = new();
 
-    public LarianPakSortOrderVariety(IServiceProvider serviceProvider, ILarianGame game) : base(serviceProvider)
+    private readonly LarianPakModules _modules;
+
+    public LarianPakSortOrderVariety(IServiceProvider serviceProvider, ILarianGame game, LarianPakModules modules) : base(serviceProvider)
     {
+        _modules = modules;
         SortOrderVarietyId = game.Profile.VarietyId;
         SortOrderUiMetadata = new SortOrderUiMetadata
         {
@@ -99,7 +102,7 @@ public sealed class LarianPakSortOrderVariety : ASortOrderVariety<SortItemKey<st
             .Transform(row =>
             {
                 var data = new LarianPakLoadoutData(row.PakName, FileIdentity.ParseHex(row.Identity), (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
-                return new LarianPakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data);
+                return new LarianPakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data, _modules.IsAdventure(data));
             });
     }
 
@@ -115,7 +118,7 @@ public sealed class LarianPakSortOrderVariety : ASortOrderVariety<SortItemKey<st
 
         // Shows what a reconciliation would store, so a pak that has just arrived is listed before it is persisted.
         return ReconcileAgainst(sortOrder, dbToUse, dbToUse)
-            .Select(tuple => new LarianPakReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData))
+            .Select(tuple => new LarianPakReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData, _modules.IsAdventure(tuple.ItemLoadoutData)))
             .ToList();
     }
 
@@ -152,6 +155,9 @@ public sealed class LarianPakSortOrderVariety : ASortOrderVariety<SortItemKey<st
 
         if (QueryLoadoutPaks(sortOrder.LoadoutId, dbToUse).Any(pak => pak.IsGameInstalled && LarianPakSortData.KeyFor(pak.Name).Equals(item)))
             throw new InvalidOperationException($"'{row.Name}' was installed by the game; switch its group instead.");
+
+        if (RetrieveLoadoutData(sortOrder.LoadoutId, Optional<CollectionGroupId>.None, dbToUse).Any(pak => LarianPakSortData.KeyFor(pak.Name).Equals(item) && _modules.IsAdventure(pak)))
+            throw new InvalidOperationException($"'{row.Name}' is an adventure; the game chooses which one is played.");
 
         using var tx = Connection.BeginTransaction();
         tx.Add(row.StoredRowId, Bg3PakSortOrderItem.IsEnabled, enabled);

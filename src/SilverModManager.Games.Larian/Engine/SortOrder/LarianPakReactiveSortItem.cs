@@ -10,8 +10,10 @@ namespace SilverModManager.Games.Larian.Engine.SortOrder;
 public sealed class LarianPakReactiveSortItem : IReactiveSortItem<LarianPakReactiveSortItem, SortItemKey<string>>, ISortItemDetails
 {
     /// <param name="isEnabled">The pak's own switch in the sort order, which a game-installed pak does not use.</param>
-    public LarianPakReactiveSortItem(int sortIndex, string name, bool isEnabled, LarianPakLoadoutData loadoutData)
+    /// <param name="isAdventure">A campaign the player picks in the game: the row is locked and never on.</param>
+    public LarianPakReactiveSortItem(int sortIndex, string name, bool isEnabled, LarianPakLoadoutData loadoutData, bool isAdventure = false)
     {
+        IsAdventure = isAdventure;
         SortIndex = sortIndex;
         DisplayName = name;
         Key = LarianPakSortData.KeyFor(name);
@@ -20,9 +22,9 @@ public sealed class LarianPakReactiveSortItem : IReactiveSortItem<LarianPakReact
         ModGroupId = loadoutData.ModGroupId is { } id ? LoadoutItemGroupId.From(id) : Optional<LoadoutItemGroupId>.None;
 
         // The group of game-installed content decides for its paks; a stored switch on such a row is not shown.
-        IsEnabled = loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled;
-        LockReason = loadoutData.IsGameInstalled ? SortItemLockReason.GameInstalledGroup : null;
-        IsActive = loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled && loadoutData.IsEnabled;
+        IsEnabled = !isAdventure && (loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled);
+        LockReason = isAdventure ? SortItemLockReason.AlwaysLoaded : loadoutData.IsGameInstalled ? SortItemLockReason.GameInstalledGroup : null;
+        IsActive = !isAdventure && (loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled && loadoutData.IsEnabled);
     }
 
     public SortItemKey<string> Key { get; }
@@ -33,11 +35,14 @@ public sealed class LarianPakReactiveSortItem : IReactiveSortItem<LarianPakReact
     public bool IsActive { get; set; }
     public ISortItemLoadoutData? LoadoutData { get; set; }
 
-    public string? Flags => null;
+    /// <summary>Whether the pak is a campaign, which the game chooses.</summary>
+    public bool IsAdventure { get; }
+
+    public string? Flags => IsAdventure ? "Chosen in the game" : null;
     public IReadOnlyList<string> Masters => [];
 
-    /// <summary>Every pak can be dragged.</summary>
-    public bool IsLocked => false;
+    /// <summary>Every pak can be dragged, except a campaign, which sits where the game's list has it.</summary>
+    public bool IsLocked => IsAdventure;
 
     public bool IsEnabled { get; }
 

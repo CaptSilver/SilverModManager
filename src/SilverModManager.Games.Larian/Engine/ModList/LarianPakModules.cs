@@ -29,12 +29,18 @@ public sealed class LarianPakModules
 {
     private readonly IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
     private readonly ILogger<LarianPakModules> _logger;
+    private readonly LarianGameProfile _profile;
+
+    // Whether each pak the game lists adventures for is one, by content. The sort order builds its rows without
+    // waiting, so it asks here; the answer comes from the same metadata read the mod list is worked out from.
+    private readonly ConcurrentDictionary<FileIdentity, bool> _adventures = new();
 
     // The result is null for a pak that cannot be read, so it is not opened again until its content changes.
     private readonly ConcurrentDictionary<(string Name, FileIdentity Identity), ModsettingsDocument.ModuleEntry?> _diskReads = new();
 
-    public LarianPakModules(IServiceProvider provider)
+    public LarianPakModules(IServiceProvider provider, LarianGameProfile profile)
     {
+        _profile = profile;
         _metadataPipeline = Pipelines.GetMetadataPipeline(provider);
         _logger = provider.GetRequiredService<ILogger<LarianPakModules>>();
     }
@@ -63,7 +69,11 @@ public sealed class LarianPakModules
             var entry = data.IsGameInstalled
                 ? ReadGameInstalled(loadout, data)
                 : await ReadFromStore(data, token);
-            candidates.Add(new LarianPakCandidate(row.DisplayName, data.IsGameInstalled, row.IsActive, entry));
+            var isAdventure = _profile.HasAdventureModules && IsAdventureType(entry);
+            if (!data.IsGameInstalled) _adventures[data.Identity] = isAdventure;
+
+            // The game's mod list names the campaign, so a campaign is never switched on from here.
+            candidates.Add(new LarianPakCandidate(row.DisplayName, data.IsGameInstalled, row.IsActive && !isAdventure, entry, isAdventure));
         }
 
         return candidates;
@@ -83,8 +93,43 @@ public sealed class LarianPakModules
             .OfType<string>()
             .Where(name => !known.Contains(name))
             .Order(StringComparer.Ordinal)
-            .Select(name => new LarianPakCandidate(name, IsGameInstalled: false, IsActive: false, ReadFromDisk(loadout, name, _logger)))
+            .Select(name =>
+            {
+                var entry = ReadFromDisk(loadout, name, _logger);
+                return new LarianPakCandidate(name, IsGameInstalled: false, IsActive: false, entry, IsAdventure: _profile.HasAdventureModules && IsAdventureType(entry));
+            })
             .ToList();
+    }
+
+    private static bool IsAdventureType(ModsettingsDocument.ModuleEntry? entry) =>
+        entry is not null && entry.Type.Equals("Adventure", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether the pak is a campaign of a game whose mod list separates those. A game without any, and a pak the
+    /// game installed, answer without reading anything; otherwise the pak's metadata is read once and kept.
+    /// </summary>
+    public bool IsAdventure(LarianPakLoadoutData data)
+    {
+        if (!_profile.HasAdventureModules || data.IsGameInstalled) return false;
+        return _adventures.GetOrAdd(data.Identity, ReadIsAdventure);
+    }
+
+    // Blocks on the metadata pipeline, which keeps what it read in memory: only the first row of a pak waits. The
+    // load runs on the thread pool so a caller on a thread with a synchronization context cannot deadlock on it.
+    private bool ReadIsAdventure(FileIdentity identity)
+    {
+        try
+        {
+            var resource = Task.Run(async () => await _metadataPipeline.LoadResourceAsync(identity, CancellationToken.None)).GetAwaiter().GetResult();
+            return resource.Data.Exception is null
+                   && _profile.PakVersions.Contains(resource.Data.Result.PakVersion)
+                   && IsAdventureType(ToEntry(resource.Data.Result.MetaFileData.ModuleShortDesc));
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger.LogWarning(e, "Unable to tell whether the pak {Identity} is an adventure", identity);
+            return false;
+        }
     }
 
     private async Task<ModsettingsDocument.ModuleEntry?> ReadFromStore(LarianPakLoadoutData data, CancellationToken token)
@@ -95,6 +140,14 @@ public sealed class LarianPakModules
             if (resource.Data.Exception is { } error)
             {
                 _logger.LogWarning(error, "Unable to read the module of `{Name}`, it is left out of the mod list", data.Name);
+                return null;
+            }
+
+            // A pak of another game's format would make the game refuse its mod list, so it is left out, and the
+            // dependency check names the game it belongs to.
+            if (LarianPakVersions.WhyForeign(_profile, resource.Data.Result.PakVersion) is { } foreign)
+            {
+                _logger.LogWarning("`{Name}` is not a pak this game loads, it is left out of the mod list. {Why}", data.Name, foreign);
                 return null;
             }
 
@@ -157,6 +210,7 @@ public sealed class LarianPakModules
             PublishHandle: string.IsNullOrEmpty(module.PublishHandle) ? "0" : module.PublishHandle,
             Uuid: module.Uuid,
             Version64: module.Version ?? "",
-            Md5: "");
+            Md5: "",
+            Type: module.Type ?? "");
     }
 }

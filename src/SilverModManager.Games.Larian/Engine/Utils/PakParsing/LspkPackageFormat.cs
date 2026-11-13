@@ -14,6 +14,9 @@ public static class LspkPackageFormat
     {
         public LsxXmlFormat.MetaFileData MetaFileData;
 
+        /// <summary>The LSPK version of the package, which says which Larian game it was made for.</summary>
+        public int PakVersion;
+
         /// <summary>
         /// Every extender config the pak carries, keyed by its path inside a module folder
         /// (`ScriptExtender/Config.json`, `OsiToolsConfig.json`).
