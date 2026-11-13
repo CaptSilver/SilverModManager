@@ -3,6 +3,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Install;
 
@@ -31,6 +32,9 @@ public interface IWabbajackInstallRun
 
     /// <summary>Every snapshot of the job's progress, starting with the current one.</summary>
     IObservable<ModlistInstallProgress.Snapshot> Progress { get; }
+
+    /// <summary>One row per mod folder; the job owns it, so a page reads it but never disposes it.</summary>
+    IModInstallRows Mods { get; }
 
     /// <summary>Ends when the job does; faults with the job's exception.</summary>
     Task Completion { get; }

@@ -95,6 +95,22 @@ internal static class WabbajackGroupSeed
         return (await tx.Commit()).Remap(group).Id;
     }
 
+    /// <summary>A mod folder of the list, as the install job records it under the list's group.</summary>
+    public static async Task<EntityId> AddModGroup(IConnection connection, EntityId group, LoadoutId loadout, string folder)
+    {
+        using var tx = connection.BeginTransaction();
+        var mod = new WabbajackModGroup.New(tx, out var id)
+        {
+            Folder = folder,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = folder, LoadoutId = loadout, ParentId = group },
+            },
+        };
+        return (await tx.Commit()).Remap(mod).Id;
+    }
+
     public static async Task Finish(IConnection connection, EntityId group)
     {
         using var tx = connection.BeginTransaction();

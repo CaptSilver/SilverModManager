@@ -16,6 +16,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Wabbajack;
 using SilverModManager.Wabbajack.Acquire;
@@ -181,6 +182,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
     {
         public LoadoutId Loadout => run.Loadout;
         public IObservable<ModlistInstallProgress.Snapshot> Progress => run.Progress.Changes;
+        public IModInstallRows Mods => run.Progress.Mods;
         public Task Completion { get; } = run.Completion;
     }
 

@@ -25,6 +25,7 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.Wabbajack.Gallery;
@@ -204,6 +205,14 @@ public sealed class WabbajackModlistSource : CollectionSource
         return downloads.WhenAnyValue(
             model => model.RunningStatus,
             status => status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction ?? 0, status.IsIndeterminate) : null);
+    });
+
+    // The same model as the status above: it follows the run, then reads what the run stored.
+    public override IObservable<IModInstallRows?> InstallRows => Observable.Defer(() =>
+    {
+        var downloads = _downloads
+            ?? throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
+        return downloads.WhenAnyValue(model => model.Mods).Select(static rows => (IModInstallRows?)rows);
     });
 
     public override IPageViewModelInterface? CreateDownloads()

@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts.Install;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
@@ -66,6 +67,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public bool IsInstalling { get; init; } = false;
     public string ProgressText { get; init; } = "";
     public double ProgressFraction { get; init; } = 0;
+    public IModInstallRows Mods { get; init; } = ModInstallRows.Empty;
     public WabbajackInstallStatus InstallStatus => new(ProgressText, ProgressFraction);
     public IDisposable FollowRunningInstall() => System.Reactive.Disposables.Disposable.Empty;
     public Task PrepareInstallAsync(CancellationToken cancellationToken) => Task.CompletedTask;

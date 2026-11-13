@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.UI.Sdk;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Windows;
@@ -111,6 +112,12 @@ public abstract class CollectionSource
     /// A source that has no install of its own to report leaves it at null.
     /// </summary>
     public virtual IObservable<CollectionInstallStatus?> InstallProgress => System.Reactive.Linq.Observable.Return<CollectionInstallStatus?>(null);
+
+    /// <summary>
+    /// The per-mod rows of an install of this collection, for the header's Mods section; null while there is nothing to
+    /// list. A source that reports no rows leaves it at null.
+    /// </summary>
+    public virtual IObservable<IModInstallRows?> InstallRows => System.Reactive.Linq.Observable.Return<IModInstallRows?>(null);
 
     /// <summary>
     /// Builds the Downloads tab's view model, embedded (no header of its own). Null when there is nothing to

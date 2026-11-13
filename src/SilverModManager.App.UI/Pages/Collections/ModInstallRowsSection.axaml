@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="300"
+             x:Class="SilverModManager.App.UI.Pages.Collections.ModInstallRowsSection">
+    <StackPanel Spacing="2">
+        <DockPanel>
+            <ComboBox x:Name="ModsFilterBox" DockPanel.Dock="Right" MinWidth="140" SelectedIndex="0" ToolTip.Tip="Which mods the list shows">
+                <ComboBoxItem Content="All" />
+                <ComboBoxItem Content="Failed" />
+                <ComboBoxItem Content="Not installed" />
+            </ComboBox>
+            <TextBlock Text="Mods" Theme="{StaticResource HeadingSMSemiTheme}" VerticalAlignment="Center" />
+        </DockPanel>
+        <TextBlock x:Name="ModsHeader" />
+        <!-- Lists can hold thousands of mods. The page around this is one scroll viewer that measures at infinite height,
+             where a virtualizing panel builds every line, so the list brings a viewport of its own. -->
+        <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ModRows">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

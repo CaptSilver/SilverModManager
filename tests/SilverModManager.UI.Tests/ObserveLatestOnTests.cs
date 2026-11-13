@@ -2,34 +2,12 @@ using System.Reactive.Concurrency;
 using System.Reactive.Subjects;
 using FluentAssertions;
 using SilverModManager.App.UI;
+using SilverModManager.UI.Tests.Helpers;
 
 namespace SilverModManager.UI.Tests;
 
 public class ObserveLatestOnTests
 {
-    /// <summary>Holds what is scheduled until the test runs it, like a UI thread that has not got round to it.</summary>
-    private sealed class QueuedScheduler : IScheduler
-    {
-        public Queue<Action> Queue { get; } = new();
-
-        public DateTimeOffset Now => DateTimeOffset.UtcNow;
-
-        public IDisposable Schedule<TState>(TState state, Func<IScheduler, TState, IDisposable> action)
-        {
-            Queue.Enqueue(() => action(this, state));
-            return System.Reactive.Disposables.Disposable.Empty;
-        }
-
-        public IDisposable Schedule<TState>(TState state, TimeSpan dueTime, Func<IScheduler, TState, IDisposable> action) => Schedule(state, action);
-
-        public IDisposable Schedule<TState>(TState state, DateTimeOffset dueTime, Func<IScheduler, TState, IDisposable> action) => Schedule(state, action);
-
-        public void RunAll()
-        {
-            while (Queue.Count > 0) Queue.Dequeue()();
-        }
-    }
-
     [Fact]
     public void AFloodOfValuesQueuesOneJobAndTheObserverGetsTheLastOfThem()
     {

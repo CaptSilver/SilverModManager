@@ -88,6 +88,9 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                 InboxText.IsVisible = text != "";
             }).DisposeWith(disposables);
 
+            // The running install's rows, or the store's once it is over; the section follows the rows itself.
+            OnUi(vm => vm.WhenAnyValue(x => x.Mods)).Subscribe(rows => ModsSection.Rows = rows).DisposeWith(disposables);
+
             // The lines are built for the rows in view only, and a row that changes tells its own line; the list
             // itself is replaced only when the page shows other archives.
             ArchiveRows.ItemTemplate = new FuncDataTemplate<WabbajackArchiveRow>((row, _) => row is null ? null : new WabbajackArchiveLine(viewModel, row));

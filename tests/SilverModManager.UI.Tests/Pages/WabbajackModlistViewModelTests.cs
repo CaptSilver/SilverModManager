@@ -10,6 +10,7 @@ using SilverModManager.App.UI.Windows;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
@@ -120,6 +121,8 @@ public partial class WabbajackModlistViewModelTests(IServiceProvider provider) :
         public BehaviorSubject<ModlistInstallProgress.Snapshot> Snapshots { get; } = new(ModlistInstallProgress.Snapshot.Empty);
         public TaskCompletionSource Done { get; } = new();
         public IObservable<ModlistInstallProgress.Snapshot> Progress => Snapshots;
+        public ModInstallRows Rows { get; } = new();
+        public IModInstallRows Mods => Rows;
         public Task Completion => Done.Task;
     }
 

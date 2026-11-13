@@ -4,6 +4,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
@@ -125,6 +126,9 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     /// <summary>At least one archive can be fetched by the app or through the browser, and no download is running.</summary>
     bool CanDownload { get; }
     bool IsInstalling { get; }
+
+    /// <summary>One row per mod folder: the running install's while one runs, otherwise what the install stored.</summary>
+    IModInstallRows Mods { get; }
     /// <summary>The running install's line, bar and time left, changing together.</summary>
     WabbajackInstallStatus InstallStatus { get; }
     string ProgressText { get; }

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Loadouts.Install;
 using Avalonia.Media.Imaging;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
@@ -97,4 +98,7 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// The install running into this collection, shown in the header whichever tab is open. Null while none is.
     /// </summary>
     CollectionInstallStatus? InstallProgress { get; }
+
+    /// <summary>One row per mod of that install, or null when the source reports none.</summary>
+    IModInstallRows? InstallRows { get; }
 }

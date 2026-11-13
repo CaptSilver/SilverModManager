@@ -23,6 +23,7 @@ using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using R3;
@@ -175,6 +176,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
             source.Instructions.OnUI().Subscribe(instructions => Instructions = instructions).AddTo(disposables);
             // One status per item of a large install: only the latest is worth a turn of the UI thread.
             source.InstallProgress.ObserveLatestOn(RxApp.MainThreadScheduler).Subscribe(progress => InstallProgress = progress).AddTo(disposables);
+            source.InstallRows.OnUI().Subscribe(rows => InstallRows = rows).AddTo(disposables);
             source.TileImage.OnUI().Subscribe(image => TileImage = image).AddTo(disposables);
             source.BackgroundImage.OnUI().Subscribe(image => BackgroundImage = image).AddTo(disposables);
             source.AuthorAvatar.OnUI().Subscribe(image => AuthorAvatar = image).AddTo(disposables);
@@ -321,6 +323,9 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     [Reactive] public partial int InstalledModsCount { get; private set; }
     [Reactive] public partial CollectionInstructions Instructions { get; private set; } = CollectionInstructions.None;
     [Reactive] public partial CollectionInstallStatus? InstallProgress { get; private set; }
+
+    /// <summary>One row per mod of the running install, or null when the source has none.</summary>
+    [Reactive] public partial IModInstallRows? InstallRows { get; private set; }
     [Reactive] public partial CollectionPageTab SelectedTab { get; set; }
 
     public ReactiveCommand<Unit> CommandToggle { get; }

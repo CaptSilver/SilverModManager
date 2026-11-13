@@ -79,6 +79,26 @@ public class WabbajackModlistViewTests(IServiceProvider provider) : AUiTest(prov
     }
 
     [Fact]
+    public async Task TheModsSectionSitsAboveTheArchivesAndShowsTheRowsOfTheViewModel()
+    {
+        var rows = new SilverModManager.Sdk.Loadouts.Install.ModInstallRows();
+        rows.Add(Enumerable.Range(0, 3).Select(i => new SilverModManager.Sdk.Loadouts.Install.ModInstallRow($"m{i}", $"Mod {i}", i,
+            new SilverModManager.Sdk.Loadouts.Install.ModInstallRowState(SilverModManager.Sdk.Loadouts.Install.ModInstallState.Installed, 2, 2, 2))));
+        rows.SetTotals(new SilverModManager.Sdk.Loadouts.Install.ModInstallTotals(3, 3, 0));
+        var (window, view) = await Show(new WabbajackModlistDesignViewModel { Mods = rows });
+
+        await EventuallyOnUi(() =>
+        {
+            var content = Named<StackPanel>(view, "Content");
+            var section = Named<SilverModManager.App.UI.Pages.Collections.ModInstallRowsSection>(view, "ModsSection");
+            content.Children.IndexOf(section).Should().BeLessThan(content.Children.IndexOf(Named<StackPanel>(view, "ArchivesPanel")));
+            section.Rows.Should().BeSameAs(rows);
+            ShownTexts(section).Should().Contain("3 of 3 mods installed");
+        });
+        await OnUi(window.Close);
+    }
+
+    [Fact]
     public async Task ASupersededList_HidesInstall_WhereAnOrdinaryOneShowsIt()
     {
         var (superseded, view) = await Show(new WabbajackModlistDesignViewModel { SupersededBy = "2.0" }, readyText: "Open next five");

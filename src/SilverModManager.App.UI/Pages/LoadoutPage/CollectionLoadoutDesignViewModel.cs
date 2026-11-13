@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Loadouts.Install;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using SilverModManager.Abstractions.NexusWebApi.Types;
@@ -78,4 +79,5 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
         []);
     public bool IsReadOnly { get; init; } = true;
     public CollectionInstallStatus? InstallProgress { get; init; }
+    public IModInstallRows? InstallRows { get; init; }
 }

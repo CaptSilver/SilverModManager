@@ -27,6 +27,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.Wabbajack.Acquire;
@@ -62,6 +63,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     private ArchivePlan _plan = new([]);
     private CancellationTokenSource? _acquireCancellation;
     private WabbajackModlistLoadoutGroupId? _groupId;
+
+    // The rows this page built from the store and so disposes; the running install's own rows belong to the job.
+    private ModInstallRows? _storeRows;
     private bool _loadStarted;
 
     // The phase the log last named, so it says each once rather than at every count.
@@ -103,6 +107,9 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
     public bool IsLoadoutPinned => _pinnedLoadout is not null;
 
     [Reactive] public partial string Name { get; private set; } = "";
+
+    /// <summary>One row per mod folder: the running install's while one is followed, otherwise read from the store.</summary>
+    [Reactive] public partial IModInstallRows Mods { get; private set; } = ModInstallRows.Empty;
     [Reactive] public partial string Author { get; private set; } = "";
     [Reactive] public partial string Version { get; private set; } = "";
     [Reactive] public partial string GameName { get; private set; } = "";
@@ -791,7 +798,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             _needsYou = new ObservableCollection<WabbajackArchiveRow>(wanted);
             NeedsYou = _needsYou;
         }
-        else Reconcile(_needsYou, wanted);
+        else ListReconcile.Reconcile(_needsYou, wanted);
         HasNeedsYou = wanted.Count > 0;
         NeedsYouHeading = wanted.Count == 0 ? "" : WabbajackNeedsYou.Heading(wanted.Count);
     }
@@ -810,21 +817,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             _filtered = new ObservableCollection<WabbajackArchiveRow>(wanted);
             VisibleArchives = _filtered;
         }
-        else Reconcile(_filtered, wanted);
-    }
-
-    // Both lists keep the rows in one order, so what differs is rows to drop and rows to put in between the ones that stay.
-    private static void Reconcile(ObservableCollection<WabbajackArchiveRow> shown, IReadOnlyList<WabbajackArchiveRow> wanted)
-    {
-        var keep = new HashSet<WabbajackArchiveRow>(wanted, ReferenceEqualityComparer.Instance);
-        for (var i = shown.Count - 1; i >= 0; i--)
-        {
-            if (!keep.Contains(shown[i])) shown.RemoveAt(i);
-        }
-        for (var i = 0; i < wanted.Count; i++)
-        {
-            if (i >= shown.Count || !ReferenceEquals(shown[i], wanted[i])) shown.Insert(i, wanted[i]);
-        }
+        else ListReconcile.Reconcile(_filtered, wanted);
     }
 
     private void ShowPickUpTooltip()
@@ -907,12 +900,37 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
             SkippedFiles = found is { } owner
                 ? WabbajackSkippedFile.All(db).Where(skipped => skipped.GroupId == owner.WabbajackModlistLoadoutGroupId).Select(skipped => new WabbajackSkippedRow(skipped.To, skipped.Reason, skipped.Kind)).ToArray()
                 : [];
+            // The live rows stay until the run is over: a commit of the install is a revision too, and reading the
+            // store for every one of them would be work per directive that also swaps the live rows away.
+            if (_followed is null) ShowStoreRows(db);
         }
         catch (Exception e)
         {
             // A revision can land while the group is being removed; the next one corrects the state.
             _logger?.LogDebug(e, "Could not read the installed state of '{List}'", Name);
         }
+    }
+
+    private void ShowStoreRows(IDb db)
+    {
+        if (_groupId is not { } group)
+        {
+            ShowMods(ModInstallRows.Empty, owned: null);
+            return;
+        }
+
+        var read = InstalledModRows.Read(db, group);
+        if (_storeRows is { } shown && InstalledModRows.Same(shown, read)) read.Dispose();
+        else ShowMods(read, read);
+    }
+
+    // Swaps the rows the page shows and lets go of the store rows it replaced.
+    private void ShowMods(IModInstallRows next, ModInstallRows? owned)
+    {
+        var replaced = _storeRows;
+        _storeRows = owned;
+        Mods = next;
+        replaced?.Dispose();
     }
 
     private async Task InstallAsync()
@@ -990,6 +1008,7 @@ public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlis
 
         StopFollowing();
         _followed = run;
+        ShowMods(run.Mods, owned: null);
         IsInstalling = true;
         if (ProgressText == "") ShowInstallStatus(new WabbajackInstallStatus(WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty), 0));
         Recompute();

@@ -8,6 +8,7 @@
     xmlns:loadoutPage="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage"
     xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:collections="clr-namespace:SilverModManager.App.UI.Pages.Collections"
     xmlns:search="clr-namespace:SilverModManager.App.UI.Controls.Search"
     xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
     xmlns:collectionDownload="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
@@ -229,6 +230,9 @@
                         <TextBlock x:Name="InstallProgressText" />
                         <ProgressBar x:Name="InstallProgressBar" Minimum="0" Maximum="1" />
                     </StackPanel>
+
+                    <!-- the mods of that install; hides itself while there are none -->
+                    <collections:ModInstallRowsSection x:Name="ModsSection" Margin="0,12,0,0" />
                 </StackPanel>
             </Border>
 

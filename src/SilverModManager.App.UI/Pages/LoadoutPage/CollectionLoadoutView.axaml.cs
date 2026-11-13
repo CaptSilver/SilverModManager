@@ -168,6 +168,10 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 })
                 .DisposeWith(disposables);
 
+            this.WhenViewModelValue(vm => vm.WhenAnyValue(x => x.InstallRows))
+                .Subscribe(rows => ModsSection.Rows = rows)
+                .DisposeWith(disposables);
+
             // Whether the text gets cut off depends on the width it wraps at, so it is decided from the laid-out text.
             DescriptionText.LayoutUpdated += OnDescriptionLayoutUpdated;
             Disposable.Create(() => DescriptionText.LayoutUpdated -= OnDescriptionLayoutUpdated).DisposeWith(disposables);

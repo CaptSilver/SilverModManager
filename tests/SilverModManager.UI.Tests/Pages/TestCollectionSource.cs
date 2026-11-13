@@ -7,6 +7,7 @@ using DynamicData.Kernel;
 using ReactiveUI;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Collections;
@@ -30,6 +31,7 @@ internal sealed class TestCollectionSource : CollectionSource
     public BehaviorSubject<string> DescriptionSubject { get; } = new("");
     public BehaviorSubject<bool> CanToggleSubject { get; } = new(false);
     public BehaviorSubject<CollectionInstallStatus?> InstallProgressSubject { get; } = new(null);
+    public BehaviorSubject<IModInstallRows?> InstallRowsSubject { get; } = new(null);
 
     /// <summary>What <see cref="CreateDownloads"/> returns; null means the collection has nothing to download.</summary>
     public IPageViewModelInterface? DownloadsToReturn { get; set; }
@@ -61,6 +63,7 @@ internal sealed class TestCollectionSource : CollectionSource
     public override bool IsReadOnly => false;
     public override IObservable<bool> CanToggle => CanToggleSubject;
     public override IObservable<CollectionInstallStatus?> InstallProgress => InstallProgressSubject;
+    public override IObservable<IModInstallRows?> InstallRows => InstallRowsSubject;
     public override IObservable<CollectionInstructions> Instructions { get; } = Observable.Return(CollectionInstructions.None);
 
     public override IPageViewModelInterface? CreateDownloads()
