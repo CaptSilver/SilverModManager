@@ -55,11 +55,16 @@ public class OblivionRemasteredInstaller(IServiceProvider serviceProvider)
         var common = RootBuilderConvention.CommonWrapperFolder(files, [DataFolderName, ProjectFolder, ..TopLevelDirs]);
         string[] wrapperFolders = common is null ? GameAliases : [.. GameAliases, common];
 
-        var modFiles = files.Where(f => !RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out _)).ToArray();
-        var root = EffectiveRoot(modFiles);
-        return files.Select(f => RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out var underGameFolder)
+        var modFiles = files.Where(f => !RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out _, GameAliases)).ToArray();
+
+        // Loose files and docs folders beside the wrapper say nothing about the mod's layout; they keep their place at the top.
+        var layoutFiles = common is null ? modFiles : modFiles.Where(f => IsIn(f, common)).ToArray();
+        var root = EffectiveRoot(layoutFiles);
+        if (common is not null && root != RelativePath.Empty)
+            root = RootBuilderConvention.StepIntoGameFolder(root, layoutFiles, GameAliases);
+        return files.Select(f => RootBuilderConvention.TryMapBelowWrapper(f, wrapperFolders, out var underGameFolder, GameAliases)
             ? new GamePath(LocationId.Game, underGameFolder)
-            : Route(f, root)).ToArray();
+            : Route(f, common is not null && !IsIn(f, common) ? RelativePath.Empty : root)).ToArray();
     }
 
     private GamePath Route(RelativePath path, RelativePath root)

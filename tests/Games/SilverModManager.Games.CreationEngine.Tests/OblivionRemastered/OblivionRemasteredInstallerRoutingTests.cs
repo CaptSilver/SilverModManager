@@ -98,4 +98,14 @@ public class OblivionRemasteredInstallerRoutingTests(ITestOutputHelper helper)
     public async Task ARootFolderInAFolderNamedAfterTheGameGoesToTheGameFolder() =>
         (await InstallLayout("Oblivion Remastered/root/openvr_api.dll", "Oblivion Remastered/Data/Mod.esp"))
             .Should().Equal($"{Data}/Mod.esp", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task AStrayTopLevelFileDoesNotStopAWrappedRootFolder() =>
+        (await InstallLayout("ModName/root/openvr_api.dll", "ModName/Data/Mod.esp", "readme.txt"))
+            .Should().Equal($"{Data}/Mod.esp", $"{Data}/readme.txt", "Game/openvr_api.dll");
+
+    [Fact]
+    public async Task ARootFolderInAGameFolderInAWrapperGoesToTheGameFolderAndItsDataToData() =>
+        (await InstallLayout("ModName/Oblivion Remastered/root/openvr_api.dll", "ModName/Oblivion Remastered/Data/Mod.esp"))
+            .Should().Equal($"{Data}/Mod.esp", "Game/openvr_api.dll");
 }

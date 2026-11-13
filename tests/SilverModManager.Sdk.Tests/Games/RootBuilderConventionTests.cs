@@ -53,7 +53,11 @@ public class RootBuilderConventionTests
     [Theory]
     [InlineData(new[] { "Mod/root/x", "Mod/Data/a.esp" }, "Mod")]
     [InlineData(new[] { "Mod/root/x", "Other/a.esp" }, null)]
-    [InlineData(new[] { "Mod/root/x", "a.esp" }, null)]
+    [InlineData(new[] { "Mod/root/x", "a.esp" }, "Mod")]
+    [InlineData(new[] { "Mod/root/x", "readme.txt", "shot.png" }, "Mod")]
+    [InlineData(new[] { "Mod/root/x", "fomod/info.xml" }, "Mod")]
+    [InlineData(new[] { "Mod/root/x", "Docs/readme.txt" }, "Mod")]
+    [InlineData(new[] { "readme.txt", "a.esp" }, null)]
     [InlineData(new[] { "Data/a.esp", "Data/b.esp" }, null)]
     [InlineData(new[] { "meshes/a.nif" }, null)]
     public void TheCommonWrapperFolderIsTheSharedTopFolderThatIsNotAGameFolder(string[] paths, string? expected)
@@ -61,5 +65,39 @@ public class RootBuilderConventionTests
         var wrapper = RootBuilderConvention.CommonWrapperFolder(paths.Select(p => RelativePath.FromUnsanitizedInput(p)), ["Data", "meshes"]);
 
         wrapper.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Mod/Skyrim Special Edition/root/a/b", "a/b")]
+    [InlineData("Mod/skyrim special edition/ROOT/x", "x")]
+    public void ARootFolderInAGameFolderBelowAWrapperIsMapped(string modPath, string expected)
+    {
+        RootBuilderConvention.TryMapBelowWrapper(RelativePath.FromUnsanitizedInput(modPath), ["Mod"], out var underGameFolder, ["Skyrim Special Edition"]).Should().BeTrue();
+
+        underGameFolder.ToString().Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Mod/Other/root/x")]
+    [InlineData("Mod/Skyrim Special Edition/Data/root/x")]
+    [InlineData("Mod/Skyrim Special Edition/root")]
+    [InlineData("Other/Skyrim Special Edition/root/x")]
+    public void AGameFolderBelowAWrapperOnlyCountsWhenItHoldsTheRootFolder(string modPath)
+    {
+        RootBuilderConvention.TryMapBelowWrapper(RelativePath.FromUnsanitizedInput(modPath), ["Mod"], out _, ["Skyrim Special Edition"]).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(new[] { "Mod/Skyrim Special Edition/Data/a.esp", "Mod/Skyrim Special Edition/root/x" }, "Mod/Skyrim Special Edition")]
+    [InlineData(new[] { "Mod/SKYRIM SPECIAL EDITION/a.esp" }, "Mod/SKYRIM SPECIAL EDITION")]
+    [InlineData(new[] { "Mod/Skyrim Special Edition/a.esp", "Mod/b.esp" }, "Mod")]
+    [InlineData(new[] { "Mod/Skyrim Special Edition/a.esp", "Mod/Other/b.esp" }, "Mod")]
+    [InlineData(new[] { "Mod/Other/a.esp" }, "Mod")]
+    public void AWrapperStepsIntoASingleGameFolderBelowIt(string[] paths, string expected)
+    {
+        var root = RootBuilderConvention.StepIntoGameFolder(
+            RelativePath.FromUnsanitizedInput("Mod"), paths.Select(p => RelativePath.FromUnsanitizedInput(p)), ["Skyrim Special Edition"]);
+
+        root.ToString().Should().Be(expected);
     }
 }

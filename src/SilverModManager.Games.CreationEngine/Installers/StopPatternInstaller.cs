@@ -182,24 +182,34 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
 
         // Root Builder's root/ folder goes to the game folder and takes no part in working out the mod's layout.
         // It can also sit one level down, inside a wrapper folder or a folder named after the game.
-        var wrapperFolders = RootBuilderWrapperFolders(allFiles.Select(f => f.Path));
-        var modFiles = allFiles.Where(file => !RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out _)).ToArray();
-        var rootPrefix = modFiles.Length == 0 ? RelativePath.Empty : ComputeEffectiveRootPrefix(built, modFiles);
+        var wrapper = RootBuilderConvention.CommonWrapperFolder(allFiles.Select(f => f.Path), [DataFolderName, ..TopLevelDirs]);
+        string[] wrapperFolders = wrapper is null ? GameAliases : [.. GameAliases, wrapper];
+        var modFiles = allFiles.Where(file => !RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out _, GameAliases)).ToArray();
+
+        // Loose files and docs folders beside the wrapper say nothing about the mod's layout, so only the wrapper's
+        // own files decide which folder to step into; the others keep their place at the top.
+        bool InWrapper(RelativePath path) => path.TopParent.ToString().Equals(wrapper, StringComparison.OrdinalIgnoreCase);
+        var layoutFiles = wrapper is null ? modFiles : modFiles.Where(file => InWrapper(file.Path)).ToArray();
+        var rootPrefix = layoutFiles.Length == 0 ? RelativePath.Empty : ComputeEffectiveRootPrefix(built, layoutFiles);
+        if (wrapper is not null && rootPrefix != RelativePath.Empty)
+            rootPrefix = RootBuilderConvention.StepIntoGameFolder(rootPrefix, layoutFiles.Select(file => file.Path), GameAliases);
 
         foreach (var file in allFiles)
         {
             GamePath target;
-            if (RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out var underGameFolder))
+            if (RootBuilderConvention.TryMapBelowWrapper(file.Path, wrapperFolders, out var underGameFolder, GameAliases))
             {
                 // The game folder itself, not EnginePath: a game whose engine folder is a subfolder still wants root/ at the top.
                 target = new GamePath(LocationId.Game, underGameFolder);
             }
             else
             {
-                if (!file.Path.InFolder(rootPrefix))
+                // Files beside the wrapper were left out of the layout decision and stay where they are.
+                var besideWrapper = wrapper is not null && !InWrapper(file.Path);
+                if (!besideWrapper && !file.Path.InFolder(rootPrefix))
                     continue;
 
-                var rel = StripLeadingData(built, file.Path.RelativeTo(rootPrefix));
+                var rel = StripLeadingData(built, besideWrapper ? file.Path : file.Path.RelativeTo(rootPrefix));
                 var targetBase = built.EngineFiles.IsMatch(rel.ToString()) ? EnginePath : DataPath;
                 target = new GamePath(targetBase.LocationId, targetBase.Path / rel);
             }
@@ -223,12 +233,6 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
         }
 
         return ValueTask.FromResult<InstallerResult>(new Success());
-    }
-
-    private string[] RootBuilderWrapperFolders(IEnumerable<RelativePath> paths)
-    {
-        var common = RootBuilderConvention.CommonWrapperFolder(paths, [DataFolderName, ..TopLevelDirs]);
-        return common is null ? GameAliases : [.. GameAliases, common];
     }
 
     private RelativePath ComputeEffectiveRootPrefix(BuiltState built, LibraryArchiveFileEntry.ReadOnly[] files)

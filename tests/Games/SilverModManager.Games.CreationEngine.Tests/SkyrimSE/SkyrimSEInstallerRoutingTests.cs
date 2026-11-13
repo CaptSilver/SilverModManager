@@ -70,6 +70,30 @@ public class SkyrimSEInstallerRoutingTests(ITestOutputHelper helper)
         (await InstallLayout("ModName/root/openvr_api.dll", "ModName/Data/mod.esp", "ModName/Data/meshes/a.nif"))
             .Should().Equal("Game/Data/meshes/a.nif", "Game/Data/mod.esp", "Game/openvr_api.dll");
 
+    [Theory]
+    [InlineData("readme.txt")]
+    [InlineData("screenshot.png")]
+    public async Task AStrayTopLevelFileDoesNotStopAWrappedRootFolder(string stray) =>
+        (await InstallLayout("ModName/root/openvr_api.dll", "ModName/Data/mod.esp", stray))
+            .Should().BeEquivalentTo(new[] { $"Game/Data/{stray}", "Game/Data/mod.esp", "Game/openvr_api.dll" });
+
+    [Theory]
+    [InlineData("Docs/readme.txt")]
+    [InlineData("fomod/info.xml")]
+    public async Task ADocsFolderBesideTheWrapperDoesNotStopAWrappedRootFolder(string beside) =>
+        (await InstallLayout("ModName/root/openvr_api.dll", "ModName/Data/mod.esp", beside))
+            .Should().BeEquivalentTo(new[] { $"Game/Data/{beside}", "Game/Data/mod.esp", "Game/openvr_api.dll" });
+
+    [Fact]
+    public async Task ASecondTopLevelContentFolderStopsWrapperDetection() =>
+        (await InstallLayout("ModName/root/openvr_api.dll", "Other/mod.esp"))
+            .Should().BeEquivalentTo(new[] { "Game/Data/ModName/root/openvr_api.dll", "Game/Data/Other/mod.esp" });
+
+    [Fact]
+    public async Task ARootFolderInAGameFolderInAWrapperGoesToTheGameFolderAndItsDataToData() =>
+        (await InstallLayout("ModName/Skyrim Special Edition/root/openvr_api.dll", "ModName/Skyrim Special Edition/Data/mod.esp"))
+            .Should().Equal("Game/Data/mod.esp", "Game/openvr_api.dll");
+
     [Fact]
     public async Task ARootFolderAloneInAWrapperGoesToTheGameFolder() =>
         (await InstallLayout("ModName/root/bin/x.dll")).Should().Equal("Game/bin/x.dll");
