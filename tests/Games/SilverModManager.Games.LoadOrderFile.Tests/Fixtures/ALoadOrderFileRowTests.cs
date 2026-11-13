@@ -5,6 +5,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using NexusMods.Paths;
+using SilverModManager.Games.Generic.Simple;
 
 namespace SilverModManager.Games.LoadOrderFile.Tests.Fixtures;
 
@@ -16,16 +17,21 @@ namespace SilverModManager.Games.LoadOrderFile.Tests.Fixtures;
 public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelper, LoadOrderFileGameDefinition definition)
     : ALoadOrderFileGameTests<TTest>(outputHelper, definition)
 {
-    /// <summary>The archive paths of a mod called <paramref name="mod"/> that the game's installer takes.</summary>
-    protected abstract string[] ArchivePathsOf(string mod);
+    /// <summary>The files, with their content, of an archive holding a mod called <paramref name="mod"/> that the game's installer takes.</summary>
+    protected abstract (string Path, string Content)[] ArchiveFilesOf(string mod);
 
-    private GamePath OrderFilePath => new(LocationId.Game, Definition.OrderFile);
+    /// <summary>The name the order file lists the mod called <paramref name="mod"/> under.</summary>
+    protected virtual string ListedNameOf(string mod) => mod;
 
-    private AbsolutePath OrderFileOnDisk => GameInstallation.Locations.ToAbsolutePath(OrderFilePath);
+    protected string[] ArchivePathsOf(string mod) => ArchiveFilesOf(mod).Select(file => file.Path).ToArray();
 
-    private async Task<LoadoutItemGroup.ReadOnly> InstallMod(Loadout.ReadOnly loadout, string mod)
+    private GamePath OrderFilePath => Definition.OrderFile.ToGamePath();
+
+    protected AbsolutePath OrderFileOnDisk => GameInstallation.Locations.ToAbsolutePath(OrderFilePath);
+
+    protected async Task<LoadoutItemGroup.ReadOnly> InstallMod(Loadout.ReadOnly loadout, string mod)
     {
-        var archive = await AddArchiveNamed($"{mod}.zip", ArchivePathsOf(mod));
+        var archive = await AddArchiveWithContents($"{mod}.zip", ArchiveFilesOf(mod));
         var groups = await LoadoutManager.InstallItems([archive.AsLibraryFile().AsLibraryItem()], loadout.LoadoutId);
         return groups.Single();
     }
@@ -48,9 +54,12 @@ public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelp
     }
 
     [Fact]
-    public void TheGameFolderIsTheOnlyLocation()
+    public void TheLocationsAreTheGameFolderAndTheOrderFilesRoot()
     {
-        GameInstallation.Locations.Keys.Should().BeEquivalentTo([LocationId.Game]);
+        var expected = new List<LocationId> { LocationId.Game };
+        if (Definition.OrderFile.Root != ModLocationRoot.GameFolder) expected.Add(SimpleLocations.For(Definition.OrderFile.Root));
+
+        GameInstallation.Locations.Keys.Should().BeEquivalentTo(expected);
     }
 
     [Fact]
@@ -71,7 +80,7 @@ public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelp
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha", "Beta"]));
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Alpha"), ListedNameOf("Beta")], null));
     }
 
     [Fact]
@@ -86,7 +95,7 @@ public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelp
         await Prioritise(loadout, alpha, beta);
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Beta", "Alpha"]));
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Beta"), ListedNameOf("Alpha")], null));
     }
 
     [Fact]
@@ -99,7 +108,35 @@ public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelp
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Beta"]));
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Beta")], null));
+    }
+
+    [Fact]
+    public async Task AModDisabledAfterAnApplyLeavesTheFileOnTheNextApply()
+    {
+        var loadout = await CreateLoadout();
+        var alpha = await InstallMod(loadout, "Alpha");
+        await InstallMod(loadout, "Beta");
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        await DisableItem(alpha.Id);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Beta")], null));
+    }
+
+    [Fact]
+    public async Task AModRemovedAfterAnApplyLeavesTheFileOnTheNextApply()
+    {
+        var loadout = await CreateLoadout();
+        var alpha = await InstallMod(loadout, "Alpha");
+        await InstallMod(loadout, "Beta");
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        await LoadoutManager.RemoveItems([alpha.LoadoutItemGroupId]);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Beta")], null));
     }
 
     [Fact]
@@ -112,6 +149,6 @@ public abstract class ALoadOrderFileRowTests<TTest>(ITestOutputHelper outputHelp
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha"]));
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be(Definition.Format.Render([ListedNameOf("Alpha")], null));
     }
 }

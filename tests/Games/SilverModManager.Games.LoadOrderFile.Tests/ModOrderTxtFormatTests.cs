@@ -10,13 +10,13 @@ public class ModOrderTxtFormatTests
     [Fact]
     public void TheModsAreOnePerLineInTheOrderGiven()
     {
-        Format.Render(["Alpha", "Beta", "Gamma"]).Should().Be("Alpha\nBeta\nGamma");
+        Format.Render(["Alpha", "Beta", "Gamma"], null).Should().Be("Alpha\nBeta\nGamma");
     }
 
     [Fact]
     public void NoModsIsAnEmptyFile()
     {
-        Format.Render([]).Should().BeEmpty();
+        Format.Render([], null).Should().BeEmpty();
     }
 
     [Theory]
@@ -50,5 +50,11 @@ public class ModOrderTxtFormatTests
     public void AnEmptyFileListsNothing()
     {
         Format.Listed("").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TheCurrentFileDoesNotChangeTheOutput()
+    {
+        Format.Render(["A", "B"], "old\ncontent").Should().Be(Format.Render(["A", "B"], null));
     }
 }

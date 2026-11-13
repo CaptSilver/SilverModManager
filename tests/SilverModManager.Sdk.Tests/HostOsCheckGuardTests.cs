@@ -32,6 +32,7 @@ public partial class HostOsCheckGuardTests
 
         // Located games: native Linux builds are Linux, builds run under Proton are the Windows build.
         ("src/SilverModManager.Games.Generic/DefinedGame.cs", "if (Definition.NativeLinuxExecutable is not { } native || installation.LocatorResult.Platform != OSPlatform.Linux)", "a native install launches the native executable, a Proton install the Windows one"),
+        ("src/SilverModManager.Games.LoadOrderFile/OrderFileLocation.cs", "=> result.Platform == OSPlatform.Linux && NativeLinuxPath is { } native", "a native Linux build keeps its order file under XDG_CONFIG_HOME, the Windows build inside the prefix"),
         ("src/SilverModManager.Backend/Games/Locators/SteamLocator.cs", "Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,", "Proton runs the Windows build of the game, a native install without a prefix is Linux"),
         ("src/SilverModManager.Sdk/Games/Locators/GameLocatorResult.cs", "public OSPlatform Platform { get; init; } = OSPlatform.Linux;", "target OS of the located game, native Linux unless a locator says otherwise"),
         ("src/SilverModManager.Backend/Games/Locators/Heroic/HeroicGOGLocator.cs", "if (game.Platform != OSPlatform.Windows) return null;", "only Heroic's Windows builds run in a Wine or Proton prefix"),

@@ -22,7 +22,7 @@ public sealed class XComModOptionsIniFormat : ILoadOrderFileFormat
         return parts[1].Equals(parts[0] + Descriptor, StringComparison.OrdinalIgnoreCase) ? parts[0] : null;
     }
 
-    public string Render(IReadOnlyList<string> mods)
+    public string Render(IReadOnlyList<string> mods, string? currentFileText)
         => $"{Header}\n{Section}\n{string.Concat(mods.Select(mod => $"ActiveMods=\"{mod}\"\n"))}";
 
     private const string Section = "[Engine.XComModOptions]";

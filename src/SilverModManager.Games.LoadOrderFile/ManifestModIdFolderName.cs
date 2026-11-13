@@ -35,6 +35,6 @@ public sealed class ManifestModIdFolderName : IModFolderNameFromMarker
         return null;
     }
 
-    private static bool IsFolderName(string name)
+    internal static bool IsFolderName(string name)
         => name is not ("." or "..") && name.IndexOfAny(['/', '\\', ':']) < 0 && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 }

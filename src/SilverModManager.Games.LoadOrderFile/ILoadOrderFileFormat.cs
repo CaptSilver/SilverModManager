@@ -14,8 +14,12 @@ public interface ILoadOrderFileFormat
     /// </summary>
     string? ModOf(RelativePath fileInModFolder);
 
-    /// <summary>The file's content for <paramref name="mods"/>, the mod the game loads first at the start and the winner last.</summary>
-    string Render(IReadOnlyList<string> mods);
+    /// <summary>
+    /// The file's content for <paramref name="mods"/>, the mod the game loads first at the start and the winner last.
+    /// <paramref name="currentFileText"/> is the file as it is on disk, or null when there is none, for formats that
+    /// keep parts of it (a version the game wrote) instead of writing the whole file.
+    /// </summary>
+    string Render(IReadOnlyList<string> mods, string? currentFileText);
 
     /// <summary>The mods a file in this format names, in the order it names them.</summary>
     IReadOnlyList<string> Listed(string fileText);

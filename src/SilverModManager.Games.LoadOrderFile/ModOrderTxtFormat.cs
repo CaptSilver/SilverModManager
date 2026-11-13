@@ -19,7 +19,7 @@ public sealed class ModOrderTxtFormat : ILoadOrderFileFormat
         return ModFileExtensions.Any(extension => parts[^1].EndsWith(extension, StringComparison.OrdinalIgnoreCase)) ? parts[0] : null;
     }
 
-    public string Render(IReadOnlyList<string> mods) => string.Join('\n', mods);
+    public string Render(IReadOnlyList<string> mods, string? currentFileText) => string.Join('\n', mods);
 
     public IReadOnlyList<string> Listed(string fileText)
         => fileText.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToList();

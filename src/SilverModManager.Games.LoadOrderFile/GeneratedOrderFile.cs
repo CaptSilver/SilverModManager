@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.LoadOrderFile.Naming;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -16,13 +17,15 @@ namespace SilverModManager.Games.LoadOrderFile;
 /// </summary>
 /// <remarks>
 /// Mods in a folder the app does not manage (<see cref="LoadOrderFileGameDefinition.ExternalMods"/>) are the one
-/// exception: the ones the file on disk already names stay in it, ahead of the loadout's mods. Rendering reads that
-/// file and the folder, which an apply never changes before it writes this file, so the Apply button's status can
-/// still render it on its own (see <see cref="IIntrinsicFileRenderedFromLoadout"/>).
+/// exception: the ones the file on disk already names stay in it, ahead of the loadout's mods, and each source's
+/// <see cref="ExternalListing"/> says whether it lists more. Rendering reads that file and the folders. An apply has
+/// already deleted and extracted the loadout's files when it writes this one, and the Apply button's status renders
+/// it only when nothing else is pending, so both see the folders as the apply leaves them (see
+/// <see cref="IIntrinsicFileRenderedFromLoadout"/>).
 /// </remarks>
 public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, ILogger<GeneratedOrderFile> logger) : IIntrinsicFileRenderedFromLoadout
 {
-    public GamePath Path { get; } = new(LocationId.Game, definition.OrderFile);
+    public GamePath Path { get; } = definition.OrderFile.ToGamePath();
 
     private GamePath ModFolder => new(LocationId.Game, definition.ModFolder);
 
@@ -45,9 +48,25 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
 
     private async Task<string> Render(Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
-        var priorities = ModUnitPriorities.Read(loadout, ModOf);
-        var mods = syncTree
-            .Where(entry => entry.Value.WillBeOnDisk)
+        var locations = loadout.InstallationInstance.Locations;
+        var gameFolder = locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
+        var file = locations.ToAbsolutePath(Path);
+        var overrides = OverridesGroupLookup.Find(loadout);
+        var managed = ManagedFolders(syncTree, ModUnitPriorities.Read(loadout, ModOf), item => OverridesGroupLookup.IsInGroup(loadout.Db, item, overrides));
+
+        return Render(gameFolder, file.FileExists ? await file.ReadAllTextAsync() : null, managed);
+    }
+
+    /// <summary>
+    /// The folders of the mod folder that the loadout installs and leaves on disk, loser first. A folder that was
+    /// there before the loadout (the game's own state, or one the player added) is not the loadout's to switch on, and
+    /// stays that way after an apply files it under Overrides. A file no loadout row names still carries the enum's
+    /// default source type, which is why a loadout part is required too.
+    /// </summary>
+    internal IReadOnlyList<string> ManagedFolders(
+        Dictionary<GamePath, SyncNode> syncTree, IReadOnlyDictionary<string, ulong> priorities, Func<EntityId, bool> isInOverrides)
+        => syncTree
+            .Where(entry => IsInstalledByLoadout(entry.Value, isInOverrides))
             .Select(entry => ModOf(entry.Key))
             .OfType<string>()
             .Distinct(StringComparer.Ordinal)
@@ -55,26 +74,61 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
             .ThenBy(mod => mod, StringComparer.Ordinal)
             .ToList();
 
-        var external = await ExternalModsStillListed(loadout, mods);
-        return definition.Format.Render([.. external, .. mods]);
+    /// <summary>
+    /// A file of a mod, as opposed to one the game or the player left in the folder: the loadout has a row for it, it
+    /// is not a loadout row the app made of a file it found on disk (the Overrides group), and it stays on disk.
+    /// </summary>
+    private static bool IsInstalledByLoadout(in SyncNode node, Func<EntityId, bool> isInOverrides)
+        => node is { WillBeOnDisk: true, HaveLoadout: true, SourceItemType: LoadoutSourceItemType.Loadout }
+           && node.Loadout.HaveEntityId
+           && !isInOverrides(node.Loadout.EntityId);
+
+    /// <summary>The file's text for <paramref name="managedFolders"/> and the external mods the game folder holds.</summary>
+    /// <param name="gameFolder">The game folder, where the external sources and the managed mods' manifests are looked for.</param>
+    /// <param name="currentFileText">The order file on disk, or null when there is none.</param>
+    /// <param name="managedFolders">The loadout's mod folders, loser first.</param>
+    internal string Render(AbsolutePath gameFolder, string? currentFileText, IReadOnlyList<string> managedFolders)
+    {
+        var managed = managedFolders.Select(folder => ListedNameOf(gameFolder, folder)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var external = ExternalNames(gameFolder, currentFileText, managed);
+        return definition.Format.Render([.. external, .. managed], currentFileText);
     }
 
+    private readonly ManifestNamer? _managedNamer = definition.ManifestReader is { } reader ? new ManifestNamer(reader) : null;
+
+    /// <summary>The name the file lists a managed folder under: its manifest's id when the folder still has one, else the folder's name.</summary>
+    private string ListedNameOf(AbsolutePath gameFolder, string folder)
+        => _managedNamer?.Names(gameFolder.Combine(definition.ModFolder).Combine(folder)) is [var id, ..] ? id : folder;
+
     /// <summary>
-    /// The external mods the file on disk names that the game folder still has, in the file's order, minus any the
-    /// loadout installs itself. A mod the file names that is neither is gone, and goes from the file.
+    /// The external mods the file lists, in the file's order, minus any the loadout installs itself. A mod the file
+    /// names that no source finds is gone, and goes from the file. Mods a source lists unconditionally and the file
+    /// does not name come first; mods listed only because there is no file come last.
     /// </summary>
-    private async Task<IReadOnlyList<string>> ExternalModsStillListed(Loadout.ReadOnly loadout, IReadOnlyList<string> managed)
+    private IReadOnlyList<string> ExternalNames(AbsolutePath gameFolder, string? currentFileText, IReadOnlyList<string> managed)
     {
-        if (definition.ExternalMods is not { } source) return [];
-
-        var locations = loadout.InstallationInstance.Locations;
-        var present = source.Find(locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty))).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var file = locations.ToAbsolutePath(Path);
-        if (present.Count == 0 || !file.FileExists) return [];
-
-        var listed = definition.Format.Listed(await file.ReadAllTextAsync());
+        var listed = currentFileText is null ? [] : definition.Format.Listed(currentFileText);
         var managedNames = managed.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return listed.Where(mod => present.Contains(mod) && !managedNames.Contains(mod)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        // First source to find a name decides its policy.
+        var found = new Dictionary<string, ExternalListing>(StringComparer.OrdinalIgnoreCase);
+        var foundOrder = new List<string>();
+        foreach (var source in definition.ExternalMods)
+        {
+            foreach (var name in source.Find(gameFolder))
+            {
+                if (managedNames.Contains(name) || !found.TryAdd(name, source.Listing)) continue;
+                foundOrder.Add(name);
+            }
+        }
+
+        var inFile = listed.Where(found.ContainsKey).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var inFileSet = inFile.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unlisted = foundOrder.Where(name => !inFileSet.Contains(name)).ToList();
+
+        var front = unlisted.Where(name => found[name] == ExternalListing.Always);
+        var tail = currentFileText is null ? unlisted.Where(name => found[name] == ExternalListing.WhenListedOrNoFile) : [];
+        return [.. front, .. inFile, .. tail];
     }
 
     /// <summary>The mod a file in the game folder belongs to; the order file itself belongs to none.</summary>

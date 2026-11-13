@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
@@ -29,7 +30,8 @@ public abstract class ALoadOrderFileGameTests<TTest>(ITestOutputHelper outputHel
         => services.AddUniversalGameLocator(
             Definition.GameId,
             new Dictionary<RelativePath, byte[]> { [Definition.Executable] = [] },
-            locationsFileSystem: IsolatedKnownFolders.Create);
+            locationsFileSystem: IsolatedKnownFolders.Create,
+            platform: OSPlatform.Windows);
 
     /// <summary>
     /// The "Location:path" targets the first installer of the game that supports the archive puts its files at, in

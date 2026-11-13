@@ -1,4 +1,7 @@
 using FluentAssertions;
+using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Games.LoadOrderFile.Tests.Fixtures;
 
 namespace SilverModManager.Games.LoadOrderFile.Tests;
@@ -83,7 +86,8 @@ public class KingdomComeDeliverance2Tests(ITestOutputHelper outputHelper)
 public abstract class AKingdomComeRowTests<TTest>(ITestOutputHelper outputHelper, LoadOrderFileGameDefinition definition)
     : ALoadOrderFileRowTests<TTest>(outputHelper, definition)
 {
-    protected override string[] ArchivePathsOf(string mod) => [$"{mod}/mod.manifest", $"{mod}/Data/{mod}.pak"];
+    protected override (string Path, string Content)[] ArchiveFilesOf(string mod)
+        => [($"{mod}/mod.manifest", $"{mod}/mod.manifest"), ($"{mod}/Data/{mod}.pak", $"{mod}/Data/{mod}.pak")];
 
     protected static string ManifestWithModId(string modId)
         => $"<?xml version=\"1.0\" encoding=\"utf-8\"?><kcd_mod><info><name>Some Name</name><modid>{modId}</modid></info></kcd_mod>";
@@ -92,7 +96,68 @@ public abstract class AKingdomComeRowTests<TTest>(ITestOutputHelper outputHelper
     public void ModsLiveInTheModsFolderAndTheOrderFileBesideThem()
     {
         Definition.ModFolder.ToString().Should().Be("Mods");
-        Definition.OrderFile.ToString().Should().Be("Mods/mod_order.txt");
+        Definition.OrderFile.Path.ToString().Should().Be("Mods/mod_order.txt");
+    }
+
+    [Fact]
+    public void NothingInTheGameFolderIsFiltered()
+    {
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.Game, "Mods/x/Data/a.pak")).Should().BeFalse();
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.Game, "Mods/mod_order.txt")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnApplyWithNoModsCreatesTheOrderFilesFolder()
+    {
+        var gameFolder = GameInstallation.Locations[LocationId.Game].Path;
+        (gameFolder / "Mods").DirectoryExists().Should().BeFalse();
+        var loadout = await CreateLoadout();
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (gameFolder / "Mods/mod_order.txt").FileExists.Should().BeTrue();
+    }
+
+    private async Task<Loadout.ReadOnly> LoadoutWithAPreexistingMod(string? orderFile)
+    {
+        var mods = GameInstallation.Locations[LocationId.Game].Path / "Mods";
+        (mods / "Old/Data").CreateDirectory();
+        await (mods / "Old/Data/old.pak").WriteAllTextAsync("pak");
+        if (orderFile is not null) await (mods / "mod_order.txt").WriteAllTextAsync(orderFile);
+        return await CreateLoadout();
+    }
+
+    [Fact]
+    public async Task APreexistingModTheFileListsAsOffStaysOff()
+    {
+        var loadout = await LoadoutWithAPreexistingMod("Alpha");
+        await InstallMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be("Alpha");
+    }
+
+    [Fact]
+    public async Task APreexistingModIsListedWhenTheFileNamesIt()
+    {
+        var loadout = await LoadoutWithAPreexistingMod("Old");
+        await InstallMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be("Old\nAlpha");
+    }
+
+    [Fact]
+    public async Task APreexistingModIsListedWhenThereIsNoFileYet()
+    {
+        var loadout = await LoadoutWithAPreexistingMod(null);
+        await InstallMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OrderFileOnDisk.ReadAllTextAsync()).Should().Be("Old\nAlpha");
     }
 
     [Fact]

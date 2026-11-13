@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Paths;
+using SilverModManager.Games.Generic.Simple;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -92,9 +93,16 @@ public class LoadOrderFileGamesTableTests
     {
         foreach (var row in LoadOrderFileGames.All)
         {
-            foreach (var path in new[] { row.Executable, row.ModFolder, row.OrderFile })
+            foreach (var path in new[] { row.Executable, row.ModFolder, row.OrderFile.Path })
                 path.ToString().Should().NotStartWith("/").And.NotContain("..", because: row.GameId.ToString());
         }
+    }
+
+    [Fact]
+    public void ARowWithItsOrderFileOutsideTheGameFolderHasANativePathOnlyWithANativeExecutable()
+    {
+        foreach (var row in LoadOrderFileGames.All.Where(row => row.OrderFile.Root != ModLocationRoot.GameFolder))
+            (row.OrderFile.NativeLinuxPath is not null).Should().Be(row.NativeLinuxExecutable is not null, because: row.GameId.ToString());
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using DynamicData.Kernel;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Games.Generic.Simple;
+using SilverModManager.Games.LoadOrderFile.Naming;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -24,6 +25,10 @@ public static class LoadOrderFileGames
     // The second game lists a mod by the id in its manifest (Mod Organizer 2's plugin), which the folder carries.
     private static readonly SimpleInstallRules KingdomComeDeliverance2Install = SimpleInstallPresets.InOwnFolderByMarker("mod.manifest", new ManifestModIdFolderName());
 
+    // The game loads every mod folder until mod_order.txt exists and only the listed ones after, so folders that were
+    // there before the loadout are listed only while there is no file.
+    private static readonly ModFolderModSource KingdomComeFolders = new("Mods", new FolderNamer(new ModOrderTxtFormat()), ExternalListing.WhenListedOrNoFile);
+
     /// <summary>Vortex (game-kingdomcome-deliverance) and Mod Organizer 2 (game_kingdomcomedeliverance.py).</summary>
     public static readonly LoadOrderFileGameDefinition KingdomComeDeliverance = new()
     {
@@ -35,8 +40,9 @@ public static class LoadOrderFileGames
         Executable = "Bin/Win64/KingdomCome.exe",
         ModFolder = "Mods",
         Install = KingdomComeInstall,
-        OrderFile = "Mods/mod_order.txt",
+        OrderFile = OrderFileLocation.GameFolder("Mods/mod_order.txt"),
         Format = new ModOrderTxtFormat(),
+        ExternalMods = [KingdomComeFolders],
     };
 
     /// <summary>Mod Organizer 2 (game_kingdomcomedeliverance2.py).</summary>
@@ -49,8 +55,9 @@ public static class LoadOrderFileGames
         Executable = "Bin/Win64MasterMasterSteamPGO/KingdomCome.exe",
         ModFolder = "Mods",
         Install = KingdomComeDeliverance2Install,
-        OrderFile = "Mods/mod_order.txt",
+        OrderFile = OrderFileLocation.GameFolder("Mods/mod_order.txt"),
         Format = new ModOrderTxtFormat(),
+        ExternalMods = [KingdomComeFolders],
     };
 
     // The .XComMod file names the mod and must match its folder, so a mod goes in a folder named after it (Vortex's
@@ -76,8 +83,12 @@ public static class LoadOrderFileGames
     // install holding either is refused. The Windows build holds neither.
     private static readonly RelativePath[] XCom2NativeBuildFiles = ["XCOM2.sh", "XCOM2WotC/XCOM2WotC.sh"];
 
+    // The game reads ActiveMods only, so a folder in its Mods that the file does not name stays off.
+    private static ModFolderModSource XCom2Folders(RelativePath modFolder)
+        => new(modFolder, new FolderNamer(new XComModOptionsIniFormat()), ExternalListing.WhenListed);
+
     // Vortex (game-xcom2) keeps the Workshop mods the options file names.
-    private static readonly SteamWorkshopModSource XCom2Workshop = new(268500, new Extension(".XComMod"));
+    private static readonly SteamWorkshopModSource XCom2Workshop = new(268500, new FileStemNamer(new Extension(".XComMod")));
 
     /// <summary>Vortex (game-xcom2), with the executable as its extension spells it.</summary>
     public static readonly LoadOrderFileGameDefinition XCom2 = new()
@@ -90,9 +101,9 @@ public static class LoadOrderFileGames
         Executable = "Binaries/Win64/XCom2.exe",
         ModFolder = "XComGame/Mods",
         Install = XCom2Install,
-        OrderFile = "XComGame/Config/DefaultModOptions.ini",
+        OrderFile = OrderFileLocation.GameFolder("XComGame/Config/DefaultModOptions.ini"),
         Format = new XComModOptionsIniFormat(),
-        ExternalMods = XCom2Workshop,
+        ExternalMods = [XCom2Workshop, XCom2Folders("XComGame/Mods")],
         NativeBuildFiles = XCom2NativeBuildFiles,
     };
 
@@ -110,10 +121,10 @@ public static class LoadOrderFileGames
         Executable = XCom2WarOfTheChosenFolder / "Binaries/Win64/XCom2.exe",
         ModFolder = XCom2WarOfTheChosenFolder / "XComGame/Mods",
         Install = XCom2Install,
-        OrderFile = XCom2WarOfTheChosenFolder / "XComGame/Config/DefaultModOptions.ini",
+        OrderFile = OrderFileLocation.GameFolder(XCom2WarOfTheChosenFolder / "XComGame/Config/DefaultModOptions.ini"),
         Format = new XComModOptionsIniFormat(),
         IdentifyingFiles = [XCom2WarOfTheChosenFolder / "XComGame/CookedPCConsole/3DUIBP.upk"],
-        ExternalMods = XCom2Workshop,
+        ExternalMods = [XCom2Workshop, XCom2Folders(XCom2WarOfTheChosenFolder / "XComGame/Mods")],
         NativeBuildFiles = XCom2NativeBuildFiles,
     };
 

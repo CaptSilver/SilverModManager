@@ -37,7 +37,8 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
     private string Root => Definition.GameId == LoadOrderFileGames.XCom2WarOfTheChosen.GameId ? "XCom2-WarOfTheChosen/" : "";
 
-    protected override string[] ArchivePathsOf(string mod) => [$"{mod}/{mod}.XComMod", $"{mod}/Content/{mod}.upk"];
+    protected override (string Path, string Content)[] ArchiveFilesOf(string mod)
+        => [($"{mod}/{mod}.XComMod", $"{mod}/{mod}.XComMod"), ($"{mod}/Content/{mod}.upk", $"{mod}/Content/{mod}.upk")];
 
     // The depot lists the options file, as it lists every file the game ships, so a reset knows what to put back.
     protected override IServiceCollection AddServices(IServiceCollection services)
@@ -46,7 +47,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
         services.Remove(services.Last(descriptor => descriptor.ServiceType == typeof(IFileHashesService)));
         var shipped = new GameFileRecord
         {
-            Path = new GamePath(LocationId.Game, Definition.OrderFile),
+            Path = Definition.OrderFile.ToGamePath(),
             Size = Size.FromLong(Encoding.UTF8.GetByteCount(ShippedOptions)),
             Identity = FileIdentity.XxHash3(Encoding.UTF8.GetBytes(ShippedOptions).xxHash3()),
         };
@@ -70,14 +71,14 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
             new Dictionary<RelativePath, byte[]>
             {
                 [Definition.Executable] = [],
-                [Definition.OrderFile] = Encoding.UTF8.GetBytes(ShippedOptions),
+                [Definition.OrderFile.Path] = Encoding.UTF8.GetBytes(ShippedOptions),
             },
             locationsFileSystem: IsolatedKnownFolders.Create,
             folderName: "steamapps/common/XCOM 2");
 
     private AbsolutePath GameFolder => GameInstallation.Locations[LocationId.Game].Path;
 
-    private AbsolutePath OptionsFile => GameFolder.Combine(Definition.OrderFile);
+    private AbsolutePath OptionsFile => GameFolder.Combine(Definition.OrderFile.Path);
 
     private AbsolutePath WorkshopFolder => GameFolder.Parent.Parent.Combine("workshop/content/268500");
 
@@ -90,7 +91,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
     private async Task<LoadoutItemGroup.ReadOnly> InstalledMod(Loadout.ReadOnly loadout, string mod)
     {
-        var archive = await AddArchiveNamed($"{mod}.zip", ArchivePathsOf(mod));
+        var archive = await AddArchiveWithContents($"{mod}.zip", ArchiveFilesOf(mod));
         return (await LoadoutManager.InstallItems([archive.AsLibraryFile().AsLibraryItem()], loadout.LoadoutId)).Single();
     }
 
@@ -98,7 +99,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
     public void ModsLiveBelowXComGameAndTheOptionsFileInItsConfigFolder()
     {
         Definition.ModFolder.ToString().Should().Be($"{Root}XComGame/Mods");
-        Definition.OrderFile.ToString().Should().Be($"{Root}XComGame/Config/DefaultModOptions.ini");
+        Definition.OrderFile.Path.ToString().Should().Be($"{Root}XComGame/Config/DefaultModOptions.ini");
     }
 
     [Fact]
@@ -144,13 +145,13 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
     [Fact]
     public async Task ApplyReplacesTheOptionsFileTheGameShips()
     {
-        var shipped = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, Definition.OrderFile));
+        var shipped = GameInstallation.Locations.ToAbsolutePath(Definition.OrderFile.ToGamePath());
         (await shipped.ReadAllTextAsync()).Should().Be(ShippedOptions);
         var loadout = await CreateLoadout();
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await shipped.ReadAllTextAsync()).Should().Be(Definition.Format.Render([]));
+        (await shipped.ReadAllTextAsync()).Should().Be(Definition.Format.Render([], null));
     }
 
     [Fact]
@@ -187,7 +188,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"]));
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"], null));
     }
 
     [Fact]
@@ -201,7 +202,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"]));
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod", "Alpha"], null));
     }
 
     [Fact]
@@ -212,7 +213,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render([]));
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render([], null));
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod"]));
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["WorkshopMod"], null));
     }
 
     [Fact]
@@ -237,7 +238,7 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
 
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha"]));
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha"], null));
     }
 
     [Fact]
@@ -253,6 +254,39 @@ public abstract class AXCom2RowTests<TTest>(ITestOutputHelper outputHelper, Load
             .Where(state => state != LoadoutSynchronizerState.Pending).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
 
         status.Should().Be(LoadoutSynchronizerState.Current);
+    }
+
+    private async Task PutPreexistingModOnDisk()
+    {
+        var folder = GameFolder.Combine(Definition.ModFolder).Combine("Old");
+        folder.CreateDirectory();
+        await folder.Combine("Old.XComMod").WriteAllTextAsync("");
+    }
+
+    [Fact]
+    public async Task APreexistingModTheFileListsAsOffStaysOff()
+    {
+        await PutPreexistingModOnDisk();
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"Alpha\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Alpha"], null));
+    }
+
+    [Fact]
+    public async Task APreexistingModIsListedWhenTheFileNamesIt()
+    {
+        await PutPreexistingModOnDisk();
+        await OptionsFile.WriteAllTextAsync(ShippedOptions + "ActiveMods=\"Old\"\n");
+        var loadout = await CreateLoadout();
+        await InstalledMod(loadout, "Alpha");
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        (await OptionsFile.ReadAllTextAsync()).Should().Be(Definition.Format.Render(["Old", "Alpha"], null));
     }
 
     [Fact]
