@@ -125,6 +125,23 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
     }
 
     [Fact]
+    public async Task OnlyGameLocationRowsMove()
+    {
+        var loadout = await CreateLoadout();
+        var elsewhere = new GamePath(LocationId.AppData, "tool-settings.ini");
+
+        await RunGameFolder(loadout, l =>
+        {
+            Write(l, B, "mesh");
+            Write(l, elsewhere, "settings");
+        });
+
+        loadout = Refresh(loadout);
+        OverridesPaths(loadout).Should().Contain(elsewhere, "a tool that writes beside the game does not own a file the player's own folders hold");
+        OutputPaths(loadout).Should().Equal(B);
+    }
+
+    [Fact]
     public async Task AFileAlreadyInOverridesStaysThere()
     {
         var loadout = await CreateLoadout();

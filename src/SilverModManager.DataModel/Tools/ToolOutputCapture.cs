@@ -111,7 +111,7 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
     /// Moves the files that are new or changed between <paramref name="before"/> and <paramref name="after"/> from
     /// the Overrides group into the top-level group called <paramref name="groupName"/>, and returns how many moved.
     /// A tool that writes into the game folder shows up in Overrides after the sync that ingests it, and that
-    /// delta is its output. Nothing moves when the delta is empty, so no empty group is made.
+    /// delta is its output; rows in any other location stay in Overrides. Nothing moves when the delta is empty, so no empty group is made.
     /// </summary>
     /// <remarks>
     /// Output of this kind is partial (the outfits ticked this time, the one plugin cleaned), so the move merges:
@@ -133,6 +133,9 @@ public class ToolOutputCapture(IConnection connection, IFileStore fileStore)
         var matcher = IncludeAllExcept(ignored);
         var delta = after.Files
             .Where(f => before.Files.TryGetValue(f.Key, out var old) is false || old.Identity.Equals(f.Value.Identity) is false)
+            // A group made for output beside the game holds the game folder's files; a path under Preferences or
+            // AppData is the player's own and the tool did not put it there.
+            .Where(f => f.Key.LocationId == LocationId.Game)
             .Where(f => matcher.Match(f.Key.Path.ToString()).HasMatches)
             .ToList();
         if (delta.Count == 0) return 0;
