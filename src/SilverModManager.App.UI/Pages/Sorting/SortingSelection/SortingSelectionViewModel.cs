@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Extensions;
@@ -48,8 +49,9 @@ public class SortingSelectionViewModel : AViewModel<ISortingSelectionViewModel>,
         InitializeSortOrderViewModels(sortOrderVarieties, loadoutId);
 
         // A game with no variety of its own still has an order: the mod priority rows. It is not tracked in
-        // _managedVarieties, so UpdateActiveSortOrders never adds it twice or removes it.
-        if (sortOrderVarieties.Count == 0)
+        // _managedVarieties, so UpdateActiveSortOrders never adds it twice or removes it. A game whose loader
+        // ignores that order hides the page.
+        if (LoadOrderPage.IsShown(game))
         {
             _rulesViewModels.Add(new LoadOrderViewModel(serviceProvider, serviceProvider.GetRequiredService<ModPriorityOrderVariety>(), loadoutId));
         }

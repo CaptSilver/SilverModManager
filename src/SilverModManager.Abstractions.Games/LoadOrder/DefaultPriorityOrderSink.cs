@@ -19,11 +19,10 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
     public string FixPage(IGame game) => PriorityPage(game);
 
     /// <summary>
-    /// Where the priority rows are edited: the Load Order tab exists only for a game with no sort order of its own
-    /// (SortingSelectionViewModel), so any other game edits them on File Conflicts.
+    /// Where the priority rows are edited: the Load Order tab exists only where <see cref="LoadOrderPage.IsShown"/>,
+    /// so any other game edits them on File Conflicts.
     /// </summary>
-    public static string PriorityPage(IGame game) =>
-        game.SortOrderManager.GetSortOrderVarieties().Count == 0 ? ModPriorityOrderVariety.PageName : FileConflictsPage;
+    public static string PriorityPage(IGame game) => LoadOrderPage.IsShown(game) ? ModPriorityOrderVariety.PageName : FileConflictsPage;
 
     public IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {

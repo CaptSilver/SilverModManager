@@ -66,6 +66,12 @@ public sealed record LoadOrderFileGameDefinition : IGameDefinition
     /// </summary>
     public IReadOnlyList<GamePath> GameWrittenPaths { get; init; } = [];
 
+    /// <summary>
+    /// Whether the game reads the order the order file lists mods in. A game that sorts them itself sets this false, so
+    /// the Load Order page, which would edit an order the game ignores, is hidden.
+    /// </summary>
+    public bool FileOrdersLoad { get; init; } = true;
+
     /// <summary>Where the mod folder is, as a <see cref="ModLocation"/> the shared installers take.</summary>
     public ModLocation ModRoot => new(ModLocationRoot.GameFolder, ModFolder);
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Generic;
@@ -15,9 +16,11 @@ namespace SilverModManager.Games.LoadOrderFile;
 /// by type.
 /// </summary>
 public sealed class LoadOrderFileGame(IServiceProvider provider, LoadOrderFileGameDefinition definition)
-    : DefinedGame<LoadOrderFileGameDefinition>(provider, definition), IGameIdentifyingFiles
+    : DefinedGame<LoadOrderFileGameDefinition>(provider, definition), IGameIdentifyingFiles, ILoadOrderPageVisibility
 {
     public IReadOnlyList<RelativePath> IdentifyingFiles => Definition.IdentifyingFiles;
+
+    public bool HidesLoadOrderPage => !Definition.FileOrdersLoad;
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new LoadOrderFileSynchronizer(provider, Definition);
 
