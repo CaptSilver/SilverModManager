@@ -65,6 +65,7 @@ public static class CreationEngineToolCatalogue
     private static readonly GameId[] BodySlideGames =
     [
         SkyrimSE.SkyrimSE.GameId,
+        SkyrimLE.SkyrimLE.GameId,
         SkyrimVR.SkyrimVR.GameId,
         Fallout4.Fallout4.GameId,
         Fallout4VR.Fallout4VR.GameId,

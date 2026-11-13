@@ -210,9 +210,9 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
     }
 
     [Fact]
-    public void BodySlideAppliesToSkyrimSeVrAndFallout4WithItsVrBuild()
+    public void BodySlideAppliesToSkyrimSeLeVrAndFallout4WithItsVrBuild()
     {
-        AppliesTo("bodyslide").Should().BeEquivalentTo(new[] { global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId, global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4.GameId, global::SilverModManager.Games.CreationEngine.Fallout4VR.Fallout4VR.GameId });
+        AppliesTo("bodyslide").Should().BeEquivalentTo(new[] { global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimLE.SkyrimLE.GameId, global::SilverModManager.Games.CreationEngine.SkyrimVR.SkyrimVR.GameId, global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4.GameId, global::SilverModManager.Games.CreationEngine.Fallout4VR.Fallout4VR.GameId });
     }
 
     private IEnumerable<GameId> AppliesTo(string id)
