@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Games.Larian.Engine;
 
@@ -8,7 +9,7 @@ namespace SilverModManager.Games.Larian.Engine;
 /// </summary>
 /// <remarks>A preflight refusal, so managing the game before it has run leaves no half-added loadout behind.</remarks>
 public sealed class LarianModListMissingException(string gameName)
-    : SynchronizerPreflightException($"{gameName} has not written its mod list yet. Start the game once, then apply again.")
+    : SynchronizerPreflightException($"{MarkdownText.Inline(gameName)} has not written its mod list yet. Start the game once, then apply again.")
 {
     /// <inheritdoc />
     public override string Title => "The game has no mod list yet";
