@@ -212,4 +212,33 @@ public static class DiagnosticActions
     /// </summary>
     public static DiagnosticAction CleanGameFileBackups()
         => new(CleanGameFileBackupsId, "Clean up backups", [], "Only backups no loadout needs are removed.");
+
+    /// <summary>
+    /// Id of the action that stops a loadout reporting a finding.
+    /// </summary>
+    public const string DismissDiagnosticSubjectsId = "dismiss-diagnostic-subjects";
+
+    /// <summary>
+    /// Stops the loadout reporting <paramref name="subjects"/> for the diagnostic <paramref name="id"/>. Each subject comes with
+    /// the content identity it has now (null when it has none), so other content at the same subject is reported
+    /// again. The arguments are the id's source and number, the diagnostic's <paramref name="title"/>, then a subject and an
+    /// identity for each (an empty string for no identity); <see cref="ParseDismissDiagnosticSubjects"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction DismissDiagnosticSubjects(DiagnosticId id, string title, IReadOnlyList<(string Subject, string? Identity)> subjects)
+        => new(DismissDiagnosticSubjectsId, "Ignore",
+            [id.Source, id.Number.ToString(System.Globalization.CultureInfo.InvariantCulture), title, .. subjects.SelectMany(s => new[] { s.Subject, s.Identity ?? "" })],
+            "Only this loadout, only this file as it is now. The Health Check page lists ignored findings at the bottom; Show again brings one back.");
+
+    /// <summary>
+    /// Reads the arguments <see cref="DismissDiagnosticSubjects"/> wrote.
+    /// </summary>
+    public static (DiagnosticId Id, string Title, IReadOnlyList<(string Subject, string? Identity)> Subjects) ParseDismissDiagnosticSubjects(ImmutableArray<string> arguments)
+    {
+        if (arguments.Length < 5 || arguments.Length % 2 == 0 || !ushort.TryParse(arguments[1], System.Globalization.CultureInfo.InvariantCulture, out var number))
+            throw new ArgumentException("The action names no finding and subjects to ignore", nameof(arguments));
+        var subjects = new List<(string, string?)>((arguments.Length - 3) / 2);
+        for (var i = 3; i < arguments.Length; i += 2)
+            subjects.Add((arguments[i], arguments[i + 1].Length == 0 ? null : arguments[i + 1]));
+        return (new DiagnosticId(arguments[0], number), arguments[2], subjects);
+    }
 }

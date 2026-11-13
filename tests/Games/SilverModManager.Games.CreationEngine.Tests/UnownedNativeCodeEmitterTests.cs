@@ -137,14 +137,148 @@ public class UnownedNativeCodeEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task ADiskOnlyDllOffersNoRemoval()
+    public async Task AnOverridesRowOffersIgnore()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/adopted.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/adopted.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.DismissDiagnosticSubjectsId).Subject;
+        var (id, title, subjects) = DiagnosticActions.ParseDismissDiagnosticSubjects(action.Arguments);
+        id.Should().Be(UnownedNativeCodeId);
+        title.Should().Be(diagnostic.Title);
+        subjects.Should().ContainSingle().Which.Should().Be(("Game|Data/SKSE/Plugins/adopted.dll", DiagnosticDismissals.IdentityText(await DiskIdentity(loadout, "Data/SKSE/Plugins/adopted.dll"))));
+    }
+
+    [Fact]
+    public async Task ADiskOnlyDllOffersIgnoreOnly()
     {
         var loadout = await CreateLoadout();
         await WriteOnDisk("Data/SKSE/Plugins/dropped.dll");
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Actions.Should().BeEmpty("there is no loadout row to remove");
+        diagnostic.Actions.Should().ContainSingle("there is no loadout row to remove").Which.Id.Should().Be(DiagnosticActions.DismissDiagnosticSubjectsId);
+    }
+
+    [Fact]
+    public async Task AnIgnoredPathIsNotReported()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk("Data/SKSE/Plugins/ignored.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/other.dll");
+        await Dismiss(loadout, UnownedNativeCodeId, "Game|Data/SKSE/Plugins/ignored.dll", await DiskIdentityText(loadout, "Data/SKSE/Plugins/ignored.dll"));
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("other.dll");
+    }
+
+    [Fact]
+    public async Task ANewFileAtAnIgnoredPathIsReportedAgain()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/swapped.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/swapped.dll");
+        await Dismiss(loadout, UnownedNativeCodeId, "Game|Data/SKSE/Plugins/swapped.dll", await DiskIdentityText(loadout, "Data/SKSE/Plugins/swapped.dll"));
+        await ShouldHaveNoDiagnostics(loadout);
+
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "Data/SKSE/Plugins/swapped.dll"));
+        await file.WriteAllTextAsync("different bytes");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        Details(diagnostic).Should().Contain("swapped.dll");
+    }
+
+    [Fact]
+    public async Task ADismissalWithoutAnIdentityCoversThePath()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk("Data/SKSE/Plugins/ignored.dll");
+        await Dismiss(loadout, UnownedNativeCodeId, "Game|Data/SKSE/Plugins/ignored.dll", identity: null);
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task AnIgnoredLoaderFileIsDroppedFromTheListAndTheDiagnosticVanishesWhenNoneIsLeft()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "sksevr_loader.exe");
+        await AddToOverrides(loadout, "sksevr_1_4_15.dll");
+        await WriteOnDisk("sksevr_loader.exe");
+        await WriteOnDisk("sksevr_1_4_15.dll");
+        var listId = new DiagnosticId("SilverModManager.Games.Generic", number: 12);
+
+        await Dismiss(loadout, listId, "Game|sksevr_loader.exe", await DiskIdentityText(loadout, "sksevr_loader.exe"));
+        var diagnostic = await GetSingleDiagnostic(loadout);
+        Details(diagnostic).Should().Contain("sksevr_1_4_15.dll").And.NotContain("sksevr_loader.exe");
+        var remove = diagnostic.Actions.Single(a => a.Id == DiagnosticActions.RemoveLoadoutFilesId);
+        DiagnosticActions.ParseRemoveLoadoutFiles(remove.Arguments).Paths.Should().Equal([new GamePath(LocationId.Game, "sksevr_1_4_15.dll")]);
+
+        await Dismiss(loadout, listId, "Game|sksevr_1_4_15.dll", await DiskIdentityText(loadout, "sksevr_1_4_15.dll"));
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task ANewLoaderFileAtAnIgnoredPathIsListedAgain()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "sksevr_loader.exe");
+        await WriteOnDisk("sksevr_loader.exe");
+        var listId = new DiagnosticId("SilverModManager.Games.Generic", number: 12);
+        await Dismiss(loadout, listId, "Game|sksevr_loader.exe", await DiskIdentityText(loadout, "sksevr_loader.exe"));
+        await ShouldHaveNoDiagnostics(loadout);
+
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "sksevr_loader.exe"));
+        await file.WriteAllTextAsync("different bytes");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Id.Should().Be(listId);
+        Details(diagnostic).Should().Contain("sksevr_loader.exe");
+    }
+
+    [Fact]
+    public async Task TheLoaderFilesListOffersOneIgnoreForEveryListedFile()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "sksevr_loader.exe");
+        await WriteOnDisk("sksevr_loader.exe");
+        await WriteOnDisk("sksevr_1_4_15.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.DismissDiagnosticSubjectsId).Subject;
+        DiagnosticActions.ParseDismissDiagnosticSubjects(action.Arguments).Subjects.Select(s => s.Subject)
+            .Should().BeEquivalentTo(["Game|sksevr_loader.exe", "Game|sksevr_1_4_15.dll"], "a file with no row is listed and can be ignored");
+    }
+
+    private async Task<FileIdentity> DiskIdentity(Loadout.ReadOnly loadout, string relativePath)
+    {
+        var tree = await Synchronizer.BuildSyncTree(Refresh(loadout));
+        return tree[new GamePath(LocationId.Game, relativePath)].Disk.Identity;
+    }
+
+    private async Task<string> DiskIdentityText(Loadout.ReadOnly loadout, string relativePath)
+        => DiagnosticDismissals.IdentityText(await DiskIdentity(loadout, relativePath));
+
+    private async Task Dismiss(Loadout.ReadOnly loadout, DiagnosticId id, string subject, string? identity)
+    {
+        using var tx = Connection.BeginTransaction();
+        _ = new DiagnosticDismissal.New(tx)
+        {
+            LoadoutId = loadout.LoadoutId,
+            Source = id.Source,
+            Number = id.Number,
+            Subject = subject,
+            Identity = identity,
+            Title = "a title",
+        };
+        await tx.Commit();
     }
 
     [Fact]

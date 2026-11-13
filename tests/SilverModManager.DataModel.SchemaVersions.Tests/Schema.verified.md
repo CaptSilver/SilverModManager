@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x3D734667DCDE9A37
-   - Total attributes: 419
-   - Total namespaces: 113
+   - Fingerprint: 0xFDC858D5FB838FC2
+   - Total attributes: 425
+   - Total namespaces: 114
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -203,6 +203,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.DeploymentPlanEntry/Installation                                | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.DeploymentPlanEntry/Reason                                      | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.DeploymentPlanEntry/Root                                        | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Identity                                    | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Loadout                                     | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Number                                      | UInt16                  | False   | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Source                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Subject                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.DiagnosticDismissal/Title                                       | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Game                                             | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Hash                                             | UInt64                  | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Identity                                         | Blob                    | False   | False | False     | 

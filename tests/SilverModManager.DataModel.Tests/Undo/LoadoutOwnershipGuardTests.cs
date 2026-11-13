@@ -37,6 +37,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutFileWinner/Loadout",
         "SilverModManager.Loadouts.LoadoutIniState/Loadout",
         "SilverModManager.Loadouts.ModOrderDroppedEntry/Loadout",
+        "SilverModManager.Loadouts.DiagnosticDismissal/Loadout",
     ];
 
     /// <summary>
@@ -70,7 +71,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     /// <summary>
     /// The roots of the owned closure: what the loadout owns directly, besides the loadout row itself.
     /// </summary>
-    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState), typeof(ModOrderDroppedEntry)];
+    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState), typeof(ModOrderDroppedEntry), typeof(DiagnosticDismissal)];
 
     [Fact]
     public void EveryReferenceToAnOwnedModelIsClassified()

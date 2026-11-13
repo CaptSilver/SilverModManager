@@ -36,6 +36,7 @@ public static class Services
             .AddLoadoutFileModel()
             .AddLoadoutSnapshotModel()
             .AddProtectedLoadoutRevisionModel()
+            .AddDiagnosticDismissalModel()
             .AddDeletedFileModel()
             .AddCollectionGroupModel()
             .AddSortOrderModel()

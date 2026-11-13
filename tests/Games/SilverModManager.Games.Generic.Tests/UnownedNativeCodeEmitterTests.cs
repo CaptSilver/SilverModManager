@@ -235,14 +235,36 @@ public class UnownedNativeCodeEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task ADiskOnlyDllOffersNoRemoval()
+    public async Task ADiskOnlyDllOffersIgnoreOnly()
     {
         var loadout = await CreateLoadout();
         await WriteOnDisk("tool.dll");
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Actions.Should().BeEmpty("there is no loadout row to remove");
+        diagnostic.Actions.Should().ContainSingle("there is no loadout row to remove").Which.Id.Should().Be(DiagnosticActions.DismissDiagnosticSubjectsId);
+    }
+
+    [Fact]
+    public async Task AnUnloadedDllCanBeIgnoredAndStaysIgnoredUntilItsBytesChange()
+    {
+        var loadout = await CreateLoadout();
+        await Stray(loadout, "tool.dll");
+        var first = await GetSingleDiagnostic(loadout);
+        var action = first.Actions.Single(a => a.Id == DiagnosticActions.DismissDiagnosticSubjectsId);
+        var (id, title, subjects) = DiagnosticActions.ParseDismissDiagnosticSubjects(action.Arguments);
+        id.Should().Be(UnloadedId);
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var (subject, identity) in subjects)
+                _ = new DiagnosticDismissal.New(tx) { LoadoutId = loadout.LoadoutId, Source = id.Source, Number = id.Number, Subject = subject, Identity = identity, Title = title };
+            await tx.Commit();
+        }
+        await ShouldHaveNoDiagnostics(loadout.LoadoutId);
+
+        await GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "tool.dll")).WriteAllTextAsync("different bytes");
+
+        (await GetSingleDiagnostic(loadout)).Id.Should().Be(UnloadedId);
     }
 
     [Fact]

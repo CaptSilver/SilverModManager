@@ -69,4 +69,33 @@ public class DiagnosticActionsTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void DismissDiagnosticSubjectsRoundTrips()
+    {
+        var id = new DiagnosticId("SilverModManager.Games.Generic", number: 12);
+        (string Subject, string? Identity)[] subjects = [("Game|a.dll", "XxHash3:0011"), ("Game|b c/d.dll", null)];
+
+        var action = DiagnosticActions.DismissDiagnosticSubjects(id, "Loader Files", subjects);
+
+        action.Id.Should().Be(DiagnosticActions.DismissDiagnosticSubjectsId);
+        action.Label.Should().Be("Ignore");
+        var (parsedId, title, parsed) = DiagnosticActions.ParseDismissDiagnosticSubjects(action.Arguments);
+        parsedId.Should().Be(id);
+        title.Should().Be("Loader Files");
+        parsed.Should().Equal(subjects);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void ParsingDismissArgumentsWithAHalfPairOrNothingIsRejected(int count)
+    {
+        var arguments = Enumerable.Repeat("x", count).ToImmutableArray();
+
+        var act = () => DiagnosticActions.ParseDismissDiagnosticSubjects(arguments);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

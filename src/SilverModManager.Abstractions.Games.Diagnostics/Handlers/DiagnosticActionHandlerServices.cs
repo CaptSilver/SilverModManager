@@ -25,6 +25,7 @@ public static class DiagnosticActionHandlerServices
         return services
             .AddFreedesktopTrash()
             .AddDiagnosticActionHandler<DismissGameMovedActionHandler>()
+            .AddDiagnosticActionHandler<DismissDiagnosticSubjectsActionHandler>()
             .AddDiagnosticActionHandler<VerifyGameFilesInSteamActionHandler>()
             .AddDiagnosticActionHandler<MoveHostFolderIntoGameActionHandler>();
     }

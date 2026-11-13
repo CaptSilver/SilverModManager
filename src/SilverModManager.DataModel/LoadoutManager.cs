@@ -282,6 +282,12 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[dropped.Id] = tx.TempId();
         }
 
+        // Findings the player ignored stay ignored on the copy.
+        foreach (var dismissal in DiagnosticDismissal.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[dismissal.Id] = tx.TempId();
+        }
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity
@@ -436,6 +442,11 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var dropped in ModOrderDroppedEntry.FindByLoadout(loadout.Db, loadout))
         {
             tx.Delete(dropped, recursive: false);
+        }
+
+        foreach (var dismissal in DiagnosticDismissal.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(dismissal, recursive: false);
         }
 
         // A claim is its own entity rather than a loadout item, so the loop above misses it.

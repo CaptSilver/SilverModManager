@@ -36,6 +36,10 @@ public sealed class UnownedNativeCodeEmitter(GameRootLibraries rootLibraries, IF
 {
     private const string LoaderName = "mod loader";
 
+    private static readonly DiagnosticId UnownedId = new(Diagnostics.Source, number: 11);
+    private static readonly DiagnosticId LoaderFilesId = new(Diagnostics.Source, number: 12);
+    private static readonly DiagnosticId UnloadedId = new(Diagnostics.Source, number: 13);
+
     /// <inheritdoc />
     protected override async IAsyncEnumerable<Diagnostic> DiagnoseTree(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -48,6 +52,12 @@ public sealed class UnownedNativeCodeEmitter(GameRootLibraries rootLibraries, IF
         var provided = ModProvidedFiles.For(loadout);
         var gameInstalled = GameInstalledPaths.For(loadout.Db, loadout.LoadoutId);
         var prefix = installation.LocatorResult.LinuxCompatabilityDataProvider;
+        var ignored = new Dictionary<DiagnosticId, IReadOnlyList<DiagnosticDismissals.Dismissed>>
+        {
+            [UnownedId] = DiagnosticDismissals.For(loadout.Db, loadout.LoadoutId, UnownedId),
+            [LoaderFilesId] = DiagnosticDismissals.For(loadout.Db, loadout.LoadoutId, LoaderFilesId),
+            [UnloadedId] = DiagnosticDismissals.For(loadout.Db, loadout.LoadoutId, UnloadedId),
+        };
         var storeFiles = new Lazy<IReadOnlySet<GamePath>>(() => fileHashes.GetGameFiles(installation).Select(f => f.Path).ToHashSet());
 
         var candidates = syncTree
@@ -66,45 +76,58 @@ public sealed class UnownedNativeCodeEmitter(GameRootLibraries rootLibraries, IF
             switch (nativeCode?.RoleOf(path))
             {
                 case NativeCodeRole.LoaderPlugin:
-                    yield return Diagnostics.CreateUnownedNativeCode(game.DisplayName, file, "plugin folder", PluginDetails())
-                        with { Actions = ActionsFor(loadout, path, node, steamAppId: null) };
+                    if (IsIgnored(ignored[UnownedId], path, node)) continue;
+                    yield return WithActions(Diagnostics.CreateUnownedNativeCode(game.DisplayName, file, "plugin folder", PluginDetails()), loadout, path, node, steamAppId: null);
                     continue;
                 case NativeCodeRole.LoaderRuntime:
-                    runtimeFiles.Add((path, node));
+                    if (!IsIgnored(ignored[LoaderFilesId], path, node)) runtimeFiles.Add((path, node));
                     continue;
             }
 
             var verdict = await rootLibraries.HowLoaded(installation.Locations.ToAbsolutePath(path.Parent), path.FileName, prefix, cancellationToken);
             if (verdict.Load == RootLoad.Loaded)
             {
+                if (IsIgnored(ignored[UnownedId], path, node)) continue;
                 var onStore = storeFiles.Value.Contains(path);
-                yield return Diagnostics.CreateUnownedNativeCode(game.DisplayName, file, "game folder", GameFolderDetails(game.DisplayName, onStore))
-                    with { Actions = ActionsFor(loadout, path, node, onStore ? SteamAppId(installation) : null) };
+                yield return WithActions(Diagnostics.CreateUnownedNativeCode(game.DisplayName, file, "game folder", GameFolderDetails(game.DisplayName, onStore)),
+                    loadout, path, node, onStore ? SteamAppId(installation) : null);
             }
             else
             {
-                yield return Diagnostics.CreateUnloadedGameRootLibrary(game.DisplayName, file, UnloadedReason(file, verdict))
-                    with { Actions = ActionsFor(loadout, path, node, steamAppId: null) };
+                if (IsIgnored(ignored[UnloadedId], path, node)) continue;
+                yield return WithActions(Diagnostics.CreateUnloadedGameRootLibrary(game.DisplayName, file, UnloadedReason(file, verdict)), loadout, path, node, steamAppId: null);
             }
         }
 
         if (runtimeFiles.Count > 0)
         {
             logger?.LogTrace("{Count} loader files in {Game} have no mod that provides them", runtimeFiles.Count, game.DisplayName);
-            yield return Diagnostics.CreateUnownedLoaderFiles(game.DisplayName, LoaderName, ListOf(runtimeFiles.Select(f => f.Path)))
-                with { Actions = ListActionsFor(loadout, runtimeFiles) };
+            var list = Diagnostics.CreateUnownedLoaderFiles(game.DisplayName, LoaderName, ListOf(runtimeFiles.Select(f => f.Path)));
+            yield return list with { Actions = [.. ListActionsFor(loadout, runtimeFiles), IgnoreAction(list, runtimeFiles)] };
         }
     }
 
+    // A path is ignored when this loadout dismissed it and the file still has the bytes it had then.
+    private static bool IsIgnored(IReadOnlyList<DiagnosticDismissals.Dismissed> dismissed, GamePath path, SyncNode node)
+        => DiagnosticDismissals.Covers(dismissed, DiagnosticDismissals.SubjectOf(path), node.Disk.Identity);
+
+    private static DiagnosticAction IgnoreAction(Diagnostic diagnostic, IEnumerable<(GamePath Path, SyncNode Node)> files)
+        => DiagnosticActions.DismissDiagnosticSubjects(diagnostic.Id, diagnostic.Title,
+            [.. files.Select(f => (DiagnosticDismissals.SubjectOf(f.Path), (string?)DiagnosticDismissals.IdentityText(f.Node.Disk.Identity)))]);
+
+    private static Diagnostic WithActions(Diagnostic diagnostic, Loadout.ReadOnly loadout, GamePath path, SyncNode node, string? steamAppId)
+        => diagnostic with { Actions = ActionsFor(loadout, diagnostic, path, node, steamAppId) };
+
     // The one place that decides which buttons a finding gets, so a new button is added once. A file with no loadout
-    // row (dropped in after the last apply) has nothing to remove yet.
-    private static ImmutableArray<DiagnosticAction> ActionsFor(Loadout.ReadOnly loadout, GamePath path, SyncNode node, string? steamAppId)
+    // row (dropped in after the last apply) has nothing to remove yet, but can still be ignored.
+    private static ImmutableArray<DiagnosticAction> ActionsFor(Loadout.ReadOnly loadout, Diagnostic diagnostic, GamePath path, SyncNode node, string? steamAppId)
     {
         var actions = new List<DiagnosticAction>();
         if (OwningGroup.Of(loadout.Db, node) is { } group)
             actions.Add(DiagnosticActions.RemoveLoadoutFile(path, group));
         if (steamAppId is not null)
             actions.Add(DiagnosticActions.VerifyGameFilesInSteam(steamAppId));
+        actions.Add(IgnoreAction(diagnostic, [(path, node)]));
         return [.. actions];
     }
 

@@ -8,7 +8,7 @@ namespace SilverModManager.Games.Generic.Diagnostics;
 
 internal static partial class Diagnostics
 {
-    private const string Source = "SilverModManager.Games.Generic";
+    internal const string Source = "SilverModManager.Games.Generic";
 
     [DiagnosticTemplate]
     [UsedImplicitly]
