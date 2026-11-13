@@ -21,4 +21,8 @@ public sealed record NexusModsSearchQuery(
     NexusModsSort Sort,
     int Offset,
     int Count,
-    bool IncludeAdult = false);
+    bool IncludeAdult = false)
+{
+    /// <summary>The page the browse page and the <c>nexus search</c> verb both ask for, so page N means the same mods in each.</summary>
+    public const int DefaultPageSize = 40;
+}

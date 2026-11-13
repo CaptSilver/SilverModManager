@@ -35,7 +35,7 @@ namespace SilverModManager.App.UI.Pages.NexusCatalog;
 [UsedImplicitly]
 public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, INexusModsViewModel
 {
-    private const int PageSize = 40;
+    private const int PageSize = NexusModsSearchQuery.DefaultPageSize;
     private static readonly TimeSpan SearchPause = TimeSpan.FromMilliseconds(400);
 
     private readonly INexusModsBrowser _browser;

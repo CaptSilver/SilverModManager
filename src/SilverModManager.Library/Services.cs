@@ -47,6 +47,7 @@ public static class Services
             .AddSingleton<IModSource, ThunderstoreModSource>()
             .AddSingleton<ModSourceResolver>()
             .AddLockVerbs()
-            .AddThunderstoreVerbs();
+            .AddThunderstoreVerbs()
+            .AddNexusModsVerbs();
     }
 }
