@@ -38,16 +38,12 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private const int PageSize = 40;
     private static readonly TimeSpan SearchPause = TimeSpan.FromMilliseconds(400);
 
-    private readonly IConnection _connection;
     private readonly INexusModsBrowser _browser;
+    private readonly INexusModsInstaller _installer;
+    private readonly ILoadoutInstallCore _installCore;
     private readonly ILoginManager _loginManager;
-    private readonly ILibraryService _libraryService;
-    private readonly ILoadoutManager _loadoutManager;
-    private readonly ICollectionOwnership _ownership;
-    private readonly TemporaryFileManager _temporaryFiles;
     private readonly IOSInterop _osInterop;
     private readonly IGameDomainToGameIdMappingCache _domains;
-    private readonly IEnumerable<IGameData> _games;
     private readonly ILogger<NexusModsViewModel> _logger;
     private readonly NexusCollectionsViewModel _collections;
     private readonly IStoreSortMemory _sortMemory;
@@ -73,31 +69,23 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
 
     public NexusModsViewModel(
         IWindowManager windowManager,
-        IConnection connection,
         INexusModsBrowser browser,
+        INexusModsInstaller installer,
+        ILoadoutInstallCore installCore,
         ILoginManager loginManager,
-        ILibraryService libraryService,
-        ILoadoutManager loadoutManager,
-        ICollectionOwnership ownership,
-        TemporaryFileManager temporaryFiles,
         IOSInterop osInterop,
         IGameDomainToGameIdMappingCache domains,
-        IEnumerable<IGameData> games,
         IThumbnailLoader thumbnails,
         NexusCollectionsViewModel collections,
         IStoreSortMemory sortMemory,
         IAdultContentSetting adultContent,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
-        _connection = connection;
         _browser = browser;
+        _installer = installer;
+        _installCore = installCore;
         _loginManager = loginManager;
-        _libraryService = libraryService;
-        _loadoutManager = loadoutManager;
-        _ownership = ownership;
-        _temporaryFiles = temporaryFiles;
         _osInterop = osInterop;
-        _games = games;
         _domains = domains;
         Thumbnails = thumbnails;
         _logger = logger;
@@ -234,10 +222,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     }
 
     // The same rule as the left menu entry, so the entry and the page can't disagree.
-    private NexusModsGameId? GameOfLoadout()
-    {
-        return _connection.Db.NexusIdOfLoadout(LoadoutId, _games);
-    }
+    private NexusModsGameId? GameOfLoadout() => _installer.GameOf(LoadoutId, out _);
 
     private Uri ModUri(NexusModsGameId game, NexusModsModRow row) => NexusModsUrlBuilder.GetModUri(_domains.GetDomain(game), row.Hit.ModId);
 
@@ -248,70 +233,37 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         if (GameOfLoadout() is { } game) _osInterop.OpenUri(ModUri(game, row));
     }
 
-    // Mods being installed right now, so a second click on the same card waits for the first instead of downloading again.
-    private readonly HashSet<(LoadoutId Loadout, ModId Mod)> _installing = [];
-
     public async Task InstallAsync(NexusModsModRow row, CancellationToken cancellationToken)
     {
-        var key = (LoadoutId, row.Hit.ModId);
-        if (!_installing.Add(key)) return;
         ErrorText = "";
         try
         {
             if (GameOfLoadout() is not { } game) throw new InvalidOperationException("This game is not on Nexus Mods.");
 
-            // Free members can only download through the site, which hands out the key the API needs.
-            if (!_loginManager.IsPremium || await _browser.FindMainFile(game, row.Hit.ModId, cancellationToken) is not { } fileId)
+            var mod = row.Hit.ModId;
+            if (NexusModsMainFile.Pick(await _installer.Files(game, mod, cancellationToken)) is not { } fileId)
             {
                 _osInterop.OpenUri(FilesTabUri(game, row));
                 return;
             }
 
-            var item = FindInLibrary(game, row.Hit.ModId, fileId) ?? await DownloadAsync(game, row, fileId, cancellationToken);
-            var outcome = await LoadoutPackages.InstallOrEnable(_connection, _ownership, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
-            if (outcome == LoadoutPackageOutcome.AlreadyEnabled) ErrorText = $"{row.Name} is already in this loadout.";
+            // A file the library already holds installs for any account: a free member who clicked the site's download
+            // button has put it there. Only a missing file needs the premium download API, or the site for a free account.
+            var resolved = _installer.Resolve(game, mod, fileId, row.Name, dependency: false, LoadoutId);
+            if (resolved.InLibrary is null && await _loginManager.GetUserInfoAsync(cancellationToken) is not { UserRole: UserRole.Premium })
+            {
+                _osInterop.OpenUri(_installer.DownloadPage(game, mod, fileId));
+                return;
+            }
+
+            // The core joins a second click on the same mod to the first one's run instead of downloading again.
+            var outcomes = await _installCore.Run(LoadoutId, $"nexus:{mod}", [resolved], cancellationToken);
+            if (outcomes.Any(static outcome => outcome.Outcome == LoadoutPackageOutcome.AlreadyEnabled)) ErrorText = $"{row.Name} is already in this loadout.";
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _logger.LogWarning(e, "Could not install {Mod} from Nexus Mods", row.Name);
             ErrorText = $"Could not install {row.Name}: {e.Message}";
         }
-        finally
-        {
-            _installing.Remove(key);
-        }
-    }
-
-    // A file the library already holds is installed from there. Older downloads of the same file can sit in the library
-    // more than once, so a copy that is already linked into this loadout wins (it may be enabled or just disabled);
-    // otherwise any copy installs the same files.
-    private LibraryItem.ReadOnly? FindInLibrary(NexusModsGameId game, ModId modId, FileId fileId)
-    {
-        LibraryItem.ReadOnly? first = null;
-        foreach (var file in NexusModsFileMetadata.FindByUid(_connection.Db, new FileUid(fileId, game)))
-        {
-            if (file.ModPage.Uid.ModId != modId) continue;
-            foreach (var found in NexusModsLibraryItem.FindByFileMetadata(_connection.Db, file))
-            {
-                var item = found.AsLibraryItem();
-                if (IsLinkedIntoLoadout(item)) return item;
-                first ??= item;
-            }
-        }
-
-        return first;
-    }
-
-    private bool IsLinkedIntoLoadout(LibraryItem.ReadOnly item)
-        => LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, item)
-            .Any(link => link.AsLoadoutItem().LoadoutId == LoadoutId && !_ownership.OwnsLink(_connection.Db, link));
-
-    private async Task<LibraryItem.ReadOnly> DownloadAsync(NexusModsGameId game, NexusModsModRow row, FileId fileId, CancellationToken cancellationToken)
-    {
-        // The temporary file has to outlive AddDownload, which moves the finished file into the library's store.
-        await using var destination = _temporaryFiles.CreateFile();
-        var job = await _browser.CreateDownloadJob(game, row.Hit.ModId, fileId, destination, cancellationToken);
-        var file = await _libraryService.AddDownload(job, new LoadoutAcquisition(LoadoutId));
-        return file.AsLibraryItem();
     }
 }

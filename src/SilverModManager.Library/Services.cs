@@ -41,6 +41,7 @@ public static class Services
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
             .AddSingleton<ILoadoutInstallCore, LoadoutInstallCore>()
             .AddSingleton<IThunderstoreInstaller, ThunderstoreInstaller>()
+            .AddSingleton<INexusModsInstaller, NexusModsInstaller>()
             .AddSingleton<INexusUpdateDownloader, NexusUpdateDownloader>()
             .AddSingleton<IModSource, NexusModSource>()
             .AddSingleton<IModSource, ThunderstoreModSource>()

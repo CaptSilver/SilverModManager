@@ -18,7 +18,9 @@ using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.Library;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.Errors;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -36,6 +38,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     {
         public NexusModsViewModel Vm = null!;
         public INexusModsBrowser Browser = null!;
+        public IGraphQlClient GraphQl = null!;
         public ILoginManager Login = null!;
         public IOSInterop OsInterop = null!;
         public ILibraryService Library = null!;
@@ -89,6 +92,12 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         fixture.Login.IsLoggedIn.Returns(premium);
         fixture.UserInfo = new R3.BehaviorSubject<UserInfo?>(premium ? User(UserRole.Premium) : null);
         fixture.Login.UserInfoObservable.Returns(fixture.UserInfo);
+        fixture.Login.GetUserInfoAsync(default).ReturnsForAnyArgs(ValueTask.FromResult<UserInfo?>(premium ? User(UserRole.Premium) : null));
+
+        // A mod without a MAIN file is what the page sees until a test names one with Premium().
+        fixture.GraphQl = Substitute.For<IGraphQlClient>();
+        fixture.GraphQl.QueryModFiles(default, default, default)
+            .ReturnsForAnyArgs(_ => ValueTask.FromResult(new GraphQlResult<IModFile[], NotFound>(Array.Empty<IModFile>())));
 
         var domains = Substitute.For<IGameDomainToGameIdMappingCache>();
         domains.GetDomain(default).ReturnsForAnyArgs(GameDomain.From("cyberpunk2077"));
@@ -112,18 +121,20 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             return task;
         });
 
+        // The real installer and install core over the fakes above, so the library lookup, the download and the
+        // loadout install all run for real.
+        var ownership = Provider.GetRequiredService<ICollectionOwnership>();
+        var installer = new NexusModsInstaller(Connection, Provider.GetServices<IGameData>(), fixture.GraphQl, fixture.Browser, fixture.Library,
+            ownership, Provider.GetRequiredService<TemporaryFileManager>(), domains);
+
         fixture.Vm = new NexusModsViewModel(
             Provider.GetRequiredService<IWindowManager>(),
-            Connection,
             fixture.Browser,
+            installer,
+            new LoadoutInstallCore(Connection, fixture.Manager, ownership),
             fixture.Login,
-            fixture.Library,
-            fixture.Manager,
-            Provider.GetRequiredService<ICollectionOwnership>(),
-            Provider.GetRequiredService<TemporaryFileManager>(),
             fixture.OsInterop,
             domains,
-            Provider.GetServices<IGameData>(),
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             new NexusCollectionsViewModel(Connection, Substitute.For<INexusCollectionsBrowser>(), fixture.OsInterop, Provider.GetServices<IGameData>(), [],
                 Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), sortMemory, adultContent, NullLogger<NexusCollectionsViewModel>.Instance),
@@ -310,16 +321,33 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
-    public async Task Install_ForAFreeUser_OpensTheFilesTabAndDownloadsNothing()
+    public async Task Install_ForAFreeUser_OpensTheFilesDownloadLinkAndDownloadsNothing()
     {
         var f = await Open(premium: false);
+        Premium(f, (7, 55));
 
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
 
-        f.OsInterop.Received(1).OpenUri(new Uri("https://www.nexusmods.com/cyberpunk2077/mods/7?tab=files"));
-        await f.Browser.DidNotReceiveWithAnyArgs().FindMainFile(default, default, default);
+        f.OsInterop.Received(1).OpenUri(new Uri("https://www.nexusmods.com/cyberpunk2077/mods/7?tab=files&file_id=55&nmm=1"));
         await f.Browser.DidNotReceiveWithAnyArgs().CreateDownloadJob(default, default, default, default, default);
         _ = f.Library.DidNotReceiveWithAnyArgs().AddDownload(default!, default!);
+    }
+
+    [Fact]
+    public async Task Install_FreeAccount_FileInLibrary_InstallsWithoutOpeningTheBrowser()
+    {
+        var f = await Open(premium: false);
+        var ids = NewIds();
+        Premium(f, ids);
+        var item = await SeedNexusLibraryFile(f, ids.Mod, ids.File);
+
+        await f.Vm.InstallAsync(RowOf(ids.Mod), CancellationToken.None);
+
+        f.OsInterop.DidNotReceiveWithAnyArgs().OpenUri(default!);
+        await f.Login.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
+        DownloadsStarted(f).Should().Be(0);
+        Installed(f).Should().Equal((item.Id, f.LoadoutId));
+        f.Vm.ErrorText.Should().BeEmpty();
     }
 
     [Fact]
@@ -327,7 +355,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     {
         var f = await Open(premium: true);
         var job = Substitute.For<IJobTask<NexusModsDownloadJob, AbsolutePath>>();
-        f.Browser.FindMainFile(f.Game, ModId.From(7), Arg.Any<CancellationToken>()).Returns(FileId.From(55));
+        Premium(f, (7, 55));
         f.Browser.CreateDownloadJob(f.Game, ModId.From(7), FileId.From(55), Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(job);
 
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
@@ -342,7 +370,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     {
         var f = await Open(premium: true);
         var job = Substitute.For<IJobTask<NexusModsDownloadJob, AbsolutePath>>();
-        f.Browser.FindMainFile(f.Game, ModId.From(7), Arg.Any<CancellationToken>()).Returns(FileId.From(55));
+        Premium(f, (7, 55));
         f.Browser.CreateDownloadJob(f.Game, ModId.From(7), FileId.From(55), Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(job);
         var loadoutsGame = Loadout.Load(Connection.Db, f.LoadoutId).InstallationInstance.Game.GameId;
 
@@ -355,7 +383,6 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     public async Task Install_ForPremium_WithoutASingleMainFile_OpensTheFilesTab()
     {
         var f = await Open(premium: true);
-        f.Browser.FindMainFile(default, default, default).ReturnsForAnyArgs(Task.FromResult<FileId?>(null));
 
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
 
@@ -367,7 +394,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     public async Task Install_WhenTheDownloadCannotStart_ShowsTheError()
     {
         var f = await Open(premium: true);
-        f.Browser.FindMainFile(default, default, default).ReturnsForAnyArgs(Task.FromResult<FileId?>(FileId.From(55)));
+        Premium(f, (7, 55));
         f.Browser.CreateDownloadJob(default, default, default, default, default).ThrowsAsyncForAnyArgs(new InvalidOperationException("no download links"));
 
         await f.Vm.InstallAsync(RowOf(7), CancellationToken.None);
@@ -432,8 +459,20 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
     private static (uint Mod, uint File) NewIds() => (NextId(), NextId());
 
+    // The mod's one MAIN file, as its Files tab lists it.
     private void Premium(Fixture f, (uint Mod, uint File) ids)
-        => f.Browser.FindMainFile(f.Game, ModId.From(ids.Mod), Arg.Any<CancellationToken>()).Returns(FileId.From(ids.File));
+    {
+        var file = Substitute.For<IModFile>();
+        file.Uid.Returns(new FileUid(FileId.From(ids.File), f.Game).ToV2Api());
+        file.Name.Returns("Some mod.zip");
+        file.Version.Returns("1");
+        file.Category.Returns(ModFileCategory.Main);
+        file.SizeInBytes.Returns("1024");
+        file.Date.Returns(1_700_000_000);
+        IModFile[] files = [file];
+        f.GraphQl.QueryModFiles(ModId.From(ids.Mod), f.Game, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(new GraphQlResult<IModFile[], NotFound>(files)));
+    }
 
     private static (EntityId Item, LoadoutId Loadout)[] Installed(Fixture f)
         => f.Manager.ReceivedCalls()
