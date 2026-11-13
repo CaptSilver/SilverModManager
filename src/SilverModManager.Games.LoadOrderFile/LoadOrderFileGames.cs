@@ -172,6 +172,35 @@ public static class LoadOrderFileGames
         LocationSentenceNames = new Dictionary<string, string> { ["Simple.LocalAppDataLow"] = "the game's config folder" }.ToImmutableDictionary(),
     };
 
+    // Starsector lists a mod by the id in its mod_info.json, exactly as written, and cannot start a mod without one.
+    private static readonly ModInfoJsonManifestReader StarsectorManifests = new();
+
+    private static readonly SimpleInstallRules StarsectorInstall = SimpleInstallPresets.InOwnFolderByMarker(
+        "mod_info.json", new ManifestIdFolderName(StarsectorManifests, "Starsector", "id") { RequireName = true }, refuseWhenSeveral: true);
+
+    /// <summary>
+    /// Nexus id from the Nexus games list. The game is not sold on Steam, so it has no store ids and is found by the
+    /// folder it is added from. Whether the game loads mods in the order enabled_mods.json lists them is not confirmed,
+    /// so the Load Order page is hidden and the file is written sorted; set FileOrdersLoad once the order is known.
+    /// </summary>
+    public static readonly LoadOrderFileGameDefinition Starsector = new()
+    {
+        GameId = GameId.From("LoadOrderFile.Starsector"),
+        DisplayName = "Starsector",
+        NexusModsGameId = Optional<NexusModsGameId>.Create(NexusModsGameId.From(2672)),
+        SteamAppIds = [],
+        Executable = "starsector.exe",
+        NativeLinuxExecutable = "starsector.sh",
+        ModFolder = "mods",
+        Install = StarsectorInstall,
+        OrderFile = OrderFileLocation.GameFolder("mods/enabled_mods.json"),
+        Format = new EnabledModsJsonFormat(),
+        ManifestReader = StarsectorManifests,
+        ExternalMods = [new ModFolderModSource("mods", new ManifestNamer(StarsectorManifests), ExternalListing.WhenListed)],
+        GameWrittenPaths = [new GamePath(LocationId.Game, "saves"), new GamePath(LocationId.Game, "starsector-core/starsector.log")],
+        FileOrdersLoad = false,
+    };
+
     public static IReadOnlyList<LoadOrderFileGameDefinition> All { get; } =
-        [KingdomComeDeliverance, KingdomComeDeliverance2, XCom2, XCom2WarOfTheChosen, RimWorld];
+        [KingdomComeDeliverance, KingdomComeDeliverance2, XCom2, XCom2WarOfTheChosen, RimWorld, Starsector];
 }

@@ -127,6 +127,29 @@ public class AddGameByPathServiceTests
     }
 
     [Fact]
+    public void AStarsectorFolderWithOnlyItsLaunchScriptIsRecordedAsLinux()
+    {
+        var game = Game("starsector", "starsector.exe", native: true, nativeExe: "starsector.sh");
+
+        var result = Service().Add(Folder("/games/starsector", "starsector.sh"), null, null, null);
+
+        result.Should().Be(new AddGameResult.Added(game));
+        _store.Installs.Should().Equal(new UserGameInstall(game.GameId, "/games/starsector", OSPlatform.Linux));
+    }
+
+    [Fact]
+    public void AStarsectorFolderWithItsWindowsExecutableIsRecordedWithThePrefix()
+    {
+        var game = Game("starsector", "starsector.exe", native: true, nativeExe: "starsector.sh");
+        var prefix = _fs.FromUnsanitizedFullPath("/prefixes/starsector");
+
+        var result = Service().Add(Folder("/games/starsector", "starsector.exe"), null, prefix, null);
+
+        result.Should().Be(new AddGameResult.Added(game));
+        _store.Installs.Should().Equal(new UserGameInstall(game.GameId, "/games/starsector", OSPlatform.Windows, prefix.ToString()));
+    }
+
+    [Fact]
     public void TheWindowsBuildOfAGameWithANativeBuildIsRecordedWithItsPrefix()
     {
         var game = Game("alpha", "Launcher/Alpha.exe", native: true, nativeExe: "bin/alpha");

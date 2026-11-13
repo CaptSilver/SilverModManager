@@ -15,31 +15,34 @@ public class LoadOrderFileGamesTableTests
     {
         LoadOrderFileGames.All.Should().Equal(
             LoadOrderFileGames.KingdomComeDeliverance, LoadOrderFileGames.KingdomComeDeliverance2,
-            LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen, LoadOrderFileGames.RimWorld);
+            LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen, LoadOrderFileGames.RimWorld, LoadOrderFileGames.Starsector);
     }
 
     // Steam ids, GOG ids and executables from each app's Steam launch entry (api.steamcmd.net), the Mod Organizer 2
     // basic_games plugins and the Vortex extension; Nexus ids from games.json by domain. A launch entry is a
     // case-insensitive Windows path, so its casing says nothing about the file's: Steam's own entries for one game
     // disagree (XCOM 2's base entry says "binaries", its War of the Chosen entry "Binaries").
-    public static TheoryData<string, string, string, uint, uint> Rows => new()
+    public static TheoryData<string, string, string, uint?, uint> Rows => new()
     {
         { "LoadOrderFile.KingdomComeDeliverance", "Kingdom Come: Deliverance", "Bin/Win64/KingdomCome.exe", 379430, 2298 },
         { "LoadOrderFile.KingdomComeDeliverance2", "Kingdom Come: Deliverance II", "Bin/Win64MasterMasterSteamPGO/KingdomCome.exe", 1771300, 7286 },
         { "LoadOrderFile.XCom2", "XCOM 2", "Binaries/Win64/XCom2.exe", 268500, 1271 },
         { "LoadOrderFile.XCom2WarOfTheChosen", "XCOM 2: War of the Chosen", "XCom2-WarOfTheChosen/Binaries/Win64/XCom2.exe", 268500, 1271 },
         { "LoadOrderFile.RimWorld", "RimWorld", "RimWorldWin64.exe", 294100, 424 },
+        { "LoadOrderFile.Starsector", "Starsector", "starsector.exe", null, 2672 },
     };
 
     [Theory]
     [MemberData(nameof(Rows))]
-    public void TheRowsFollowTheirSources(string gameId, string displayName, string executable, uint steamAppId, uint nexusId)
+    public void TheRowsFollowTheirSources(string gameId, string displayName, string executable, uint? steamAppId, uint nexusId)
     {
         var row = LoadOrderFileGames.All.Single(candidate => candidate.GameId == GameId.From(gameId));
 
         row.DisplayName.Should().Be(displayName);
         row.Executable.ToString().Should().Be(executable);
-        row.Stores.SteamAppIds.Should().Equal(steamAppId);
+        // Starsector is not sold on Steam; it is found by the folder it is added from.
+        if (steamAppId is { } steam) row.Stores.SteamAppIds.Should().Equal(steam);
+        else row.Stores.SteamAppIds.Should().BeEmpty();
         row.NexusModsGameId.Should().Be(Optional<NexusModsGameId>.Create(NexusModsGameId.From(nexusId)));
     }
 
