@@ -50,4 +50,10 @@ public partial class UserTool : IModelDefinition
     /// keeps the catalogue definition's name.
     /// </summary>
     public static readonly StringAttribute OutputGroupName = new(Namespace, nameof(OutputGroupName)) { IsOptional = true };
+
+    /// <summary>
+    /// Marks a program the catalogue does not know whose writes into the game folder are kept as a group of their own
+    /// after each run. Absent, they stay in Overrides.
+    /// </summary>
+    public static readonly MarkerAttribute CapturesGameFolderOutput = new(Namespace, nameof(CapturesGameFolderOutput));
 }

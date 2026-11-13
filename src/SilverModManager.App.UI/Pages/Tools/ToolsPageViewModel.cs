@@ -12,6 +12,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
@@ -362,7 +363,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         var loadout = LoadLoadout();
 
         using var tx = _conn.BeginTransaction();
-        _ = new UserTool.New(tx)
+        var row = new UserTool.New(tx)
         {
             InstallationId = loadout.InstallationId,
             Name = draft.Name.Trim(),
@@ -370,6 +371,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
             Arguments = draft.Arguments,
             RunVia = draft.RunVia,
         };
+        if (draft.KeepsOutput) tx.Add(row.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
         await tx.Commit();
         Refresh();
     }
@@ -385,6 +387,9 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         tx.Add(tool.Id, UserTool.Exe, draft.Exe);
         tx.Add(tool.Id, UserTool.Arguments, draft.Arguments);
         tx.Add(tool.Id, UserTool.RunVia, draft.RunVia);
+        var keeps = UserTool.CapturesGameFolderOutput.Contains(UserTool.Load(_conn.Db, tool.Id));
+        if (draft.KeepsOutput && !keeps) tx.Add(tool.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
+        else if (!draft.KeepsOutput && keeps) tx.Retract(tool.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
         await tx.Commit();
         Refresh();
     }

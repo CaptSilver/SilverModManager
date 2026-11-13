@@ -31,6 +31,18 @@ public class ToolDefinitionTests
     }
 
     [Fact]
+    public void AdHocWithCaptureWritesIntoAGroupNamedAfterTheTool()
+    {
+        var kept = ToolDefinition.AdHoc(GameId.From("Tests.Game"), "Foo", "foo.exe", capturesOutput: true);
+        var plain = ToolDefinition.AdHoc(GameId.From("Tests.Game"), "Foo", "foo.exe");
+
+        kept.Output.Should().Be(new ToolOutput.GameFolder("Foo output"));
+        kept.IgnoredOutput.Should().Equal("**/*.log", "**/*.log?");
+        plain.Output.Should().Be(ToolOutput.None);
+        plain.IgnoredOutput.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AppliesTo_IsAPredicateOverTheGame()
     {
         var wanted = Substitute.For<IGame>();

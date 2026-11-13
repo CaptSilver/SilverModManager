@@ -57,6 +57,9 @@
             </DockPanel>
             <TextBox x:Name="UserToolArgumentsBox" Watermark="Arguments" />
             <ComboBox x:Name="UserToolRunViaBox" />
+            <CheckBox x:Name="UserToolKeepsOutputBox"
+                      Content="Keep what it writes as its own mod"
+                      ToolTip.Tip="Files the program writes into the game folder become a group named after it, after each run. Off, they stay in Overrides." />
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                 <controls:StandardButton x:Name="SaveUserToolButton"
                                          Type="Primary"

@@ -5,6 +5,7 @@ using SilverModManager.DataModel;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Errors;
@@ -21,13 +22,15 @@ public sealed record ToolInstallResult(IReadOnlyList<string> Added, IReadOnlyLis
 /// </summary>
 public sealed class ToolInstaller(IConnection connection, KnownToolDetector detector)
 {
-    /// <exception cref="ToolRefusedException">The path does not exist, or a folder holds no known tool.</exception>
-    public async Task<ToolInstallResult> Add(Loadout.ReadOnly loadout, AbsolutePath path)
+    /// <param name="keepOutput">Keep what a plain program writes into the game folder as its own group.</param>
+    /// <exception cref="ToolRefusedException">The path does not exist, a folder holds no known tool, or <paramref name="keepOutput"/> is asked for a folder or a program the catalogue knows.</exception>
+    public async Task<ToolInstallResult> Add(Loadout.ReadOnly loadout, AbsolutePath path, bool keepOutput = false)
     {
         var game = loadout.InstallationInstance.GetGame();
         IReadOnlyList<(string Name, ToolId? Id, AbsolutePath Exe)> found;
         if (path.DirectoryExists())
         {
+            if (keepOutput) throw KeepOutputRefusal();
             found = detector.Scan(game, path).Select(d => (d.Definition.DisplayName, d.Definition.Id, d.Installed.Exe)).ToArray();
             if (found.Count == 0)
                 throw new ToolRefusedException($"There is no known tool in {MarkdownText.Code(path)}. Point at the program itself to add it as it is.");
@@ -35,6 +38,7 @@ public sealed class ToolInstaller(IConnection connection, KnownToolDetector dete
         else if (path.FileExists)
         {
             var matches = detector.Match(game, path);
+            if (keepOutput && matches.Count > 0) throw KeepOutputRefusal();
             found = matches.Count > 0
                 ? matches.Select(d => (d.Definition.DisplayName, d.Definition.Id, d.Installed.Exe)).ToArray()
                 : [(System.IO.Path.GetFileNameWithoutExtension(path.FileName), (ToolId?)null, path)];
@@ -68,12 +72,16 @@ public sealed class ToolInstaller(IConnection connection, KnownToolDetector dete
                 RunVia = ToolRunVia.Auto,
             };
             if (id is { } toolId) tx.Add(row.Id, UserTool.ToolId, toolId.Value);
+            else if (keepOutput) tx.Add(row.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
             added.Add(name);
         }
 
         if (added.Count > 0) await tx.Commit();
         return new ToolInstallResult(added, already);
     }
+
+    private static ToolRefusedException KeepOutputRefusal() =>
+        new("Keeping a program's output applies to a single program the catalogue does not know. The catalogue's tools already keep the output they are known to write.");
 
     /// <summary>
     /// Gives every tool of the loadout's installation that has no catalogue id one when the catalogue knows its exe, in one

@@ -1,3 +1,4 @@
+using DynamicData.Kernel;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SilverModManager.Abstractions.Games.Tools;
@@ -220,9 +221,10 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             var row = new DockPanel();
             DockPanel.SetDock(buttons, Dock.Right);
             row.Children.Add(buttons);
+            var writesInto = UserTool.CapturesGameFolderOutput.Contains(tool) ? $"\nWrites into: {tool.OutputGroupName.ValueOrDefault() ?? $"{tool.Name} output"}" : "";
             row.Children.Add(new TextBlock
             {
-                Text = $"{tool.Name} ({tool.RunVia}): {tool.Exe}",
+                Text = $"{tool.Name} ({tool.RunVia}): {tool.Exe}{writesInto}",
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             });
@@ -237,6 +239,7 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         UserToolExeBox.Text = tool.Exe;
         UserToolArgumentsBox.Text = tool.Arguments;
         UserToolRunViaBox.SelectedItem = tool.RunVia;
+        UserToolKeepsOutputBox.IsChecked = UserTool.CapturesGameFolderOutput.Contains(tool);
         SaveUserToolButton.Text = "Save changes";
         CancelUserToolEditButton.IsVisible = true;
     }
@@ -248,6 +251,7 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         UserToolExeBox.Text = "";
         UserToolArgumentsBox.Text = "";
         UserToolRunViaBox.SelectedItem = ToolRunVia.Auto;
+        UserToolKeepsOutputBox.IsChecked = false;
         SaveUserToolButton.Text = "Add program";
         CancelUserToolEditButton.IsVisible = false;
     }
@@ -267,7 +271,8 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             UserToolNameBox.Text ?? "",
             UserToolExeBox.Text?.Trim() ?? "",
             UserToolArgumentsBox.Text ?? "",
-            UserToolRunViaBox.SelectedItem is ToolRunVia via ? via : ToolRunVia.Auto);
+            UserToolRunViaBox.SelectedItem is ToolRunVia via ? via : ToolRunVia.Auto,
+            UserToolKeepsOutputBox.IsChecked == true);
 
         var editing = _editing;
         await Guarded(async () =>

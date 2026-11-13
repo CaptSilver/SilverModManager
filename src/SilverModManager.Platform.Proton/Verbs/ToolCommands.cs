@@ -20,13 +20,13 @@ public sealed class ToolCommands(ToolInstaller installer, IToolManager tools, To
 {
     public const int FailureExitCode = 1;
 
-    public Task<int> AddAsync(IRenderer renderer, Loadout.ReadOnly loadout, string path)
+    public Task<int> AddAsync(IRenderer renderer, Loadout.ReadOnly loadout, string path, bool keepOutput = false)
         => Guarded(renderer, "Adding the tool", async () =>
         {
             if (System.IO.Path.IsPathRooted(path) is false)
                 throw new ToolRefusedException($"{MarkdownText.Code(path)} is not an absolute path. Give the full path of a tool's folder or program.");
 
-            var result = await installer.Add(loadout, FileSystem.Shared.FromUnsanitizedFullPath(path));
+            var result = await installer.Add(loadout, FileSystem.Shared.FromUnsanitizedFullPath(path), keepOutput);
             foreach (var name in result.Added) await renderer.TextLine($"Added {name}.");
             foreach (var name in result.AlreadyAdded) await renderer.TextLine($"{name} is already added.");
         });

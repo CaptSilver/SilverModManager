@@ -21,7 +21,7 @@ public sealed class UserToolProvider(IConnection connection, ModdingToolFactory 
             if (tool.IsCatalogueTool()) continue;
 
             var exe = FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe);
-            var definition = ToolDefinition.AdHoc(gameId, tool.Name, exe.FileName, tool.RunVia);
+            var definition = ToolDefinition.AdHoc(gameId, tool.Name, exe.FileName, tool.RunVia, tool.KeepsOutput());
             yield return factory.Create(definition, tool.ToInstalledTool(exe), gameId);
         }
     }

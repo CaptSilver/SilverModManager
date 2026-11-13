@@ -57,10 +57,11 @@ public sealed record ToolDefinition
     public IReadOnlyList<string> IgnoredOutput { get; init; } = [];
 
     /// <summary>
-    /// A program the user picked by hand: no catalogue id, listed for one game only, no output captured. Editors
-    /// exit non-zero for ordinary reasons, so any exit is fine.
+    /// A program the user picked by hand: no catalogue id, listed for one game only. Editors exit non-zero for
+    /// ordinary reasons, so any exit is fine. Its output is not captured unless <paramref name="capturesOutput"/> is set,
+    /// which keeps what it writes into the game folder as the group "<paramref name="displayName"/> output", logs excepted.
     /// </summary>
-    public static ToolDefinition AdHoc(GameId gameId, string displayName, string exeFileName, ToolRunVia runVia = ToolRunVia.Auto) => new()
+    public static ToolDefinition AdHoc(GameId gameId, string displayName, string exeFileName, ToolRunVia runVia = ToolRunVia.Auto, bool capturesOutput = false) => new()
     {
         DisplayName = displayName,
         AppliesTo = game => game.GameId == gameId,
@@ -68,5 +69,7 @@ public sealed record ToolDefinition
         Arguments = ArgumentTemplate.Empty,
         RunVia = runVia,
         ExitCodes = ExitCodePolicy.AnyExitIsFine,
+        Output = capturesOutput ? new ToolOutput.GameFolder($"{displayName} output") : ToolOutput.None,
+        IgnoredOutput = capturesOutput ? ["**/*.log", "**/*.log?"] : [],
     };
 }

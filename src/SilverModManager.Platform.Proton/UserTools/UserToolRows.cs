@@ -17,5 +17,8 @@ internal static class UserToolRows
             row.RunVia is ToolRunVia.Auto ? null : row.RunVia,
             row.OutputGroupName.ValueOrDefault());
 
+    /// <summary>Whether the user asked for what a hand-added program writes into the game folder to be kept as its own group.</summary>
+    public static bool KeepsOutput(this UserTool.ReadOnly row) => UserTool.CapturesGameFolderOutput.Contains(row);
+
     public static bool IsCatalogueTool(this UserTool.ReadOnly row) => row.ToolId.HasValue;
 }

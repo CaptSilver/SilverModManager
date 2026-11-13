@@ -125,6 +125,24 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
     }
 
     [Fact]
+    public async Task AnAdHocToolsWritesMoveIntoItsGroup()
+    {
+        var loadout = await CreateLoadout();
+        var definition = ToolDefinition.AdHoc(loadout.Game.GameId, "Foo", "foo.exe", capturesOutput: true);
+        var log = new GamePath(LocationId.Game, "Data/foo.log");
+
+        var tool = new WritingTool(loadout.Game.GameId, definition.Output, definition.IgnoredOutput, l => { Write(l, B, "mesh"); Write(l, log, "log"); });
+        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+        await manager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
+
+        loadout = Refresh(loadout);
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup()
+            .Single(g => g.AsLoadoutItem().Name == "Foo output")
+            .Children.OfTypeLoadoutItemWithTargetPath().Select(c => (GamePath)c.TargetPath).Should().Equal(B);
+        OverridesPaths(loadout).Should().Contain(log, "logs are not the tool's output");
+    }
+
+    [Fact]
     public async Task OnlyGameLocationRowsMove()
     {
         var loadout = await CreateLoadout();

@@ -126,4 +126,50 @@ public class ToolInstallerTests(ITestOutputHelper helper) : AToolFlowTest<ToolIn
         rows.Single(r => r.Name == "MyPatcher").ToolId.HasValue.Should().BeFalse();
         (await Installer().BackfillKnownTools(loadout)).Should().Be(0);
     }
+
+    [Fact]
+    public async Task AddToolWithKeepOutputMarksThePlainProgramOnly()
+    {
+        var loadout = await CreateLoadout();
+        var folder = Folder("MyPatcher.exe");
+
+        await Installer().Add(loadout, folder / "MyPatcher.exe", keepOutput: true);
+
+        UserTool.CapturesGameFolderOutput.Contains(Rows(loadout).Single()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddToolWithoutKeepOutputLeavesTheMarkerOff()
+    {
+        var loadout = await CreateLoadout();
+        var folder = Folder("MyPatcher.exe");
+
+        await Installer().Add(loadout, folder / "MyPatcher.exe");
+
+        UserTool.CapturesGameFolderOutput.Contains(Rows(loadout).Single()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task KeepOutputForAProgramTheCatalogueKnowsIsRefusedAndSavesNothing()
+    {
+        var loadout = await CreateLoadout();
+        var folder = Folder("DynDOLOD.exe");
+
+        var act = () => Installer().Add(loadout, folder / "DynDOLOD.exe", keepOutput: true);
+
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message.Should().Contain("catalogue");
+        Rows(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task KeepOutputForAFolderIsRefusedAndSavesNothing()
+    {
+        var loadout = await CreateLoadout();
+        var folder = Folder("DynDOLOD.exe");
+
+        var act = () => Installer().Add(loadout, folder, keepOutput: true);
+
+        await act.Should().ThrowAsync<ToolRefusedException>();
+        Rows(loadout).Should().BeEmpty();
+    }
 }

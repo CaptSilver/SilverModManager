@@ -55,6 +55,32 @@ public class ToolCommandsTests(ITestOutputHelper helper) : AToolFlowTest<ToolCom
             .Returns(call => Task.FromResult(new ToolRunOutcome(call.ArgAt<Loadout.ReadOnly>(1), group, exit, captured)));
 
     [Fact]
+    public async Task AddToolWithKeepOutputSavesThePlainProgramAsKeepingWhatItWrites()
+    {
+        var loadout = await CreateLoadout();
+        var folder = TemporaryFileManager.CreateFolder("tools").Path;
+        File.WriteAllText((folder / "MyPatcher.exe").GetFullPath(), "exe");
+
+        var exit = await Commands(TexGen).AddAsync(_out, loadout, (folder / "MyPatcher.exe").GetFullPath(), keepOutput: true);
+
+        exit.Should().Be(0);
+        UserTool.CapturesGameFolderOutput.Contains(UserTool.FindByInstallation(Connection.Db, loadout.InstallationId).Single()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddToolWithKeepOutputForAKnownToolIsRefusedWithAPlainLine()
+    {
+        var loadout = await CreateLoadout();
+        var folder = TemporaryFileManager.CreateFolder("tools").Path;
+        File.WriteAllText((folder / "TexGenx64.exe").GetFullPath(), "exe");
+
+        var exit = await Commands(TexGen).AddAsync(_out, loadout, (folder / "TexGenx64.exe").GetFullPath(), keepOutput: true);
+
+        exit.Should().Be(1);
+        _out.All.Should().Contain("catalogue");
+    }
+
+    [Fact]
     public async Task AddToolNamesEachToolItSavedAndExitsZero()
     {
         var loadout = await CreateLoadout();

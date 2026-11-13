@@ -230,6 +230,26 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task TheKeepOutputSwitchWritesTheMarkerAndShowsTheGroup()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.AddUserTool(new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto, KeepsOutput: true));
+        await vm.AddUserTool(new UserToolDraft("Plain", TempExe("Plain.exe"), "", ToolRunVia.Auto));
+
+        UserTool.CapturesGameFolderOutput.Contains(vm.UserTools.Single(t => t.Name == "Patcher")).Should().BeTrue();
+        UserTool.CapturesGameFolderOutput.Contains(vm.UserTools.Single(t => t.Name == "Plain")).Should().BeFalse();
+
+        await vm.UpdateUserTool(vm.UserTools.Single(t => t.Name == "Patcher"), new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto, KeepsOutput: false));
+        await vm.UpdateUserTool(vm.UserTools.Single(t => t.Name == "Plain"), new UserToolDraft("Plain", TempExe("Plain.exe"), "", ToolRunVia.Auto, KeepsOutput: true));
+
+        UserTool.CapturesGameFolderOutput.Contains(vm.UserTools.Single(t => t.Name == "Patcher")).Should().BeFalse("switching it off retracts the marker");
+        UserTool.CapturesGameFolderOutput.Contains(vm.UserTools.Single(t => t.Name == "Plain")).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task LoadingThePageGivesARowTheCatalogueKnowsItsToolId()
     {
         var loadout = await CreateLoadout();

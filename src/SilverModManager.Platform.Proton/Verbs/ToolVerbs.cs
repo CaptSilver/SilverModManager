@@ -24,8 +24,9 @@ internal static class ToolRunVerbs
         [Injected] IRenderer renderer,
         [Injected] ToolCommands command,
         [Option("l", "loadout", "The loadout whose game gets the tool")] Loadout.ReadOnly loadout,
-        [Option("p", "path", "Absolute path of the tool's folder or program")] string path)
-        => command.AddAsync(renderer, loadout, path);
+        [Option("p", "path", "Absolute path of the tool's folder or program")] string path,
+        [Option("k", "keep-output", "Keep what the program writes into the game folder as its own mod; only for a program the catalogue does not know", true)] bool keepOutput)
+        => command.AddAsync(renderer, loadout, path, keepOutput);
 
     [Verb("run-tool", "Runs an added tool against a loadout and waits for it to finish")]
     private static Task<int> RunTool(
