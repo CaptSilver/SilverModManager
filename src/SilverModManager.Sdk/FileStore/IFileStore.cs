@@ -18,6 +18,21 @@ public interface IFileStore
     public ValueTask<bool> HaveFile(FileIdentity identity);
 
     /// <summary>
+    /// The length of the stored file in bytes, or null when the store holds no copy of it.
+    /// </summary>
+    /// <param name="identity">An xxHash3 identity; the store is keyed by it. Any other kind throws <see cref="InvalidOperationException"/>.</param>
+    /// <remarks>
+    /// The default opens the file and asks the stream; a store that keeps the length in its index answers without
+    /// reading.
+    /// </remarks>
+    async ValueTask<Size?> SizeOf(FileIdentity identity)
+    {
+        if (!await HaveFile(identity)) return null;
+        await using var stream = await GetFileStream(identity);
+        return Size.FromLong(stream.Length);
+    }
+
+    /// <summary>
     /// Backup the given set of files.
     ///
     /// If the size or hash do not match during the

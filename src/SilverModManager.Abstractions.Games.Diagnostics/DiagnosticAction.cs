@@ -171,4 +171,16 @@ public static class DiagnosticActions
             throw new ArgumentException("The action names no file and group to remove", nameof(arguments));
         return (new GamePath(LocationId.From(arguments[0]), arguments[1]), LoadoutItemGroupId.From(EntityId.From(group)));
     }
+
+    /// <summary>
+    /// Id of the action that removes the game-file backups no loadout needs.
+    /// </summary>
+    public const string CleanGameFileBackupsId = "clean-game-file-backups";
+
+    /// <summary>
+    /// Removes the backups of the game's own files that no loadout needs to put the game folder back. The handler
+    /// asks first and names what goes.
+    /// </summary>
+    public static DiagnosticAction CleanGameFileBackups()
+        => new(CleanGameFileBackupsId, "Clean up backups", [], "Only backups no loadout needs are removed.");
 }

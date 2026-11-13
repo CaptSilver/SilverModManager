@@ -220,6 +220,15 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
     }
 
     /// <inheritdoc />
+    public ValueTask<Size?> SizeOf(FileIdentity identity)
+    {
+        var key = identity.XxHash3();
+        if (!_index.TryGetArchiveOf(key, out var archive) || !archive.Entries.TryGetValue(key, out var entry))
+            return ValueTask.FromResult<Size?>(null);
+        return ValueTask.FromResult<Size?>(Size.From(entry.DecompressedSize));
+    }
+
+    /// <inheritdoc />
     public async Task BackupFiles(IEnumerable<ArchivedFileEntry> enumerable, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
     {
         // NOTE(AL12rs): We take a read lock here to prevent write access to the archives being read

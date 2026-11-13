@@ -145,6 +145,8 @@ public static class Services
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IForeignDeploymentSource, VortexDeploymentSource>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MissingUnbackedFileEmitter>());
+        coll.TryAddSingleton<GameBackupSpace>();
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, BackupSpaceEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, CaseVariantFolderEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ModOrderDroppedEmitter>());
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnshareableModEmitter>());
