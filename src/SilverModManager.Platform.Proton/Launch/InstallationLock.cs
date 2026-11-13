@@ -23,6 +23,9 @@ public sealed partial class InstallationLock : IDisposable
     /// <summary>The state file key holding the game's required Wine DLL overrides.</summary>
     public const string WineDllOverridesKey = "WineDllOverrides";
 
+    /// <summary>The state file key holding the variables the loadout adds to the launch, as space-separated <c>KEY=value</c> words.</summary>
+    public const string LaunchEnvironmentKey = "LaunchEnvironment";
+
     private static readonly TimeSpan DefaultRetryPause = TimeSpan.FromMilliseconds(100);
     private const int MaxRenameAttempts = 5;
 
@@ -106,25 +109,51 @@ public sealed partial class InstallationLock : IDisposable
     /// The exe and arguments a joining wrapper should start, or null when the window leaves the command alone.
     /// Like the overrides, written on every call.
     /// </param>
-    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides, RecordedLaunch? recordedLaunch = null) => Rewrite(values =>
+    /// <param name="launchEnvironment">
+    /// Variables the loadout adds to the launch unless it already has them, or null for none. Written on every call too;
+    /// the key is left out when there are none, so a launch without any writes the file it always did.
+    /// </param>
+    /// <exception cref="ArgumentException">A key or value would not read back as the same word.</exception>
+    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides, RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
     {
-        values["pid"] = pid.ToString(CultureInfo.InvariantCulture);
-        values["loadout"] = SingleLine(loadout);
-        values["phase"] = phase.ToString().ToLowerInvariant();
-        values[WineDllOverridesKey] = SingleLine(wineDllOverrides);
-        if (recordedLaunch is null)
+        var environment = SerialiseEnvironment(launchEnvironment);
+        Rewrite(values =>
         {
-            values.Remove(RecordedLaunch.GameRootKey);
-            values.Remove(RecordedLaunch.ExeKey);
-            values.Remove(RecordedLaunch.ExtraArgsKey);
-        }
-        else
+            values["pid"] = pid.ToString(CultureInfo.InvariantCulture);
+            values["loadout"] = SingleLine(loadout);
+            values["phase"] = phase.ToString().ToLowerInvariant();
+            values[WineDllOverridesKey] = SingleLine(wineDllOverrides);
+            if (recordedLaunch is null)
+            {
+                values.Remove(RecordedLaunch.GameRootKey);
+                values.Remove(RecordedLaunch.ExeKey);
+                values.Remove(RecordedLaunch.ExtraArgsKey);
+            }
+            else
+            {
+                values[RecordedLaunch.GameRootKey] = SingleLine(recordedLaunch.GameRoot);
+                values[RecordedLaunch.ExeKey] = SingleLine(recordedLaunch.Exe);
+                values[RecordedLaunch.ExtraArgsKey] = recordedLaunch.SerialiseArgs();
+            }
+
+            if (environment.Length == 0) values.Remove(LaunchEnvironmentKey);
+            else values[LaunchEnvironmentKey] = environment;
+        });
+    }
+
+    // Space-separated KEY=value words, so every word must stay one word and its key must end at the first '='.
+    private static string SerialiseEnvironment(IReadOnlyList<KeyValuePair<string, string>>? environment)
+    {
+        if (environment is not { Count: > 0 }) return "";
+
+        foreach (var (key, value) in environment)
         {
-            values[RecordedLaunch.GameRootKey] = SingleLine(recordedLaunch.GameRoot);
-            values[RecordedLaunch.ExeKey] = SingleLine(recordedLaunch.Exe);
-            values[RecordedLaunch.ExtraArgsKey] = recordedLaunch.SerialiseArgs();
+            if (key.Length == 0 || key.Contains('=') || key.Any(char.IsWhiteSpace) || value.Any(char.IsWhiteSpace))
+                throw new ArgumentException($"Launch environment entry '{key}={value}' can't be recorded as one KEY=value word");
         }
-    });
+
+        return string.Join(' ', environment.Select(pair => $"{pair.Key}={pair.Value}"));
+    }
 
     /// <summary>
     /// Adds or replaces one key in the state file. Callable by a process that doesn't hold the lock (the Steam

@@ -57,15 +57,15 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
     /// exits, discarding the edit), when the file is missing or unreadable, and when the existing line cannot be
     /// edited safely.
     /// </summary>
-    public Result SetLauncherSpan(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
+    public Result SetLauncherSpan(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, IReadOnlyList<KeyValuePair<string, string>>? environment = null)
     {
         var location = OpenLaunchOptions(localConfig, appId);
         if (location.IsRefused) return Refuse(location.Refusal);
         var (root, app, options) = (location.Root, location.App, location.Options);
         var path = localConfig.ToString();
 
-        var edit = SteamLaunchOptionLine.Rewrite(options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments);
-        if (edit.IsRefused) return RefuseWithReplacement(edit.Refusal, options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments);
+        var edit = SteamLaunchOptionLine.Rewrite(options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments, environment);
+        if (edit.IsRefused) return RefuseWithReplacement(edit.Refusal, options?.Value ?? "", shimPath, loadoutName, overrides, launcherSkipArguments, environment);
 
         if (options is null) app.Children.Add(options = new KeyValue("LaunchOptions"));
         options.Value = edit.Line;
@@ -85,7 +85,7 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
     /// our own data before Steam's folder changes at all; a failure at either step is a refusal and leaves the
     /// config as it was.
     /// </summary>
-    public Result ReplaceLaunchOptions(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, string expectedOldLine, AbsolutePath record)
+    public Result ReplaceLaunchOptions(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, string expectedOldLine, AbsolutePath record, IReadOnlyList<KeyValuePair<string, string>>? environment = null)
     {
         var location = OpenLaunchOptions(localConfig, appId);
         if (location.IsRefused) return Refuse(location.Refusal);
@@ -104,7 +104,7 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
             return Refuse($"Steam's launch options for {appId} are not another manager's line; use the ordinary write.");
         }
 
-        var edit = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments);
+        var edit = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments, environment);
         if (edit.IsRefused) return Refuse(edit.Refusal);
 
         try
@@ -191,11 +191,11 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
         return Refuse($"Steam's {localConfig} did not read back the launch options that were written, so the original was restored.");
     }
 
-    private static Result RefuseWithReplacement(string refusal, string current, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
+    private static Result RefuseWithReplacement(string refusal, string current, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, IReadOnlyList<KeyValuePair<string, string>>? environment)
     {
         if (SteamLaunchOptionLine.FindOtherManager(current) is not { } manager) return Refuse(refusal);
 
-        var replace = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments);
+        var replace = SteamLaunchOptionLine.Replace(current, shimPath, loadoutName, overrides, launcherSkipArguments, environment);
         return replace.IsRefused ? Refuse(refusal) : new Result(null, refusal, null, new Replacement(manager.Name, current, replace.Line));
     }
 

@@ -44,7 +44,7 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
 
         try
         {
-            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, LaunchSession.WineOverridesOf(context), LaunchSession.RecordedLaunchOf(context));
+            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, LaunchSession.WineOverridesOf(context), LaunchSession.RecordedLaunchOf(context), context.LaunchEnvironment);
         }
         catch (Exception e)
         {

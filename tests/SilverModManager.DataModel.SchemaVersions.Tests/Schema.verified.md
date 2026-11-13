@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xE22143DDD0C28936
-   - Total attributes: 418
+   - Fingerprint: 0x3D734667DCDE9A37
+   - Total attributes: 419
    - Total namespaces: 113
    
 ## Attributes
@@ -245,6 +245,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.GameMetadata/RespellPending                                     | UInt8                   | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/Store                                              | Ascii                   | False   | False | False     | 
 | SilverModManager.Loadouts.LibraryLinkedLoadoutItem/LibraryItem                            | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.Loadout/EnableHdr                                               | UInt8                   | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/GameVersion                                             | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/Installation                                            | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/KeepSavesWithLoadout                                    | UInt8                   | False   | False | False     | 

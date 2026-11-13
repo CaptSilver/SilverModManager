@@ -5263,6 +5263,24 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Enable HDR.
+        /// </summary>
+        public static string LoadoutGameSettings_Hdr_Label {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_Hdr_Label", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Adds the Proton variables for HDR to this game's launch. Needs an HDR display, HDR turned on in your desktop session, and Proton-GE..
+        /// </summary>
+        public static string LoadoutGameSettings_Hdr_ToolTip {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_Hdr_ToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Copy your current save into this loadout's slot?.
         /// </summary>
         public static string LoadoutGameSettings_AdoptSave_Title {

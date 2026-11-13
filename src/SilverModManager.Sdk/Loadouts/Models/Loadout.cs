@@ -88,6 +88,15 @@ public partial class Loadout : IModelDefinition
         DefaultValue = true,
     };
 
+    /// <summary>
+    /// Whether the game's Proton launch gets the environment that turns HDR on. Off for a loadout that never set it.
+    /// </summary>
+    public static readonly BooleanAttribute EnableHdr = new(Namespace, nameof(EnableHdr))
+    {
+        IsOptional = true,
+        DefaultValue = false,
+    };
+
     public partial struct ReadOnly
     {
         public IGameData Game => TryGetGame(out var game)

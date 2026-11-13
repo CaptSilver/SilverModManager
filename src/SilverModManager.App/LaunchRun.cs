@@ -41,7 +41,7 @@ public static class LaunchRun
 
         var session = services.GetRequiredService<LaunchSession>();
         var wineDllOverrides = WineDllOverrideRequirements.For(installation.Game, loadout);
-        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides);
+        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides, LaunchEnvironment: HdrLaunchEnvironment.For(loadout));
 
         // A dry run takes no lock, so there is no session for the slot to end.
         if (args.DryRun) return session.DryRun(context, () => PlanFor(services, loadout, installation, args.Command, wineDllOverrides), Console.Out).ExitCode;
@@ -114,7 +114,7 @@ public static class LaunchRun
     public static async Task<ForwardedLaunchExit> RunForwardedAsync(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, ForwardedLaunch launch, CancellationToken stop)
     {
         var wineDllOverrides = WineDllOverrideRequirements.For(installation.Game, loadout);
-        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides);
+        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides, LaunchEnvironment: HdrLaunchEnvironment.For(loadout));
 
         var session = services.GetRequiredService<LaunchSession>();
         try
@@ -149,12 +149,13 @@ public static class LaunchRun
         var current = loadout.Rebase();
         var tools = services.GetRequiredService<IToolManager>();
         var launchRoots = services.GetRequiredService<DeploymentLaunchRoots>().For(installation, current.InstallationId);
+        var hdr = HdrLaunchEnvironment.For(current);
         var runTool = tools.GetTools(current).OfType<IRunGameTool>().FirstOrDefault();
         // The requirement is the game's, not the tool's, so it goes on the spec with or without a run tool.
-        if (runTool is null) return new LaunchPlan(new GameProcessSpec(command, FilesystemRoots: launchRoots, WineDllOverrides: wineDllOverrides));
+        if (runTool is null) return new LaunchPlan(new GameProcessSpec(command, FilesystemRoots: launchRoots, WineDllOverrides: wineDllOverrides, DefaultEnvironment: hdr));
 
         var spec = runTool.GetLaunchSpec(current, CancellationToken.None).AsTask().GetAwaiter().GetResult();
         var primaryExe = installation.Locations.ToAbsolutePath(installation.Game.GetPrimaryFile(installation));
-        return LaunchPlanner.Compose(command, installation.Locations[LocationId.Game].Path, primaryExe, spec, launchRoots, wineDllOverrides);
+        return LaunchPlanner.Compose(command, installation.Locations[LocationId.Game].Path, primaryExe, spec, launchRoots, wineDllOverrides, hdr);
     }
 }

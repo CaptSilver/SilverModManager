@@ -21,14 +21,15 @@ public static class LaunchPlanner
     /// <param name="spec">What the run tool wants started.</param>
     /// <param name="filesystemRoots">Host folders the deployment backends need visible inside the Steam container.</param>
     /// <param name="wineDllOverrides">The overrides the game needs, set in the environment the command starts with.</param>
-    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots, IReadOnlyList<WineDllOverride> wineDllOverrides)
+    /// <param name="launchEnvironment">Variables the loadout asks for, set unless the launch already has them.</param>
+    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots, IReadOnlyList<WineDllOverride> wineDllOverrides, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
     {
         if (spec.ReplacesCommand)
         {
             // The run tool owns the whole command (a launcher that builds its own Proton chain), so Steam's chain is
             // kept only for the app id, which the launcher cannot otherwise know.
             var replaced = new ExeSubstitution.Result([spec.Exe.GetFullPath(), ..spec.ExtraArgs], null, ExeSubstitution.ExtractAppId(command));
-            return new LaunchPlan(new GameProcessSpec(replaced.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, replaced);
+            return new LaunchPlan(new GameProcessSpec(replaced.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides, DefaultEnvironment: launchEnvironment), spec, replaced);
         }
 
         // Arguments the game needs count like a loader: a command with no exe to put them behind would start the game without them.
@@ -36,6 +37,6 @@ public static class LaunchPlanner
         var substitution = ExeSubstitution.Apply(command, gameRoot, spec, loaderResolved);
         if (substitution.IsRefused) throw new InvalidOperationException(substitution.Refusal);
 
-        return new LaunchPlan(new GameProcessSpec(substitution.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, substitution);
+        return new LaunchPlan(new GameProcessSpec(substitution.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides, DefaultEnvironment: launchEnvironment), spec, substitution);
     }
 }

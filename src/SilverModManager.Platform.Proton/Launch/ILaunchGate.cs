@@ -27,7 +27,11 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// Whether this process watched the game run and exit. False when a finish is carried out for a launch that ended
 /// without it, where a gate cannot take what it finds in the game folder as the game's own doing.
 /// </param>
-public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null, Guid SessionId = default, bool EndSeen = true);
+/// <param name="LaunchEnvironment">
+/// Variables the loadout adds to the launch unless it already has them, such as the ones its HDR setting asks for.
+/// Like the overrides they go into the state file for a joining Steam wrapper. Null for none.
+/// </param>
+public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null, Guid SessionId = default, bool EndSeen = true, IReadOnlyList<KeyValuePair<string, string>>? LaunchEnvironment = null);
 
 /// <summary>
 /// A gate's reason for refusing a launch.

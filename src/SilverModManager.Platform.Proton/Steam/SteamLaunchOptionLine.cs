@@ -67,11 +67,11 @@ public static class SteamLaunchOptionLine
     /// Builds the launcher span for a shim and loadout, preceded by the assignment that sets the DLL overrides
     /// the game needs when there are any, and followed by the arguments that make the game skip its own launcher.
     /// </summary>
-    public static string Compose(string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
+    public static string Compose(string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, IReadOnlyList<KeyValuePair<string, string>>? environment = null)
     {
         var prefix = WithDllOverrides("", overrides);
         if (prefix.IsRefused) throw new ArgumentException(prefix.Refusal, nameof(overrides));
-        return Join(prefix.Line, Span(shimPath, loadoutName), WithLauncherSkip("", launcherSkipArguments));
+        return Join(WithEnvironment(prefix.Line ?? "", environment), Span(shimPath, loadoutName), WithLauncherSkip("", launcherSkipArguments));
     }
 
     private static string Span(string shimPath, string loadoutName)
@@ -93,7 +93,7 @@ public static class SteamLaunchOptionLine
     /// rewritten safely. The <paramref name="launcherSkipArguments"/> are added to the text after
     /// <c>%command%</c> unless it already has them.
     /// </summary>
-    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
+    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, IReadOnlyList<KeyValuePair<string, string>>? environment = null)
     {
         var scan = Scan(existingLine);
         var manager = FindOtherManager(existingLine);
@@ -115,7 +115,7 @@ public static class SteamLaunchOptionLine
         var prefix = WithDllOverrides(parsed.Prefix, overrides);
         if (prefix.IsRefused) return prefix;
 
-        return new Edit(Join(prefix.Line, Span(shimPath, loadoutName), WithLauncherSkip(parsed.Tail, launcherSkipArguments)), null);
+        return new Edit(Join(WithEnvironment(prefix.Line ?? "", environment), Span(shimPath, loadoutName), WithLauncherSkip(parsed.Tail, launcherSkipArguments)), null);
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ public static class SteamLaunchOptionLine
     /// commented it out. Unlike <see cref="Rewrite"/> this is only for a line the user has been shown and
     /// agreed to lose the manager from.
     /// </summary>
-    public static Edit Replace(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
+    public static Edit Replace(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, IReadOnlyList<KeyValuePair<string, string>>? environment = null)
     {
         if (FindOtherManager(existingLine) is null)
         {
@@ -175,7 +175,7 @@ public static class SteamLaunchOptionLine
         if (prefix.IsRefused) return prefix;
 
         var tail = commentedOut ? "" : existingLine[end..].Trim();
-        var line = Join(prefix.Line, Compose(shimPath, loadoutName, [], []), WithLauncherSkip(tail, launcherSkipArguments));
+        var line = Join(WithEnvironment(prefix.Line ?? "", environment), Compose(shimPath, loadoutName, [], []), WithLauncherSkip(tail, launcherSkipArguments));
         return Refuse(Scan(line)) is { } refusal ? new Edit(null, refusal) : new Edit(line, null);
     }
 
@@ -232,6 +232,31 @@ public static class SteamLaunchOptionLine
         var before = prefix[..leadingAssignmentsEnd].Trim();
         var after = prefix[leadingAssignmentsEnd..].Trim();
         return new Edit(Join(before, Assignment(value), after), null);
+    }
+
+    /// <summary>
+    /// Adds a <c>KEY=value</c> assignment after the leading assignments for each variable the prefix does not
+    /// already set, so a value the user chose stays and rewriting a line that has them is a no-op. Values are
+    /// plain words, which the caller guarantees.
+    /// </summary>
+    private static string WithEnvironment(string prefix, IReadOnlyList<KeyValuePair<string, string>>? environment)
+    {
+        if (environment is not { Count: > 0 }) return prefix;
+
+        var words = new List<Word>();
+        Tokenize(prefix, words, []);
+
+        var missing = environment.Where(pair => !words.Any(w => EnvKey(w.Raw) == pair.Key)).Select(pair => $"{pair.Key}={pair.Value}").ToArray();
+        if (missing.Length == 0) return prefix;
+
+        var leadingAssignmentsEnd = 0;
+        foreach (var word in words)
+        {
+            if (EnvKey(word.Raw) is null) break;
+            leadingAssignmentsEnd = word.End;
+        }
+
+        return Join(prefix[..leadingAssignmentsEnd].Trim(), string.Join(' ', missing), prefix[leadingAssignmentsEnd..].Trim());
     }
 
     /// <summary>

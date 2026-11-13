@@ -150,6 +150,24 @@ public class DryRunTests : IDisposable
         _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Wine DLL overrides: none");
     }
 
+    [Fact]
+    public void ThePlanNamesTheLaunchEnvironment()
+    {
+        var plan = new LaunchPlan(new GameProcessSpec(["/usr/bin/true"], DefaultEnvironment: [new("PROTON_ENABLE_WAYLAND", "1"), new("PROTON_ENABLE_HDR", "1")]));
+
+        _session.DryRun(_context, () => plan, _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Launch environment: PROTON_ENABLE_WAYLAND=1 PROTON_ENABLE_HDR=1");
+    }
+
+    [Fact]
+    public void ThePlanSaysWhenThereIsNoLaunchEnvironment()
+    {
+        _session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Launch environment: none");
+    }
+
     [Theory]
     [InlineData(NexusCredentialKind.ApiKey, "--secrets-file /run/secrets.env", "Nexus credential: API key from --secrets-file /run/secrets.env")]
     [InlineData(NexusCredentialKind.ApiKey, "environment variable NEXUS_API_KEY", "Nexus credential: API key from environment variable NEXUS_API_KEY")]

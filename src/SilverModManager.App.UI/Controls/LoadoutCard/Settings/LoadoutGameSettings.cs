@@ -74,6 +74,8 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
             ToggleKeepSaves,
             this.WhenAnyValue(vm => vm.KeepSavesWithLoadout, vm => vm.CanKeepSaves, (keep, can) => keep || can));
         ToggleOwnsGameInisCommand = ReactiveCommand.CreateFromTask(ToggleOwnsGameInis);
+        EnableHdr = Loadout.EnableHdr.Get(loadout);
+        ToggleEnableHdrCommand = ReactiveCommand.CreateFromTask(ToggleEnableHdr);
     }
 
     /// <summary>
@@ -111,6 +113,9 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
 
     [Reactive] public partial bool OwnsGameInis { get; private set; }
 
+    /// <summary>Whether the game's Proton launch gets the environment for HDR.</summary>
+    [Reactive] public partial bool EnableHdr { get; private set; }
+
     /// <summary>Whether the user can turn "keep saves" on for this game and loadout.</summary>
     [Reactive] public partial bool CanKeepSaves { get; private set; }
 
@@ -123,6 +128,8 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
     public ReactiveCommand<Unit, Unit> ToggleKeepSavesCommand { get; }
 
     public ReactiveCommand<Unit, Unit> ToggleOwnsGameInisCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> ToggleEnableHdrCommand { get; }
 
     private (bool Can, string ToolTip) DescribeKeepSaves(Loadout.ReadOnly loadout)
     {
@@ -148,6 +155,13 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
         using var tx = _connection.BeginTransaction();
         tx.Add(_snapshot.Id, attribute, value);
         await tx.Commit();
+    }
+
+    private async Task ToggleEnableHdr()
+    {
+        var value = !EnableHdr;
+        await Write(Loadout.EnableHdr, value);
+        EnableHdr = value;
     }
 
     private async Task ToggleOwnsGameInis()

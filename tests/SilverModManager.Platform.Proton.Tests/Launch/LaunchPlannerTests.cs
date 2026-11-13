@@ -33,6 +33,20 @@ public class LaunchPlannerTests
     }
 
     [Fact]
+    public void TheLaunchEnvironmentIsDefaultsOnTheProcessInBothPlanShapes()
+    {
+        KeyValuePair<string, string>[] hdr = [new("PROTON_ENABLE_HDR", "1")];
+        var exe = $"{SkyrimRoot}/SkyrimSE.exe";
+
+        var substituted = LaunchPlanner.Compose(SteamCommand(exe), Path_(SkyrimRoot), Path_(exe), new LaunchSpec(Path_(exe), []), [], [], hdr);
+        var replaced = LaunchPlanner.Compose(SteamCommand(exe), Path_(SkyrimRoot), Path_(exe), new LaunchSpec(Path_(exe), []) { ReplacesCommand = true }, [], [], hdr);
+
+        substituted.Process.DefaultEnvironment.Should().Equal(hdr);
+        replaced.Process.DefaultEnvironment.Should().Equal(hdr);
+        Compose(SteamCommand(exe), exe).Process.DefaultEnvironment.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
     public void ALoaderTakesTheLaunchersPlaceAndTheCommandIsStartedAsRewritten()
     {
         var plan = Compose(SteamCommand($"{SkyrimRoot}/SkyrimSELauncher.exe", "-windowed"), $"{SkyrimRoot}/skse64_loader.exe");

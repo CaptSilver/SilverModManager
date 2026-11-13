@@ -468,4 +468,30 @@ public class LoadoutGameSettingsTests(IServiceProvider provider) : AUiTest(provi
 
         settings.FindSaveLocations().Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Hdr_IsOffForALoadoutThatNeverSetIt()
+    {
+        var rig = new Rig(Provider);
+        var loadout = await SeedLoadout("Hdr Default");
+
+        rig.Settings(loadout).EnableHdr.Should().BeFalse();
+        Loadout.EnableHdr.Get(loadout).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Hdr_WritesTheFlagBothWays()
+    {
+        var rig = new Rig(Provider);
+        var loadout = await SeedLoadout("Hdr Toggle");
+        var settings = rig.Settings(loadout);
+
+        await settings.ToggleEnableHdrCommand.Execute();
+        settings.EnableHdr.Should().BeTrue();
+        Loadout.EnableHdr.Get(Reload(loadout)).Should().BeTrue();
+
+        await settings.ToggleEnableHdrCommand.Execute();
+        settings.EnableHdr.Should().BeFalse();
+        Loadout.EnableHdr.Get(Reload(loadout)).Should().BeFalse();
+    }
 }

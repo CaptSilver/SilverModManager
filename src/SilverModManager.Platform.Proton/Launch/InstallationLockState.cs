@@ -27,6 +27,17 @@ public sealed record InstallationLockState(
         WineParser.ParseEnvironmentVariable(Values.GetValueOrDefault(InstallationLock.WineDllOverridesKey, ""));
 
     /// <summary>
+    /// The variables the loadout adds to the launch unless it already has them. None for a file written without the
+    /// key, as a launch without any and older builds do.
+    /// </summary>
+    public IReadOnlyList<KeyValuePair<string, string>> LaunchEnvironment =>
+        Values.GetValueOrDefault(InstallationLock.LaunchEnvironmentKey, "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(word => word.Split('=', 2))
+            .Select(parts => new KeyValuePair<string, string>(parts[0], parts.Length > 1 ? parts[1] : ""))
+            .ToArray();
+
+    /// <summary>
     /// The exe and arguments the window wants the game started with. Null for a file written without them,
     /// as older builds did.
     /// </summary>

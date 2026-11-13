@@ -471,4 +471,30 @@ public class GameProcessTests : IDisposable
         environment.Should().NotContainKey("SILVERMM_SECRET_Y");
         environment.Should().Contain("SILVERMM_SECRET", "a").And.Contain("MY_SILVERMM_SECRET_X", "b").And.Contain("SILVERMM_OTHER", "c");
     }
+
+    [Fact]
+    public void DefaultEnvironmentIsAddedWhenTheVariableIsNotSetAnywhereElse()
+    {
+        var spec = new GameProcessSpec(["game.exe"], DefaultEnvironment: [new("PROTON_ENABLE_HDR", "1")]);
+
+        GameProcess.BuildEnvironment(new Dictionary<string, string>(), spec).Should().Contain("PROTON_ENABLE_HDR", "1");
+    }
+
+    [Fact]
+    public void DefaultEnvironmentLeavesAValueTheLaunchAlreadyHas()
+    {
+        var inherited = new Dictionary<string, string> { ["PROTON_ENABLE_HDR"] = "0" };
+        var spec = new GameProcessSpec(
+            ["game.exe"],
+            Environment: new Dictionary<string, string> { ["PROTON_ENABLE_WAYLAND"] = "0" },
+            DefaultEnvironment: [new("PROTON_ENABLE_HDR", "1"), new("PROTON_ENABLE_WAYLAND", "1")]);
+
+        GameProcess.BuildEnvironment(inherited, spec).Should().Contain("PROTON_ENABLE_HDR", "0").And.Contain("PROTON_ENABLE_WAYLAND", "0");
+    }
+
+    [Fact]
+    public void WithoutDefaultEnvironmentNoProtonVariableIsAdded()
+    {
+        GameProcess.BuildEnvironment(new Dictionary<string, string>(), new GameProcessSpec(["game.exe"])).Keys.Should().NotContain(k => k.StartsWith("PROTON_"));
+    }
 }

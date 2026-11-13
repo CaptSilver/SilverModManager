@@ -309,6 +309,28 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task TheStateFileCarriesTheContextsLaunchEnvironmentInEveryPhase()
+    {
+        var context = _context with { LaunchEnvironment = [new("PROTON_ENABLE_HDR", "1")] };
+        var seen = new List<(LaunchPhase Phase, string Environment)>();
+        void Record()
+        {
+            using var reader = new InstallationLock(LockPath);
+            var state = reader.ReadState()!;
+            seen.Add((state.Phase, string.Join(' ', state.LaunchEnvironment.Select(pair => $"{pair.Key}={pair.Value}"))));
+        }
+        _synchronizer.OnSync = Record;
+        _processes.OnStart = Record;
+
+        await NewSession().RunAsync(context, () => new GameProcessSpec(["game.exe"]));
+
+        seen.Should().Equal(
+            (LaunchPhase.Preparing, "PROTON_ENABLE_HDR=1"),
+            (LaunchPhase.Running, "PROTON_ENABLE_HDR=1"),
+            (LaunchPhase.Finishing, "PROTON_ENABLE_HDR=1"));
+    }
+
+    [Fact]
     public async Task IsRunning_IsTrueInEveryPhase_AndUntilReleaseIsCalled()
     {
         var gate = AddGate("a");

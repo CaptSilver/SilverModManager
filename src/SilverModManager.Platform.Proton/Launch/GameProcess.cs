@@ -20,6 +20,10 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// DLL overrides the game needs, merged into the inherited <c>WINEDLLOVERRIDES</c> so the user's own entries
 /// survive. Null or empty leaves the variable as it came.
 /// </param>
+/// <param name="DefaultEnvironment">
+/// Variables set only where neither the inherited environment nor <paramref name="Environment"/> already has them,
+/// so a value the user chose in the launch options is not overruled.
+/// </param>
 /// <param name="BaseEnvironment">
 /// The environment to inherit instead of this process's own, for a launch that runs here on behalf of another
 /// process (<c>run</c> handing Steam's variables to the window). Null inherits ours.
@@ -35,7 +39,8 @@ public sealed record GameProcessSpec(
     IReadOnlyList<string>? FilesystemRoots = null,
     IReadOnlyList<WineDllOverride>? WineDllOverrides = null,
     IReadOnlyDictionary<string, string>? BaseEnvironment = null,
-    IReadOnlySet<int>? ExcludedPids = null);
+    IReadOnlySet<int>? ExcludedPids = null,
+    IReadOnlyList<KeyValuePair<string, string>>? DefaultEnvironment = null);
 
 /// <summary>
 /// How a <see cref="GameProcess"/> ended.
@@ -191,6 +196,11 @@ public sealed partial class GameProcess : IGameProcess
         if (spec.Environment is not null)
         {
             foreach (var (key, value) in spec.Environment) result[key] = value;
+        }
+
+        if (spec.DefaultEnvironment is not null)
+        {
+            foreach (var (key, value) in spec.DefaultEnvironment) result.TryAdd(key, value);
         }
 
         if (spec.WineDllOverrides is { Count: > 0 } overrides)

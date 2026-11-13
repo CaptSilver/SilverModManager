@@ -64,7 +64,7 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
         var plan = LaunchPlanner.Compose(
             [], installation.Locations[LocationId.Game].Path,
             installation.Locations.ToAbsolutePath(game.GetPrimaryFile(installation)),
-            spec, FilesystemRootsOf(loadout), WineDllOverrideRequirements.For(installation.Game, loadout));
+            spec, FilesystemRootsOf(loadout), WineDllOverrideRequirements.For(installation.Game, loadout), HdrLaunchEnvironment.For(loadout));
 
         var processes = provider.GetRequiredService<IGameProcessFactory>();
         using var launch = provider.GetRequiredService<IGameLaunchSession>().BeginSession(loadout);

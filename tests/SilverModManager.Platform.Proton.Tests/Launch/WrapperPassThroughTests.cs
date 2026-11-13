@@ -21,10 +21,10 @@ public class WrapperPassThroughTests : IDisposable
 
     private string LockPath(string appId = "1091500") => InstallationLock.PathFor(_runtimeDir, "steam", appId);
 
-    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "", RecordedLaunch? recordedLaunch = null)
+    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "", RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
     {
         var holder = TestHost.StartHolder(LockPath(appId), seconds: 30);
-        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides, recordedLaunch);
+        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides, recordedLaunch, launchEnvironment);
         return holder;
     }
 
@@ -306,6 +306,38 @@ public class WrapperPassThroughTests : IDisposable
 
             exitCode.Should().Be(0);
             (await File.ReadAllTextAsync(File_("overrides"))).Should().Be("dxgi=n,b;winmm=n,b;version=n,b");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_SetsTheLaunchEnvironmentTheWindowRecorded()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, launchEnvironment: [new("PROTON_ENABLE_WAYLAND", "1"), new("PROTON_ENABLE_HDR", "1")]);
+        try
+        {
+            var exitCode = await TryRun(["sh", "-c", "printf '%s %s' \"${PROTON_ENABLE_WAYLAND-unset}\" \"${PROTON_ENABLE_HDR-unset}\" > \"$0\"", File_("env")]);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("env"))).Should().Be("1 1");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_KeepsAValueSteamAlreadyPassedOverTheRecordedLaunchEnvironment()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, launchEnvironment: [new("PROTON_ENABLE_HDR", "1")]);
+        try
+        {
+            var environment = new Dictionary<string, string>(BasicEnvironment) { ["PROTON_ENABLE_HDR"] = "0" };
+
+            var exitCode = await WrapperPassThrough.TryRunAsync(
+                ["sh", "-c", "printf '%s' \"$PROTON_ENABLE_HDR\" > \"$0\"", File_("env")],
+                SteamEnvironment(), GuiPid, NullLogger.Instance, environment);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("env"))).Should().Be("0");
         }
         finally { holder.Kill(); }
     }

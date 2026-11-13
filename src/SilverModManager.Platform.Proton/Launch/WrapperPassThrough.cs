@@ -55,9 +55,9 @@ public static class WrapperPassThrough
             return LaunchSession.FailureExitCode;
         }
 
-        // The wrapper has no database to ask which overrides the game needs; the window recorded them in the state file.
-        // The window waits on Steam for as long as the key is there, so it is only written once the game is up.
-        using var process = GameProcess.PassThrough(new GameProcessSpec(argv, WineDllOverrides: state.WineDllOverrides), baseEnvironment);
+        // The wrapper has no database to ask which overrides and variables the loadout needs; the window recorded them
+        // in the state file. The window waits on Steam for as long as the key is there, so it is only written once the game is up.
+        using var process = GameProcess.PassThrough(new GameProcessSpec(argv, WineDllOverrides: state.WineDllOverrides, DefaultEnvironment: state.LaunchEnvironment), baseEnvironment);
         try
         {
             launch.WriteWrapperKey(LaunchSession.WrapperKey, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));

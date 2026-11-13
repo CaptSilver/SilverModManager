@@ -254,6 +254,53 @@ public class InstallationLockTests : IDisposable
         File.WriteAllText(Path.ChangeExtension(path, ".state"), "pid=1234\nloadout=old\nphase=running\n");
 
         holder.ReadState()!.WineDllOverrides.Should().BeEmpty();
+        holder.ReadState()!.LaunchEnvironment.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteState_RecordsTheLaunchEnvironmentAndReadStateParsesIt()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "", launchEnvironment: [new("PROTON_ENABLE_WAYLAND", "1"), new("PROTON_ENABLE_HDR", "1")]);
+
+        var state = holder.ReadState()!;
+        state.Values["LaunchEnvironment"].Should().Be("PROTON_ENABLE_WAYLAND=1 PROTON_ENABLE_HDR=1");
+        state.LaunchEnvironment.Should().Equal(new KeyValuePair<string, string>("PROTON_ENABLE_WAYLAND", "1"), new KeyValuePair<string, string>("PROTON_ENABLE_HDR", "1"));
+    }
+
+    [Fact]
+    public void WriteState_ClearsTheLaunchEnvironmentOfAnEarlierLaunch()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "", launchEnvironment: [new("PROTON_ENABLE_HDR", "1")]);
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "");
+
+        var state = holder.ReadState()!;
+        state.Values.Should().NotContainKey("LaunchEnvironment");
+        state.LaunchEnvironment.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("", "1")]
+    [InlineData("A B", "1")]
+    [InlineData("A=B", "1")]
+    [InlineData("A", "two words")]
+    [InlineData("A", "line\nbreak")]
+    public void WriteState_RefusesALaunchEnvironmentEntryItCouldNotReadBack(string key, string value)
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+
+        var write = () => holder.WriteState(1234, "loadout", LaunchPhase.Running, "", launchEnvironment: [new(key, value)]);
+
+        write.Should().Throw<ArgumentException>();
     }
 
     [Fact]

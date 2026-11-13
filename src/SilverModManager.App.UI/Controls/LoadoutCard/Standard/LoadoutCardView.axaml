@@ -89,6 +89,9 @@
                             <CheckBox x:Name="OwnInisBox"
                                       Content="{x:Static resources:Language.LoadoutGameSettings_OwnInis_Label}"
                                       ToolTip.Tip="{x:Static resources:Language.LoadoutGameSettings_OwnInis_ToolTip}" />
+                            <CheckBox x:Name="HdrBox"
+                                      Content="{x:Static resources:Language.LoadoutGameSettings_Hdr_Label}"
+                                      ToolTip.Tip="{x:Static resources:Language.LoadoutGameSettings_Hdr_ToolTip}" />
                         </StackPanel>
 
                         <controls:StandardButton x:Name="SwitchButton"

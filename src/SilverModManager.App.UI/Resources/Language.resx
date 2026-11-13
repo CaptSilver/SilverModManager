@@ -1825,6 +1825,12 @@ Use it for {0}?</value>
     <data name="LoadoutGameSettings_OwnInis_ToolTip" xml:space="preserve">
         <value>The loadout writes the game's INI files from its own copy each time it is applied. Turn this off to leave them to the game.</value>
     </data>
+    <data name="LoadoutGameSettings_Hdr_Label" xml:space="preserve">
+        <value>Enable HDR</value>
+    </data>
+    <data name="LoadoutGameSettings_Hdr_ToolTip" xml:space="preserve">
+        <value>Adds the Proton variables for HDR to this game's launch. Needs an HDR display, HDR turned on in your desktop session, and Proton-GE.</value>
+    </data>
     <data name="LoadoutGameSettings_DisownInis_Title" xml:space="preserve">
         <value>Stop owning the game INIs?</value>
     </data>

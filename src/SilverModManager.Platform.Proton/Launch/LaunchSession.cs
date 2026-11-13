@@ -205,6 +205,7 @@ public sealed class LaunchSession
         output.WriteLine(plan.Substitution is { } substitution ? $"App id: {substitution.AppId ?? "none"}" : "App id: none");
         output.WriteLine($"Command: {string.Join(' ', plan.Process.Argv)}");
         output.WriteLine(plan.Process.WineDllOverrides is { Count: > 0 } overrides ? $"Wine DLL overrides: {string.Join(';', overrides)}" : "Wine DLL overrides: none");
+        output.WriteLine(plan.Process.DefaultEnvironment is { Count: > 0 } environment ? $"Launch environment: {string.Join(' ', environment.Select(pair => $"{pair.Key}={pair.Value}"))}" : "Launch environment: none");
         if (plan.Process.WorkingDirectory is { } workingDirectory) output.WriteLine($"Working directory: {workingDirectory}");
         output.WriteLine("The command was resolved against the loadout as it is now; a real launch applies the loadout first, which can change it.");
         return new LaunchResult(0, null);
@@ -344,7 +345,7 @@ public sealed class LaunchSession
         var prepared = new List<ILaunchGate>();
         try
         {
-            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context));
+            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
             using (SyncOrigin.Begin(SyncTrigger.Launch)) await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
@@ -384,7 +385,7 @@ public sealed class LaunchSession
                     if (BeginRunning())
                     {
                         await WriteMarker(context, prepared);
-                        heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
+                        heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
                         using var process = _processFactory.Start(plan.Process, context.Installation);
                         AttachProcess(process);
                         try
@@ -401,7 +402,7 @@ public sealed class LaunchSession
                 else if (BeginRunning())
                 {
                     await WriteMarker(context, prepared);
-                    heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
+                    heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
                     var waitWhileRunning = whileRunning
                         ?? throw new InvalidOperationException("LaunchSession.RunCore was given neither a plan nor a wait");
                     try

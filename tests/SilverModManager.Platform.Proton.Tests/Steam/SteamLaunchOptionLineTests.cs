@@ -245,6 +245,15 @@ public class SteamLaunchOptionLineTests : IDisposable
     }
 
     [Fact]
+    public void Test_ReplaceAddsTheEnvironmentAfterTheKeptAssignments()
+    {
+        var edit = SteamLaunchOptionLine.Replace("MANGOHUD=1 " + RealFluorineLine, Shim, "X", [], [], Hdr);
+
+        edit.Refusal.Should().BeNull();
+        edit.Line.Should().Be($"MANGOHUD=1 PROTON_ENABLE_WAYLAND=1 PROTON_ENABLE_HDR=1 '{Shim}' run 'X' -- %command%");
+    }
+
+    [Fact]
     public void Test_ReplaceOfTheRealFluorineLineIsTheBareSpan()
     {
         var edit = SteamLaunchOptionLine.Replace(RealFluorineLine, Shim, "X", [], []);
@@ -601,5 +610,58 @@ public class SteamLaunchOptionLineTests : IDisposable
 
         edit.Refusal.Should().BeNull();
         edit.Line.Should().Be($"WINEDLLOVERRIDES=\"d3dcompiler_47=n;dxgi=n,b\" '{Shim}' run 'X' -- %command%");
+    }
+
+    private static readonly KeyValuePair<string, string>[] Hdr =
+    [
+        new("PROTON_ENABLE_WAYLAND", "1"),
+        new("PROTON_ENABLE_HDR", "1"),
+    ];
+
+    [Fact]
+    public void Test_ComposePutsEnvironmentAssignmentsBeforeTheSpan()
+    {
+        SteamLaunchOptionLine.Compose(Shim, "Skyrim", [], [], Hdr)
+            .Should().Be($"PROTON_ENABLE_WAYLAND=1 PROTON_ENABLE_HDR=1 '{Shim}' run 'Skyrim' -- %command%");
+    }
+
+    [Fact]
+    public void Test_ComposeWithNoEnvironmentIsUnchanged()
+    {
+        SteamLaunchOptionLine.Compose(Shim, "Skyrim", [], [], [])
+            .Should().Be(SteamLaunchOptionLine.Compose(Shim, "Skyrim", [], []));
+    }
+
+    [Fact]
+    public void Test_RewriteAddsEnvironmentAfterTheUsersLeadingAssignments()
+    {
+        var edit = SteamLaunchOptionLine.Rewrite("MANGOHUD=1 %command% -windowed", Shim, "Skyrim", [], [], Hdr);
+
+        edit.Line.Should().Be($"MANGOHUD=1 PROTON_ENABLE_WAYLAND=1 PROTON_ENABLE_HDR=1 '{Shim}' run 'Skyrim' -- %command% -windowed");
+    }
+
+    [Fact]
+    public void Test_RewriteDoesNotRepeatAssignmentsTheLineAlreadyHas()
+    {
+        var first = SteamLaunchOptionLine.Rewrite("%command%", Shim, "Skyrim", [], [], Hdr).Line!;
+        SteamLaunchOptionLine.Rewrite(first, Shim, "Skyrim", [], [], Hdr).Line.Should().Be(first);
+
+        var partial = SteamLaunchOptionLine.Rewrite("PROTON_ENABLE_HDR=1 %command%", Shim, "Skyrim", [], [], Hdr).Line;
+        partial.Should().Be($"PROTON_ENABLE_HDR=1 PROTON_ENABLE_WAYLAND=1 '{Shim}' run 'Skyrim' -- %command%");
+    }
+
+    [Fact]
+    public void Test_RewriteKeepsAValueTheUserSetForAnEnvironmentVariable()
+    {
+        var edit = SteamLaunchOptionLine.Rewrite("PROTON_ENABLE_HDR=0 %command%", Shim, "Skyrim", [], [], Hdr);
+
+        edit.Line.Should().Contain("PROTON_ENABLE_HDR=0").And.NotContain("PROTON_ENABLE_HDR=1");
+    }
+
+    [Fact]
+    public void Test_RewriteWithNoEnvironmentLeavesTheLineAsItWas()
+    {
+        SteamLaunchOptionLine.Rewrite("MANGOHUD=1 %command%", Shim, "Skyrim", [], [], [])
+            .Should().Be(SteamLaunchOptionLine.Rewrite("MANGOHUD=1 %command%", Shim, "Skyrim", [], []));
     }
 }

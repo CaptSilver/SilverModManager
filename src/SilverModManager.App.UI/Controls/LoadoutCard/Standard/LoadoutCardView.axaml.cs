@@ -29,6 +29,13 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
             OwnInisBox.IsChecked = settings.OwnsGameInis;
         };
 
+        HdrBox.Click += async (_, _) =>
+        {
+            if (ViewModel?.GameSettings is not { } settings) return;
+            await settings.ToggleEnableHdrCommand.Execute();
+            HdrBox.IsChecked = settings.EnableHdr;
+        };
+
         this.WhenActivated(d =>
             {
                 // LoadoutBadge
@@ -132,6 +139,10 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                     settings.WhenAnyValue(x => x.OwnsGameInis)
                         .OnUI()
                         .Subscribe(owns => OwnInisBox.IsChecked = owns)
+                        .DisposeWith(d);
+                    settings.WhenAnyValue(x => x.EnableHdr)
+                        .OnUI()
+                        .Subscribe(hdr => HdrBox.IsChecked = hdr)
                         .DisposeWith(d);
                     settings.ToggleKeepSavesCommand.CanExecute
                         .OnUI()
