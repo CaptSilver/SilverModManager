@@ -145,7 +145,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public async ValueTask<WabbajackModlistLoadoutGroup.ReadOnly> StartAsync(IJobContext<InstallModlistJob> context)
     {
         var cancellationToken = context.CancellationToken;
-        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name, MemorySampler, TimeProvider.System).Report);
+        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name, MemorySampler, TimeProvider.System, new SmapsDump(TimeProvider.System)).Report);
 
         // Before the check, which may record the digests of game files: a refused update writes nothing.
         var existing = FindGroup();

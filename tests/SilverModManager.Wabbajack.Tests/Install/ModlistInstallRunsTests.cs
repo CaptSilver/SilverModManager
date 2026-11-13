@@ -376,6 +376,23 @@ public class InstallProgressLogTests
     }
 
     [Fact]
+    public void ASmapsDumpGoesOnATraceLineWhenTheNativeMemoryIsLarge()
+    {
+        var provider = new CapturingLoggerProvider();
+        var log = new InstallProgressLog(provider.CreateLogger("test"), "Example List", new BigAnonSampler(), TimeProvider.System,
+            new SmapsDump(TimeProvider.System, 1L << 30, null, () => "Rss: 1 kB", () => "55e0-5600 rw-p 0 00:00 0 [heap]\nAnonymous: 800000 kB\n"));
+
+        log.Report(Snap(InstallPhase.Check, 0, 0));
+
+        provider.Traces.Should().ContainSingle().Which.Should().StartWith("Install of Example List: largest anonymous mappings: [heap] 55e0-5600");
+    }
+
+    private sealed class BigAnonSampler : IMemorySampler
+    {
+        public MemorySample Sample() => new(0, 0, 0, 10L << 30, null);
+    }
+
+    [Fact]
     public void NoTraceLineWithoutANativeBreakdown()
     {
         var (log, logged) = Create();

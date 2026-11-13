@@ -11,7 +11,7 @@ namespace SilverModManager.Wabbajack.Install;
 /// sample, and a phase that has gone 30 seconds without a line repeats its progress on the next report, so a long
 /// stretch inside one 5% step still shows how memory grew.
 /// </summary>
-public sealed class InstallProgressLog(ILogger logger, string list, IMemorySampler memory, TimeProvider time)
+public sealed class InstallProgressLog(ILogger logger, string list, IMemorySampler memory, TimeProvider time, SmapsDump? smaps = null)
 {
     private const int StepPercent = 5;
     private static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(30);
@@ -71,6 +71,7 @@ public sealed class InstallProgressLog(ILogger logger, string list, IMemorySampl
         var sample = memory.Sample();
         logger.LogInformation("Install of {List}: {Progress}; memory: {Memory}", list, text, sample.Describe());
         if (sample.Native is { Count: > 0 }) logger.LogTrace("Install of {List}: native memory: {Native}", list, sample.DescribeNative());
+        if (smaps?.TryDump(sample) is { } dump) logger.LogTrace("Install of {List}: {Dump}", list, dump);
     }
 
     private static string PhaseName(InstallPhase phase) => phase switch
