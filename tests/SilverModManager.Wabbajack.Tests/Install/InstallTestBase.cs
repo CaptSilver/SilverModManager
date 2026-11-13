@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Platform.Proton.Tools;
 using Microsoft.Extensions.Logging;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
@@ -46,6 +47,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         {
             Resolution = _ => PrefixResolution.Failed("no prefix in tests"),
         });
+        services.AddSingleton<KnownToolDetector>();
         return base.AddServices(services).AddFakeToolRunner();
     }
 
@@ -146,6 +148,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
             OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),
             LoadoutManager = LoadoutManager,
             Locator = ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(),
+            ToolDetector = ServiceProvider.GetRequiredService<KnownToolDetector>(),
             MemoryBudget = budget,
             Parallelism = parallelism,
             Commits = commits ?? CommitPolicy.Default,

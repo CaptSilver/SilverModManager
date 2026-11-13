@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
 namespace SilverModManager.Platform.Proton.Tests.Tools;
@@ -103,5 +104,26 @@ public class ToolInstallerTests(ITestOutputHelper helper) : AToolFlowTest<ToolIn
         var act = () => Installer().Add(loadout, missing);
 
         (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message.Should().Contain("does not exist");
+    }
+
+    [Fact]
+    public async Task BackfillWritesToolIdsOnce()
+    {
+        var loadout = await CreateLoadout();
+        var folder = Folder("DynDOLODx64.exe", "MyPatcher.exe");
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new UserTool.New(tx) { InstallationId = loadout.InstallationId, Name = "DynDOLOD", Exe = (folder / "DynDOLODx64.exe").GetFullPath(), Arguments = "-x", RunVia = ToolRunVia.Auto };
+            _ = new UserTool.New(tx) { InstallationId = loadout.InstallationId, Name = "MyPatcher", Exe = (folder / "MyPatcher.exe").GetFullPath(), Arguments = "", RunVia = ToolRunVia.Auto };
+            await tx.Commit();
+        }
+
+        (await Installer().BackfillKnownTools(loadout)).Should().Be(1);
+
+        var rows = Rows(loadout);
+        rows.Single(r => r.Name == "DynDOLOD").ToolId.Value.Should().Be("dyndolod");
+        rows.Single(r => r.Name == "DynDOLOD").Arguments.Should().Be("-x", "the row's own arguments are not touched");
+        rows.Single(r => r.Name == "MyPatcher").ToolId.HasValue.Should().BeFalse();
+        (await Installer().BackfillKnownTools(loadout)).Should().Be(0);
     }
 }

@@ -109,7 +109,30 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
             initialCanExecute: false
         );
 
-        this.WhenAnyValue(vm => vm.LoadoutId).Subscribe(_ => Refresh());
+        this.WhenAnyValue(vm => vm.LoadoutId).Subscribe(_ => Load = BackfillThenRefresh());
+    }
+
+    /// <summary>The last load of the page: the rows the catalogue knows get their ids, then the lists are rebuilt.</summary>
+    internal Task Load { get; private set; } = Task.CompletedTask;
+
+    // Shown at once from what is stored, then again once rows a list registered before the catalogue knew them have
+    // been given their catalogue id, which moves them from "Your programs" to the catalogue's tools.
+    private async Task BackfillThenRefresh()
+    {
+        Refresh();
+        if (LoadoutId == default) return;
+
+        try
+        {
+            if (await _installer.BackfillKnownTools(LoadLoadout()) > 0) Refresh();
+        }
+        catch (Exception ex)
+        {
+            // Nothing awaits the load, so the failure is logged and put on the page rather than lost; the rows stay
+            // listed as they are stored.
+            _logger.LogFailure(ex, "Matching the saved tools to the catalogue failed");
+            LastRunMessage = $"Matching your programs to the known tools failed: {ex.Message}";
+        }
     }
 
     private Loadout.ReadOnly LoadLoadout() => Loadout.Load(_conn.Db, LoadoutId);

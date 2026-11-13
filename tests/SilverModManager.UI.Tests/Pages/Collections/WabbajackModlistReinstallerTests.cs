@@ -146,6 +146,7 @@ public class WabbajackModlistReinstallerTests(IServiceProvider provider) : AUiTe
             OrderImporter = null!,
             LoadoutManager = null!,
             Locator = null!,
+            ToolDetector = null!,
         });
         return job;
     }

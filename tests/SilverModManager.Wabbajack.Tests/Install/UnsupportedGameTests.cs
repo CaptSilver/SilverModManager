@@ -9,6 +9,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 using SilverModManager.Games.CreationEngine;
 using SilverModManager.Wabbajack.Format;
 using SilverModManager.Wabbajack.Models;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Tests.Acquire;
 using SilverModManager.Wabbajack.Tests.Fixtures;
@@ -29,6 +30,7 @@ public class UnsupportedGameTests(ITestOutputHelper helper) : AIsolatedGameTest<
             ExtrasRoot = new ConfigurablePath(null, TestScratch.Combine($"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}")),
         })
         .AddFakeToolRunner()
+        .AddSingleton<KnownToolDetector>()
         .AddUniversalGameLocator<OblivionRemastered>(new Version("1.0.0"), locationsFileSystem: IsolatedPrefixFileSystem.Create);
 
     [Fact]

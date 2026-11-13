@@ -21,6 +21,7 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;
@@ -87,6 +88,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required ILibraryArchiveLocator Locator { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
+    /// <summary>
+    /// Recognises the tools of the list the catalogue knows (xEdit, DynDOLOD, the OpenComposite Unleashed Configurator), so
+    /// they run with the catalogue's prefix setup and output capture. <see cref="Create"/> takes it from the container.
+    /// </summary>
+    public required KnownToolDetector ToolDetector { get; init; }
+
     /// <summary>What the install may hold in memory at once; the budget for this machine when not set.</summary>
     public ByteBudget? MemoryBudget { get; init; }
 
@@ -138,6 +145,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             LoadoutManager = provider.GetRequiredService<ILoadoutManager>(),
             Locator = provider.GetRequiredService<ILibraryArchiveLocator>(),
             MemorySampler = provider.GetRequiredService<IMemorySampler>(),
+            ToolDetector = provider.GetRequiredService<KnownToolDetector>(),
         };
         return monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
@@ -1908,11 +1916,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var known = UserTool.FindByInstallation(db, check.Loadout.InstallationId)
             .Select(t => (t.Name, t.Exe, t.Arguments)).ToHashSet();
 
+        var game = installation.GetGame();
         using var tx = Connection.BeginTransaction();
         var any = false;
         foreach (var tool in found.Tools.Where(t => !known.Contains((t.Name, t.Exe, t.Arguments))))
         {
-            _ = new UserTool.New(tx)
+            var row = new UserTool.New(tx)
             {
                 InstallationId = check.Loadout.InstallationId,
                 Name = tool.Name,
@@ -1920,6 +1929,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 Arguments = tool.Arguments,
                 RunVia = ToolRunVia.Auto,
             };
+            // The row keeps the list's own arguments: a line on the row wins over the definition's, so only the
+            // catalogue's prefix setup and output capture are added.
+            var match = ToolDetector.Match(game, FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe)).FirstOrDefault();
+            if (match?.Definition.Id is { } toolId) tx.Add(row.Id, UserTool.ToolId, toolId.Value);
             any = true;
         }
         if (any) await tx.Commit();

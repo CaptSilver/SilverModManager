@@ -230,6 +230,44 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task LoadingThePageGivesARowTheCatalogueKnowsItsToolId()
+    {
+        var loadout = await CreateLoadout();
+        var exe = TempExe("SSEEdit.exe");
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new UserTool.New(tx) { InstallationId = loadout.InstallationId, Name = "SSEEdit", Exe = exe, Arguments = "", RunVia = ToolRunVia.Auto };
+            await tx.Commit();
+        }
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker(), definitions: [Catalogue("xedit", "xEdit", "SSEEdit.exe")]);
+
+        vm.LoadoutId = loadout.LoadoutId;
+        await vm.Load;
+
+        UserTool.FindByInstallation(Connection.Db, loadout.InstallationId).Single().ToolId.Value.Should().Be("xedit");
+        vm.UserTools.Should().BeEmpty("the row is now a catalogue tool");
+    }
+
+    [Fact]
+    public async Task AFailedMatchAgainstTheCatalogueIsShownOnThePage()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new UserTool.New(tx) { InstallationId = loadout.InstallationId, Name = "SSEEdit", Exe = TempExe("SSEEdit.exe"), Arguments = "", RunVia = ToolRunVia.Auto };
+            await tx.Commit();
+        }
+        var broken = Catalogue("xedit", "xEdit") with { ExecutableNames = _ => throw new InvalidOperationException("names unreadable") };
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker(), definitions: [broken]);
+
+        vm.LoadoutId = loadout.LoadoutId;
+        await vm.Load;
+
+        vm.LastRunMessage.Should().Contain("names unreadable");
+        vm.UserTools.Should().ContainSingle("the row is still listed as it is stored");
+    }
+
+    [Fact]
     public async Task UserTools_SurviveRebuildingTheViewModel()
     {
         var loadout = await CreateLoadout();

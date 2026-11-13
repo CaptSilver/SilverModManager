@@ -74,4 +74,30 @@ public sealed class ToolInstaller(IConnection connection, KnownToolDetector dete
         if (added.Count > 0) await tx.Commit();
         return new ToolInstallResult(added, already);
     }
+
+    /// <summary>
+    /// Gives every tool of the loadout's installation that has no catalogue id one when the catalogue knows its exe, in one
+    /// transaction. Lists registered their tools before the catalogue was consulted, so their rows carry none. Running it
+    /// again changes nothing.
+    /// </summary>
+    /// <returns>How many rows got an id.</returns>
+    public async Task<int> BackfillKnownTools(Loadout.ReadOnly loadout)
+    {
+        var game = loadout.InstallationInstance.GetGame();
+        using var tx = connection.BeginTransaction();
+        var written = 0;
+        foreach (var row in UserTool.FindByInstallation(connection.Db, loadout.InstallationId))
+        {
+            if (row.ToolId.HasValue) continue;
+
+            var match = detector.Match(game, FileSystem.Shared.FromUnsanitizedFullPath(row.Exe)).FirstOrDefault();
+            if (match?.Definition.Id is not { } id) continue;
+
+            tx.Add(row.Id, UserTool.ToolId, id.Value);
+            written++;
+        }
+
+        if (written > 0) await tx.Commit();
+        return written;
+    }
 }

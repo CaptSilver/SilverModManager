@@ -74,7 +74,7 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
             ServiceProvider.GetRequiredService<ToolOutputCapture>(), new ToolPrefixSetup(runner, prefixResolver, new FakePrefixInspector()));
     }
 
-    private async Task AddRow(Loadout.ReadOnly loadout, string name, string exe, string? toolId = null, string? outputGroupName = null)
+    private async Task AddRow(Loadout.ReadOnly loadout, string name, string exe, string? toolId = null, string? outputGroupName = null, string arguments = "")
     {
         using var tx = Connection.BeginTransaction();
         var row = new UserTool.New(tx)
@@ -82,7 +82,7 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
             InstallationId = loadout.InstallationId,
             Name = name,
             Exe = exe,
-            Arguments = "",
+            Arguments = arguments,
             RunVia = ToolRunVia.Auto,
         };
         if (toolId is not null) tx.Add(row.Id, UserTool.ToolId, toolId);
@@ -184,6 +184,29 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
 
         await _runner.Received().RunWindowsTool(Arg.Any<GameInstallation>(), Arg.Any<AbsolutePath>(),
             Arg.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "-fixed", "--for-xedit.exe" })),
+            Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<ToolRunVia>());
+    }
+
+    [Fact]
+    public async Task AListToolsOwnArgumentsWinOverTheCatalogues()
+    {
+        _runner.RunWindowsTool(default!, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(_ => new ToolRunResult(0));
+        _runner.Plan(default!, default, default!, default, default)
+            .ReturnsForAnyArgs(_ => ToolRunPlan.Runnable("test", ["run"], FileSystem.FromUnsanitizedFullPath("/tools"), new Dictionary<string, string>()));
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "SSEEdit", "/tools/xedit.exe", toolId: "xedit", arguments: "-listsown");
+        var definition = Catalogue("xedit", "xEdit", _ => true) with
+        {
+            Arguments = ArgumentTemplate.Of("-fixed"),
+            ExtraArguments = (_, exeName) => [$"--for-{exeName}"],
+        };
+
+        var tool = (ModdingTool)CatalogueProvider(definition).GetTools(loadout).Single();
+        await tool.Execute(loadout, CancellationToken.None);
+
+        await _runner.Received().RunWindowsTool(Arg.Any<GameInstallation>(), Arg.Any<AbsolutePath>(),
+            Arg.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "-listsown" })),
             Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<ToolRunVia>());
     }
 

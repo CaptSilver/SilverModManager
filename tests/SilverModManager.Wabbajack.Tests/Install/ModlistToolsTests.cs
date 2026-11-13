@@ -79,6 +79,17 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public async Task AListToolTheCatalogueKnowsGetsItsToolId()
+    {
+        var (loadout, _, _) = await InstallList(ListWith(DefaultExecutables + SseEditEntry));
+
+        var xedit = ToolsOf(loadout).Should().ContainSingle().Subject;
+        xedit.Name.Should().Be("SSEEdit");
+        xedit.ToolId.Value.Should().Be("xedit");
+        xedit.Arguments.Should().StartWith("-D:", "the list's own arguments stay on the row, where they win over the catalogue's");
+    }
+
+    [Fact]
     public async Task AToolFileWhoseBytesAlreadyMatchIsNotRewritten()
     {
         var loadout = await CreateLoadout();
