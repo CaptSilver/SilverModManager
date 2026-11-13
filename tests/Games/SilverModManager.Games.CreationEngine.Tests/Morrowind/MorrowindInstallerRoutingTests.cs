@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
-using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.OpenMw;
+using SilverModManager.Games.CreationEngine.Tests.OpenMw;
 using Xunit;
 
 namespace SilverModManager.Games.CreationEngine.Tests.Morrowind;

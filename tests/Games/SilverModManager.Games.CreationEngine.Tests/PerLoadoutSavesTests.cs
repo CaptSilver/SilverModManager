@@ -4,7 +4,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
-using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Tests.OpenMw;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Ini;

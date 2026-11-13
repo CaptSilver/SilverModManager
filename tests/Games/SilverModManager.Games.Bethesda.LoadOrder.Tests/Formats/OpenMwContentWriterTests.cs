@@ -125,6 +125,14 @@ public class OpenMwContentWriterTests
     }
 
     [Fact]
+    public void ANameDifferingOnlyInCaseIsOwnedAndWrittenOnce()
+    {
+        var result = OpenMwContentWriter.Rewrite("content=Morrowind.esm\ncontent=mod.ESP\n", ["Morrowind.esm", "Mod.esp"], Names("Morrowind.esm", "Mod.esp"));
+
+        result.Should().Be("content=Morrowind.esm\ncontent=Mod.esp\n");
+    }
+
+    [Fact]
     public void ANameInTheListCountsAsOwnedEvenWhenTheOwnedSetOmitsIt()
     {
         var result = OpenMwContentWriter.Rewrite("content=Mod.esp\n", ["Mod.esp"], Names());

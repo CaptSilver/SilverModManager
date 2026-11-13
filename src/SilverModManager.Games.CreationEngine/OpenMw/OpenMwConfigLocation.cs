@@ -1,18 +1,18 @@
 using NexusMods.Paths;
 
-namespace SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.OpenMw;
 
-/// <summary>Which config root holds an openmw.cfg.</summary>
+/// <summary>
+/// Which config root holds an openmw.cfg, for the Morrowind row's inert <see cref="OpenMwConstants.OpenMwConfig"/>
+/// location. With a config in both roots the native one is named; the OpenMW rows themselves each know their own root.
+/// </summary>
 public abstract record OpenMwConfigLocation
 {
     public sealed record None : OpenMwConfigLocation;
 
     public sealed record One(AbsolutePath Folder) : OpenMwConfigLocation;
 
-    /// <summary>Native and Flatpak OpenMW both have a config; which one the user runs is not something to guess.</summary>
-    public sealed record Both(AbsolutePath First, AbsolutePath Second) : OpenMwConfigLocation;
-
-    public const string FileName = "openmw.cfg";
+    public const string FileName = OpenMwConstants.ConfigFileName;
 
     /// <summary>A root counts only when it holds openmw.cfg: an empty config folder says nothing about use.</summary>
     public static OpenMwConfigLocation Locate(IOpenMwConfigRoots roots, IFileSystem fileSystem)
@@ -22,11 +22,6 @@ public abstract record OpenMwConfigLocation
             .Where(root => (root / FileName).FileExists)
             .ToList();
 
-        return found.Count switch
-        {
-            0 => new None(),
-            1 => new One(found[0]),
-            _ => new Both(found[0], found[1]),
-        };
+        return found.Count == 0 ? new None() : new One(found[0]);
     }
 }

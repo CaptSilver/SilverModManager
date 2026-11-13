@@ -6,7 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Backend;
 using SilverModManager.Games.FOMOD;
 using SilverModManager.Games.TestFramework;
-using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Tests.OpenMw;
 using SilverModManager.Sdk;
 using SilverModManager.StandardGameLocators.TestHelpers;
 

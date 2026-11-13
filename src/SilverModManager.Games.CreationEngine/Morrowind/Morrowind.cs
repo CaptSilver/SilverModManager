@@ -11,7 +11,7 @@ using SilverModManager.Games.CreationEngine.SortOrder;
 using SilverModManager.Sdk.Ini;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.Abstractions;
-using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.OpenMw;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
@@ -27,22 +27,15 @@ namespace SilverModManager.Games.CreationEngine.Morrowind;
 /// plugins in the order of their file times.
 /// </summary>
 /// <remarks>
-/// OpenMW reads its load order from an openmw.cfg on the host. When one is found, its folder becomes the
-/// <see cref="OpenMwConfig"/> location, openmw.cfg decides the order the app starts from, and Apply rewrites
-/// the <c>content=</c> lines it owns in the app's order (see <see cref="OpenMwMechanism"/>); nothing else under
-/// that folder is indexed. Morrowind.ini is written either way.
+/// An openmw.cfg on the host is OpenMW's, which has its own game entry. The config folder is still registered as
+/// an inert <see cref="OpenMwConstants.OpenMwConfig"/> location so paths that loadouts of an earlier version stored
+/// under it keep resolving, and the row never writes anything there (<see cref="MorrowindSynchronizer"/>).
 /// </remarks>
 public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowind>(provider), IGameData<Morrowind>, IHasIniFiles, ITimestampOrderedGame
 {
-    /// <summary>The folder that holds the user's openmw.cfg, present only when exactly one is found.</summary>
-    public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig");
-
-    private static readonly IReadOnlyDictionary<string, string> OpenMwLocationNames = new Dictionary<string, string> { [OpenMwConfig.ToString()] = "OpenMW settings" };
-
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, string> LocationNames => OpenMwLocationNames;
-
-    public static readonly GamePath OpenMwConfigFile = new(OpenMwConfig, OpenMwConfigLocation.FileName);
+    /// <remarks>The inert OpenMW config location is named where OpenMW's own entry names it.</remarks>
+    public IReadOnlyDictionary<string, string> LocationNames => OpenMw.OpenMw.OpenMwLocationNames;
 
     private readonly IOpenMwConfigRoots _openMwConfigRoots = provider.GetRequiredService<IOpenMwConfigRoots>();
 
@@ -60,41 +53,14 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
     public override PluginFormat HeaderFormat => PluginFormat.Tes3;
     public override GamePath PluginsFile => new(LocationId.Game, "Morrowind.ini");
 
-    // OpenMW has no masterlist of its own; it shares Morrowind's, but sorts without the master flag.
-    public override LootGame LootGame(GameInstallation installation) =>
-        installation.Locations.ContainsKey(OpenMwConfig) ? Bethesda.Loot.Masterlists.LootGame.OpenMW : Bethesda.Loot.Masterlists.LootGame.Morrowind;
+    public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Morrowind;
 
-    public override IPluginListMechanism PluginList(GameInstallation installation) =>
-        installation.Locations.ContainsKey(OpenMwConfig) ? OpenMw : Ini;
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Ini;
 
     private static readonly MorrowindIniMechanism Ini = new();
-    private static readonly OpenMwMechanism OpenMw = new();
 
-    // libloadorder game_settings.rs hardcoded_plugins: none for Morrowind. OpenMW's early loaders come from its config.
+    // libloadorder game_settings.rs hardcoded_plugins: none for Morrowind.
     public override IReadOnlyList<string> HardcodedPlugins => [];
-
-    // OpenMW loads plugins in the order of its content= lines and ignores the master flag
-    // (libloot plugin/mod.rs is_master_file), so the flag only counts for the original game.
-    public override bool MasterFlagIgnored(GameInstallation installation) => installation.Locations.ContainsKey(OpenMwConfig);
-
-    /// <summary>
-    /// With OpenMW, <c>builtin.omwscripts</c>, which OpenMW always loads first (libloadorder game_settings.rs,
-    /// early_loading_plugins).
-    /// </summary>
-    /// <remarks>
-    /// libloadorder also counts the content of the configs loaded before the user's openmw.cfg, chiefly the
-    /// system-wide one. The app only knows where the user's own file is, so that content is not read. A config the
-    /// user's file chains to with <c>config=</c> loads after it, so its content is not early either.
-    /// </remarks>
-    public override IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
-    {
-        var early = base.EarlyLoadingPlugins(installation);
-        if (!installation.Locations.ContainsKey(OpenMwConfig)) return early;
-
-        return early.Append(BuiltInScripts).Distinct(PluginNameComparer.Instance).ToList();
-    }
-
-    private const string BuiltInScripts = "builtin.omwscripts";
 
     // OpenMW's plugin and Lua script formats load like .esp.
     public override Extension[] PluginExtensions =>
@@ -120,7 +86,7 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
         PlanPluginTimestamps(loadout, syncTree);
 
     // Morrowind.ini is the loadout's own copy like every other owned INI; the active plugins are rendered into its
-    // [Game Files] section from the plugin order. OpenMW gets the same section for anyone launching the original game.
+    // [Game Files] section from the plugin order.
     // Active, not just switched on: a plugin of a disabled mod keeps its row's switch but is not deployed.
     protected override Task RenderDerivedIniKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout)
     {
@@ -179,18 +145,19 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
     {
         var locations = base.GetLocations(fileSystem, gameLocatorResult);
         return OpenMwConfigLocation.Locate(_openMwConfigRoots, fileSystem) is OpenMwConfigLocation.One one
-            ? locations.Add(OpenMwConfig, one.Folder)
+            ? locations.Add(OpenMwConstants.OpenMwConfig, one.Folder)
             : locations;
     }
 
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
     [
-        new OpenMwDiagnosticEmitter(provider.GetRequiredService<IOpenMwConfigRoots>(), provider.GetRequiredService<IFileSystem>()),
+        new MorrowindOpenMwRetiredEmitter(this),
         .. base.CreateEmitters(provider),
     ];
 
-    // Only openmw.cfg is managed; settings.cfg, launcher.cfg and the rest of OpenMW's folder are the user's.
+    protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new MorrowindSynchronizer(provider, this);
+
+    // OpenMW's folder belongs to OpenMW and its own row: nothing in it is indexed by this one.
     public override bool IsProtectedPath(GamePath path) =>
-        base.IsProtectedPath(path)
-        || (path.LocationId == OpenMwConfig && path.Path != OpenMwConfigLocation.FileName);
+        base.IsProtectedPath(path) || path.LocationId == OpenMwConstants.OpenMwConfig;
 }

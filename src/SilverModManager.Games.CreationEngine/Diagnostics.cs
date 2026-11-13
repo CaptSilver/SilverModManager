@@ -82,31 +82,7 @@ Verify the game files in the game store, then reopen the app.
         )
         .Finish();
 
-    [DiagnosticTemplate]
-    [UsedImplicitly]
-    internal static IDiagnosticTemplate OpenMwConfigAmbiguous = DiagnosticTemplateBuilder
-        .Start()
-        .WithId(new DiagnosticId(Source, number: 4))
-        .WithTitle("Two OpenMW configs found")
-        .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("Found an openmw.cfg in both {NativePath} and {FlatpakPath}")
-        .WithDetails("""
-Both of these folders hold an openmw.cfg:
-
-{NativePath}
-
-{FlatpakPath}
-
-The app writes the mod load order into the config OpenMW reads, and cannot tell which of the two you use, so it will not write to either.
-
-Remove or rename the openmw.cfg of the OpenMW you do not use, then reopen the app.
-""")
-        .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<string>("NativePath")
-            .AddValue<string>("FlatpakPath")
-        )
-        .Finish();
-
+    // Number 4 was the "two OpenMW configs" warning; it is gone and the number is not reused.
     [DiagnosticTemplate]
     [UsedImplicitly]
     internal static IDiagnosticTemplate TestFileEntries = DiagnosticTemplateBuilder
@@ -316,6 +292,57 @@ Crashes appear here when Health Check is opened or refreshed after the game exit
             .AddValue<MarkdownFragment>("Owners")
             .AddValue<string>("Origin")
             .AddValue<string>("LastSeen")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OpenMwDanglingContent = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 14))
+        .WithTitle("OpenMW's config lists plugins that are not there")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("openmw.cfg lists {Names} but no data directory has them")
+        .WithDetails("""
+OpenMW will not start until these lines are removed. Remove them in the OpenMW launcher's Content Files tab, or delete the lines from {Path}.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Names")
+            .AddValue<string>("Path")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OpenMwUnregisteredArchive = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 16))
+        .WithTitle("OpenMW does not load these archives")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Names} are deployed but openmw.cfg has no fallback-archive= line for them, so OpenMW loads nothing from them")
+        .WithDetails("""
+OpenMW only reads the archives its config names. Add a `fallback-archive=` line for each one to openmw.cfg, or register them in the OpenMW launcher's Data Files tab.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Names")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate MorrowindOpenMwRetired = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 17))
+        .WithTitle("OpenMW has its own entry now")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("OpenMW is now its own game. This loadout no longer writes openmw.cfg; manage OpenMW from its own entry in My Games. openmw.cfg still lists these plugins from this loadout: {Plugins}. Removing them from this loadout will leave those lines pointing at nothing.")
+        .WithDetails("""
+An earlier version wrote this loadout's plugin order into openmw.cfg when it found one. The Morrowind entry now writes Morrowind.ini only and never changes openmw.cfg.
+
+Add the OpenMW entry in My Games to manage OpenMW's plugin list and mods.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Plugins")
         )
         .Finish();
 }

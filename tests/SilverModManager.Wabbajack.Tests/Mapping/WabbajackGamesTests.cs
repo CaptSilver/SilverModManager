@@ -25,12 +25,14 @@ public class WabbajackGamesTests
         return false;
     }
 
-    // Total conversions that install over another game's files. Wabbajack's game list has no type for them, so a
-    // modlist for one names its base game (Fallout 4, Oblivion) and the app never meets these ids in a modlist.
+    // Total conversions that install over another game's files, and OpenMW, which runs the Morrowind install.
+    // Wabbajack's game list has no type for them, so a modlist for one names its base game (Fallout 4, Oblivion,
+    // Morrowind) and the app never meets these ids in a modlist.
     private static readonly GameId[] NotAWabbajackGame =
     [
         GameId.From("CreationEngine.Fallout4London"),
         GameId.From("CreationEngine.Nehrim"),
+        GameId.From("CreationEngine.OpenMW"),
     ];
 
     [Fact]

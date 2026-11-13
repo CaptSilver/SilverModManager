@@ -145,7 +145,10 @@ public static class Services
         }
 
         if (addStandardGameLocators)
+        {
             services.AddGameLocators();
+            Games.CreationEngine.Services.AddOpenMwLocator(services);
+        }
 
         return services;
     }

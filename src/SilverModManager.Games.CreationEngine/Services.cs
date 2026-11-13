@@ -36,8 +36,10 @@ public static class Services
         services.AddBethesdaGame<Nehrim.Nehrim>(KnownPaths.OBSELoader);
         services.AddBethesdaGame<Fallout3.Fallout3>(KnownPaths.FOSELoader);
         services.AddBethesdaGame<FalloutNewVegas.FalloutNewVegas>(KnownPaths.NVSELoader);
-        services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();
+        services.AddSingleton<OpenMw.IOpenMwConfigRoots, OpenMw.OpenMwConfigRoots>();
         services.AddBethesdaGame<Morrowind.Morrowind>(null);
+        services.AddGame<OpenMw.OpenMw>();
+        services.AddSingleton<ITool, OpenMw.OpenMwRunGameTool>();
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
 
         services.AddCreationEngineTools();
@@ -57,6 +59,14 @@ public static class Services
 
         return services;
     }
+
+    /// <summary>
+    /// Registers the locator that finds OpenMW installs from the config files on the machine. Apart from
+    /// <see cref="AddCreationEngine"/> because, like the store locators, it reads the developer's home folder, so only
+    /// the app's own graph adds it and test hosts stay out of it.
+    /// </summary>
+    public static IServiceCollection AddOpenMwLocator(this IServiceCollection services) =>
+        services.AddSingleton<IGameLocator, OpenMw.OpenMwLocator>();
 
     /// <summary>
     /// Registers the caches Skyrim SE/AE and VR mods keep derived from the game files, so the synchronizer clears

@@ -79,6 +79,6 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
         var app = Graph(addStandardGameLocators: true);
         app.Invoking(services => services.Validate()).Should().NotThrow();
         (Locators(app) - Locators(Graph(addStandardGameLocators: false)))
-            .Should().Be(Locators(new ServiceCollection().AddGameLocators()));
+            .Should().Be(Locators(Games.CreationEngine.Services.AddOpenMwLocator(new ServiceCollection().AddGameLocators())));
     }
 }

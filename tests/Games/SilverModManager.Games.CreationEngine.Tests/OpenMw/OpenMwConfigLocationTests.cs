@@ -1,15 +1,18 @@
 using FluentAssertions;
-using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.OpenMw;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.OpenMw;
 
 public class OpenMwConfigLocationTests
 {
     private sealed class FakeRoots(params AbsolutePath[] candidates) : IOpenMwConfigRoots
     {
-        public IReadOnlyList<AbsolutePath> Candidates { get; } = candidates;
+        public IReadOnlyList<OpenMwConfigRoot> Roots { get; } = candidates
+            .Select(folder => new OpenMwConfigRoot(folder, folder, GameStore.OpenMW, () => null))
+            .ToList();
     }
 
     private readonly InMemoryFileSystem _fs = new(OSInformation.FakeUnix);
@@ -39,11 +42,11 @@ public class OpenMwConfigLocationTests
     }
 
     [Fact]
-    public async Task BothRootsHoldingAConfigIsReported()
+    public async Task WithAConfigInBothRootsTheNativeOneIsTheLocation()
     {
         await WithConfig(First);
         await WithConfig(Second);
-        Locate().Should().Be(new OpenMwConfigLocation.Both(First, Second));
+        Locate().Should().Be(new OpenMwConfigLocation.One(First));
     }
 
     [Fact]

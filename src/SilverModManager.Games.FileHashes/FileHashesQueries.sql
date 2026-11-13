@@ -2,7 +2,7 @@
 CREATE SCHEMA IF NOT EXISTS file_hashes;
 
 -- ENUM of all the store names
-CREATE TYPE file_hashes.Stores AS ENUM ('Unknown', 'GOG', 'Steam', 'EA Desktop', 'Epic Games Store', 'Origin', 'Xbox Game Pass', 'Manually Added');
+CREATE TYPE file_hashes.Stores AS ENUM ('Unknown', 'GOG', 'Steam', 'EA Desktop', 'Epic Games Store', 'Origin', 'Xbox Game Pass', 'Manually Added', 'OpenMW', 'OpenMW (Flatpak)');
 
 -- Find all the gog builds that match the given game's files, and rank them by the number of files that match
 CREATE MACRO file_hashes.resolve_gog_build(GameMetadataId, DefaultLanguage := 'en-US') AS TABLE

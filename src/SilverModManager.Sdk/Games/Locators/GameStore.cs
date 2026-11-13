@@ -48,6 +48,16 @@ public readonly partial struct GameStore
     public static readonly GameStore Lutris = From("Lutris");
 
     /// <summary>
+    /// OpenMW installed natively on the host, found through its openmw.cfg.
+    /// </summary>
+    public static readonly GameStore OpenMW = From("OpenMW");
+
+    /// <summary>
+    /// OpenMW installed as a Flatpak, found through its openmw.cfg.
+    /// </summary>
+    public static readonly GameStore OpenMWFlatpak = From("OpenMW (Flatpak)");
+
+    /// <summary>
     /// Manually added.
     /// </summary>
     public static readonly GameStore ManuallyAdded = From("Manually Added");

@@ -4,7 +4,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 using SilverModManager.Games.CreationEngine.Abstractions;
-using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.OpenMw;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Loadouts;
 
@@ -38,26 +38,22 @@ public sealed class MorrowindIniMechanism : IPluginListMechanism
 }
 
 /// <summary>
-/// Morrowind run through OpenMW: openmw.cfg lists the plugins in the order OpenMW loads them, and a plugin is
-/// off when it has no <c>content=</c> line. Morrowind.ini is written with the same order for anyone launching the
-/// original game from the same folder, but only openmw.cfg is read back.
+/// OpenMW: openmw.cfg lists the plugins in the order OpenMW loads them, and a plugin is off when it has no
+/// <c>content=</c> line. The file is the only intrinsic one; OpenMW never reads Morrowind.ini.
 /// </summary>
 public sealed class OpenMwMechanism : IPluginListMechanism
 {
-    // OpenMW does not look at times, but the ini beside it does and the same order has to hold for both.
-    public bool OrdersByTimestamp => true;
+    // OpenMW loads in the order of the content= lines, whatever the plugin files' times are.
+    public bool OrdersByTimestamp => false;
 
     public IEnumerable<IIntrinsicFile> IntrinsicFiles(ICreationEngineGame game, Loadout.ReadOnly loadout, IServiceProvider provider)
     {
-        var logger = provider.GetRequiredService<ILogger<PluginsFile>>();
-        yield return new PluginsFile(logger, game, new OpenMwConfigFormat(), Morrowind.Morrowind.OpenMwConfigFile);
-        // The ini is not the one that decides, so a difference there is not a notice of its own.
-        yield return new PluginsFile(logger, game, new MorrowindIniFormat(), comparesWithGame: false);
+        yield return new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), game, new OpenMwConfigFormat(), OpenMwConstants.OpenMwConfigFile);
     }
 
     public async Task<GamePluginListState?> ReadGameState(ICreationEngineGame game, Loadout.ReadOnly loadout)
     {
-        var file = loadout.InstallationInstance.Locations.ToAbsolutePath(Morrowind.Morrowind.OpenMwConfigFile);
+        var file = loadout.InstallationInstance.Locations.ToAbsolutePath(OpenMwConstants.OpenMwConfigFile);
         if (!file.FileExists) return null;
 
         var names = OpenMwContentWriter.ContentNames(new OpenMwConfigFormat().Decode(await file.ReadAllBytesAsync()));

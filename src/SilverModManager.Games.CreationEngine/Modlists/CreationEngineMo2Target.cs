@@ -23,6 +23,9 @@ internal static class CreationEngineMo2Target
     private const string OblivionRemasteredReason =
         "Oblivion Remastered modlists need per-file Unreal routing (Paks, UE4SS) that an MO2 layout does not express";
 
+    private const string OpenMwReason =
+        "Mod Organizer has no OpenMW profile layout; import the modlist into the Morrowind entry of the same install instead";
+
     // The names are what MO2's own game plugin lists in iniFiles(), because a profile folder holds exactly what MO2
     // wrote. Everything is in Preferences (My Games) unless the row says otherwise.
     private static readonly Dictionary<GameId, string[]> ProfileIniNames = new()
@@ -61,7 +64,9 @@ internal static class CreationEngineMo2Target
     };
 
     public static string? UnsupportedReason(GameId game) =>
-        game == OblivionRemastered.OblivionRemastered.GameId ? OblivionRemasteredReason : null;
+        game == OblivionRemastered.OblivionRemastered.GameId ? OblivionRemasteredReason
+        : game == OpenMw.OpenMw.GameId ? OpenMwReason
+        : null;
 
     public static GamePath ModFilePath(ICreationEngineGame game, RelativePath modRelative) => game.DataPath / modRelative;
 
