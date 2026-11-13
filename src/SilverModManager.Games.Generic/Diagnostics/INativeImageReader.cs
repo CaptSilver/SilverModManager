@@ -26,8 +26,15 @@ public interface INativeImageReader
 /// </summary>
 /// <param name="Libraries">The file names of the imported libraries, as written in the import table.</param>
 /// <param name="Is64Bit">True for a PE32+ image, false for PE32.</param>
-public sealed record NativeImageImports(IReadOnlyList<string> Libraries, bool Is64Bit)
+/// <param name="DelayLoaded">
+/// The libraries of the delay-load table: loaded on the first call into them instead of at startup, so a game
+/// that needs one still loads a file of that name from its folder.
+/// </param>
+public sealed record NativeImageImports(IReadOnlyList<string> Libraries, bool Is64Bit, IReadOnlyList<string>? DelayLoaded = null)
 {
+    /// <summary>The delay-load table's libraries; empty when the image has none.</summary>
+    public IReadOnlyList<string> DelayLoaded { get; } = DelayLoaded ?? [];
+
     /// <summary>The result for a file that is not a Windows image or imports nothing.</summary>
     public static NativeImageImports None { get; } = new([], true);
 }

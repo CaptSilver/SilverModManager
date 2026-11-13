@@ -3,9 +3,9 @@ using System.Text;
 namespace SilverModManager.Games.Generic.Tests;
 
 /// <summary>
-/// Builds the smallest Windows image the readers accept, 64-bit unless asked for 32-bit: an import section naming the given libraries and a
-/// resource section that holds a <c>VS_FIXEDFILEINFO</c> for the given version. Fixtures in code, so no test needs a
-/// real DLL.
+/// Builds the smallest Windows image the readers accept, 64-bit unless asked for 32-bit: an import section naming the given libraries, a
+/// resource section that holds a <c>VS_FIXEDFILEINFO</c> for the given version and a delay-load section. Fixtures in
+/// code, so no test needs a real DLL.
 /// </summary>
 internal static class SyntheticPe
 {
@@ -15,11 +15,20 @@ internal static class SyntheticPe
     private const int ImportRaw = 0x400;
     private const int ResourceRva = 0x2000;
     private const int ResourceRaw = 0x600;
+    private const int DelayRva = 0x3000;
+    private const int DelayRaw = 0x800;
     private const int SectionSize = 0x200;
 
-    public static byte[] Build(string[] imports, Version? version = null, bool is64Bit = true)
+    private const ulong ImageBase64 = 0x180000000UL;
+    private const uint ImageBase32 = 0x10000000u;
+
+    /// <param name="delayNamesAreAddresses">
+    /// Write the delay-load descriptors the old way, attributes 0 and the name as a virtual address instead of an RVA,
+    /// as linkers before Visual C++ 7 did for 32-bit images.
+    /// </param>
+    public static byte[] Build(string[] imports, string[]? delayImports = null, Version? version = null, bool is64Bit = true, bool delayNamesAreAddresses = false)
     {
-        var image = new byte[ResourceRaw + SectionSize];
+        var image = new byte[DelayRaw + SectionSize];
         using var stream = new MemoryStream(image);
         using var w = new BinaryWriter(stream);
 
@@ -31,7 +40,7 @@ internal static class SyntheticPe
         stream.Position = 0x40;
         w.Write(0x00004550u); // "PE\0\0"
         w.Write(is64Bit ? (ushort)0x8664 : (ushort)0x14C); // x64 or x86
-        w.Write((ushort)2); // sections
+        w.Write((ushort)3); // sections
         w.Write(0u); w.Write(0u); w.Write(0u); // time stamp, symbol table, symbol count
         w.Write(is64Bit ? (ushort)240 : (ushort)224); // optional header size
         w.Write((ushort)0x2022); // executable, large address aware, DLL
@@ -42,14 +51,14 @@ internal static class SyntheticPe
         w.Write((ushort)0); // linker version
         w.Write(0u); w.Write(0u); w.Write(0u); // sizes of code, data, bss
         w.Write(0u); w.Write(0u); // entry point, base of code
-        if (is64Bit) w.Write(0x180000000UL); // image base
-        else { w.Write(0u); w.Write(0x10000000u); } // base of data, image base
+        if (is64Bit) w.Write(ImageBase64); // image base
+        else { w.Write(0u); w.Write(ImageBase32); } // base of data, image base
         w.Write(SectionAlignment);
         w.Write(FileAlignment);
         w.Write(new byte[8]); // OS version, image version
         w.Write((ushort)6); w.Write((ushort)0); // subsystem version
         w.Write(0u); // win32 version
-        w.Write(0x3000); // size of image
+        w.Write(0x4000); // size of image
         w.Write(0x400); // size of headers
         w.Write(0u); // checksum
         w.Write((ushort)3); // console subsystem
@@ -64,6 +73,7 @@ internal static class SyntheticPe
             {
                 1 => (ImportRva, 0x100),
                 2 => (ResourceRva, 0x100),
+                13 when delayImports is not null => (DelayRva, 0x100),
                 _ => (0, 0),
             };
             w.Write(rva);
@@ -72,6 +82,7 @@ internal static class SyntheticPe
 
         WriteSection(w, ".idata", ImportRva, ImportRaw);
         WriteSection(w, ".rsrc", ResourceRva, ResourceRaw);
+        WriteSection(w, ".didat", DelayRva, DelayRaw);
 
         // One import descriptor per library, then the null descriptor; the names follow.
         stream.Position = ImportRaw;
@@ -84,6 +95,25 @@ internal static class SyntheticPe
             w.Write(Encoding.ASCII.GetBytes(import + "\0"));
             stream.Position = at;
             nameRva += 0x20;
+        }
+
+        // Delay-load descriptors are 32 bytes: attributes (bit 0 set when the fields are RVAs), then the name, then
+        // fields the reader ignores.
+        if (delayImports is not null)
+        {
+            var delayNameRva = DelayRva + 0x80;
+            stream.Position = DelayRaw;
+            foreach (var import in delayImports)
+            {
+                if (delayNamesAreAddresses) { w.Write(0); w.Write((int)(ImageBase32 + (uint)delayNameRva)); }
+                else { w.Write(1); w.Write(delayNameRva); }
+                w.Write(new byte[24]);
+                var at = stream.Position;
+                stream.Position = DelayRaw + (delayNameRva - DelayRva);
+                w.Write(Encoding.ASCII.GetBytes(import + "\0"));
+                stream.Position = at;
+                delayNameRva += 0x20;
+            }
         }
 
         if (version is not null)

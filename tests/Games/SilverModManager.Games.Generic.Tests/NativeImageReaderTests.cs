@@ -31,6 +31,31 @@ public sealed class NativeImageReaderTests : IDisposable
     }
 
     [Fact]
+    public void DelayLoadedLibrariesAreReadFromTheirOwnTable()
+    {
+        var file = Write("game.exe", SyntheticPe.Build(["kernel32.dll"], delayImports: ["openvr_api.dll", "xinput1_3.dll"]));
+
+        var imports = _reader.ReadImports(file);
+
+        imports.DelayLoaded.Should().Equal("openvr_api.dll", "xinput1_3.dll");
+        imports.Libraries.Should().Equal("kernel32.dll");
+    }
+
+    [Fact]
+    public void OldStyleDelayLoadNamesAreReadFromTheirVirtualAddress()
+    {
+        var file = Write("old.exe", SyntheticPe.Build(["kernel32.dll"], delayImports: ["d3d8.dll"], is64Bit: false, delayNamesAreAddresses: true));
+
+        _reader.ReadImports(file).DelayLoaded.Should().Equal("d3d8.dll");
+    }
+
+    [Fact]
+    public void AnImageWithoutADelayTableHasNoDelayLoadedLibraries()
+    {
+        _reader.ReadImports(Write("plain.exe", SyntheticPe.Build(["kernel32.dll"]))).DelayLoaded.Should().BeEmpty();
+    }
+
+    [Fact]
     public void A64BitImageIsReportedAs64Bit()
     {
         _reader.ReadImports(Write("x64.dll", SyntheticPe.Build(["KERNEL32.dll"]))).Is64Bit.Should().BeTrue();
@@ -50,7 +75,7 @@ public sealed class NativeImageReaderTests : IDisposable
     [Fact]
     public void A32BitImageHasAVersion()
     {
-        var file = Write("x86.dll", SyntheticPe.Build([], new Version(14, 0, 24215, 1), is64Bit: false));
+        var file = Write("x86.dll", SyntheticPe.Build([], version: new Version(14, 0, 24215, 1), is64Bit: false));
 
         _reader.FileVersion(file).Should().Be(new Version(14, 0, 24215, 1));
     }
@@ -64,7 +89,7 @@ public sealed class NativeImageReaderTests : IDisposable
     [Fact]
     public void FileVersionIsTheFixedFileInfoVersion()
     {
-        var file = Write("msvcp140.dll", SyntheticPe.Build([], new Version(14, 0, 24215, 1)));
+        var file = Write("msvcp140.dll", SyntheticPe.Build([], version: new Version(14, 0, 24215, 1)));
 
         _reader.FileVersion(file).Should().Be(new Version(14, 0, 24215, 1));
     }
