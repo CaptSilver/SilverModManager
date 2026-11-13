@@ -161,7 +161,8 @@ public static class Services
             .AddSingleton<ISandboxProbe, BwrapSandboxProbe>()
             .AddSingleton<IUserIds, LibcUserIds>()
             .AddSingleton<ILaunchGate, OverlayLaunchGate>()
-            .AddSingleton<ILaunchGate, VanillaSaveGate>();
+            .AddSingleton<ILaunchGate, VanillaSaveGate>()
+            .AddSingleton<ILaunchGate, RegulationGate>();
 
         // Guided cleanup of a game folder another mod manager left
         services.AddCleanupVerbs();

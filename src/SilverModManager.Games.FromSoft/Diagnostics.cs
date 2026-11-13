@@ -380,4 +380,22 @@ a Steam launch would take it online. Verify the game's files in Steam to restore
             .AddValue<MarkdownFragment>("Files")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate ManifestUnreadable = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 18))
+        .WithTitle("Steam's manifest could not be read")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("Steam's manifest for this {Game} install could not be read, so the regulation was not checked")
+        .WithDetails("""
+The app compares the {Game} game folder with the files in Steam's manifest for the installed build. That manifest
+could not be read, so the regulation, the executables and the other files were not compared. The game may be installed
+outside Steam, or Steam's cached copy of the manifest may be missing.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+        )
+        .Finish();
 }

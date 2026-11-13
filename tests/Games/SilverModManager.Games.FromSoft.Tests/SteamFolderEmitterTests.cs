@@ -124,7 +124,7 @@ public class SteamFolderEmitterTests(ITestOutputHelper helper) : AModdedEldenRin
     }
 
     [Fact]
-    public async Task AnUnreadableManifestSaysNothing()
+    public async Task AnUnreadableManifestIsSaidOnceAsInformation()
     {
         var loadout = await CreateLoadout();
         File.WriteAllText((RealGameFolder / "dinput8.dll").GetFullPath(), "hook");
@@ -135,7 +135,9 @@ public class SteamFolderEmitterTests(ITestOutputHelper helper) : AModdedEldenRin
         var found = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, CancellationToken.None)) found.Add(diagnostic);
 
-        found.Should().BeEmpty();
+        var unreadable = found.Should().ContainSingle().Subject;
+        unreadable.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        unreadable.FormatSummary(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("could not be read").And.Contain("regulation was not checked");
     }
 
     private sealed class NoManifest(IManifestVouching inner) : IManifestVouching

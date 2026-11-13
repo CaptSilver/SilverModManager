@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Steam;
+using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 
@@ -107,18 +108,5 @@ public sealed class SteamFolderCheck(ILogger<SteamFolderCheck> logger)
         return !matches;
     }
 
-    /// <summary>The SHA-1 of the file, or null when it is missing or cannot be read; an unreadable file is logged and not called changed.</summary>
-    private async Task<Sha1Value?> HashOf(AbsolutePath path, CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (!path.FileExists) return null;
-            return await FileHashing.Digest<Sha1Value, SHA1, Sha1Hasher>(path, cancellationToken);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            logger.LogWarning(exception, "{Path} could not be read to compare it with Steam's manifest", path);
-            return null;
-        }
-    }
+    private Task<Sha1Value?> HashOf(AbsolutePath path, CancellationToken cancellationToken) => FileSha1.Of(path, cancellationToken, logger);
 }

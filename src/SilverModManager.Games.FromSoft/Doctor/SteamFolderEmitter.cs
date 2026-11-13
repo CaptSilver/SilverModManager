@@ -16,7 +16,8 @@ namespace SilverModManager.Games.FromSoft.Doctor;
 /// Warns about files in the real game folder that Steam's manifest for the installed build does not list or lists
 /// differently, and about files only mods put there. <see cref="HealEmitter"/> sees a changed regulation only against
 /// the build stamp, so a regulation that was already modded when the app first saw the game is found here. Offers to
-/// restore the regulation and to have Steam verify the rest. Says nothing when no manifest of the install can be read.
+/// restore the regulation and to have Steam verify the rest. When no manifest of the install can be read, says so
+/// once as information, since nothing was compared.
 /// </summary>
 public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck check, RegulationRestore restore, BuildStampStore stamps) : IFromSoftDiagnosticEmitter
 {
@@ -33,7 +34,11 @@ public class SteamFolderEmitter(IManifestVouching vouching, SteamFolderCheck che
 
         var installation = loadout.InstallationInstance;
         if (installation.Game is not IFromSoftGame game) yield break;
-        if (vouching.InstalledFiles(installation) is not { } manifest) yield break;
+        if (vouching.InstalledFiles(installation) is not { } manifest)
+        {
+            yield return FromSoftDiagnostics.CreateManifestUnreadable(game.DisplayName);
+            yield break;
+        }
 
         var found = await check.Check(game.Definition, installation.Locations[LocationId.Game].Path, manifest, cancellationToken);
         if (found.IsEmpty) yield break;
