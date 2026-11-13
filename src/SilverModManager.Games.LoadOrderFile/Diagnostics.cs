@@ -69,4 +69,24 @@ Disable one of them.
             .AddValue<string>("Other")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate MissingDependency = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("A mod needs a mod that is not in the mod list")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Mod} needs {Missing}, which is not in the mod list")
+        .WithDetails("""
+The manifest of **{Mod}** lists **{Missing}** as a mod it depends on, and the order file the app writes does not list it. The mod may not work, or the game may refuse to enable it.
+
+Install or enable the missing mod, or remove {Mod}.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("Group")
+            .AddValue<string>("Mod")
+            .AddValue<string>("Missing")
+        )
+        .Finish();
 }

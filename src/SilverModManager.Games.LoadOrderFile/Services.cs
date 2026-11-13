@@ -10,6 +10,7 @@ public static class Services
     {
         services.AddSingleton<WorkshopDuplicateEmitter>();
         services.AddSingleton<ManifestOrderEmitter>();
+        services.AddSingleton<ManifestDependencyEmitter>();
         foreach (var definition in LoadOrderFileGames.All)
             services.AddDefinedGame(definition, (provider, row) => new LoadOrderFileGame(provider, row));
         return services;

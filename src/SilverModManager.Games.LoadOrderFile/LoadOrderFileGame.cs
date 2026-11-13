@@ -39,6 +39,9 @@ public sealed class LoadOrderFileGame(IServiceProvider provider, LoadOrderFileGa
             yield return provider.GetRequiredService<WorkshopDuplicateEmitter>();
 
         if (Definition.ManifestReader is not null)
+        {
             yield return provider.GetRequiredService<ManifestOrderEmitter>();
+            yield return provider.GetRequiredService<ManifestDependencyEmitter>();
+        }
     }
 }

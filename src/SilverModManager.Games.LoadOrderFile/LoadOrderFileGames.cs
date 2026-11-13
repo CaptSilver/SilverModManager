@@ -199,6 +199,7 @@ public static class LoadOrderFileGames
         ExternalMods = [new ModFolderModSource("mods", new ManifestNamer(StarsectorManifests), ExternalListing.WhenListed)],
         GameWrittenPaths = [new GamePath(LocationId.Game, "saves"), new GamePath(LocationId.Game, "starsector-core/starsector.log")],
         FileOrdersLoad = false,
+        DependenciesAreRequired = true,
     };
 
     public static IReadOnlyList<LoadOrderFileGameDefinition> All { get; } =

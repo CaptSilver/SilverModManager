@@ -40,6 +40,9 @@ public abstract class ARimWorldEmitterTests<TTest, TEmitter>(ITestOutputHelper o
 
     protected static string Rule(string element, params string[] ids) => $"<{element}>{string.Concat(ids.Select(id => $"<li>{id}</li>"))}</{element}>";
 
+    protected static string Dependencies(params string[] ids)
+        => $"<modDependencies>{string.Concat(ids.Select(id => $"<li><packageId>{id}</packageId></li>"))}</modDependencies>";
+
     /// <summary>Installs a mod whose folder, and listed name, is <paramref name="packageId"/> in lower case.</summary>
     protected async Task<LoadoutItemGroup.ReadOnly> InstallMod(Loadout.ReadOnly loadout, string packageId, string rules = "")
     {

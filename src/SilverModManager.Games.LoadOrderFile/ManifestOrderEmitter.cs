@@ -30,13 +30,9 @@ public sealed class ManifestOrderEmitter(IFileStore fileStore, ILogger<Generated
         var definition = game.Definition;
         var locations = loadout.InstallationInstance.Locations;
         var gameFolder = locations.ToAbsolutePath(new GamePath(LocationId.Game, NexusMods.Paths.RelativePath.Empty));
-        var orderFile = locations.ToAbsolutePath(definition.OrderFile.ToGamePath());
 
         var managed = await ManagedModList.Read(definition, loadout, fileStore, cancellationToken);
-        var order = new GeneratedOrderFile(definition, logger).Order(
-            gameFolder,
-            orderFile.FileExists ? await orderFile.ReadAllTextAsync(cancellationToken) : null,
-            managed.Select(mod => new GeneratedOrderFile.ManagedMod(mod.Folder, mod.Manifest)).ToList());
+        var order = await new GeneratedOrderFile(definition, logger).Order(loadout, managed, cancellationToken);
         var position = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < order.Count; i++) position.TryAdd(order[i], i);
 

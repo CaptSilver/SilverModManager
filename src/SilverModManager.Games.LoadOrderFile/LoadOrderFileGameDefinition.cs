@@ -51,6 +51,12 @@ public sealed record LoadOrderFileGameDefinition : IGameDefinition
     /// </summary>
     public IModManifestReader? ManifestReader { get; init; }
 
+    /// <summary>
+    /// Whether the game refuses to enable a mod whose manifest dependency is missing, rather than only warning. A
+    /// missing dependency is then reported as critical.
+    /// </summary>
+    public bool DependenciesAreRequired { get; init; }
+
     /// <summary>Mods the game loads from folders the app does not install into, each with its own rule for when the order file lists them.</summary>
     public IReadOnlyList<IExternalModSource> ExternalMods { get; init; } = [];
 

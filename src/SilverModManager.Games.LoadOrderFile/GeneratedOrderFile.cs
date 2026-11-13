@@ -119,6 +119,21 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
         return [.. order, .. tail];
     }
 
+    /// <summary>
+    /// The names the file will list once <paramref name="managed"/> is applied, against the order file and the game
+    /// folder as they are now. The diagnostics take the managed mods from the loadout's rows rather than the disk, so
+    /// they see the manifests before an apply has extracted them.
+    /// </summary>
+    internal async Task<IReadOnlyList<string>> Order(Loadout.ReadOnly loadout, IReadOnlyList<ManagedModEntry> managed, CancellationToken cancellationToken)
+    {
+        var locations = loadout.InstallationInstance.Locations;
+        var file = locations.ToAbsolutePath(Path);
+        return Order(
+            locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)),
+            file.FileExists ? await file.ReadAllTextAsync(cancellationToken) : null,
+            managed.Select(mod => new ManagedMod(mod.Folder, mod.Manifest)).ToList());
+    }
+
     /// <summary>The manifest a managed folder carries on disk, or null when it has none, or no reader exists for the game.</summary>
     private ModManifest? ManifestOnDisk(AbsolutePath gameFolder, string folder)
     {
