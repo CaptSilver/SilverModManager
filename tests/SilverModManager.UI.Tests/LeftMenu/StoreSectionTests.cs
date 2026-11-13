@@ -119,15 +119,30 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
 
     private async Task<LoadoutLeftMenuView> Show(params ILeftMenuItemViewModel[] stores)
     {
-        return await OnUi(async () =>
+        // The section headers get their text when the view activates, on its Loaded event, which a busy UI thread can
+        // deliver after the jobs drained here; reading the tree before that finds no "Stores" header at all.
+        var activated = new TaskCompletionSource();
+        IDisposable? subscription = null;
+        try
         {
-            var view = new LoadoutLeftMenuView { ViewModel = new MenuStub(stores) };
-            Track(new Window { Width = 300, Height = 900, Content = view }).Show();
-            Dispatcher.UIThread.RunJobs();
-            await Task.Yield();
-            Dispatcher.UIThread.RunJobs();
+            var view = await OnUi(async () =>
+            {
+                var menu = new MenuStub(stores);
+                subscription = menu.Activator.Activated.Subscribe(_ => activated.TrySetResult());
+                var view = new LoadoutLeftMenuView { ViewModel = menu };
+                Track(new Window { Width = 300, Height = 900, Content = view }).Show();
+                Dispatcher.UIThread.RunJobs();
+                await Task.Yield();
+                Dispatcher.UIThread.RunJobs();
+                return view;
+            });
+            await EventuallyOnUi(() => activated.Task.IsCompleted.Should().BeTrue("the view has to activate before its headers have text"));
             return view;
-        });
+        }
+        finally
+        {
+            subscription?.Dispose();
+        }
     }
 
     private static double Top(Visual of, Visual inView) => of.TranslatePoint(new Point(0, 0), inView)!.Value.Y;
