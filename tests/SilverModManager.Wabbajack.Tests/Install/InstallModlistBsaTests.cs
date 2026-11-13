@@ -1,3 +1,5 @@
+using DynamicData;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -295,6 +297,31 @@ public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     private async Task<byte[]> BuildBsa() => await TestArchives.Tes5Archive(TemporaryFileManager);
+
+    [Fact]
+    public async Task TheArchiveBuildShowsOnTheOwningFoldersRow()
+    {
+        var list = new ListBuilder();
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/meshes/one.nif", "one"));
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/meshes/two.nif", "two"));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "meshes/one.nif", "meshes/two.nif"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var job = NewJob(loadout, modlist, Defaults);
+        var states = new List<ModInstallRowState>();
+        using var subscription = job.Progress.Mods.Connect().Subscribe(set =>
+        {
+            foreach (var change in set.Where(c => c.Key == "A" && c.Reason == DynamicData.ChangeReason.Add))
+                change.Current.Changed.Subscribe(states.Add);
+        });
+
+        await Run(job);
+
+        states.Select(s => s.Detail).Where(d => d is not null).Should().Contain(" · building pack.bsa (2 of 2)");
+        states.Should().Contain(s => s.Detail != null && s.Detail.StartsWith(" · building "));
+        states.Last().State.Should().Be(ModInstallState.Installed);
+        states.Last().Detail.Should().BeNull();
+    }
 }
 
 public class InstallModlistGameBsaTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistGameBsaTests>(helper)

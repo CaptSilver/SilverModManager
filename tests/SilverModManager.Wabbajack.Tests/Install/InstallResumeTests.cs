@@ -1,3 +1,5 @@
+using DynamicData;
+using SilverModManager.Sdk.Loadouts.Install;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -389,5 +391,25 @@ public class InstallResumeTests(ITestOutputHelper helper) : InstallTestBase<Inst
         var link = LibraryLinkedLoadoutItem.Load(Connection.Db, mod.Id);
         link.IsValid().Should().BeTrue();
         link.LibraryItem.Id.Should().Be(added.Id);
+    }
+
+    [Fact]
+    public async Task AResumedRunStartsFinishedFoldersInstalled()
+    {
+        var loadout = await CreateLoadout();
+        var modlist = await MixedList();
+        var (_, first) = await Install(loadout, modlist, Options);
+        await Forget(first, "m2.bin", "p0.bin");
+
+        var job = NewJob(loadout, modlist, Options);
+        var seen = new Dictionary<string, ModInstallRowState>();
+        using var subscription = job.Progress.Mods.Connect().Subscribe(set =>
+        {
+            foreach (var change in set.Where(c => c.Reason == DynamicData.ChangeReason.Add)) seen[change.Key] = change.Current.Current;
+        });
+        await Run(job);
+
+        seen["A"].Should().Match<ModInstallRowState>(s => s.State == ModInstallState.Installed && s.Written == s.Total && s.Total == 3);
+        seen["B"].Should().Match<ModInstallRowState>(s => s.State == ModInstallState.Installing && s.Written == 3 && s.Total == 5);
     }
 }

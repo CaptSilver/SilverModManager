@@ -710,12 +710,44 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.ProfileTweak or Mo2Target.GameRootFile or Mo2Target.Extra)
             .ToArray();
 
+    /// <summary>
+    /// The mod folders the install will fill, one per group, for the rows the page shows. A directive with no group (a
+    /// tool file that is never deployed) makes no row and counts in no folder. <paramref name="thisRun"/> is what is
+    /// left to write; the rest of <paramref name="allExecutable"/> an earlier run already finished.
+    /// </summary>
+    internal static IReadOnlyList<ModFolderPlan> FolderPlans(IReadOnlyList<Placement> allExecutable, IReadOnlyList<Placement> thisRun)
+    {
+        var remaining = new Dictionary<string, int>();
+        foreach (var placement in thisRun)
+        {
+            if (placement.Group is { } group) remaining[group] = remaining.GetValueOrDefault(group) + 1;
+        }
+
+        var byFolder = new Dictionary<string, List<Placement>>();
+        foreach (var placement in allExecutable)
+        {
+            if (placement.Group is not { } group) continue;
+            if (!byFolder.TryGetValue(group, out var members)) byFolder[group] = members = [];
+            members.Add(placement);
+        }
+
+        return byFolder
+            .Select(f => new ModFolderPlan(
+                f.Key, f.Value.Min(p => p.Index), f.Value.Count,
+                AlreadyDone: f.Value.Count - remaining.GetValueOrDefault(f.Key),
+                LaterPasses: f.Value.Count(p => WriteOrder.Of(p.Directive) != 0),
+                MergePasses: f.Value.Count(p => p.Directive is MergedPatch)))
+            .OrderBy(f => f.Index)
+            .ToArray();
+    }
+
     private async Task<IReadOnlyList<Prepared>> Resolve(Checked check, WriteState state, CancellationToken cancellationToken)
     {
         _resolver = NewResolver(check);
         _inputResolves = new SemaphoreSlim(Workers);
-        var executable = Executable(check.Placements);
-        executable = LeaveOutFinishedDirectives(check, state, executable);
+        var allExecutable = Executable(check.Placements);
+        var executable = LeaveOutFinishedDirectives(check, state, allExecutable);
+        Progress.SetMods(FolderPlans(allExecutable, executable));
         Progress.Enter(InstallPhase.Resolve, executable.Length, executable.Sum(p => p.Directive.Size));
 
         var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
@@ -728,7 +760,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             prepared[i] = await Prepare(check, rows, placement, token);
             var took = Stopwatch.GetElapsedTime(started);
             if (took > SlowDirective) Logger.LogDebug("Locating {Kind} for {To} took {Seconds:F1} s", placement.Directive.GetType().Name, placement.Directive.To, took.TotalSeconds);
-            Progress.Advance(1, placement.Directive.Size);
+            Progress.Advance(placement.Group, 1, placement.Directive.Size);
         });
         await Resolver.FlushDigests(cancellationToken);
 
@@ -1121,7 +1153,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 var outcome = await produced;
 
                 Record(check, groupId, state, item, outcome);
-                Progress.Advance(1, item.Placement.Directive.Size);
+                Progress.Advance(item.Placement.Group, 1, item.Placement.Directive.Size);
                 if (BatchIsDue(state)) await CommitBatch(state, cancellationToken);
             }
             await admitting;
@@ -1607,6 +1639,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     AddSkip(tx, modlistGroup, state, placement, SkipKind.KeptOriginal, note, check);
                 break;
             case FileSkipped skipped:
+                if (placement.Group is { } folder) Progress.MarkFailed(folder, skipped.Kind, skipped.Reason);
                 AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Reason, check);
                 break;
             default:
@@ -2074,7 +2107,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 // Inputs the archive could not re-encode are stored as they are; the notes say which.
                 var archiveNotes = new List<string>();
-                return WithNotes(await Generated(state, directive, output => BuildArchive(check, state, extras, bsa, output, archiveNotes, cancellationToken), checkHash: false, cancellationToken), archiveNotes);
+                return WithNotes(await Generated(state, directive, output => BuildArchive(check, state, extras, bsa, item.Placement.Group, output, archiveNotes, cancellationToken), checkHash: false, cancellationToken), archiveNotes);
             }
 
             default:
@@ -2263,7 +2296,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         };
     }
 
-    private async Task BuildArchive(Checked check, WriteState state, ExtrasFolder extras, CreateBsa bsa, Stream output, List<string> notes, CancellationToken cancellationToken)
+    private async Task BuildArchive(Checked check, WriteState state, ExtrasFolder extras, CreateBsa bsa, string? group, Stream output, List<string> notes, CancellationToken cancellationToken)
     {
         var inputs = check.BsaInputs.GetValueOrDefault(Fold(bsa.TempId)) ?? new Dictionary<string, Placement>();
         var rows = check.Plan.Rows.GroupBy(r => r.Archive.XxHash64).ToDictionary(g => g.Key, g => g.First());
@@ -2272,6 +2305,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var name = bsa.To.FileName.ToString();
         var number = state.NextArchiveNumber();
         Progress.BeginArchive(name, number, state.ArchiveCount, bsa.FileStates.Length);
+        if (group is not null) Progress.MarkArchiveBuild(group, number);
         try
         {
             async Task<Stream> OpenInput(RelativePath path, FileState fileState)
@@ -2294,7 +2328,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                     throw new DirectiveSkipped(SkipKind.Transform, $"the archive '{bsa.To}' could not be built: the texture '{path}' in it could not be re-encoded to {format} and its {nameof(Ba2Dx10FileState)} records the size and format, so the original cannot stand in: {unsupported.Message}");
                 }
                 spilled.Add(temporary);
-                return new NotifyingStream(temporary.Path.Read(), () => Progress.AdvanceArchive(number));
+                return new NotifyingStream(temporary.Path.Read(), () =>
+                {
+                    Progress.AdvanceArchive(number);
+                    if (group is not null) Progress.MarkArchiveBuild(group, number);
+                });
             }
 
             await Transforms.BuildBsa(bsa.State, bsa.FileStates, OpenInput, output, cancellationToken);
@@ -2302,6 +2340,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         finally
         {
             Progress.EndArchive(number);
+            if (group is not null) Progress.MarkArchiveBuild(group, number);
             foreach (var temporary in spilled) await temporary.DisposeAsync();
         }
     }

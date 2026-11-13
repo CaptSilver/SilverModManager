@@ -1,3 +1,5 @@
+using DynamicData;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Ini;
@@ -1069,6 +1071,79 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
             .Where(g => g.AsLoadoutItem().Name is "A" or "B" or "Overwrite" or "Game settings" or "Stock Game")
             .Should().BeEmpty();
         FileCount(loadout).Should().Be(filesBefore, "the files of every child group went with it");
+    }
+
+    [Fact]
+    public void FolderPlansCountEachFolderOnceAndSkipDroppedPaths()
+    {
+        var list = new ListBuilder();
+        var a0 = list.Inline("mods/A/a0.txt", "a0");
+        var a1 = list.Inline("mods/A/a1.txt", "a1");
+        var b0 = list.Inline("mods/B/b0.txt", "b0");
+        var b1 = list.Bsa("mods/B/pack.bsa", "pack", "x.nif");
+        var tool = list.Inline("Tools/x.txt", "x");
+        var merged = list.Merged("mods/C/merged.esp", "merged"u8.ToArray(), ("mods/C/one.esp", "one"u8.ToArray()));
+        InstallModlistJob.Placement Of(int index, Directive directive, string? group)
+            => new(index, directive, directive.To, group is null ? new Mo2Target.Extra(directive.To) : new Mo2Target.ModFile(group, new GamePath(LocationId.Game, directive.To)), group, null);
+        InstallModlistJob.Placement[] all = [Of(0, a0, "A"), Of(1, a1, "A"), Of(2, b0, "B"), Of(3, b1, "B"), Of(4, tool, null), Of(5, merged, "C")];
+
+        var plans = InstallModlistJob.FolderPlans(all, all);
+
+        plans.Should().Equal(
+            new ModFolderPlan("A", 0, 2, 0, 0, 0),
+            new ModFolderPlan("B", 2, 2, 0, 1, 0),
+            new ModFolderPlan("C", 5, 1, 0, 1, 1));
+    }
+
+    [Fact]
+    public void FolderPlansCountWhatAnEarlierRunAlreadyWrote()
+    {
+        var list = new ListBuilder();
+        var a0 = list.Inline("mods/A/a0.txt", "a0");
+        var a1 = list.Inline("mods/A/a1.txt", "a1");
+        InstallModlistJob.Placement Of(int index, Directive directive)
+            => new(index, directive, directive.To, new Mo2Target.ModFile("A", new GamePath(LocationId.Game, directive.To)), "A", null);
+        InstallModlistJob.Placement[] all = [Of(0, a0), Of(1, a1)];
+
+        var plans = InstallModlistJob.FolderPlans(all, [all[1]]);
+
+        plans.Should().Equal(new ModFolderPlan("A", 0, 2, 1, 0, 0));
+    }
+
+    [Fact]
+    public async Task DroppedPathsMakeNoRowAndDoNotCountInTheHeader()
+    {
+        var fixture = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.List.ToList(), fixture.List.Blobs);
+
+        var (job, _) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        ModInstallTotals? last = null;
+        using var subscription = job.Progress.Mods.Totals.Subscribe(t => last = t);
+        last.Should().Be(new ModInstallTotals(5, 5, 0), "A, B, Overwrite, the profile settings and Stock Game; the seeds and Mod Organizer's files make no row");
+        job.Progress.Mods.Count.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task RowsEndInstalledAndFailedPerFolder()
+    {
+        var archive = await AddZip("a.zip", new() { ["a.txt"] = "real"u8.ToArray(), ["c.txt"] = "see"u8.ToArray() });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/a.txt", archive, "a.txt", "real"u8.ToArray()));
+        list.Directives.Add(new FromArchive(P("mods/B/missing.txt"), Xx64.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("nope.txt")])));
+        list.Directives.Add(list.Member("mods/C/c.txt", archive, "c.txt", "see"u8.ToArray()));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (job, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var rows = new List<ModInstallRow>();
+        using var subscription = job.Progress.Mods.Connect().Subscribe(set => rows.AddRange(set.Select(c => c.Current)));
+        rows.OrderBy(r => r.Index).Select(r => (r.Key, r.Current.State)).Should().Equal(
+            ("A", ModInstallState.Installed), ("B", ModInstallState.Failed), ("C", ModInstallState.Installed));
+        rows.Single(r => r.Key == "B").Current.Reason.Should().Be(SkipsOf(group).Single().Reason);
     }
 }
 
