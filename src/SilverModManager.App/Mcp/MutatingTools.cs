@@ -105,6 +105,19 @@ public static class MutatingTools
         VerbTool.Create(context, "wabbajack_cancel",
             "Stops the Wabbajack modlist download that is running. It is not resumed after a restart.",
             readOnly: false, ["wabbajack", "cancel"], takesLoadout: false, context.Limits.ReadTimeout),
+        VerbTool.Create(context, "nexus_install",
+            "Installs one Nexus Mods file into a loadout, as JSON: give modId for the mod's one main file, fileId for a specific file (nexus_files lists them), or both. " +
+            "Only when the user asked for this install; do not chain installs on your own. " +
+            "A file the app's library already holds installs for any account; a premium account downloads the rest. " +
+            "A free account gets the file's page back in needsBrowser (exit code 2): the user clicks \"Download with manager\" there, the window reports the download, then call this again. " +
+            "Stopping the call does not stop the download in the app. A restore point is written first." + UndoNote,
+            readOnly: false, ["nexus", "install"], takesLoadout: true, context.Limits.ApplyTimeout, flags: ["--json"],
+            reportedExitCodes: VerbTool.ExitTwoIsAResult,
+            options:
+            [
+                new ToolParam("modId", "The mod's id on Nexus Mods, as nexus_search shows it.", Type: "integer"),
+                new ToolParam("fileId", "The file's id, as nexus_files shows it. Needed when the mod has no single main file.", Type: "integer"),
+            ]),
         VerbTool.Create(context, "game_launch",
             "Applies a loadout and starts its game, the same as the Play button, and returns once the launch is under way, not when the game exits. " +
             "It needs the SilverModManager window to be open. Check app_status afterwards for the game process. Find the loadout with loadouts_list.",

@@ -76,6 +76,27 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task TheNexusInstallTool_PassesTheIds()
+    {
+        var tools = await ToolsAsync();
+
+        var byMod = await McpTestHost.CallAsync(tools, "nexus_install", new JsonObject { ["loadout"] = "cyberpunk/main", ["modId"] = 107 });
+        var byFile = await McpTestHost.CallAsync(tools, "nexus_install", new JsonObject { ["loadout"] = "cyberpunk/main", ["modId"] = 107, ["fileId"] = 5 });
+
+        byMod.Text.Trim().Should().Be("nexus install loadout=cyberpunk/main modId=107 fileId= json=True");
+        byFile.Text.Trim().Should().Be("nexus install loadout=cyberpunk/main modId=107 fileId=5 json=True");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheNexusInstallTool_ReturnsExitTwoAsAResult()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "nexus_install", new JsonObject { ["loadout"] = "free", ["modId"] = 107 });
+
+        result.IsError.Should().BeFalse();
+        result.Text.Should().EndWith("exit code 2");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task TheWabbajackTools_PassTheModlistAndLeaveOutAnOptionalOneThatWasNotGiven()
     {
         var tools = await ToolsAsync();

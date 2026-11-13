@@ -33,11 +33,11 @@ public static class ReadOnlyTools
         VerbTool.Create(context, "loadout_plugins_list",
             "Lists, as JSON, a Creation Engine loadout's plugins in load order with each one's switch, flags, masters, lock and mod. " +
             "The last plugin wins. A game with no plugin order answers that it has none (exit code 1). Find the loadout with loadouts_list.",
-            readOnly: true, ["loadout", "plugins", "list"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),
+            readOnly: true, ["loadout", "plugins", "list"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"], reportedExitCodes: VerbTool.ExitOneIsAResult),
         VerbTool.Create(context, "loadout_merge_report",
             "Reports the files the app merges for a FromSoft loadout, which mods feed each one, and whether an apply would be refused, as JSON. " +
             "Find the loadout with loadouts_list.",
-            readOnly: true, ["fromsoft", "merge", "list"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--json"], reportsExitOne: true),
+            readOnly: true, ["fromsoft", "merge", "list"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--json"], reportedExitCodes: VerbTool.ExitOneIsAResult),
         VerbTool.Create(context, "loadout_ini_list",
             "Lists, as JSON, a loadout's game INI files with their path on disk, whether a copy exists, whether the last Apply wrote the current bake and whether the file on disk is that bake, " +
             "and the tweak layers of each: name, source, kind (user, list or mod), switch and whether it is merged. Says whether the loadout owns its INIs at all. Find the loadout with loadouts_list.",
@@ -59,7 +59,7 @@ public static class ReadOnlyTools
         VerbTool.Create(context, "loadout_heal_plan",
             "Shows the steps that would bring a FromSoft loadout's merged regulation onto the installed game build, without changing anything. " +
             "Find the loadout with loadouts_list.",
-            readOnly: true, ["fromsoft", "heal"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--dry-run"], reportsExitOne: true),
+            readOnly: true, ["fromsoft", "heal"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--dry-run"], reportedExitCodes: VerbTool.ExitOneIsAResult),
         VerbTool.Create(context, "games_list",
             "Lists, as JSON, the games found on this machine with their store and install folder.",
             readOnly: true, ["games", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
@@ -101,7 +101,7 @@ public static class ReadOnlyTools
             options: [new ToolParam("modId", "The mod's id on Nexus Mods, as nexus_search shows it.", Required: true, Type: "integer")]),
         VerbTool.Create(context, "doctor",
             "Reports, as JSON, how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock.",
-            readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),
+            readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportedExitCodes: VerbTool.ExitOneIsAResult),
     ];
 
     /// <summary>
@@ -114,7 +114,7 @@ public static class ReadOnlyTools
         [], ReadOnly: true,
         async (_, token) =>
         {
-            var call = new VerbCall(context.Limits.ReadTimeout, ReportsExitOne: false, context.Limits.MaxOutputChars);
+            var call = new VerbCall(context.Limits.ReadTimeout, ReportedExitCodes: new HashSet<int>(), context.Limits.MaxOutputChars);
             var text = new StringBuilder();
 
             var commit = ApplicationConstants.CommitHash is { } hash ? $" ({hash})" : "";

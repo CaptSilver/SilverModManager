@@ -23,7 +23,7 @@ public sealed class McpToolListTests : IAsyncDisposable
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
             "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace",
             "loadout_diagnostic_fix", "loadout_diagnostic_clear",
-            "nexus_search", "nexus_files");
+            "nexus_search", "nexus_files", "nexus_install");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class McpToolListTests : IAsyncDisposable
         all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo(
             "settings_set", "loadout_apply", "game_launch", "wabbajack_download", "wabbajack_cancel",
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
-            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace", "loadout_diagnostic_fix", "loadout_diagnostic_clear");
+            "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace", "loadout_diagnostic_fix", "loadout_diagnostic_clear", "nexus_install");
     }
 
     [Fact]
@@ -133,6 +133,23 @@ public sealed class McpToolListTests : IAsyncDisposable
         var tool = Tools(readOnly: true).Single(t => t.Name == "nexus_files");
 
         tool.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("modId", "integer", true));
+    }
+
+    [Fact]
+    public void AReadOnlyServer_LeavesOutNexusInstall()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().NotContain("nexus_install");
+    }
+
+    [Fact]
+    public void TheNexusInstallTool_SaysOnlyWhenTheUserAskedAndWhatAFreeAccountGets()
+    {
+        var tool = Tools(readOnly: false).Single(t => t.Name == "nexus_install");
+
+        tool.ReadOnly.Should().BeFalse();
+        tool.Description.Should().Contain("Only when the user asked for this install").And.Contain("chain installs")
+            .And.Contain("Stopping the call does not stop the download").And.Contain("needsBrowser").And.Contain("loadout_revert");
+        tool.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("modId", "integer", false), ("fileId", "integer", false));
     }
 
     [Fact]

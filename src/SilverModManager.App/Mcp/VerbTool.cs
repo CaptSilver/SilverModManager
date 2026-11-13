@@ -5,6 +5,14 @@ namespace SilverModManager.App.Mcp;
 /// <summary>Builds a tool that runs one verb in the app.</summary>
 internal static class VerbTool
 {
+    private static readonly IReadOnlySet<int> NoExitCodes = new HashSet<int>();
+
+    /// <summary>For a verb that exits 1 to say the loadout has a problem and still prints its report.</summary>
+    public static readonly IReadOnlySet<int> ExitOneIsAResult = new HashSet<int> { 1 };
+
+    /// <summary>For a verb that exits 2 to hand a free account the page to download from.</summary>
+    public static readonly IReadOnlySet<int> ExitTwoIsAResult = new HashSet<int> { 2 };
+
     public static readonly ToolParam LoadoutParam = new(
         "loadout", "The loadout: its hex id, or <game>/<shortName>. Use loadouts_list to find it.", Required: true);
 
@@ -15,7 +23,7 @@ internal static class VerbTool
     /// <param name="options">Further arguments, each passed to the verb as <c>--&lt;name&gt; &lt;value&gt;</c>; one that is not required and was not given is left out.</param>
     public static McpTool Create(
         McpToolContext context, string name, string description, bool readOnly, string[] verb, bool takesLoadout,
-        TimeSpan timeout, string[]? flags = null, bool reportsExitOne = false, Func<ToolArgs, string>? emptyText = null,
+        TimeSpan timeout, string[]? flags = null, IReadOnlySet<int>? reportedExitCodes = null, Func<ToolArgs, string>? emptyText = null,
         IReadOnlyList<ToolParam>? options = null)
     {
         IReadOnlyList<ToolParam> parameters = [.. takesLoadout ? new[] { LoadoutParam } : [], .. options ?? []];
@@ -32,7 +40,7 @@ internal static class VerbTool
                     : o.Required ? throw new InvalidOperationException($"The tool was called without its required '{o.Name}' argument.") : []),
                 .. flags ?? [],
             ];
-            return context.Verbs.RunAsync(argv, new VerbCall(timeout, reportsExitOne, context.Limits.MaxOutputChars, emptyText?.Invoke(args)), token);
+            return context.Verbs.RunAsync(argv, new VerbCall(timeout, reportedExitCodes ?? NoExitCodes, context.Limits.MaxOutputChars, emptyText?.Invoke(args)), token);
         });
     }
 

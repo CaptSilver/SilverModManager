@@ -6,8 +6,8 @@ namespace SilverModManager.CLI.Tests;
 /// <summary>How the exit code a verb ended with, and the text it printed, become a tool result.</summary>
 public sealed class McpVerbResultTests
 {
-    private static readonly VerbCall Plain = new(TimeSpan.FromSeconds(1), ReportsExitOne: false, MaxChars: 1_000);
-    private static readonly VerbCall Report = Plain with { ReportsExitOne = true };
+    private static readonly VerbCall Plain = new(TimeSpan.FromSeconds(1), ReportedExitCodes: new HashSet<int>(), MaxChars: 1_000);
+    private static readonly VerbCall Report = Plain with { ReportedExitCodes = new HashSet<int> { 1 } };
 
     [Fact]
     public void ExitZero_IsTheText() =>
@@ -20,6 +20,15 @@ public sealed class McpVerbResultTests
     [Fact]
     public void ExitOneFromAReportTool_KeepsTheText_AndAddsTheCode() =>
         VerbResults.Map(1, "{\"refused\":true}\n", Report).Should().Be(new ToolResult("{\"refused\":true}\n\nexit code 1", false));
+
+    [Fact]
+    public void ExitTwoFromAToolThatReportsIt_KeepsTheTextAndAddsTheCode() =>
+        VerbResults.Map(2, "{\"needsBrowser\":true}\n", Plain with { ReportedExitCodes = new HashSet<int> { 2 } })
+            .Should().Be(new ToolResult("{\"needsBrowser\":true}\n\nexit code 2", false));
+
+    [Fact]
+    public void ExitTwoFromAToolThatReportsOnlyOne_IsAnError() =>
+        VerbResults.Map(2, "Nope.\n", Report).Should().Be(new ToolResult("Nope.\n", true));
 
     [Fact]
     public void ExitOneFromAnyOtherTool_IsAnErrorWithTheTextOnly() =>

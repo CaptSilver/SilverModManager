@@ -6,13 +6,13 @@ namespace SilverModManager.App.Mcp;
 
 /// <summary>How one verb call is run and its outcome read.</summary>
 /// <param name="Timeout">How long to wait for the main process before giving up on the answer.</param>
-/// <param name="ReportsExitOne">
-/// True for a tool whose verb exits 1 to say "the loadout has a problem" and still prints a valid report: that is a
-/// result, not a failure of the tool.
+/// <param name="ReportedExitCodes">
+/// The non-zero exit codes that are a result, not a failure of the tool: 1 for a verb that says "the loadout has a
+/// problem" and still prints a valid report, 2 for one that hands a free account a download URL.
 /// </param>
 /// <param name="MaxChars">The most text to return.</param>
 /// <param name="EmptyText">What to return when the verb succeeds but prints nothing.</param>
-public sealed record VerbCall(TimeSpan Timeout, bool ReportsExitOne, int MaxChars, string? EmptyText = null);
+public sealed record VerbCall(TimeSpan Timeout, IReadOnlySet<int> ReportedExitCodes, int MaxChars, string? EmptyText = null);
 
 /// <summary>Turns what a verb printed and how it ended into a tool result.</summary>
 public static class VerbResults
@@ -29,8 +29,8 @@ public static class VerbResults
                 return new ToolResult(AfterOutput(text, "SilverModManager closed the connection before the command finished."), true);
             case 0:
                 return new ToolResult(string.IsNullOrWhiteSpace(text) ? call.EmptyText ?? "" : text, false);
-            case 1 when call.ReportsExitOne:
-                return new ToolResult(AfterOutput(text, "") + "exit code 1", false);
+            case { } code when call.ReportedExitCodes.Contains(code):
+                return new ToolResult(AfterOutput(text, "") + $"exit code {code}", false);
             default:
                 return new ToolResult(string.IsNullOrWhiteSpace(text) ? $"The command ended with exit code {exitCode} and printed nothing." : text, true);
         }

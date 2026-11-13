@@ -56,6 +56,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.Heal)
             .AddVerb(() => Verbs.NexusSearch)
             .AddVerb(() => Verbs.NexusFiles)
+            .AddVerb(() => Verbs.NexusInstall)
             .AddVerb(() => Verbs.Doctor)
             .AddVerb(() => Verbs.ListGames)
             .AddVerb(() => Verbs.SettingsList)
@@ -218,6 +219,19 @@ public sealed class McpTestHost : IAsyncDisposable
         {
             await renderer.TextLine($"nexus files loadout={loadout} modId={modId} json={json}");
             return 0;
+        }
+
+        // The loadout "free" stands in for a free account, whose install ends with exit 2.
+        [Verb("nexus install", "Stand-in for the Nexus install")]
+        public static async Task<int> NexusInstall(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("m", "modId", "Mod", true)] int? modId,
+            [Option("f", "fileId", "File", true)] int? fileId,
+            [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"nexus install loadout={loadout} modId={modId} fileId={fileId} json={json}");
+            return loadout == "free" ? 2 : 0;
         }
 
         [Verb("settings get", "Stand-in for the settings get")]
