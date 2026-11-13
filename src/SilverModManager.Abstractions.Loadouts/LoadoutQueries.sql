@@ -15,6 +15,8 @@ SELECT Id FROM mdb_LoadoutFileWinner(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
 SELECT Id FROM mdb_LoadoutIniState(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
+SELECT Id FROM mdb_LoadoutMergeChoice(Db=>db) WHERE Loadout = loadoutId
+UNION ALL
 SELECT Id FROM mdb_ModOrderDroppedEntry(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
 SELECT Id FROM mdb_DiagnosticDismissal(Db=>db) WHERE Loadout = loadoutId

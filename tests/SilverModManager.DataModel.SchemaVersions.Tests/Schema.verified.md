@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xEE596E4059C5DE81
-   - Total attributes: 426
-   - Total namespaces: 114
+   - Fingerprint: 0xF955B0FEC442CA33
+   - Total attributes: 431
+   - Total namespaces: 115
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -288,6 +288,11 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Priority                               | UInt64                  | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Target                                 | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemWithTargetPath/TargetPath                            | Tuple3_Ref_UShort_Utf8I | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutMergeChoice/Key                                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutMergeChoice/Loadout                                      | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutMergeChoice/Path                                         | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutMergeChoice/WinnerGroup                                  | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutMergeChoice/WinnerModId                                  | UInt32                  | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutOverridesGroup/OverridesFor                              | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutSnapshot/Snapshot                                        | Reference               | False   | True  | False     | 
 | SilverModManager.Loadouts.ModOrderDroppedEntry/Container                                  | Reference               | True    | False | False     | 

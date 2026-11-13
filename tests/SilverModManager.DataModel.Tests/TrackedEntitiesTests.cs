@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
@@ -60,6 +61,26 @@ public class TrackedEntitiesTests(ITestOutputHelper helper) : ANexusCollectionTe
         owned.Should().Contain(itemsThen.Append(sortOrderId.Value));
         owned.Should().NotContain(itemAdded);
         OwnedIds(Connection.Db, loadout.Id).Should().Contain(itemAdded);
+    }
+
+    [Fact]
+    public async Task AMergeChoiceIsTracked()
+    {
+        var loadout = await CreateLoadout();
+        await AddRedMod(loadout.LoadoutId, "ModA");
+        var group = LoadoutItemGroup.All(Connection.Db).First(g => g.AsLoadoutItem().LoadoutId == loadout.LoadoutId);
+
+        using var tx = Connection.BeginTransaction();
+        var choice = new LoadoutMergeChoice.New(tx)
+        {
+            LoadoutId = loadout.LoadoutId,
+            Path = "regulation.bin",
+            Key = "param:1/2",
+            WinnerGroupId = group.LoadoutItemGroupId,
+        }.Id;
+        var result = await tx.Commit();
+
+        OwnedIds(Connection.Db, loadout.Id).Should().Contain(result[choice]);
     }
 
     private static EntityId[] SortItemIds(IDb db, SortOrderId sortOrderId) =>

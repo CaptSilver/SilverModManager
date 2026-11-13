@@ -26,6 +26,7 @@ public static class Services
             .AddSingleton<ModPriorityOrderVariety>()
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
+            .AddLoadoutMergeChoiceModel()
             .AddLoadoutIniStateModel();
     }
 }

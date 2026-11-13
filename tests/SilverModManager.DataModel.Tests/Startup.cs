@@ -46,6 +46,7 @@ public static class Startup
             .AddLoadoutItemGroupPriorityModel()
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
+            .AddLoadoutMergeChoiceModel()
             .AddLoadoutIniStateModel()
             .AddModOrderDroppedEntryModel()
             .AddSortOrderItemModel()

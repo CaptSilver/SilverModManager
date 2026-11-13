@@ -35,6 +35,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutItemGroupPriority/Loadout",
         "SilverModManager.Loadouts.LoadoutGroupRule/Loadout",
         "SilverModManager.Loadouts.LoadoutFileWinner/Loadout",
+        "SilverModManager.Loadouts.LoadoutMergeChoice/Loadout",
         "SilverModManager.Loadouts.LoadoutIniState/Loadout",
         "SilverModManager.Loadouts.ModOrderDroppedEntry/Loadout",
         "SilverModManager.Loadouts.DiagnosticDismissal/Loadout",
@@ -55,6 +56,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutGroupRule/Source",
         "SilverModManager.Loadouts.LoadoutGroupRule/Other",
         "SilverModManager.Loadouts.LoadoutFileWinner/WinnerGroup",
+        "SilverModManager.Loadouts.LoadoutMergeChoice/WinnerGroup",
         "SilverModManager.Loadouts.ModOrderDroppedEntry/Container",
         "SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout",
         "SilverModManager.Loadouts.GameMetadata/LaunchFinishPending",
@@ -71,7 +73,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     /// <summary>
     /// The roots of the owned closure: what the loadout owns directly, besides the loadout row itself.
     /// </summary>
-    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState), typeof(ModOrderDroppedEntry), typeof(DiagnosticDismissal)];
+    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutMergeChoice), typeof(LoadoutIniState), typeof(ModOrderDroppedEntry), typeof(DiagnosticDismissal)];
 
     [Fact]
     public void EveryReferenceToAnOwnedModelIsClassified()
