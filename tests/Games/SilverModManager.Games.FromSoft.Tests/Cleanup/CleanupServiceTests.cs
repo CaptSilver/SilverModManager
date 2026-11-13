@@ -351,7 +351,7 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
 
         guide.AppliesTo(GameInstallation).Should().BeTrue();
         lines.Should().Contain(l => l.Contains("Move start_protected_game.exe.erm-backup over start_protected_game.exe"));
-        lines.Should().Contain(l => l.StartsWith("silvermodmanager elden-ring cleanup --apply --loadout '"));
+        lines.Should().Contain(l => l.StartsWith("silvermodmanager fromsoft cleanup --apply --loadout '"));
     }
 
     private void WriteLocalConfig(string launchOptions)

@@ -95,6 +95,21 @@ public class EldenRingCleanupVerbTests(ITestOutputHelper helper) : AIsolatedGame
     }
 
     [Fact]
+    public async Task TheSharedVerbPrintsTheSamePlanAsTheEldenRingSpelling()
+    {
+        WriteErmInstall();
+        var loadout = await CreateLoadout();
+
+        var (shared, sharedOutput) = await Run("fromsoft", "cleanup", "--plan", "-l", loadout.Name);
+        var (own, ownOutput) = await Run("elden-ring", "cleanup", "--plan", "-l", loadout.Name);
+
+        shared.Should().Be(0, sharedOutput);
+        own.Should().Be(0, ownOutput);
+        sharedOutput.Should().Be(ownOutput);
+        sharedOutput.Should().Contain("Move start_protected_game.exe.erm-backup over start_protected_game.exe");
+    }
+
+    [Fact]
     public async Task ApplyWithoutConfirmationPrintsTheStepsAndChangesNothing()
     {
         WriteErmInstall();

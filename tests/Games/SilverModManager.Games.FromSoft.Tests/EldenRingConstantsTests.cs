@@ -55,7 +55,7 @@ public class EldenRingConstantsTests
     [Fact]
     public void TheVerbAndTheOverlayAllowlistAreEldenRingsOwn()
     {
-        Definition.CleanupVerb.Should().Be("elden-ring cleanup");
+        Definition.CleanupVerb.Should().Be("fromsoft cleanup");
         Definition.Overlay.Should().BeEquivalentTo(OverlayAllowlist.Default with { Folders = ["mods/", "SeamlessCoop/"] });
     }
 

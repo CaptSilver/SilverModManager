@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.Games.FromSoft.Cleanup;
 
@@ -15,6 +16,7 @@ internal static class CleanupVerbs
         services.AddSingleton<CleanupCommand>();
         services.AddSingleton<IGameCleanupGuide, FromSoftCleanupGuide>();
         services.AddSingleton<IImmutableFlagProbe, IoctlImmutableFlagProbe>();
+        services.AddVerb(() => FromSoftCleanupVerb.Cleanup);
         return services;
     }
 }

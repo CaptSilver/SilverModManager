@@ -57,7 +57,7 @@ public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRin
             ModsFolder = "mods",
             Leftovers = [..CleanupRules.ModEngine2.Leftovers, SeamlessCoop.Folder, "ersc_launcher.exe"],
         },
-        CleanupVerb = EldenRingCleanupVerb.Name,
+        CleanupVerb = FromSoftCleanupVerb.Name,
         Overlay = OverlayAllowlist.Default with { Folders = ["mods/", $"{SeamlessCoop.Folder}/"] },
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd4,

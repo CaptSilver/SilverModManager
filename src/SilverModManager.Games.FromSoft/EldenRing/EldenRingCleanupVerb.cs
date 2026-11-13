@@ -17,5 +17,5 @@ internal static class EldenRingCleanupVerb
         [Option("p", "plan", "Print the inventory and the steps; change nothing", true)] bool plan,
         [Option("a", "apply", "Run the steps once the plan has been read", true)] bool apply,
         [Option("y", "yes", "Confirm the steps --apply printed", true)] bool yes)
-        => command.RunAsync(renderer, loadout, plan, apply, yes);
+        => FromSoftCleanupVerb.Cleanup(renderer, command, loadout, plan, apply, yes);
 }
