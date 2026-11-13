@@ -59,8 +59,8 @@ public class BG3PakParsingTests
 
     private const string Uuid = "5b3c4b7e-8d6a-4f0e-9f5d-2f1d6b0c9a11";
 
-    private static string Meta()
-        => SyntheticPak.MetaLsx("X", "Some Mod", Uuid, SyntheticPak.Version(1));
+    private static string Meta(string? type = null)
+        => SyntheticPak.MetaLsx("X", "Some Mod", Uuid, SyntheticPak.Version(1), "0", type);
 
     [Theory]
     [InlineData(7)]
@@ -150,6 +150,39 @@ public class BG3PakParsingTests
         var act = () => PakFileParser.ParsePakMeta(new MemoryStream(pak));
 
         act.Should().Throw<InvalidDataException>().WithMessage("*file table*");
+    }
+
+    [Fact]
+    public void TheModuleTypeIsRead()
+    {
+        var pak = SyntheticPak.Build(("Mods/X/meta.lsx", Meta("Adventure")));
+
+        PakFileParser.ParsePakMeta(new MemoryStream(pak)).MetaFileData.ModuleShortDesc.Type.Should().Be("Adventure");
+    }
+
+    [Fact]
+    public void EveryKnownExtenderConfigIsReturnedByName()
+    {
+        var pak = SyntheticPak.Build(
+            ("Mods/X/meta.lsx", Meta()),
+            ("Mods/X/ScriptExtender/Config.json", "{\"RequiredVersion\": 9}"),
+            ("Mods/X/OsiToolsConfig.json", "{\"RequiredVersion\": 55}"));
+
+        var meta = PakFileParser.ParsePakMeta(new MemoryStream(pak));
+
+        meta.ScriptExtenderConfigs.Keys.Should().BeEquivalentTo("ScriptExtender/Config.json", "OsiToolsConfig.json");
+        meta.ScriptExtenderConfigs["ScriptExtender/Config.json"].SeRequiredVersion.Should().Be(9);
+        meta.ScriptExtenderConfigs["OsiToolsConfig.json"].SeRequiredVersion.Should().Be(55);
+        meta.ScriptExtenderConfigMetadata.Value.SeRequiredVersion.Should().Be(9);
+    }
+
+    [Fact]
+    public void APakWithoutExtenderConfigHasNoneInTheMap()
+    {
+        var meta = PakFileParser.ParsePakMeta(new MemoryStream(SyntheticPak.Build(("Mods/X/meta.lsx", Meta()))));
+
+        meta.ScriptExtenderConfigs.Should().BeEmpty();
+        meta.ScriptExtenderConfigMetadata.HasValue.Should().BeFalse();
     }
     
     

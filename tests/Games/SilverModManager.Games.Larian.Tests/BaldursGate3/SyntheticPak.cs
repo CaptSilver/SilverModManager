@@ -262,7 +262,12 @@ public static class SyntheticPak
         => MetaLsx(folder, name, uuid, version, "0", dependencies);
 
     public static string MetaLsx(string folder, string name, string uuid, ulong version, string publishHandle, params Dependency[] dependencies)
+        => MetaLsx(folder, name, uuid, version, publishHandle, type: null, dependencies);
+
+    /// <param name="type">The module's <c>Type</c> attribute ("Adventure", "Add-on"); omitted when null.</param>
+    public static string MetaLsx(string folder, string name, string uuid, ulong version, string publishHandle, string? type, params Dependency[] dependencies)
     {
+        var typeAttribute = type is null ? "" : $"""<attribute id="Type" type="FixedString" value="{type}" />""";
         var deps = string.Concat(dependencies.Select(d => $"""
                     <node id="ModuleShortDesc">
                         <attribute id="Folder" type="LSString" value="{d.Folder}" />
@@ -291,6 +296,7 @@ public static class SyntheticPak
                                 <attribute id="Name" type="LSString" value="{name}" />
                                 <attribute id="PublishHandle" type="uint64" value="{publishHandle}" />
                                 <attribute id="UUID" type="FixedString" value="{uuid}" />
+                                {typeAttribute}
                                 <attribute id="Version64" type="int64" value="{version}" />
                             </node>
                         </children>

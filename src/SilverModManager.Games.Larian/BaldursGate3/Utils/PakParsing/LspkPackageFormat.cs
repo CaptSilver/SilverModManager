@@ -13,7 +13,18 @@ public static class LspkPackageFormat
     public struct PakMetaData
     {
         public LsxXmlFormat.MetaFileData MetaFileData;
-        public Optional<ScriptExtenderConfigMetadata> ScriptExtenderConfigMetadata;
+
+        /// <summary>
+        /// Every extender config the pak carries, keyed by its path inside a module folder
+        /// (`ScriptExtender/Config.json`, `OsiToolsConfig.json`).
+        /// </summary>
+        public IReadOnlyDictionary<string, ScriptExtenderConfigMetadata> ScriptExtenderConfigs;
+
+        /// <summary>The Baldur's Gate 3 config (`ScriptExtender/Config.json`), when the pak has one that names a required version.</summary>
+        public readonly Optional<ScriptExtenderConfigMetadata> ScriptExtenderConfigMetadata
+            => ScriptExtenderConfigs is not null && ScriptExtenderConfigs.TryGetValue("ScriptExtender/Config.json", out var config)
+                ? config
+                : Optional<ScriptExtenderConfigMetadata>.None;
     }
     public struct ScriptExtenderConfigMetadata
     {

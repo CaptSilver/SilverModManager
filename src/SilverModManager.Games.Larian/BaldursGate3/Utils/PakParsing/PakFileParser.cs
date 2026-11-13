@@ -41,12 +41,10 @@ public static class PakFileParser
         var metaStream = GetFileEntryStream(br, fileEntryInfo.Value);
         var metaFile = MetaLsxParser.ParseMetaFile(metaStream, keepGameModuleDependencies);
 
-        var seConfig = GetScriptExtenderConfigMetaData(fileList, br);
-
         return new LspkPackageFormat.PakMetaData
         {
             MetaFileData = metaFile,
-            ScriptExtenderConfigMetadata = seConfig,
+            ScriptExtenderConfigs = GetScriptExtenderConfigs(fileList, br),
         };
     }
 
@@ -79,34 +77,53 @@ public static class PakFileParser
                && parts[2].Equals("meta.lsx", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static Optional<LspkPackageFormat.ScriptExtenderConfigMetadata> GetScriptExtenderConfigMetaData(List<LspkPackageFormat.FileEntryInfoCommon> fileList, BinaryReader br)
+    /// <summary>The extender config files a pak can carry, by the name callers look them up under.</summary>
+    private static readonly string[] ExtenderConfigNames = ["ScriptExtender/Config.json", "OsiToolsConfig.json"];
+
+    private static IReadOnlyDictionary<string, LspkPackageFormat.ScriptExtenderConfigMetadata> GetScriptExtenderConfigs(
+        List<LspkPackageFormat.FileEntryInfoCommon> fileList, BinaryReader br)
     {
-        var seConfig = fileList.FirstOrOptional(
-            f => f.Name.EndsWith("ScriptExtender/Config.json")
-        );
-
-        if (seConfig.HasValue)
+        var configs = new Dictionary<string, LspkPackageFormat.ScriptExtenderConfigMetadata>();
+        foreach (var name in ExtenderConfigNames)
         {
-            var configStream = GetFileEntryBytes(br, seConfig.Value);
-            var jsonReader = new Utf8JsonReader(configStream);
-            while (jsonReader.Read())
-            {
-                if (jsonReader.TokenType != JsonTokenType.PropertyName || jsonReader.GetString() != "RequiredVersion")
-                    continue;
+            var entry = fileList.FirstOrOptional(f => EntryIs(f.Name, name));
+            if (!entry.HasValue) continue;
 
-                jsonReader.Read();
-                if (jsonReader.TokenType == JsonTokenType.Number && jsonReader.TryGetInt32(out var requiredVersion))
+            var requiredVersion = ReadRequiredVersion(GetFileEntryBytes(br, entry.Value));
+            if (requiredVersion.HasValue)
+            {
+                configs[name] = new LspkPackageFormat.ScriptExtenderConfigMetadata
                 {
-                    return new LspkPackageFormat.ScriptExtenderConfigMetadata
-                    {
-                        RequiresScriptExtender = true,
-                        SeRequiredVersion = requiredVersion,
-                    };
-                }
+                    RequiresScriptExtender = true,
+                    SeRequiredVersion = requiredVersion.Value,
+                };
             }
         }
 
-        return Optional<LspkPackageFormat.ScriptExtenderConfigMetadata>.None;
+        return configs;
+    }
+
+    // A config sits in a module folder (`Mods/<Folder>/ScriptExtender/Config.json`); the folder name is not part of the key.
+    private static bool EntryIs(string entryName, string configName)
+        => entryName.Equals(configName, StringComparison.Ordinal)
+           || entryName.EndsWith("/" + configName, StringComparison.Ordinal);
+
+    private static Optional<int> ReadRequiredVersion(byte[] json)
+    {
+        var jsonReader = new Utf8JsonReader(json);
+        while (jsonReader.Read())
+        {
+            if (jsonReader.TokenType != JsonTokenType.PropertyName || jsonReader.GetString() != "RequiredVersion")
+                continue;
+
+            jsonReader.Read();
+            if (jsonReader.TokenType == JsonTokenType.Number && jsonReader.TryGetInt32(out var requiredVersion))
+            {
+                return requiredVersion;
+            }
+        }
+
+        return Optional<int>.None;
     }
 
 #endregion

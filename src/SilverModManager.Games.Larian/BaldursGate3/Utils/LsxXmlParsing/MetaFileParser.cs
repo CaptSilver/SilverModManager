@@ -27,7 +27,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing
                 if (reader is { NodeType: XmlNodeType.Element, Name: "node" } &&
                     reader.GetAttribute("id") == "ModuleInfo")
                 {
-                    var moduleShortDesc = new LsxXmlFormat.ModuleShortDesc();
+                    var moduleShortDesc = new LsxXmlFormat.ModuleShortDesc { Type = string.Empty };
                     var moduleInfoDepth = reader.Depth;
 
                     while (reader.Read())
@@ -64,6 +64,9 @@ namespace SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing
                                     break;
                                 case "MD5":
                                     moduleShortDesc.Md5 = value ?? string.Empty;
+                                    break;
+                                case "Type":
+                                    moduleShortDesc.Type = value ?? string.Empty;
                                     break;
                             }
                         }

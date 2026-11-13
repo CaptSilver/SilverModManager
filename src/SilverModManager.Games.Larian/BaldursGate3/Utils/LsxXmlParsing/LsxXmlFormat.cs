@@ -28,6 +28,8 @@ public static class LsxXmlFormat
         public string Version;
         public string Uuid;
         public string Md5;
+        /// <summary>The module's <c>Type</c> attribute: "Adventure", "Add-on", or empty when the meta.lsx has none.</summary>
+        public string Type;
         public ModuleVersion SemanticVersion;
     }
 
