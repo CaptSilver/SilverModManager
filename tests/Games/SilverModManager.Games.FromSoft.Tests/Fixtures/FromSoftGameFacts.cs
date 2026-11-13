@@ -1,5 +1,6 @@
 using DynamicData.Kernel;
 using SilverModManager.Games.FromSoft.ArmoredCore6;
+using SilverModManager.Games.FromSoft.DarkSouls3;
 using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Me3;
@@ -169,7 +170,54 @@ public sealed record FromSoftGameFacts(
         Me3Options: () => SekiroGame.Me3Options,
         NexusModsGame: () => SekiroGame.NexusModsGameId);
 
-    public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign], [Sekiro]];
+    /// <summary>
+    /// Dark Souls III. Steam 374320 launches <c>Game/DarkSoulsIII.exe</c> (api.steamcmd.net launch entries) and the
+    /// game has no anti-cheat launcher; it plays online, so a vanilla launch loads whatever is in the folder. The saves
+    /// are <c>%APPDATA%/DarkSoulsIII/&lt;account&gt;/DS30000.sl2</c> (me3 <c>savefile_dir</c>, Ludusavi manifest), and
+    /// Mod Engine 1 wrote its modded session to <c>DS30000.sl3</c>. The Nexus id and domain <c>darksouls3</c> come from
+    /// Nexus's games.json. The archive keys are UXM's <c>DarkSouls3Keys</c> (Data1 to Data5 and the two DLC archives);
+    /// its BHD5 is the 32-bit-hash layout. Once a mod ships one of the three <c>gameparam</c> files, me3 switches
+    /// <c>Data0.bdt</c> (the encrypted regulation) off and the game reads the loose params instead (me3
+    /// <c>enable_loose_params</c>). No regulation is named until a real <c>Data0.bdt</c> has confirmed how it is wrapped.
+    /// </summary>
+    public static readonly FromSoftGameFacts DarkSouls3 = new(
+        GameId: "FromSoft.DarkSouls3",
+        DisplayName: "Dark Souls III",
+        SteamAppId: 374320,
+        SteamInstallFolder: "DARK SOULS III",
+        NexusModsGameId: 1392,
+        Me3GameName: "darksouls3",
+        Layout: new FromSoftGameLayout(374320, "DarkSouls3", "Game", "DarkSoulsIII.exe", null, "DarkSoulsIII", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sound),
+        SaveNames: new FromSoftSaveNames("DS30000.sl2", "DS30000_silver.sl2", null, LegacyModded: "DS30000.sl3"),
+        HasOnlinePlay: true,
+        LooseParams: new LooseParamsRule(
+            ["param/gameparam/gameparam.parambnd.dcx", "param/gameparam/gameparam_dlc1.parambnd.dcx", "param/gameparam/gameparam_dlc2.parambnd.dcx"],
+            "Data0.bdt"),
+        Binder: BinderFormat.Bnd4,
+        ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt],
+        PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x10000, 9, 0),
+        RegulationFileName: null,
+        RegulationWrite: null,
+        RegulationKeyHex: "",
+        ParamdefSet: "darksouls3",
+        Archives:
+        [
+            new("Data1", "d3986ac9", "a20f619b", 0x0b7e5b49),
+            new("Data2", "bc26402b", "a4ff552f", 0x2faee209),
+            new("Data3", "a8bcad58", "f86c6981", 0x0bc5cd57),
+            new("Data4", "adf51a65", "c60f95f7", 0x2fa63ab7),
+            new("Data5", "bca4e553", "ea3204d1", 0x154b33f7),
+            new("DLC1", "b0218cf5", "3f6f5a9d", 0x15ecf263),
+            new("DLC2", "b425d4f5", "e41a5ef5", 0x1f00992f),
+        ],
+        PathHashBits: 32,
+        PathHashPrime: 37,
+        ArchiveLayout: Bhd5Layout.Hash32Salted40ByteEntries,
+        Definition: () => DarkSouls3Game.Definition,
+        Me3Options: () => DarkSouls3Game.Me3Options,
+        NexusModsGame: () => DarkSouls3Game.NexusModsGameId);
+
+    public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign], [Sekiro], [DarkSouls3]];
 
     public override string ToString() => DisplayName;
 }

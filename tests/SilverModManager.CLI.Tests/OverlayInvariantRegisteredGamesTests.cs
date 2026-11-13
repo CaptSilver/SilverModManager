@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App;
 using SilverModManager.Games.FromSoft;
 using SilverModManager.Games.FromSoft.ArmoredCore6;
+using SilverModManager.Games.FromSoft.DarkSouls3;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Sekiro;
@@ -51,6 +52,7 @@ public class OverlayInvariantRegisteredGamesTests(ITestOutputHelper helper)
         (typeof(ArmoredCore6Game), true),
         (typeof(EldenRingNightreignGame), true),
         (typeof(SekiroGame), false),
+        (typeof(DarkSouls3Game), true),
         (typeof(Witcher3Game), false),
     ];
 

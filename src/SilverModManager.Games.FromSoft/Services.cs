@@ -11,6 +11,7 @@ using SilverModManager.Abstractions.Steam;
 using SilverModManager.Games.FromSoft.ArmoredCore6;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.DarkSouls3;
 using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.EldenRing;
@@ -35,7 +36,7 @@ public static class Services
 {
     /// <summary>Registers the FromSoft base and every FromSoft game.</summary>
     public static IServiceCollection AddFromSoftGames(this IServiceCollection services)
-        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6().AddEldenRingNightreign().AddSekiro();
+        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6().AddEldenRingNightreign().AddSekiro().AddDarkSouls3();
 
     /// <summary>Registers Elden Ring: the game, its tool and its cleanup verb.</summary>
     public static IServiceCollection AddEldenRing(this IServiceCollection services)
@@ -56,6 +57,11 @@ public static class Services
     public static IServiceCollection AddEldenRingNightreign(this IServiceCollection services)
         => services.AddGame<EldenRingNightreignGame>()
             .AddSingleton<ITool, RunFromSoftGame<EldenRingNightreignGame>>();
+
+    /// <summary>Registers Dark Souls III and its launch tool.</summary>
+    public static IServiceCollection AddDarkSouls3(this IServiceCollection services)
+        => services.AddGame<DarkSouls3Game>()
+            .AddSingleton<ITool, RunFromSoftGame<DarkSouls3Game>>();
 
     /// <summary>Registers Sekiro and its launch tool.</summary>
     public static IServiceCollection AddSekiro(this IServiceCollection services)
