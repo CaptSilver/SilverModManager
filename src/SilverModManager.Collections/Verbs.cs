@@ -29,6 +29,7 @@ internal static class Verbs
         [Option("l", "loadout", "Loadout to install the collection into")] Loadout.ReadOnly loadout,
         [Option("s", "slug", "Collection slug")] string slug,
         [Option("r", "revision", "Collection revision")] int revision,
+        [Option("j", "json", "Print what was installed, what needs review and what is left to download as JSON", true)] bool json,
         [Injected] TemporaryFileManager temporaryFileManager,
         [Injected] ILibraryService libraryService,
         [Injected] NexusModsLibrary nexusModsLibrary,
@@ -48,7 +49,7 @@ internal static class Verbs
 
         var revisionMetadata = await nexusModsLibrary.GetOrAddCollectionRevision(collectionFile, CollectionSlug.From(slug), RevisionNumber.From((ulong)revision), token);
 
-        if (loginManager.IsPremium)
+        if (await CollectionInstallReport.IsPremium(loginManager, token))
         {
             await collectionDownloader.DownloadItems(revisionMetadata, itemType: CollectionDownloader.ItemType.Required, db: connection.Db, target: loadout.LoadoutId,
                 cancellationToken: token
@@ -57,15 +58,10 @@ internal static class Verbs
         else
         {
             var tuples = collectionDownloader.GetMissingDownloadLinks(revisionMetadata, db: connection.Db, itemType: CollectionDownloader.ItemType.Required);
-            if (tuples.Count > 0)
-            {
-                await renderer.TextLine($"Missing {tuples.Count} downloads:");
-                await renderer.Table(["Name", "Uri"], tuples.Select(t => new object[] { t.Download.Name, t.Uri.ToString() }));
-                return 0;
-            }
+            if (tuples.Count > 0) return await CollectionInstallReport.ReportMissingLinks(renderer, tuples, json);
         }
 
-        return await CollectionInstallReport.Run(renderer, serviceProvider, loadout, collectionFile, revisionMetadata, token);
+        return await CollectionInstallReport.Run(renderer, serviceProvider, loadout, collectionFile, revisionMetadata, json, token);
     }
 
     [Verb("collection repair", "Makes each Nexus collection in the loadout hold exactly the mods of the revision it is on: removes old versions an update left behind and moves mods the revision doesn't list to My Mods")]

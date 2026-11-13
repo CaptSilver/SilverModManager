@@ -1,8 +1,11 @@
+using System.Text.Json;
 using NexusMods.Paths;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
@@ -19,6 +22,7 @@ public static class CollectionInstallReport
     /// Installs the required items of <paramref name="revision"/> into <paramref name="loadout"/> without opening any installer
     /// window, prints a "Not installed" table for the failures and a "Need review" table for the mods that need a person.
     /// </summary>
+    /// <param name="json">Print one JSON object (installed, pending, missingLinks, failed) instead of the tables.</param>
     /// <returns>1 when a mod failed to install, 0 otherwise. Mods that only need review don't fail the run.</returns>
     public static async Task<int> Run(
         IRenderer renderer,
@@ -26,6 +30,7 @@ public static class CollectionInstallReport
         LoadoutId loadout,
         NexusModsCollectionLibraryFile.ReadOnly file,
         CollectionRevisionMetadata.ReadOnly revision,
+        bool json,
         CancellationToken cancellationToken)
     {
         var items = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required);
@@ -36,6 +41,16 @@ public static class CollectionInstallReport
 
         var definition = job.JobDefinition;
         var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+
+        if (json)
+        {
+            var failed = definition.FailedItems.Select(item => new FailedRow(item.Name, CliErrors.Describe(item.Exception, fileSystem))).ToArray();
+            var pending = definition.PendingItems.Select(item => new PendingRow(item.Name, item.Kind.ToString(), item.Reason)).ToArray();
+            var notInstalled = definition.FailedItems.Select(item => item.Download.Id).Concat(definition.PendingItems.Select(item => item.Download.Id)).ToHashSet();
+            var installed = items.Where(item => !notInstalled.Contains(item.Id)).Select(item => item.Name).ToArray();
+            await renderer.TextLine(JsonSerializer.Serialize(new Report(installed, pending, [], failed), CliJson.Options));
+            return failed.Length > 0 ? 1 : 0;
+        }
 
         if (definition.FailedItems.Count > 0)
         {
@@ -52,4 +67,46 @@ public static class CollectionInstallReport
 
         return definition.FailedItems.Count > 0 ? 1 : 0;
     }
+
+    /// <summary>
+    /// Whether the account may use the download API. Asks Nexus Mods rather than reading the login manager's cached flag,
+    /// which a command-line run has not filled in yet.
+    /// </summary>
+    /// <exception cref="LoadoutVerbRefusedException">Nexus Mods did not answer. An outage is not read as a free account,
+    /// which would hand a premium user a list of browser links.</exception>
+    public static async Task<bool> IsPremium(ILoginManager loginManager, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await NexusAccount.Current(loginManager, cancellationToken) == NexusAccountKind.Premium;
+        }
+        catch (Exception e) when (e is HttpRequestException || (e is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            throw new LoadoutVerbRefusedException($"Nexus Mods did not answer: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Prints the downloads a free account has to start in the browser and returns 2: nothing was installed, and a script
+    /// must be able to tell that from a finished run.
+    /// </summary>
+    public static async Task<int> ReportMissingLinks(IRenderer renderer, IReadOnlyList<(CollectionDownload.ReadOnly Download, Uri Uri)> links, bool json)
+    {
+        if (json)
+        {
+            var missing = links.Select(link => new LinkRow(link.Download.Name, link.Uri.ToString())).ToArray();
+            await renderer.TextLine(JsonSerializer.Serialize(new Report([], [], missing, []), CliJson.Options));
+        }
+        else
+        {
+            await renderer.TextLine($"Missing {links.Count} downloads:");
+            await renderer.Table(["Name", "Uri"], links.Select(link => new object[] { link.Download.Name, link.Uri.ToString() }));
+        }
+        return 2;
+    }
+
+    private sealed record Report(string[] Installed, PendingRow[] Pending, LinkRow[] MissingLinks, FailedRow[] Failed);
+    private sealed record PendingRow(string Name, string Kind, string Reason);
+    private sealed record LinkRow(string Name, string Uri);
+    private sealed record FailedRow(string Name, string Reason);
 }

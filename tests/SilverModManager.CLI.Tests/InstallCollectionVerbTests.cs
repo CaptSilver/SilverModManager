@@ -1,4 +1,9 @@
+using System.Text.Json;
 using FluentAssertions;
+using NSubstitute;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
@@ -46,7 +51,7 @@ public class InstallCollectionVerbTests(ITestOutputHelper helper) : ACyberpunkIs
         var loadout = await CreateLoadout();
         var renderer = new CapturingRenderer();
 
-        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, CancellationToken.None).WaitAsync(Timeout);
+        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, json: false, CancellationToken.None).WaitAsync(Timeout);
 
         code.Should().Be(0, renderer.Output);
         renderer.Output.Should().Contain("Need review").And.Contain("Unknown mod").And.Contain("NoInstaller")
@@ -67,10 +72,97 @@ public class InstallCollectionVerbTests(ITestOutputHelper helper) : ACyberpunkIs
         gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
         var renderer = new CapturingRenderer();
 
-        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, CancellationToken.None).WaitAsync(Timeout);
+        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, json: false, CancellationToken.None).WaitAsync(Timeout);
 
         code.Should().Be(1, renderer.Output);
         renderer.Output.Should().Contain("Not installed").And.Contain("Broken mod").And.Contain("Something went wrong. Details are in the log at");
         renderer.Output.Should().NotContain("broken on purpose");
+    }
+
+    [Fact]
+    public async Task Json_ListsInstalledAndPending()
+    {
+        var (file, revision, _) = await CreateCollection([(null, "Unknown mod"), (Choices(), "Fomod mod")], [ModShape.Unknown, ModShape.Fomod]);
+        var loadout = await CreateLoadout();
+        var renderer = new CapturingRenderer();
+
+        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, json: true, CancellationToken.None).WaitAsync(Timeout);
+
+        code.Should().Be(0, renderer.Output);
+        var root = JsonDocument.Parse(renderer.Output).RootElement;
+        root.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("installed", "pending", "missingLinks", "failed");
+        root.GetProperty("installed").EnumerateArray().Select(e => e.GetString()).Should().Equal("Fomod mod");
+        var pending = root.GetProperty("pending").EnumerateArray().Should().ContainSingle().Subject;
+        pending.GetProperty("name").GetString().Should().Be("Unknown mod");
+        pending.GetProperty("kind").GetString().Should().Be("NoInstaller");
+        pending.TryGetProperty("reason", out _).Should().BeTrue();
+        root.GetProperty("missingLinks").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Json_ListsAFailedMod_AndExitsOne()
+    {
+        var (file, revision, _) = await CreateCollection([(null, "Broken mod")], [ModShape.Plain]);
+        var loadout = await CreateLoadout();
+        using var gate = ArchiveGate.Install(Game.LibraryItemInstallers, 1, "mod0.zip");
+        gate.ThrowsOnEntry = new InvalidOperationException("broken on purpose");
+        var renderer = new CapturingRenderer();
+
+        var code = await CollectionInstallReport.Run(renderer, ServiceProvider, loadout, file, revision, json: true, CancellationToken.None).WaitAsync(Timeout);
+
+        code.Should().Be(1, renderer.Output);
+        var failed = JsonDocument.Parse(renderer.Output).RootElement.GetProperty("failed").EnumerateArray().Should().ContainSingle().Subject;
+        failed.GetProperty("name").GetString().Should().Be("Broken mod");
+        renderer.Output.Should().NotContain("broken on purpose");
+    }
+
+    [Fact]
+    public async Task FreeAccount_IsReadFromTheLiveCheck()
+    {
+        var login = Substitute.For<ILoginManager>();
+        login.IsPremium.Returns(true);
+        login.GetUserInfoAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(new UserInfo { UserId = SilverModManager.Abstractions.NexusWebApi.Types.UserId.From(1), Name = "free", UserRole = UserRole.Free, AvatarUrl = null }));
+
+        (await CollectionInstallReport.IsPremium(login, CancellationToken.None)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AccountCheckThrows_SaysNexusDidNotAnswer()
+    {
+        var login = Substitute.For<ILoginManager>();
+        login.GetUserInfoAsync(Arg.Any<CancellationToken>()).Returns<ValueTask<UserInfo?>>(_ => throw new HttpRequestException("connection refused"));
+
+        var act = async () => await CollectionInstallReport.IsPremium(login, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<LoadoutVerbRefusedException>()).Which.Message.Should().Contain("Nexus Mods did not answer").And.Contain("connection refused");
+    }
+
+    [Fact]
+    public async Task FreeAccount_WithMissingLinks_ExitsTwo()
+    {
+        var (_, _, items) = await CreateCollection([(null, "Mod one")], [ModShape.Plain]);
+        var renderer = new CapturingRenderer();
+
+        var code = await CollectionInstallReport.ReportMissingLinks(renderer, [(items[0], new Uri("https://www.nexusmods.com/x/mods/1?tab=files"))], json: false);
+
+        code.Should().Be(2);
+        renderer.Output.Should().Contain("Missing 1 downloads").And.Contain("https://www.nexusmods.com/x/mods/1");
+    }
+
+    [Fact]
+    public async Task FreeAccount_WithMissingLinks_Json_PrintsTheThreeLists()
+    {
+        var (_, _, items) = await CreateCollection([(null, "Mod one")], [ModShape.Plain]);
+        var renderer = new CapturingRenderer();
+
+        var code = await CollectionInstallReport.ReportMissingLinks(renderer, [(items[0], new Uri("https://www.nexusmods.com/x/mods/1?tab=files"))], json: true);
+
+        code.Should().Be(2);
+        var root = JsonDocument.Parse(renderer.Output).RootElement;
+        root.GetProperty("installed").GetArrayLength().Should().Be(0);
+        root.GetProperty("pending").GetArrayLength().Should().Be(0);
+        var link = root.GetProperty("missingLinks").EnumerateArray().Should().ContainSingle().Subject;
+        link.GetProperty("name").GetString().Should().Be("Mod one");
+        link.GetProperty("uri").GetString().Should().Be("https://www.nexusmods.com/x/mods/1?tab=files");
     }
 }
