@@ -8,17 +8,25 @@ namespace SilverModManager.Wabbajack.Acquire;
 /// store, a read of its whole index and an index rebuild, whatever it holds; one per archive member made an install
 /// of a large list spend most of its time and memory there. A batch goes when it holds <paramref name="maxEntries"/>
 /// files or <paramref name="maxBytes"/> bytes, or when <paramref name="maxWait"/> has passed since its first file.
+/// Each batch the store takes builds a packer with threads and buffers of its own, so at most
+/// <paramref name="maxPackers"/> batches are stored at once; the rest wait, and the callers awaiting their files wait
+/// with them, which is what slows the resolve workers down when the store cannot keep up.
 /// </summary>
-internal sealed class BackupBatcher(IFileStore store, CancellationToken token, int maxEntries = 64, long maxBytes = 128L * 1024 * 1024, TimeSpan? maxWait = null, ILogger? logger = null)
+internal sealed class BackupBatcher(IFileStore store, CancellationToken token, int maxEntries = 64, long maxBytes = 128L * 1024 * 1024, TimeSpan? maxWait = null, ILogger? logger = null, int? maxPackers = null)
 {
+    private readonly SemaphoreSlim _packers = new(Math.Max(1, maxPackers ?? Math.Max(2, Environment.ProcessorCount / 8)));
     private readonly TimeSpan _maxWait = maxWait ?? TimeSpan.FromMilliseconds(25);
     private readonly object _lock = new();
     private List<(ArchivedFileEntry Entry, TaskCompletionSource Done)> _pending = [];
     private long _pendingBytes;
     private int _inFlight;
+    private int _packing;
 
     /// <summary>How many batches are being stored right now; a store that is slow to take them shows up as a pile of these.</summary>
     internal int InFlight => Volatile.Read(ref _inFlight);
+
+    /// <summary>How many batches hold a packer and are with the store; never more than the cap, where <see cref="InFlight"/> can be.</summary>
+    internal int Packing => Volatile.Read(ref _packing);
 
     /// <summary>
     /// Completes when <paramref name="entry"/> is in the store, or throws what the store threw for its batch. The
@@ -67,8 +75,14 @@ internal sealed class BackupBatcher(IFileStore store, CancellationToken token, i
         var inFlight = Interlocked.Increment(ref _inFlight);
         logger?.LogDebug("Storing a batch of {Count} files ({Megabytes:F1} MB); {InFlight} batches in flight",
             batch.Count, batch.Sum(b => (double)b.Entry.Size.Value) / (1024 * 1024), inFlight);
+        var packing = false;
         try
         {
+            // A free packer is taken even with the token already cancelled, so the store sees the cancellation itself
+            // and the batch fails the way it does for a store that was busy when the token fired.
+            if (!_packers.Wait(0)) await _packers.WaitAsync(token);
+            packing = true;
+            Interlocked.Increment(ref _packing);
             await Store(batch);
         }
         catch (Exception e) when (batch.Count > 1 && e is not OperationCanceledException && !token.IsCancellationRequested)
@@ -84,6 +98,11 @@ internal sealed class BackupBatcher(IFileStore store, CancellationToken token, i
         }
         finally
         {
+            if (packing)
+            {
+                Interlocked.Decrement(ref _packing);
+                _packers.Release();
+            }
             Interlocked.Decrement(ref _inFlight);
         }
     }

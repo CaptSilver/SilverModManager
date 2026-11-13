@@ -158,4 +158,73 @@ public class BackupBatcherTests
         foreach (var task in added) await Completes(task);
         batcher.InFlight.Should().Be(0);
     }
+
+    /// <summary>Holds every call until released, honouring the token, and remembers how many calls overlapped.</summary>
+    private sealed class GatedStore : ForwardingFileStore
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _running;
+        private int _maxRunning;
+        private int _started;
+
+        public GatedStore() : base(Substitute.For<IFileStore>()) { }
+
+        public int Started => Volatile.Read(ref _started);
+        public int MaxRunning => Volatile.Read(ref _maxRunning);
+        public void Release() => _release.TrySetResult();
+
+        public override async Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+        {
+            Interlocked.Increment(ref _started);
+            var now = Interlocked.Increment(ref _running);
+            int seen;
+            while (now > (seen = Volatile.Read(ref _maxRunning)) && Interlocked.CompareExchange(ref _maxRunning, now, seen) != seen) { }
+            try { await _release.Task.WaitAsync(token); }
+            finally { Interlocked.Decrement(ref _running); }
+        }
+    }
+
+    [Fact]
+    public async Task NoMoreBatchesThanThePackerCapAreStoredAtOnce()
+    {
+        var store = new GatedStore();
+        var batcher = new BackupBatcher(store, CancellationToken.None, maxEntries: 1, maxWait: Never, maxPackers: 2);
+
+        var callers = Enumerable.Range(0, 32).Select(caller => Task.Run(async () =>
+        {
+            for (var i = 0; i < 200; i++) await batcher.Add(Entry(caller * 1000 + i));
+        })).ToArray();
+        while (batcher.InFlight < 32) await Task.Delay(5);
+        await Task.Delay(50);
+
+        batcher.Packing.Should().Be(2);
+        store.MaxRunning.Should().Be(2);
+        batcher.InFlight.Should().BeGreaterThan(2);
+
+        store.Release();
+        await Completes(Task.WhenAll(callers).WaitAsync(TimeSpan.FromSeconds(60)));
+        store.MaxRunning.Should().Be(2);
+        batcher.Packing.Should().Be(0);
+        batcher.InFlight.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CancellationReleasesBatchesWaitingForAPacker()
+    {
+        var store = new GatedStore();
+        using var cts = new CancellationTokenSource();
+        var batcher = new BackupBatcher(store, cts.Token, maxEntries: 1, maxWait: Never, maxPackers: 1);
+
+        var added = new[] { batcher.Add(Entry(1)), batcher.Add(Entry(2)), batcher.Add(Entry(3)) };
+        while (store.Started < 1) await Task.Delay(5);
+        await Task.Delay(50);
+        store.Started.Should().Be(1);
+
+        await cts.CancelAsync();
+
+        foreach (var task in added)
+            await FluentActions.Awaiting(() => task.WaitAsync(TimeSpan.FromSeconds(10))).Should().ThrowAsync<OperationCanceledException>();
+        batcher.InFlight.Should().Be(0);
+        batcher.Packing.Should().Be(0);
+    }
 }
