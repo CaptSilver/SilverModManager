@@ -175,13 +175,7 @@ public class RunGameTool : IRunGameTool
 
     private async Task RunProgram(GameInstallation installation, bool viaToolRunner, AbsolutePath program, AbsolutePath primaryFile, string[] commandLineArgs, CancellationToken cancellationToken)
     {
-        var names = new HashSet<string>
-        {
-            program.FileName,
-            program.GetFileNameWithoutExtension(),
-            primaryFile.FileName,
-            primaryFile.GetFileNameWithoutExtension(),
-        };
+        var names = TrackedProcessNames(program, primaryFile);
 
         // In the case of a preloader, we need to wait for the actual game file to exit
         // before we completely exit this routine. So get a list of all the processes with a give
@@ -235,6 +229,18 @@ public class RunGameTool : IRunGameTool
             return hashSet;
         }
     }
+
+    /// <summary>
+    /// The process names to wait on once the started program returns, because a launcher can hand the game to a process
+    /// of another name. Defaults to the program's and the primary file's names, with and without an extension.
+    /// </summary>
+    protected virtual IReadOnlySet<string> TrackedProcessNames(AbsolutePath program, AbsolutePath primaryFile) => new HashSet<string>
+    {
+        program.FileName,
+        program.GetFileNameWithoutExtension(),
+        primaryFile.FileName,
+        primaryFile.GetFileNameWithoutExtension(),
+    };
 
     private async Task<CommandResult> RunCommand(CancellationToken cancellationToken, string[] arguments, AbsolutePath program)
     {
@@ -458,7 +464,7 @@ public class RunGameTool : IRunGameTool
         _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
     }
 
-    private HashSet<TrackedProcess> FindMatchingProcesses(HashSet<string> names)
+    private HashSet<TrackedProcess> FindMatchingProcesses(IReadOnlySet<string> names)
     {
         return names.SelectMany(_processTracker.FindByName).ToHashSet();
     }
