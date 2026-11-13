@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;

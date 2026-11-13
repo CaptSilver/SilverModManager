@@ -1,22 +1,14 @@
-using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.DataModel.CommandLine.Verbs;
-
-/// <summary>A verb refused its input; the message says what to change and the exit code is 1.</summary>
-public sealed class LoadoutVerbRefusedException(string message) : UserFacingException(message)
-{
-    /// <inheritdoc />
-    public override string Title => "The command was not run";
-}
+namespace SilverModManager.Abstractions.Loadouts.Verbs;
 
 /// <summary>
 /// Finds the group a <c>-g</c> option names. A name is matched first; when no group has it, the text is tried as the
 /// id <c>loadout groups list --json</c> prints.
 /// </summary>
-internal static class LoadoutGroupLookup
+public static class LoadoutGroupLookup
 {
     /// <exception cref="LoadoutVerbRefusedException">No group matches, or the name matches several.</exception>
     public static LoadoutItemGroup.ReadOnly Find(Loadout.ReadOnly loadout, string nameOrId)

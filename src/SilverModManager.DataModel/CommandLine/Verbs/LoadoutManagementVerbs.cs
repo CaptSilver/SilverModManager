@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;

@@ -5,6 +5,7 @@ using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
