@@ -33,6 +33,7 @@ public class TestUnityGame : IGame, IGameData<TestUnityGame>
         ThunderstoreCommunity = "test-game",
         ThunderstoreLoaderPackage = "Test-LoaderPack",
         ThunderstoreLoaderAliases = ["Other-LoaderPack"],
+        Loader = UnityModLoaderKind.BepInEx,
     };
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId) { SteamAppIds = [Definition.SteamAppId] };
@@ -42,13 +43,13 @@ public class TestUnityGame : IGame, IGameData<TestUnityGame>
 
     private readonly IServiceProvider _provider;
 
-    public BepInExLoader Loader { get; }
+    public AUnityModLoader Loader { get; }
     public ILibraryItemInstaller[] LibraryItemInstallers { get; }
 
     public TestUnityGame(IServiceProvider provider)
     {
         _provider = provider;
-        Loader = new BepInExLoader(Definition);
+        Loader = UnityModLoaders.Create(Definition);
         LibraryItemInstallers = Loader.Installers(provider);
     }
 

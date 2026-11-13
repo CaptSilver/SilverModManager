@@ -1,0 +1,63 @@
+using System.Collections.Immutable;
+using DynamicData.Kernel;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
+
+namespace SilverModManager.Games.Unity.Tests.Fixtures;
+
+/// <summary>
+/// A MelonLoader Unity game with only the game location, a loader pack called Test-MelonLoader and one alias for it. Its names
+/// match no real game, so a test that passes with it cannot be passing because a package name was hard-coded.
+/// </summary>
+public class TestMelonLoaderUnityGame : IGame, IGameData<TestMelonLoaderUnityGame>
+{
+    public static GameId GameId { get; } = GameId.From("Unity.TestMelonGame");
+    public static string DisplayName => "Test MelonLoader Unity Game";
+    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
+
+    public static readonly UnityGameDefinition Definition = new()
+    {
+        GameId = GameId,
+        DisplayName = DisplayName,
+        NexusModsGameId = NexusModsGameId,
+        Executable = "TestGame.exe",
+        DataFolder = "TestGame_Data",
+        SteamAppId = 424244,
+        ThunderstoreCommunity = "test-melon-game",
+        ThunderstoreLoaderPackage = "Test-MelonLoader",
+        ThunderstoreLoaderAliases = ["Other-MelonLoader"],
+        Loader = UnityModLoaderKind.MelonLoader,
+    };
+
+    public StoreIdentifiers StoreIdentifiers { get; } = new(GameId) { SteamAppIds = [Definition.SteamAppId] };
+
+    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("SilverModManager.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
+    public IStreamFactory TileImage => throw new NotImplementedException("No game image for the test game.");
+
+    private readonly IServiceProvider _provider;
+
+    public AUnityModLoader Loader { get; }
+    public ILibraryItemInstaller[] LibraryItemInstallers { get; }
+
+    public TestMelonLoaderUnityGame(IServiceProvider provider)
+    {
+        _provider = provider;
+        Loader = UnityModLoaders.Create(Definition);
+        LibraryItemInstallers = Loader.Installers(provider);
+    }
+
+    public ILoadoutSynchronizer Synchronizer => new DefaultSynchronizer(_provider);
+    public IDiagnosticEmitter[] DiagnosticEmitters => [];
+    public ISortOrderManager SortOrderManager => new SortOrderManager(_provider);
+
+    public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, Definition.Executable);
+
+    public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
+        => new Dictionary<LocationId, AbsolutePath> { { LocationId.Game, gameLocatorResult.Path.Combine("game") } }.ToImmutableDictionary();
+}

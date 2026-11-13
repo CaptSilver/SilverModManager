@@ -1,6 +1,7 @@
 using SilverModManager.Abstractions.Library.Installers;
-using SilverModManager.Sdk.Loadouts;
-using SilverModManager.Games.Generic.Loaders;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unity.BepInEx;
 
@@ -13,34 +14,33 @@ namespace SilverModManager.Games.Unity.BepInEx;
 /// implements <see cref="SilverModManager.Abstractions.Games.IWineDllOverrideRequirements"/> by forwarding to its loader.
 /// </remarks>
 public sealed class BepInExLoader(UnityGameDefinition definition)
-    : AProxyDllLoader(BepInExFiles.DoorstopProxy, $"{BepInExFiles.Root}/{BepInExFiles.Plugins}")
+    : AUnityModLoader(definition, BepInExFiles.DoorstopProxy, $"{BepInExFiles.Root}/{BepInExFiles.Plugins}")
 {
-    public string LoaderPackage => definition.ThunderstoreLoaderPackage;
-    public IReadOnlyList<string> LoaderAliases => definition.ThunderstoreLoaderAliases;
+    private static readonly GamePath PluginsFolder = new(LocationId.Game, $"{BepInExFiles.Root}/{BepInExFiles.Plugins}");
+    private static readonly GamePath CoreFolder = new(LocationId.Game, $"{BepInExFiles.Root}/{BepInExFiles.Core}");
+    private static readonly Extension Dll = new(".dll");
 
-    /// <summary>
-    /// Whether a library item is the loader pack: its name, less the extension and the version, is the loader package
-    /// or one of its aliases. Thunderstore downloads are named <c>Namespace-Name-Version.zip</c>.
-    /// </summary>
-    public bool IsLoaderPackName(string libraryItemName)
+    public override string DisplayName => "BepInEx";
+
+    public override string WhatBreaks => "BepInEx plugins are built against one version of the game and may stop loading after an update; they may need a new release from their author.";
+
+    public override ILibraryItemInstaller[] Installers(IServiceProvider provider) => [new BepInExPackInstaller(provider, this), new BepInExPluginInstaller(provider, this)];
+
+    /// <remarks>
+    /// These are the paths BepInEx is expected to write at runtime: its log and the type cache under <c>BepInEx/cache</c>.
+    /// Not checked against the BepInEx source; a played session confirms them.
+    /// </remarks>
+    public override bool IsRuntimeOutput(GamePath path)
     {
-        string package;
-        try
-        {
-            package = BepInExPackageFolder.For(libraryItemName);
-        }
-        catch (BepInExLayoutException)
-        {
-            // A name that makes no folder is no package's name; the installers decline such an archive themselves.
-            return false;
-        }
+        if (path.LocationId != LocationId.Game) return false;
 
-        return package.Equals(LoaderPackage, StringComparison.OrdinalIgnoreCase)
-               || LoaderAliases.Any(alias => package.Equals(alias, StringComparison.OrdinalIgnoreCase));
+        var relative = path.Path.ToString();
+        return relative.Equals("BepInEx/LogOutput.log", StringComparison.OrdinalIgnoreCase)
+               || relative.StartsWith("BepInEx/cache/", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>True when an enabled file of the loadout sits below <c>BepInEx/plugins</c>.</summary>
-    public bool HasPlugins(Loadout.ReadOnly loadout) => FirstModGroup(loadout).HasValue;
+    // The loader pack's own files (winhttp.dll, BepInEx/core) are not listed: they are not a mod the user picked.
+    public override bool HooksGameCode(GamePath path) => NativeCodePaths.IsLibraryBelow(path, PluginsFolder);
 
-    public ILibraryItemInstaller[] Installers(IServiceProvider provider) => [new BepInExPackInstaller(provider, this), new BepInExPluginInstaller(provider, this)];
+    public override bool IsLoaderRuntime(GamePath path) => NativeCodePaths.IsDirectlyIn(path, CoreFolder, Dll);
 }

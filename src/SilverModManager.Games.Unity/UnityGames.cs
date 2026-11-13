@@ -16,6 +16,7 @@ public static class UnityGames
         DataFolder = "REPO_Data",
         SteamAppId = 3241660,
         ThunderstoreCommunity = "repo",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "BepInEx-BepInExPack",
         ThunderstoreLoaderAliases = ["bbepis-BepInExPack", "xiaoxiao921-BepInExPack"],
         // Patches come in bursts a few days apart and then stop for months, so a shorter window fits.
@@ -31,6 +32,7 @@ public static class UnityGames
         DataFolder = "PEAK_Data",
         SteamAppId = 3527290,
         ThunderstoreCommunity = "peak",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "BepInEx-BepInExPack_PEAK",
         ThunderstoreLoaderAliases = ["BepInEx-BepInExPack", "bbepis-BepInExPack", "xiaoxiao921-BepInExPack"],
     };
@@ -49,6 +51,7 @@ public static class UnityGames
         DataFolder = "valheim_Data",
         SteamAppId = 892970,
         ThunderstoreCommunity = "valheim",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "denikson-BepInExPack_Valheim",
         ThunderstoreLoaderAliases = ["BepInEx-BepInExPack_Valheim"],
     };
@@ -62,6 +65,7 @@ public static class UnityGames
         DataFolder = "Subnautica_Data",
         SteamAppId = 264710,
         ThunderstoreCommunity = "subnautica",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "Subnautica_Modding-BepInExPack",
         ThunderstoreLoaderAliases = ["Subnautica_Modding-BepInExPack_Subnautica", "Subnautica_Modding-BepInExPack_Subnautica_Experimental"],
     };
@@ -75,6 +79,7 @@ public static class UnityGames
         DataFolder = "SubnauticaZero_Data",
         SteamAppId = 848450,
         ThunderstoreCommunity = "subnautica-below-zero",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "Subnautica_Modding-BepInExPack",
         ThunderstoreLoaderAliases = ["Subnautica_Modding-BepInExPack_BelowZero", "BepInEx-BepInExPack"],
     };
@@ -88,10 +93,25 @@ public static class UnityGames
         DataFolder = "Hollow Knight Silksong_Data",
         SteamAppId = 1030300,
         ThunderstoreCommunity = "hollow-knight-silksong",
+        Loader = UnityModLoaderKind.BepInEx,
         ThunderstoreLoaderPackage = "silksong_modding-BepInExPack_Silksong",
         // Deprecated in favour of the package above, and still the one most Silksong mods list as a dependency.
         ThunderstoreLoaderAliases = ["BepInEx-BepInExPack_Silksong"],
     };
 
-    public static readonly IReadOnlyList<UnityGameDefinition> All = [Repo, Peak, Valheim, Subnautica, SubnauticaBelowZero, HollowKnightSilksong];
+    public static readonly UnityGameDefinition ScheduleI = new()
+    {
+        GameId = GameId.From("Unity.ScheduleI"),
+        DisplayName = "Schedule I",
+        NexusModsGameId = NexusModsGameId.From(7381),
+        Executable = "Schedule I.exe",
+        DataFolder = "Schedule I_Data",
+        SteamAppId = 3164500,
+        ThunderstoreCommunity = "schedule-i",
+        Loader = UnityModLoaderKind.MelonLoader,
+        ThunderstoreLoaderPackage = "LavaGang-MelonLoader",
+        ThunderstoreLoaderAliases = [],
+    };
+
+    public static readonly IReadOnlyList<UnityGameDefinition> All = [Repo, Peak, Valheim, Subnautica, SubnauticaBelowZero, HollowKnightSilksong, ScheduleI];
 }

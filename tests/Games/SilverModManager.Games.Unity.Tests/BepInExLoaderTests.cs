@@ -66,7 +66,7 @@ public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstalle
     public async Task HasPluginsIsTrueOnlyForAnEnabledFileUnderThePluginsFolder()
     {
         var loadout = await CreateLoadout();
-        Game.Loader.HasPlugins(loadout).Should().BeFalse();
+        Game.Loader.HasMods(loadout).Should().BeFalse();
 
         using (var tx = Connection.BeginTransaction())
         {
@@ -74,7 +74,7 @@ public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstalle
             AddFile(tx, loadout.LoadoutId, configGroup, new GamePath(LocationId.Game, "BepInEx/config/a.cfg"));
             await tx.Commit();
         }
-        Game.Loader.HasPlugins(Refresh(loadout)).Should().BeFalse();
+        Game.Loader.HasMods(Refresh(loadout)).Should().BeFalse();
 
         EntityId pluginGroup;
         using (var tx = Connection.BeginTransaction())
@@ -83,10 +83,10 @@ public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstalle
             AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "BepInEx/plugins/Zehs-REPOLib/REPOLib.dll"));
             pluginGroup = (await tx.Commit())[group.Value];
         }
-        Game.Loader.HasPlugins(Refresh(loadout)).Should().BeTrue();
+        Game.Loader.HasMods(Refresh(loadout)).Should().BeTrue();
 
         await DisableItem(pluginGroup);
-        Game.Loader.HasPlugins(Refresh(loadout)).Should().BeFalse();
+        Game.Loader.HasMods(Refresh(loadout)).Should().BeFalse();
     }
 
     [Theory]
@@ -98,5 +98,23 @@ public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstalle
     public void IsLoaderPackNameMatchesThePackageAndItsAliasesIgnoringCase(string itemName, bool expected)
     {
         Game.Loader.IsLoaderPackName(itemName).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("BepInEx/LogOutput.log", true)]
+    [InlineData("BepInEx/cache/chainloader_typeloader.dat", true)]
+    [InlineData("BepInEx/cache/sub/file.bin", true)]
+    [InlineData("BepInEx/plugins/X/X.dll", false)]
+    [InlineData("BepInEx/config/BepInEx.cfg", false)]
+    [InlineData("REPO.exe", false)]
+    public void TheLoaderNamesWhatBepInExWritesWhileTheGameRuns(string path, bool ignored)
+    {
+        Game.Loader.IsRuntimeOutput(new GamePath(LocationId.Game, path)).Should().Be(ignored);
+    }
+
+    [Fact]
+    public void TheFilterOnlyLooksAtTheGameFolder()
+    {
+        Game.Loader.IsRuntimeOutput(new GamePath(LocationId.Saves, "BepInEx/LogOutput.log")).Should().BeFalse();
     }
 }

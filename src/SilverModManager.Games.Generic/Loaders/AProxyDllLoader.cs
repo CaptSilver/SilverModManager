@@ -52,7 +52,7 @@ public abstract class AProxyDllLoader(string proxyFile, string modsFolder) : IWi
             ? [new WineDllOverride(WineDllName, [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])]
             : [];
 
-    private static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> EnabledFiles(Loadout.ReadOnly loadout)
+    protected static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> EnabledFiles(Loadout.ReadOnly loadout)
         => LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemWithTargetPath()
             .Where(item => item.AsLoadoutItem().IsEnabled());

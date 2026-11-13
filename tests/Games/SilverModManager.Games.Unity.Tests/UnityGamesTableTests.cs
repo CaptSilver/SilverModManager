@@ -19,22 +19,23 @@ public class UnityGamesTableTests
     public void TheTableHoldsEveryGame()
     {
         UnityGames.All.Should().Equal(
-            UnityGames.Repo, UnityGames.Peak, UnityGames.Valheim, UnityGames.Subnautica, UnityGames.SubnauticaBelowZero, UnityGames.HollowKnightSilksong);
+            UnityGames.Repo, UnityGames.Peak, UnityGames.Valheim, UnityGames.Subnautica, UnityGames.SubnauticaBelowZero, UnityGames.HollowKnightSilksong, UnityGames.ScheduleI);
     }
 
     // Executables from each game's Steam launch entry (api.steamcmd.net) and MO2's basic_games plugin; Nexus ids from
     // games.json by domain; loader packs from the community's package list on Thunderstore.
-    public static TheoryData<string, string, string, string, uint, uint, string, string> Rows => new()
+    public static TheoryData<string, string, string, string, uint, uint, string, string, UnityModLoaderKind> Rows => new()
     {
-        { "Unity.Valheim", "Valheim", "valheim.exe", "valheim_Data", 892970, 3667, "valheim", "denikson-BepInExPack_Valheim" },
-        { "Unity.Subnautica", "Subnautica", "Subnautica.exe", "Subnautica_Data", 264710, 1155, "subnautica", "Subnautica_Modding-BepInExPack" },
-        { "Unity.SubnauticaBelowZero", "Subnautica: Below Zero", "SubnauticaZero.exe", "SubnauticaZero_Data", 848450, 2706, "subnautica-below-zero", "Subnautica_Modding-BepInExPack" },
-        { "Unity.HollowKnightSilksong", "Hollow Knight: Silksong", "Hollow Knight Silksong.exe", "Hollow Knight Silksong_Data", 1030300, 8136, "hollow-knight-silksong", "silksong_modding-BepInExPack_Silksong" },
+        { "Unity.Valheim", "Valheim", "valheim.exe", "valheim_Data", 892970, 3667, "valheim", "denikson-BepInExPack_Valheim", UnityModLoaderKind.BepInEx },
+        { "Unity.Subnautica", "Subnautica", "Subnautica.exe", "Subnautica_Data", 264710, 1155, "subnautica", "Subnautica_Modding-BepInExPack", UnityModLoaderKind.BepInEx },
+        { "Unity.SubnauticaBelowZero", "Subnautica: Below Zero", "SubnauticaZero.exe", "SubnauticaZero_Data", 848450, 2706, "subnautica-below-zero", "Subnautica_Modding-BepInExPack", UnityModLoaderKind.BepInEx },
+        { "Unity.ScheduleI", "Schedule I", "Schedule I.exe", "Schedule I_Data", 3164500, 7381, "schedule-i", "LavaGang-MelonLoader", UnityModLoaderKind.MelonLoader },
+        { "Unity.HollowKnightSilksong", "Hollow Knight: Silksong", "Hollow Knight Silksong.exe", "Hollow Knight Silksong_Data", 1030300, 8136, "hollow-knight-silksong", "silksong_modding-BepInExPack_Silksong", UnityModLoaderKind.BepInEx },
     };
 
     [Theory]
     [MemberData(nameof(Rows))]
-    public void TheNewRowsFollowTheirSources(string gameId, string displayName, string executable, string dataFolder, uint steamAppId, uint nexusId, string community, string loaderPackage)
+    public void TheNewRowsFollowTheirSources(string gameId, string displayName, string executable, string dataFolder, uint steamAppId, uint nexusId, string community, string loaderPackage, UnityModLoaderKind loader)
     {
         var row = UnityGames.All.Single(candidate => candidate.GameId == GameId.From(gameId));
 
@@ -45,6 +46,14 @@ public class UnityGamesTableTests
         row.NexusModsGameId.Should().Be(Optional<Sdk.NexusModsApi.NexusModsGameId>.Create(Sdk.NexusModsApi.NexusModsGameId.From(nexusId)));
         row.ThunderstoreCommunity.Should().Be(community);
         row.ThunderstoreLoaderPackage.Should().Be(loaderPackage);
+        row.Loader.Should().Be(loader);
+    }
+
+    [Fact]
+    public void EveryRowNamesItsLoader()
+    {
+        UnityGames.All.Where(row => row.Loader == UnityModLoaderKind.MelonLoader).Should().Equal(UnityGames.ScheduleI);
+        UnityGames.All.Where(row => row.Loader == UnityModLoaderKind.BepInEx).Should().HaveCount(UnityGames.All.Count - 1);
     }
 
     [Fact]
@@ -80,7 +89,7 @@ public class UnityGamesTableTests
     {
         foreach (var row in UnityGames.All)
         {
-            var loader = new BepInEx.BepInExLoader(row);
+            var loader = UnityModLoaders.Create(row);
             foreach (var package in new[] { row.ThunderstoreLoaderPackage }.Concat(row.ThunderstoreLoaderAliases))
                 loader.IsLoaderPackName($"{package}-5.4.2305.zip").Should().BeTrue($"{row.GameId} {package}");
         }

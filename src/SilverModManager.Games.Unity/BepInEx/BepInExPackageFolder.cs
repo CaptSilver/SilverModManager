@@ -19,24 +19,19 @@ public static class BepInExPackageFolder
     public static string For(string archiveFileName, string? manifestNamespace = null, string? manifestName = null)
     {
         var stem = Path.GetFileNameWithoutExtension(archiveFileName);
-        var withoutVersion = StripVersion(stem);
-        if (withoutVersion.Length != stem.Length) return RequireSafeFolderName(withoutVersion, archiveFileName);
+        var package = ThunderstorePackageName.FromArchiveName(archiveFileName);
+        if (package is not null) return RequireSafeFolderName(package, archiveFileName);
 
         // The manifest comes from the archive, so its fields only count when they are valid Thunderstore names.
         // Anything else would let "../../x" put the folder outside BepInEx.
-        if (manifestName is not null && IsThunderstoreName(manifestName))
+        if (manifestName is not null && ThunderstorePackageName.IsName(manifestName))
         {
             if (string.IsNullOrWhiteSpace(manifestNamespace)) return manifestName;
-            if (IsThunderstoreNamespace(manifestNamespace)) return $"{manifestNamespace}-{manifestName}";
+            if (ThunderstorePackageName.IsNamespace(manifestNamespace)) return $"{manifestNamespace}-{manifestName}";
         }
 
         return RequireSafeFolderName(stem, archiveFileName);
     }
-
-    // Thunderstore package names are letters, digits and underscores; namespaces may also hold dashes.
-    private static bool IsThunderstoreName(string value) => value.Length > 0 && value.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
-
-    private static bool IsThunderstoreNamespace(string value) => value.All(c => char.IsAsciiLetterOrDigit(c) || c == '_' || c == '-');
 
     // Sanitized rather than refused: a stray character in the archive's name should not stop the install, only a name
     // with nothing usable left.
@@ -53,23 +48,9 @@ public static class BepInExPackageFolder
     /// </summary>
     public static async ValueTask<string> FromLibraryItemName(string libraryItemName, Func<ValueTask<Manifest?>> readManifest)
     {
-        var stem = Path.GetFileNameWithoutExtension(libraryItemName);
-        if (StripVersion(stem).Length != stem.Length) return For(libraryItemName);
+        if (ThunderstorePackageName.FromArchiveName(libraryItemName) is not null) return For(libraryItemName);
 
         var manifest = await readManifest();
         return For(libraryItemName, manifest?.Namespace, manifest?.Name);
-    }
-
-    // Namespaces may contain "-" but versions cannot, so only the part after the last dash can be the version.
-    private static string StripVersion(string stem)
-    {
-        var dash = stem.LastIndexOf('-');
-        if (dash <= 0 || dash == stem.Length - 1) return stem;
-
-        foreach (var c in stem.AsSpan(dash + 1))
-        {
-            if (!char.IsAsciiDigit(c) && c != '.') return stem;
-        }
-        return stem[..dash];
     }
 }

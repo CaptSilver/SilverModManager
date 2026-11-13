@@ -25,7 +25,7 @@ public class UnityGamesNexusIdTests(IServiceProvider provider)
     public void EveryUnityGameIsRegisteredWithTheApp()
     {
         UnityGames.Select(game => game.GameId).Should().BeEquivalentTo(
-            new[] { "Unity.Repo", "Unity.Peak", "Unity.Valheim", "Unity.Subnautica", "Unity.SubnauticaBelowZero", "Unity.HollowKnightSilksong" }.Select(GameId.From));
+            new[] { "Unity.Repo", "Unity.Peak", "Unity.Valheim", "Unity.Subnautica", "Unity.SubnauticaBelowZero", "Unity.HollowKnightSilksong", "Unity.ScheduleI" }.Select(GameId.From));
     }
 
     [Fact]
@@ -49,6 +49,7 @@ public class UnityGamesNexusIdTests(IServiceProvider provider)
     [InlineData("Unity.Subnautica", 1155u)]
     [InlineData("Unity.SubnauticaBelowZero", 2706u)]
     [InlineData("Unity.HollowKnightSilksong", 8136u)]
+    [InlineData("Unity.ScheduleI", 7381u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
         NexusModsGameScope.ResolveNxmGame(UnityGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)

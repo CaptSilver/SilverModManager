@@ -31,7 +31,10 @@ public sealed record UnityGameDefinition : IGameDefinition
     /// <summary>The Thunderstore community slug, e.g. <c>repo</c>.</summary>
     public required string ThunderstoreCommunity { get; init; }
 
-    /// <summary>The <c>Namespace-Name</c> of the package that holds the game's BepInEx loader pack.</summary>
+    /// <summary>The mod loader the game's mods run on.</summary>
+    public required UnityModLoaderKind Loader { get; init; }
+
+    /// <summary>The <c>Namespace-Name</c> of the package that holds the game's loader pack.</summary>
     public required string ThunderstoreLoaderPackage { get; init; }
 
     /// <summary>Other packages that are the same loader pack, which mods may depend on instead.</summary>

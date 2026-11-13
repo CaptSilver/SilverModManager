@@ -8,7 +8,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Unity.Tests;
 
-public class RepoTests(ITestOutputHelper outputHelper) : AUnityRowTests<RepoTests>(outputHelper, UnityGames.Repo)
+public class RepoTests(ITestOutputHelper outputHelper) : ABepInExRowTests<RepoTests>(outputHelper, UnityGames.Repo)
 {
     [Fact]
     public void TheGameIsIdentifiedByItsSteamAppIdAndItsNexusModsId()
@@ -75,7 +75,9 @@ public class RepoTests(ITestOutputHelper outputHelper) : AUnityRowTests<RepoTest
     [Fact]
     public void TheGameReportsAMissingLoaderAndAMissingWineOverride()
     {
-        Game.DiagnosticEmitters.OfType<BepInExMissingEmitter>().Should().ContainSingle();
+        Game.DiagnosticEmitters.OfType<UnityLoaderMissingEmitter>().Should().ContainSingle();
         Game.DiagnosticEmitters.OfType<WineDllOverrideEmitter>().Should().ContainSingle();
+        Game.DiagnosticEmitters.OfType<WinePrefixComponentsEmitter>().Should().ContainSingle();
+        Game.Should().BeAssignableTo<IWinePrefixRequirements>();
     }
 }

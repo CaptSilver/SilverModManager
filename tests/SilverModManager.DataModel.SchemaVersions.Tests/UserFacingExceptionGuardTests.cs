@@ -41,6 +41,7 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Sdk.Hashes.HashCollisionException"] = DeveloperFacing,
         ["SilverModManager.SingleProcess.Exceptions.SingleProcessLockException"] = "Startup finds the lock held and switches to the running instance; it never reaches a dialog.",
         ["SilverModManager.Games.Unity.BepInEx.BepInExLayoutException"] = "Raised by the installer's layout detection and turned into the installer declining the archive.",
+        ["SilverModManager.Games.Unity.MelonLoader.MelonLoaderLayoutException"] = "Raised by the installer's layout routing and turned into the installer declining the archive.",
         ["SilverModManager.Games.Bethesda.Loot.Database.ConditionParseException"] = Loot,
         ["SilverModManager.Games.Bethesda.Loot.Conditions.ConditionEvaluationException"] = Loot,
         ["SilverModManager.Games.Bethesda.Loot.Metadata.InvalidPluginNameException"] = Loot,

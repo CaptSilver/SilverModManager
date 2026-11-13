@@ -7,7 +7,6 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.Generic;
 using SilverModManager.Games.Generic.Diagnostics;
-using SilverModManager.Games.Unity.BepInEx;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -15,55 +14,52 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.Unity;
 
 /// <summary>
-/// A Unity game whose mods are BepInEx plugins from Thunderstore, described by a <see cref="UnityGameDefinition"/>.
+/// A Unity game whose mods come from Thunderstore and run on the loader its row names, described by a <see cref="UnityGameDefinition"/>.
 /// Every Unity game is an instance of this class, so nothing may look one up by type.
 /// </summary>
-public sealed class UnityGame : DefinedGame<UnityGameDefinition>, IUnityGame, IGameNativeCode, IGameUpdateSensitivity
+public sealed class UnityGame : DefinedGame<UnityGameDefinition>, IUnityGame, IGameNativeCode, IGameUpdateSensitivity, IWinePrefixRequirements
 {
-    private static readonly GamePath PluginsFolder = new(LocationId.Game, $"{BepInExFiles.Root}/{BepInExFiles.Plugins}");
-
-    public BepInExLoader Loader { get; }
+    public AUnityModLoader Loader { get; }
 
     public UnityGame(IServiceProvider provider, UnityGameDefinition definition) : base(provider, definition)
     {
-        Loader = new BepInExLoader(definition);
+        Loader = UnityModLoaders.Create(definition);
     }
 
     public string ThunderstoreCommunity => Definition.ThunderstoreCommunity;
     public string ThunderstoreLoaderPackage => Definition.ThunderstoreLoaderPackage;
     public IReadOnlyList<string> ThunderstoreLoaderAliases => Definition.ThunderstoreLoaderAliases;
 
-    // The loader pack's own files (winhttp.dll, BepInEx/core) are not listed: they are not a mod the user picked.
-    public bool HooksGameCode(GamePath path) => NativeCodePaths.IsLibraryBelow(path, PluginsFolder);
+    public bool HooksGameCode(GamePath path) => Loader.HooksGameCode(path);
 
-    private static readonly GamePath CoreFolder = new(LocationId.Game, $"{BepInExFiles.Root}/core");
-    private static readonly Extension Dll = new(".dll");
-
-    // winhttp.dll is the proxy BepInEx puts beside the executable; it sits at the game root for every Unity game.
+    // The proxy DLL sits beside the executable for every Unity game, whichever loader it belongs to.
     public NativeCodeRole? RoleOf(GamePath path)
     {
-        if (NativeCodePaths.IsLibraryBelow(path, PluginsFolder)) return NativeCodeRole.LoaderPlugin;
-        if (path.LocationId == LocationId.Game && path.Path.Parent.Equals(RelativePath.Empty) && path.FileName.Equals("winhttp.dll"))
-            return NativeCodeRole.LoaderRuntime;
-        return NativeCodePaths.IsDirectlyIn(path, CoreFolder, Dll) ? NativeCodeRole.LoaderRuntime : null;
+        if (Loader.HooksGameCode(path)) return NativeCodeRole.LoaderPlugin;
+        if (path == Loader.Proxy || Loader.IsLoaderRuntime(path)) return NativeCodeRole.LoaderRuntime;
+        return null;
     }
 
     public TimeSpan? DateWindow => Definition.DateWindow;
 
-    public string WhatBreaks => "BepInEx plugins are built against one version of the game and may stop loading after an update; they may need a new release from their author.";
+    public string WhatBreaks => Loader.WhatBreaks;
 
     public NamedLink? ExtenderPage => null;
 
     public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout) => Loader.RequiredWineDllOverrides(loadout);
 
-    protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new UnityGameSynchronizer(provider);
+    public IReadOnlyList<PrefixComponentId> RequiredPrefixComponents(Loadout.ReadOnly loadout) => Loader.RequiredPrefixComponents(loadout);
+
+    protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new UnityGameSynchronizer(provider, Loader);
 
     protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) => Loader.Installers(provider);
 
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
     [
         .. base.CreateEmitters(provider),
-        provider.GetRequiredService<BepInExMissingEmitter>(),
+        provider.GetRequiredService<UnityLoaderMissingEmitter>(),
+        provider.GetRequiredService<UnityRuntimeBranchEmitter>(),
         provider.GetRequiredService<WineDllOverrideEmitter>(),
+        provider.GetRequiredService<WinePrefixComponentsEmitter>(),
     ];
 }
