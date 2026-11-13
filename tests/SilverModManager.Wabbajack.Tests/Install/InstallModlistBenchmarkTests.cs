@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Sdk.Diagnostics;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Hashes;
 using FluentAssertions;
 using NexusMods.Paths;
@@ -20,6 +23,31 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
     private static int Scale => int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_SCALE"), out var scale) ? Math.Max(1, scale) : 1;
 
     private const int MemberSize = 16 * 1024;
+    private const long Mb = 1048576;
+
+    /// <summary>The highest value of each count seen while sampling; MB in the printed line, native counts under their own keys.</summary>
+    private sealed class Peaks
+    {
+        private long _managed, _committed, _anon, _anonOverCommitted, _shmem;
+        public Dictionary<string, long> Native { get; } = new();
+
+        public void Add(MemorySample sample, long? systemShmem)
+        {
+            _managed = Math.Max(_managed, sample.ManagedHeapBytes);
+            _committed = Math.Max(_committed, sample.CommittedHeapBytes);
+            if (sample.RssAnonBytes is { } anon)
+            {
+                _anon = Math.Max(_anon, anon);
+                _anonOverCommitted = Math.Max(_anonOverCommitted, anon - sample.CommittedHeapBytes);
+            }
+            if (systemShmem is { } shmem) _shmem = Math.Max(_shmem, shmem);
+            foreach (var (key, bytes) in sample.Native ?? [])
+                Native[key] = Math.Max(Native.GetValueOrDefault(key), bytes);
+        }
+
+        public string Describe()
+            => $"peakManagedMB={_managed / Mb} peakCommittedMB={_committed / Mb} peakAnonMB={_anon / Mb} peakNativeMB={_anonOverCommitted / Mb} peakShmemMB={_shmem / Mb}";
+    }
 
     private static byte[] Payload(int seed, int length)
     {
@@ -114,27 +142,24 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
 
         GC.Collect();
         var startManaged = GC.GetTotalMemory(true);
-        var process = Process.GetCurrentProcess();
-        var startWorkingSet = process.WorkingSet64;
-        long peakManaged = 0, peakWorkingSet = 0;
+        var memory = new ProcessMemorySampler(ServiceProvider.GetServices<IMemoryContributor>());
+        var start = memory.Sample();
+        var total = new Peaks();
+        var byPhase = new Dictionary<InstallPhase, Peaks>();
         var phase = InstallPhase.Check;
-        var byPhase = new Dictionary<InstallPhase, (long Managed, long WorkingSet, TimeSpan Elapsed)>();
-        var phaseWatch = Stopwatch.StartNew();
         using var stop = new CancellationTokenSource();
         var sampler = Task.Run(async () =>
         {
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(25));
             while (!stop.IsCancellationRequested)
             {
-                var managed = GC.GetTotalMemory(false);
-                process.Refresh();
-                var workingSet = process.WorkingSet64;
-                peakManaged = Math.Max(peakManaged, managed);
-                peakWorkingSet = Math.Max(peakWorkingSet, workingSet);
+                var sample = memory.Sample();
+                var shmem = MeminfoShmem.Read();
                 lock (byPhase)
                 {
-                    var current = byPhase.GetValueOrDefault(phase);
-                    byPhase[phase] = (Math.Max(current.Managed, managed), Math.Max(current.WorkingSet, workingSet), phaseWatch.Elapsed);
+                    total.Add(sample, shmem);
+                    if (!byPhase.TryGetValue(phase, out var peaks)) byPhase[phase] = peaks = new Peaks();
+                    peaks.Add(sample, shmem);
                 }
                 try { await timer.WaitForNextTickAsync(stop.Token); } catch (OperationCanceledException) { }
             }
@@ -142,7 +167,11 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
 
         var watch = Stopwatch.StartNew();
         var workers = int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_WORKERS"), out var w) ? w : (int?)null;
-        var job = NewJob(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()), parallelism: workers);
+        // SILVER_BENCH_STORE_DELAY_MS makes every backup call wait, so packers pile up the way they do on a slow disk.
+        IFileStore? store = int.TryParse(Environment.GetEnvironmentVariable("SILVER_BENCH_STORE_DELAY_MS"), out var delayMs) && delayMs > 0
+            ? new DelayingFileStore(ServiceProvider.GetRequiredService<IFileStore>(), TimeSpan.FromMilliseconds(delayMs))
+            : null;
+        var job = NewJob(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()), parallelism: workers, store: store);
         var phaseStarts = new Dictionary<InstallPhase, TimeSpan>();
         using var progress = job.Progress.Changes.Subscribe(snapshot =>
         {
@@ -155,13 +184,16 @@ public class InstallModlistBenchmarkTests(ITestOutputHelper helper) : InstallTes
         await sampler;
 
         var directives = list.Directives.Count;
-        var line = ($"BENCH workers={workers?.ToString() ?? "default"} directives={directives} wall={watch.Elapsed.TotalSeconds:F1}s commits={commits} " +
-                         $"startManagedMB={startManaged / 1048576} peakManagedMB={peakManaged / 1048576} peakWorkingSetMB={peakWorkingSet / 1048576} startWorkingSetMB={startWorkingSet / 1048576} " +
-                         $"gcPeakHeapMB={GC.GetGCMemoryInfo().HeapSizeBytes / 1048576} gen2={GC.CollectionCount(2)}");
-        foreach (var (name, peak) in byPhase)
+        var line = ($"BENCH workers={workers?.ToString() ?? "default"} storeDelayMs={(store is null ? 0 : delayMs)} directives={directives} wall={watch.Elapsed.TotalSeconds:F1}s commits={commits} " +
+                    $"startManagedMB={startManaged / Mb} startAnonMB={start.RssAnonBytes / Mb} {total.Describe()} " +
+                    $"gcPeakHeapMB={GC.GetGCMemoryInfo().HeapSizeBytes / Mb} gen2={GC.CollectionCount(2)}");
+        // A sample's native keys are flattened across contributors, but each contributor's keys share a prefix (malloc, rocksdb, skia).
+        foreach (var contributor in total.Native.GroupBy(c => c.Key.Split('-')[0]))
+            line += $"\n  contributor {contributor.Key}: {string.Join(" ", contributor.Select(c => $"{c.Key}={c.Value / Mb}"))}";
+        foreach (var (name, peaks) in byPhase)
         {
             phaseStarts.TryGetValue(name, out var startedAt);
-            line += $"\n  phase {name}: from {startedAt.TotalSeconds:F1}s peakManagedMB={peak.Managed / 1048576} peakWorkingSetMB={peak.WorkingSet / 1048576}";
+            line += $"\n  phase {name}: from {startedAt.TotalSeconds:F1}s {peaks.Describe()}";
         }
         helper.WriteLine(line);
         if (Environment.GetEnvironmentVariable("SILVER_BENCH_OUT") is { Length: > 0 } outFile) File.AppendAllText(outFile, line + "\n");

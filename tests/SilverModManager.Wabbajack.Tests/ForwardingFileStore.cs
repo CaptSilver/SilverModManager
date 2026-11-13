@@ -47,3 +47,13 @@ internal sealed class CountingBackups(IFileStore inner) : ForwardingFileStore(in
         return base.BackupFiles(backups, deduplicate, token, progress);
     }
 }
+
+/// <summary>Forwards to a store but waits before every call that backs files up, to let packers pile up behind a slow disk.</summary>
+internal sealed class DelayingFileStore(IFileStore inner, TimeSpan delay) : ForwardingFileStore(inner)
+{
+    public override async Task BackupFiles(IEnumerable<ArchivedFileEntry> backups, bool deduplicate = true, CancellationToken token = default, IProgress<double>? progress = null)
+    {
+        await Task.Delay(delay, token);
+        await base.BackupFiles(backups, deduplicate, token, progress);
+    }
+}

@@ -124,9 +124,9 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     /// begin it with its own body or subscribe to its progress first.
     /// </summary>
     protected InstallModlistJob NewJob(Loadout.ReadOnly loadout, WabbajackModlistLibraryFile.ReadOnly modlist, InstallOptions options,
-        GeneratedFileWriter? writer = null, ByteBudget? budget = null, int? parallelism = null, CommitPolicy? commits = null)
+        GeneratedFileWriter? writer = null, ByteBudget? budget = null, int? parallelism = null, CommitPolicy? commits = null, IFileStore? store = null)
     {
-        var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
+        var fileStore = store ?? ServiceProvider.GetRequiredService<IFileStore>();
         var temporaryFiles = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         return new InstallModlistJob
         {
