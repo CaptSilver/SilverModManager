@@ -139,6 +139,7 @@ public class WabbajackModlistReinstallerTests(IServiceProvider provider) : AUiTe
             Transforms = null!,
             PrefixResolver = null!,
             Paths = null!,
+            TemporaryFiles = null!,
             Writer = null!,
             Openers = null!,
             Logger = null!,

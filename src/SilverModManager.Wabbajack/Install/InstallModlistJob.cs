@@ -76,6 +76,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required IPrefixResolver PrefixResolver { get; init; }
     public required WabbajackPaths Paths { get; init; }
     public required GeneratedFileWriter Writer { get; init; }
+
+    /// <summary>The app's temp root; the resolver spools non-seekable archive members here rather than to /tmp.</summary>
+    public required TemporaryFileManager TemporaryFiles { get; init; }
     public required IReadOnlyList<INestedArchiveOpener> Openers { get; init; }
     public required ILogger Logger { get; init; }
     public required ModOrderImporter OrderImporter { get; init; }
@@ -111,6 +114,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         provider.GetRequiredService<ModlistInstallRuns>().EnsureNoneInto(target);
 
         var fileStore = provider.GetRequiredService<IFileStore>();
+        var temporaryFiles = provider.GetRequiredService<TemporaryFileManager>();
         var job = new InstallModlistJob
         {
             TargetLoadout = target,
@@ -122,7 +126,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Transforms = provider.GetRequiredService<IDirectiveTransforms>(),
             PrefixResolver = provider.GetRequiredService<IPrefixResolver>(),
             Paths = provider.GetRequiredService<WabbajackPaths>(),
-            Writer = new GeneratedFileWriter(fileStore, provider.GetRequiredService<TemporaryFileManager>()),
+            TemporaryFiles = temporaryFiles,
+            Writer = new GeneratedFileWriter(fileStore, temporaryFiles),
             Openers = provider.GetServices<INestedArchiveOpener>().ToArray(),
             Logger = provider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = provider.GetRequiredService<ModOrderImporter>(),
@@ -693,7 +698,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     private ArchivePathResolver NewResolver(Checked check)
-        => new(check.Plan, Connection.Db, FileStore, check.GameFiles, Openers, Logger);
+        => new(check.Plan, Connection.Db, FileStore, check.GameFiles, Openers, TemporaryFiles, Logger);
 
     private ArchivePathResolver? _resolver;
 

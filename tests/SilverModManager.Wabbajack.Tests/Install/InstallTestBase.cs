@@ -127,6 +127,7 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         GeneratedFileWriter? writer = null, ByteBudget? budget = null, int? parallelism = null, CommitPolicy? commits = null)
     {
         var fileStore = ServiceProvider.GetRequiredService<IFileStore>();
+        var temporaryFiles = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         return new InstallModlistJob
         {
             TargetLoadout = loadout.LoadoutId,
@@ -138,7 +139,8 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
             Transforms = ServiceProvider.GetRequiredService<IDirectiveTransforms>(),
             PrefixResolver = ServiceProvider.GetRequiredService<IPrefixResolver>(),
             Paths = ServiceProvider.GetRequiredService<WabbajackPaths>(),
-            Writer = writer ?? new GeneratedFileWriter(fileStore, ServiceProvider.GetRequiredService<TemporaryFileManager>()),
+            TemporaryFiles = temporaryFiles,
+            Writer = writer ?? new GeneratedFileWriter(fileStore, temporaryFiles),
             Openers = ServiceProvider.GetServices<INestedArchiveOpener>().ToArray(),
             Logger = ServiceProvider.GetRequiredService<ILogger<InstallModlistJob>>(),
             OrderImporter = ServiceProvider.GetRequiredService<ModOrderImporter>(),

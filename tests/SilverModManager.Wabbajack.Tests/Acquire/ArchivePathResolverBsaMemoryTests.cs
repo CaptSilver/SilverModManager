@@ -99,7 +99,7 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
     private ArchivePathResolver NewResolver(ArchivePlan plan, SilverModManager.Sdk.Loadouts.Loadout.ReadOnly loadout)
         => new(plan, Connection.Db, FileStore,
             new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>()),
-            ServiceProvider.GetServices<INestedArchiveOpener>(), new ListLogger<ArchivePathResolver>());
+            ServiceProvider.GetServices<INestedArchiveOpener>(), ServiceProvider.GetRequiredService<TemporaryFileManager>(), new ListLogger<ArchivePathResolver>());
 
     [Fact]
     public async Task ReadingManyMembersOfOneBigArchiveAllocatesLittlePerMember()

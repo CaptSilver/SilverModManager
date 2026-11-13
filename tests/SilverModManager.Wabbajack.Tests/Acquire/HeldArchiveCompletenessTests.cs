@@ -270,5 +270,5 @@ public class HeldArchiveCompletenessTests(ITestOutputHelper helper) : AcquireTes
     }
 
     private ArchivePathResolver Resolver(ArchivePlan plan, SilverModManager.Sdk.Loadouts.Loadout.ReadOnly loadout)
-        => new(plan, Connection.Db, FileStore, Inventory.GameFilesFor(loadout), [], NullLogger.Instance);
+        => new(plan, Connection.Db, FileStore, Inventory.GameFilesFor(loadout), [], ServiceProvider.GetRequiredService<TemporaryFileManager>(), NullLogger.Instance);
 }

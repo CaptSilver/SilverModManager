@@ -40,10 +40,13 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         => ResolverOver(store, new ListLogger<ArchivePathResolver>(), TimeSpan.FromSeconds(30), plan, loadout, openers);
 
     private ArchivePathResolver ResolverOver(IFileStore store, ILogger logger, TimeSpan drainTimeout, ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
+        => ResolverOver(store, logger, drainTimeout, plan, loadout, ServiceProvider.GetRequiredService<TemporaryFileManager>(), openers);
+
+    private ArchivePathResolver ResolverOver(IFileStore store, ILogger logger, TimeSpan drainTimeout, ArchivePlan plan, Loadout.ReadOnly loadout, TemporaryFileManager temporaryFiles, params INestedArchiveOpener[] openers)
     {
         var resolver = new ArchivePathResolver(plan, Connection.Db, store,
             new GameFileSourceLookup(loadout, Connection, store, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>()),
-            openers, logger)
+            openers, temporaryFiles, logger)
         {
             CopyDrainTimeout = drainTimeout,
         };
@@ -248,6 +251,48 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
         member.Size.Value.Should().Be((ulong)inner.Length);
         member.XxHash64.Should().Be(Hash64(inner));
+        (await ReadAll(member)).Should().Equal(inner);
+    }
+
+    [Fact]
+    public async Task ANonSeekableMemberIsSpooledUnderTheTemporaryFileManagersRoot()
+    {
+        var root = TestScratch.Combine($"Spool-{Guid.NewGuid()}");
+        using var temp = new TemporaryFileManager(NexusMods.Paths.FileSystem.Shared, NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(root));
+        var inner = Enumerable.Range(0, 50_000).Select(i => (byte)(i * 31)).ToArray();
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var loadout = await CreateLoadout();
+        var seenUnderRoot = 0;
+        var opener = new FakeOpener(inner, seekable: false)
+        {
+            OnRead = () =>
+            {
+                if (Directory.Exists(root)) seenUnderRoot = Math.Max(seenUnderRoot, Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Count());
+            },
+        };
+        var resolver = ResolverOver(FileStore, new ListLogger<ArchivePathResolver>(), TimeSpan.FromSeconds(30), new ArchivePlan([]), loadout, temp, opener);
+
+        var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
+
+        (await ReadAll(member)).Should().Equal(inner);
+        seenUnderRoot.Should().Be(1, "the one member is spooled to one file under the manager's root while it is copied");
+        Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Should().BeEmpty("the spool is deleted once the store has the member");
+    }
+
+    [Fact]
+    public async Task ANonSeekableMemberIsSpooledAfterTheTemporaryFolderWasRemoved()
+    {
+        // The temp root lives in the state directory, which a cleaner or the user can empty under a running app.
+        var root = TestScratch.Combine($"Spool-{Guid.NewGuid()}");
+        using var temp = new TemporaryFileManager(NexusMods.Paths.FileSystem.Shared, NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(root));
+        Directory.Delete(root, recursive: true);
+        var inner = Enumerable.Range(0, 50_000).Select(i => (byte)(i * 7)).ToArray();
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var loadout = await CreateLoadout();
+        var resolver = ResolverOver(FileStore, new ListLogger<ArchivePathResolver>(), TimeSpan.FromSeconds(30), new ArchivePlan([]), loadout, temp, new FakeOpener(inner, seekable: false));
+
+        var member = await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
+
         (await ReadAll(member)).Should().Equal(inner);
     }
 
@@ -760,21 +805,24 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
 
     private sealed class FakeOpener(byte[] content, bool seekable = true) : INestedArchiveOpener
     {
+        /// <summary>Runs on each read of a non-seekable stream, so a test can look at the disk mid-copy.</summary>
+        public Action? OnRead { get; init; }
+
         public bool CanOpen(RelativePath name) => name.Extension == new Extension(".bsa");
 
         public Task<Stream?> Open(Stream archive, RelativePath member, CancellationToken cancellationToken)
-            => Task.FromResult<Stream?>(seekable ? new MemoryStream(content) : new ForwardOnlyStream(new MemoryStream(content)));
+            => Task.FromResult<Stream?>(seekable ? new MemoryStream(content) : new ForwardOnlyStream(new MemoryStream(content), OnRead));
     }
 
     /// <summary>Reads like a decompressing stream: no seeking, no length, no position.</summary>
-    private sealed class ForwardOnlyStream(Stream inner) : Stream
+    private sealed class ForwardOnlyStream(Stream inner, Action? onRead = null) : Stream
     {
         public override bool CanRead => true;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
         public override long Length => throw new NotSupportedException();
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override int Read(byte[] buffer, int offset, int count) { onRead?.Invoke(); return inner.Read(buffer, offset, count); }
         public override void Flush() { }
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();

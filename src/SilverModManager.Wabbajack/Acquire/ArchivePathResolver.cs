@@ -80,6 +80,7 @@ public sealed class ArchivePathResolver(
     IFileStore store,
     GameFileSourceLookup gameFiles,
     IEnumerable<INestedArchiveOpener> openers,
+    TemporaryFileManager temporaryFiles,
     ILogger logger) : IDisposable, IAsyncDisposable
 {
     /// <summary>How long <see cref="DisposeAsync"/> waits for copies still running before it gives up on them.</summary>
@@ -454,16 +455,21 @@ public sealed class ArchivePathResolver(
 
     /// <summary>
     /// The store's packer reads its inputs by offset, so a stream that cannot seek (a decompressor an opener hands back,
-    /// say) is spooled to a temp file first.
+    /// say) is spooled to a temp file first. The file goes under the app's temp root, on disk: <c>/tmp</c> is tmpfs on
+    /// many systems, where a spool is memory the install then cannot use.
     /// </summary>
-    private static async Task<Stream> OpenSeekable(Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
+    private async Task<Stream> OpenSeekable(Func<CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
     {
         var source = await open(cancellationToken);
         if (source.CanSeek) return source;
 
         await using (source)
         {
-            var spool = new FileStream(System.IO.Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None,
+            // Opened directly for DeleteOnClose, which the manager's file system cannot pass on. That skips its repair of
+            // a temp folder something removed under the running app, so the folder is made again here first.
+            var path = temporaryFiles.CreateFile().Path;
+            path.Parent.CreateDirectory();
+            var spool = new FileStream(path.GetFullPath(), FileMode.Create, FileAccess.ReadWrite, FileShare.None,
                 bufferSize: HashBufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
             try
             {
