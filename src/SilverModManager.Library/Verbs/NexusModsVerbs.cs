@@ -25,7 +25,8 @@ internal static class NexusModsVerbs
             ? (sort, null)
             : (default, $"Invalid sort `{text}`; use one of {string.Join(", ", Enum.GetNames<NexusModsSort>().Select(name => name.ToLowerInvariant()))}"))
         .AddVerb(() => Search)
-        .AddVerb(() => Files);
+        .AddVerb(() => Files)
+        .AddVerb(() => Install);
 
     // The page position is the last line of the output, on one line, so a script can split it off the rows.
     private static readonly JsonSerializerOptions OneLine = new(CliJson.Options) { WriteIndented = false };
@@ -157,6 +158,127 @@ internal static class NexusModsVerbs
             file.Date.ToString("yyyy-MM-dd"),
         }));
         return 0;
+    }
+
+    private sealed record InstallRow(string Name, string Outcome, bool Downloaded, bool Dependency, uint ModId, uint FileId);
+
+    private const int ExitNeedsBrowser = 2;
+
+    [Verb("nexus install", "Installs one Nexus mod file into the loadout, from the library or through the premium download")]
+    private static async Task<int> Install(
+        [Injected] IRenderer renderer,
+        [Injected] INexusModsInstaller installer,
+        [Injected] ILoadoutInstallCore core,
+        [Injected] ILoginManager login,
+        [Injected] IEnumerable<IGameData> games,
+        [Injected] CancellationToken token,
+        [Option("l", "loadout", "The loadout to install into; its game says which Nexus game the mod is in")] Loadout.ReadOnly loadout,
+        [Option("m", "modId", "The mod's id on Nexus Mods; with no file id, the mod's one main file", true)] ModId? modId,
+        [Option("f", "fileId", "The file's id on Nexus Mods, as `nexus files` shows it", true)] FileId? fileId,
+        [Option("j", "json", "Print the outcomes as JSON", true)] bool json)
+    {
+        var game = GameOrRefuse(installer, games, loadout);
+        var (mod, file) = await ResolveFile(installer, game, modId, fileId, token);
+
+        if (file.Category == NexusModsFileCategory.Removed) throw new LoadoutVerbRefusedException("Nexus Mods has removed this file");
+        if (!json && file.Category is NexusModsFileCategory.Archived or NexusModsFileCategory.OldVersion)
+            await renderer.TextLine($"[note] {file.Name} is {(file.Category == NexusModsFileCategory.Archived ? "archived" : "an old version")}");
+
+        // A file the library holds installs for any account: a free member who clicked the site's download button has
+        // put it there. Only a missing file needs an account that may use the download API.
+        var resolved = installer.Resolve(game, mod, file.Id, file.Name, dependency: false, loadout.LoadoutId);
+        if (resolved.InLibrary is null)
+        {
+            switch (await AccountOrRefuse(login, token))
+            {
+                case NexusAccountKind.SignedOut:
+                    throw new LoadoutVerbRefusedException("Not signed in. Run `silvermodmanager nexus-login` or pipe a key to `nexus-api-key`");
+                case NexusAccountKind.Free:
+                    await PrintBrowserHandOff(renderer, installer.DownloadPage(game, mod, file.Id), json);
+                    return ExitNeedsBrowser;
+            }
+        }
+
+        // The same key the browse page uses, so a click there and this verb run one download between them.
+        var outcomes = await core.Run(loadout.LoadoutId, $"nexus:{mod}", [resolved], token);
+        if (json)
+        {
+            var rows = outcomes.Select(o => new InstallRow(o.Name, InstallOutcomeRenderer.OutcomeName(o.Outcome), o.Downloaded, o.Dependency, mod.Value, file.Id.Value));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
+        }
+        else
+        {
+            await InstallOutcomeRenderer.Print(renderer, outcomes);
+        }
+
+        return 0;
+    }
+
+    /// <summary>The file to install and its mod, from whichever ids were given.</summary>
+    private static async Task<(ModId Mod, NexusModsFileRow File)> ResolveFile(
+        INexusModsInstaller installer, NexusModsGameId game, ModId? modId, FileId? fileId, CancellationToken token)
+    {
+        var mod = modId is { } given ? given
+            : fileId is { } fileOnly ? await AskNexus(() => installer.ModOf(game, fileOnly, token), token)
+            : throw new LoadoutVerbRefusedException("Say which mod to install with --modId, or which file with --fileId.");
+        var files = await AskNexus(() => installer.Files(game, mod, token), token);
+
+        if (fileId is { } wanted)
+        {
+            return files.FirstOrDefault(candidate => candidate.Id == wanted) is { } found
+                ? (mod, found)
+                : throw new LoadoutVerbRefusedException($"File {wanted} is not a file of mod {mod}; `silvermodmanager nexus files -m {mod}` lists its files");
+        }
+
+        if (NexusModsMainFile.Pick(files) is { } main) return (mod, files.First(candidate => candidate.Id == main));
+        throw new LoadoutVerbRefusedException(
+            $"Mod {mod} has {NexusModsMainFile.MainCount(files)} main files; pick one with `silvermodmanager nexus files -m {mod}` and pass it as -f");
+    }
+
+    // Only the installer's own calls are caught, so a fault in this verb still surfaces as one.
+    private static async Task<T> AskNexus<T>(Func<Task<T>> call, CancellationToken token)
+    {
+        try
+        {
+            return await call();
+        }
+        catch (InvalidOperationException e)
+        {
+            // The installer's own message already says Nexus did not answer, or has no such file, and for which id.
+            throw new LoadoutVerbRefusedException(e.Message);
+        }
+        catch (Exception e) when (IsUnreachable(e, token))
+        {
+            throw new LoadoutVerbRefusedException($"Nexus Mods did not answer: {e.Message}");
+        }
+    }
+
+    // A failed account check is not "signed out": telling a signed-in user to sign in again hides the outage.
+    private static async Task<NexusAccountKind> AccountOrRefuse(ILoginManager login, CancellationToken token)
+    {
+        try
+        {
+            return await NexusAccount.Current(login, token);
+        }
+        catch (Exception e) when (IsUnreachable(e, token))
+        {
+            throw new LoadoutVerbRefusedException($"Nexus Mods did not answer: {e.Message}");
+        }
+    }
+
+    // No waiting: a verb that blocks on a browser click is a prompt, and the nxm link reaches the app, not this terminal.
+    private static async Task PrintBrowserHandOff(IRenderer renderer, Uri page, bool json)
+    {
+        if (json)
+        {
+            await renderer.TextLine(JsonSerializer.Serialize(new { needsBrowser = true, url = page.ToString() }, CliJson.Options));
+            return;
+        }
+
+        await renderer.TextLine(page.ToString());
+        await renderer.TextLine("A free account downloads through the site: click \"Download with manager\" on that page to send the file to SilverModManager.");
+        await renderer.TextLine("The SilverModManager window, not this terminal, reports whether that download worked.");
+        await renderer.TextLine("Run this same command again once the window shows the file.");
     }
 
     // HttpClient reports its own timeout as a cancellation; only a cancelled command is a real one.

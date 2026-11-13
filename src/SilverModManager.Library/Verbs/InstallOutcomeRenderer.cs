@@ -48,7 +48,8 @@ internal static class InstallOutcomeRenderer
         return extra is null ? json : json + "\n" + JsonSerializer.Serialize(extra, CliJson.Options);
     }
 
-    private static string OutcomeName(LoadoutPackageOutcome outcome) => outcome switch
+    /// <summary>The outcome as the JSON names it.</summary>
+    public static string OutcomeName(LoadoutPackageOutcome outcome) => outcome switch
     {
         LoadoutPackageOutcome.Installed => "installed",
         LoadoutPackageOutcome.Enabled => "enabled",
