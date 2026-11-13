@@ -394,4 +394,43 @@ internal static partial class Diagnostics
             .AddValue<string>("GameName")
         )
         .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate EnableModsInGameTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 16))
+        .WithTitle("Switch mods on in the game")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("Switch mods on in {GameName}'s Mods menu")
+        .WithDetails("""
+                     The app puts the paks of your Loadout in {GameName}'s Mods folder, but it does not write the game's mod list, so the game will not load them until you switch them on yourself.
+
+
+                     ## Recommended Actions
+                     Start {GameName}, open the Mods menu and switch on the mods you want. The game keeps that list itself.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate NativeBuildUnsupportedTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 17))
+        .WithTitle("Native Linux build not supported")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The native Linux build of {GameName} is not supported yet. Set the game to use Proton in Steam and let it install the Windows files.")
+        .WithDetails("""
+                     {GameName} is installed as its native Linux build, which the app cannot manage yet: it does not know where that build keeps its mods. The Windows build under Proton works.
+
+
+                     ## Recommended Actions
+                     #### Run the Windows build under Proton
+                     In Steam, set the game to use Proton, let it install the Windows files, then manage that install.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
 }

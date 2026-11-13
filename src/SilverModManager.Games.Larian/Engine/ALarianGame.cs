@@ -115,7 +115,14 @@ public abstract class ALarianGame<TSelf>(IServiceProvider provider) : AGame<TSel
         foreach (var emitter in base.CreateEmitters(provider)) yield return emitter;
 
         yield return ActivatorUtilities.CreateInstance<LarianDependencyEmitter>(provider, Profile, TSelf.NexusModsGameId);
-        if (Profile.Schema is null) yield break;
+        if (Profile.NativeLinuxDepotUnsupported)
+            yield return new LarianNativeBuildEmitter(Profile.GameName);
+        if (Profile.Schema is null)
+        {
+            // The game keeps its own mod list, so the player has to switch the app's paks on in it.
+            yield return new LarianInGameActivationEmitter(Profile.GameName);
+            yield break;
+        }
 
         if (Profile.Profiles is LarianProfileLayout.PerProfileFolder)
             yield return new LarianProfileEmitter(this, () => Profile.ProfileSetting(provider.GetRequiredService<ISettingsManager>()));

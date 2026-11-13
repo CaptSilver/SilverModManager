@@ -3,6 +3,7 @@ using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.Generic.Installers;
 using SilverModManager.Games.Larian.Engine;
+using SilverModManager.Games.Larian.Engine.Emitters;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.Larian.Tests.DivinityOriginalSin2DE;
@@ -37,6 +38,15 @@ public class Dos2RecordTests(ITestOutputHelper helper) : Dos2Fixture(helper)
         profile.ScriptExtender.Should().BeNull();
         profile.VarietyId.Value.Should().Be(new Guid("ECC16B09-DA03-4FF0-8F72-FD4353341E9E"));
         profile.GameModuleUuids.Should().HaveCount(23).And.Contain("2bd9bdbe-22ae-4aa2-9c93-205880fc6564");
+        profile.NativeLinuxDepotUnsupported.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheAppWritesTheModListSoNoInGameActivationOrNativeBuildReport()
+    {
+        Game.DiagnosticEmitters.OfType<LarianInGameActivationEmitter>().Should().BeEmpty();
+        Game.DiagnosticEmitters.OfType<LarianNativeBuildEmitter>().Should().BeEmpty();
+        Game.DiagnosticEmitters.OfType<LarianProfileEmitter>().Should().ContainSingle();
     }
 
     [Fact]

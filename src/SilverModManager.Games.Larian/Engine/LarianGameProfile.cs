@@ -37,6 +37,7 @@ public sealed record LarianScriptExtender(GamePath DllPath, WineDllOverride? Ove
 /// <param name="VarietyId">The id the game's pak load order is stored under.</param>
 /// <param name="GameInstalledRecognizer">Finds the paks the game installed itself, or null when there are none.</param>
 /// <param name="ExtraModsSourceFolderNames">Folder names besides <c>Mods</c> that an archive may hold its paks under.</param>
+/// <param name="NativeLinuxDepotUnsupported">Whether the game's Linux depot is not managed, so an install with no Proton prefix to read is reported rather than used.</param>
 public sealed record LarianGameProfile(
     string GameName,
     KnownPath LarianRoot,
@@ -53,4 +54,5 @@ public sealed record LarianGameProfile(
     bool HasAdventureModules,
     SortOrderVarietyId VarietyId,
     IGameInstalledContentRecognizer? GameInstalledRecognizer,
-    IReadOnlyList<string> ExtraModsSourceFolderNames);
+    IReadOnlyList<string> ExtraModsSourceFolderNames,
+    bool NativeLinuxDepotUnsupported = false);
