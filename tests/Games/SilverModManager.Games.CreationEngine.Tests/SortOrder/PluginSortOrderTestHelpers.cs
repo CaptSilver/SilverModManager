@@ -24,10 +24,12 @@ internal static class PluginSortOrderTestHelpers
     /// <summary>
     /// Creating a loadout already syncs it once, which seeds from whatever the game has then. This puts a loadout
     /// back in the state of one made before the seed existed, with its plugins installed and the order not filled.
+    /// Only a game's first loadout is synced when it is created; the order of a later one comes from the manager's
+    /// background observers, so it is asked for here instead of assumed to be there.
     /// </summary>
     public static async Task Unseed(this IPluginSortOrderVariety variety, Loadout.ReadOnly loadout, IConnection connection)
     {
-        var sortOrderId = variety.SortOrderOf(loadout, connection);
+        var sortOrderId = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
         await variety.ReconcileSortOrder(sortOrderId);
         using var tx = connection.BeginTransaction();
         tx.Add(sortOrderId.Value, PluginSortOrder.SeededFromGameFile, false);

@@ -187,6 +187,21 @@ public class PluginListSeedingTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task UnseedingALoadoutWhoseOrderTheManagerHasNotMadeYet_MakesTheOrderFirst()
+    {
+        // Only the first loadout of a game is synced when it is created. Any later one gets its order from the
+        // manager's observers, in the background, so a test that reaches for it at once can beat them to it.
+        var loadout = await CreateLoadout();
+        var existing = await Variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        await Variety.DeleteSortOrder(existing);
+        Variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).HasValue.Should().BeFalse();
+
+        await Unseed(loadout);
+
+        IsSeeded(loadout).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task TheDiagnosticsPaths_NeverSeed()
     {
         var loadout = await CreateLoadout();
