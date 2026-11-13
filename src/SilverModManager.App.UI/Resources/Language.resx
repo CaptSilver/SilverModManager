@@ -517,6 +517,27 @@
     <data name="ApplyDiff_Remove_SkippedToast" xml:space="preserve">
         <value>Skipped {0}: the loadout had no row for it yet. Once an apply adopts the file, the Health Check offers Delete for it.</value>
     </data>
+    <data name="DiagnosticAction_SetAsideLoadoutFiles" xml:space="preserve">
+        <value>Set aside</value>
+    </data>
+    <data name="SetAside_Activity" xml:space="preserve">
+        <value>setting files aside</value>
+    </data>
+    <data name="SetAside_Title" xml:space="preserve">
+        <value>Set files aside</value>
+    </data>
+    <data name="SetAside_Confirm" xml:space="preserve">
+        <value>Set aside</value>
+    </data>
+    <data name="SetAside_Toast" xml:space="preserve">
+        <value>{0} set aside; the loadout was applied.</value>
+    </data>
+    <data name="SetAside_ApplyFailedToast" xml:space="preserve">
+        <value>{0} set aside; the apply did not finish, run Apply.</value>
+    </data>
+    <data name="SetAside_SkippedToast" xml:space="preserve">
+        <value>Skipped {0}: the loadout had no row for it yet. Once an apply adopts the file, the Health Check offers Set aside for it.</value>
+    </data>
     <data name="ApplyDiff_Refresh" xml:space="preserve">
         <value>Refresh</value>
     </data>

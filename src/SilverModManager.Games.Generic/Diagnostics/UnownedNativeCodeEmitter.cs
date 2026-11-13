@@ -124,14 +124,17 @@ public sealed class UnownedNativeCodeEmitter(GameRootLibraries rootLibraries, IF
     {
         var actions = new List<DiagnosticAction>();
         if (OwningGroup.Of(loadout.Db, node) is { } group)
+        {
             actions.Add(DiagnosticActions.RemoveLoadoutFile(path, group));
+            actions.Add(DiagnosticActions.SetAsideLoadoutFiles([path], group));
+        }
         if (steamAppId is not null)
             actions.Add(DiagnosticActions.VerifyGameFilesInSteam(steamAppId));
         actions.Add(IgnoreAction(diagnostic, [(path, node)]));
         return [.. actions];
     }
 
-    // One action per group: a request removes every path from the group it names, so mixed groups cannot share one.
+    // One action per group: a request acts on every path in the group it names, so mixed groups cannot share one.
     private static ImmutableArray<DiagnosticAction> ListActionsFor(Loadout.ReadOnly loadout, IReadOnlyList<(GamePath Path, SyncNode Node)> files)
     {
         var byGroup = new Dictionary<EntityId, List<GamePath>>();
@@ -143,6 +146,7 @@ public sealed class UnownedNativeCodeEmitter(GameRootLibraries rootLibraries, IF
         }
 
         var actions = byGroup.Select(g => DiagnosticActions.RemoveLoadoutFiles(g.Value, g.Key)).ToList();
+        actions.AddRange(byGroup.Select(g => DiagnosticActions.SetAsideLoadoutFiles(g.Value, g.Key)));
         return [.. actions];
     }
 

@@ -195,6 +195,69 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Set aside.
+        /// </summary>
+        public static string DiagnosticAction_SetAsideLoadoutFiles {
+            get {
+                return ResourceManager.GetString("DiagnosticAction_SetAsideLoadoutFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to setting files aside.
+        /// </summary>
+        public static string SetAside_Activity {
+            get {
+                return ResourceManager.GetString("SetAside_Activity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set files aside.
+        /// </summary>
+        public static string SetAside_Title {
+            get {
+                return ResourceManager.GetString("SetAside_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set aside.
+        /// </summary>
+        public static string SetAside_Confirm {
+            get {
+                return ResourceManager.GetString("SetAside_Confirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} set aside; the loadout was applied..
+        /// </summary>
+        public static string SetAside_Toast {
+            get {
+                return ResourceManager.GetString("SetAside_Toast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} set aside; the apply did not finish, run Apply..
+        /// </summary>
+        public static string SetAside_ApplyFailedToast {
+            get {
+                return ResourceManager.GetString("SetAside_ApplyFailedToast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Skipped {0}: the loadout had no row for it yet. Once an apply adopts the file, the Health Check offers Set aside for it..
+        /// </summary>
+        public static string SetAside_SkippedToast {
+            get {
+                return ResourceManager.GetString("SetAside_SkippedToast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refresh.
         /// </summary>
         public static string ApplyDiff_Refresh {

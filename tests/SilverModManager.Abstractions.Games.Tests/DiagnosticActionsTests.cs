@@ -71,6 +71,36 @@ public class DiagnosticActionsTests
     }
 
     [Fact]
+    public void SetAsideLoadoutFilesRoundTrips()
+    {
+        GamePath[] paths = [new(LocationId.Game, "a.dll"), new(LocationId.From("Saves"), "b c/d.sav")];
+        var group = EntityId.From(0x99);
+
+        var action = DiagnosticActions.SetAsideLoadoutFiles(paths, group);
+
+        action.Id.Should().Be(DiagnosticActions.SetAsideLoadoutFilesId);
+        action.Label.Should().Be("Set aside");
+        action.Note!.Should().Contain("turning the group on restores it");
+        var (parsedPaths, parsedGroup) = DiagnosticActions.ParseSetAsideLoadoutFiles(action.Arguments);
+        parsedPaths.Should().Equal(paths);
+        parsedGroup.Should().Be(LoadoutItemGroupId.From(group));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    public void ParseSetAsideLoadoutFilesRejectsAnOddArgumentCount(int count)
+    {
+        var arguments = Enumerable.Repeat("1", count).ToImmutableArray();
+
+        var act = () => DiagnosticActions.ParseSetAsideLoadoutFiles(arguments);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void DismissDiagnosticSubjectsRoundTrips()
     {
         var id = new DiagnosticId("SilverModManager.Games.Generic", number: 12);

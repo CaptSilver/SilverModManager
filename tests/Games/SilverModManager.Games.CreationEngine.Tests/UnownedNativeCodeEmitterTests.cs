@@ -137,6 +137,48 @@ public class UnownedNativeCodeEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AnOverridesRowOffersSetAside()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/adopted.dll");
+        await WriteOnDisk("Data/SKSE/Plugins/adopted.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Actions.Select(a => a.Id).Should().BeEquivalentTo(
+            [DiagnosticActions.RemoveLoadoutFileId, DiagnosticActions.SetAsideLoadoutFilesId, DiagnosticActions.DismissDiagnosticSubjectsId]);
+        var action = diagnostic.Actions.Single(a => a.Id == DiagnosticActions.SetAsideLoadoutFilesId);
+        var (paths, group) = DiagnosticActions.ParseSetAsideLoadoutFiles(action.Arguments);
+        paths.Should().Equal([new GamePath(LocationId.Game, "Data/SKSE/Plugins/adopted.dll")]);
+        group.Value.Should().Be(OverridesGroupLookup.Find(Refresh(loadout)));
+    }
+
+    [Fact]
+    public async Task ADiskOnlyDllOffersNeitherDeleteNorSetAside()
+    {
+        var loadout = await CreateLoadout();
+        await WriteOnDisk("Data/SKSE/Plugins/disk-only.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Actions.Should().NotContain(a => a.Id == DiagnosticActions.SetAsideLoadoutFilesId);
+    }
+
+    [Fact]
+    public async Task TheLoaderFilesListOffersSetAsideForTheFilesWithRows()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "sksevr_loader.exe");
+        await WriteOnDisk("sksevr_loader.exe");
+        await WriteOnDisk("sksevr_1_4_15.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.SetAsideLoadoutFilesId).Subject;
+        DiagnosticActions.ParseSetAsideLoadoutFiles(action.Arguments).Paths.Should().Equal([new GamePath(LocationId.Game, "sksevr_loader.exe")]);
+    }
+
+    [Fact]
     public async Task AnOverridesRowOffersIgnore()
     {
         var loadout = await CreateLoadout();

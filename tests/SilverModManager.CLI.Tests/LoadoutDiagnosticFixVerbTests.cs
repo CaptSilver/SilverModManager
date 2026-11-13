@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Diagnostics.References;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.CLI.Tests;
@@ -168,6 +169,19 @@ public class LoadoutDiagnosticFixVerbTests(ITestOutputHelper helper) : EldenRing
 
         exit.Should().Be(1, output);
         output.Should().Contain("Delete things").And.Contain("Health Check page");
+        _runs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Fix_SetAside_IsRefusedBecauseItAsksFirst()
+    {
+        var action = DiagnosticActions.SetAsideLoadoutFiles([new GamePath(LocationId.Game, "Data/SKSE/Plugins/old.dll")], EntityId.From(0x42));
+        var loadout = await LoadoutWith(Make("Stray plugin", action));
+
+        var (exit, output) = await Run("loadout", "diagnostic", "fix", "-l", loadout.ToString(), "-d", "0");
+
+        exit.Should().Be(1, output);
+        output.Should().Contain("Set aside").And.Contain("Health Check page");
         _runs.Should().BeEmpty();
     }
 

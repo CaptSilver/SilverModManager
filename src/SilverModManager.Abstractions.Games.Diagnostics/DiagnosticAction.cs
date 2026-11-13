@@ -192,14 +192,38 @@ public static class DiagnosticActions
     /// Reads the arguments <see cref="RemoveLoadoutFiles"/> wrote.
     /// </summary>
     public static (IReadOnlyList<GamePath> Paths, LoadoutItemGroupId Group) ParseRemoveLoadoutFiles(ImmutableArray<string> arguments)
+        => ParseGroupAndPaths(arguments, "The action names no files and group to remove");
+
+    private static (IReadOnlyList<GamePath> Paths, LoadoutItemGroupId Group) ParseGroupAndPaths(ImmutableArray<string> arguments, string refusal)
     {
         if (arguments.Length < 3 || arguments.Length % 2 == 0 || !ulong.TryParse(arguments[0], System.Globalization.CultureInfo.InvariantCulture, out var group))
-            throw new ArgumentException("The action names no files and group to remove", nameof(arguments));
+            throw new ArgumentException(refusal, nameof(arguments));
         var paths = new List<GamePath>((arguments.Length - 1) / 2);
         for (var i = 1; i < arguments.Length; i += 2)
             paths.Add(new GamePath(LocationId.From(arguments[i]), arguments[i + 1]));
         return (paths, LoadoutItemGroupId.From(EntityId.From(group)));
     }
+
+    /// <summary>
+    /// Id of the action that moves Overrides files into the loadout's set-aside group and takes them off disk.
+    /// </summary>
+    public const string SetAsideLoadoutFilesId = "set-aside-loadout-files";
+
+    /// <summary>
+    /// Moves the Overrides rows at <paramref name="paths"/> out of the group with the entity id <paramref name="group"/> into
+    /// the disabled set-aside group. The arguments have the layout of <see cref="RemoveLoadoutFiles"/>;
+    /// <see cref="ParseSetAsideLoadoutFiles"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction SetAsideLoadoutFiles(IReadOnlyList<GamePath> paths, EntityId group)
+        => new(SetAsideLoadoutFilesId, "Set aside",
+            [group.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), .. paths.SelectMany(p => new[] { p.LocationId.ToString(), p.Path.ToString() })],
+            "The file comes off disk now; its bytes are kept in the app, so turning the group on restores it.");
+
+    /// <summary>
+    /// Reads the arguments <see cref="SetAsideLoadoutFiles"/> wrote.
+    /// </summary>
+    public static (IReadOnlyList<GamePath> Paths, LoadoutItemGroupId Group) ParseSetAsideLoadoutFiles(ImmutableArray<string> arguments)
+        => ParseGroupAndPaths(arguments, "The action names no files and group to set aside");
 
     /// <summary>
     /// Id of the action that removes the game-file backups no loadout needs.
