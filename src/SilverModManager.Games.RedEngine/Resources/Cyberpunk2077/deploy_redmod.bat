@@ -8,7 +8,6 @@ rem Check if STEAM_APP_PATH environment variable is set
 if "%STEAM_APP_PATH%"=="" (
     echo Error: STEAM_APP_PATH environment variable is not set.
     echo This script is meant to be started by the app.
-    pause
     exit /b 1
 )
 
@@ -22,7 +21,6 @@ rem Check if redMod.exe exists in the current directory
 if not exist "redMod.exe" (
     echo Error: redMod.exe not found in the current directory.
     echo Make sure the STEAM_APP_PATH is set correctly and the redmod folder structure is intact.
-    pause
     exit /b 1
 )
 
