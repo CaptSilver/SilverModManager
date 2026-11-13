@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Platform.Proton.Launch;
 
@@ -17,6 +18,7 @@ public static class Services
         return services.AddFromSoftBuildStampModel()
             .AddSingleton<BuildStampStore>()
             .AddSingleton<ILaunchGate, BuildStampGate>()
-            .AddSingleton<IFromSoftDiagnosticEmitter, BuildDriftEmitter>();
+            .AddSingleton<IFromSoftDiagnosticEmitter, BuildDriftEmitter>()
+            .AddDiagnosticActionHandler<RestampBuildActionHandler>();
     }
 }

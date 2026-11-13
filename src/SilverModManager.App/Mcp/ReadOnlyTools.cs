@@ -64,6 +64,7 @@ public static class ReadOnlyTools
             readOnly: true, ["games", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
         VerbTool.Create(context, "loadout_health_check",
             "Runs the Health Check on a loadout again and returns, as JSON, the problems and suggestions it finds. " +
+            "Each problem has an index and a list of fixes; a fix with canRunHere true can be run with loadout_diagnostic_fix, using that index and the fix's id. " +
             "Find the loadout with loadouts_list.",
             readOnly: true, ["loadout", "diagnostics"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--refresh", "--json"]),
         VerbTool.Create(context, "settings_list",

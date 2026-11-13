@@ -74,7 +74,7 @@ public static class DiagnosticVerbs
                 {
                     { CanRunHere: true } => $"loadout diagnostic fix -l {loadout.LoadoutId} -d {row.Index} -a {fix.Id}",
                     { Handled: true } => "needs the Health Check page",
-                    _ => "open SilverModManager to run it from here",
+                    _ => "no command line fix, use the Health Check page",
                 };
                 await renderer.TextLine($"Fix: {fix.Label} ({how})");
             }
@@ -97,7 +97,7 @@ public static class DiagnosticVerbs
         var action = SelectAction(diagnostic, actionId);
 
         var handler = HandlerFor(handlers, action)
-                      ?? throw new LoadoutVerbRefusedException($"{MarkdownText.Code(action.Label)} ({MarkdownText.Code(action.Id)}) runs through the app's window, which is not open. Open SilverModManager and run this again.");
+                      ?? throw new LoadoutVerbRefusedException($"{MarkdownText.Code(action.Label)} ({MarkdownText.Code(action.Id)}) has no command line fix. Run it from the Health Check page in SilverModManager.");
         if (!handler.RunsUnattended)
             throw new LoadoutVerbRefusedException($"{MarkdownText.Code(handler.LabelFor(action) ?? action.Label)} asks for confirmation or shows its result in a window, so run it from the Health Check page.");
 

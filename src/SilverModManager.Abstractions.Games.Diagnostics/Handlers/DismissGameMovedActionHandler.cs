@@ -1,12 +1,11 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Hides the note about a game that moved folders. The note is shown while the installation records where it

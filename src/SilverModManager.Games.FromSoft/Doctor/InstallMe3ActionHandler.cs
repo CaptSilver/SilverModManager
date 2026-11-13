@@ -1,11 +1,10 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
-using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// Downloads me3 and installs it into the loadout, the same thing the app does by itself after the first mod. A failed

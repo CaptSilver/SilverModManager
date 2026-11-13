@@ -108,6 +108,41 @@ public class HeadlessHostProfileTests
         missing.Should().BeEmpty();
     }
 
+    private static readonly string[] UnattendedFixIds =
+    [
+        DiagnosticActions.DismissGameMovedId,
+        DiagnosticActions.VerifyGameFilesInSteamId,
+        DiagnosticActions.MoveHostFolderIntoGameId,
+        DiagnosticActions.ReapplyCollectionOrderId,
+        Games.FromSoft.Doctor.Me3HostMissingEmitter.InstallActionId,
+        Games.FromSoft.Build.BuildDriftEmitter.RestampActionId,
+    ];
+
+    [Fact]
+    public void HeadlessGraphRunsTheFixesThatNeedNoQuestionOrWindow()
+    {
+        using var host = BuildHost(Mode("as-main"));
+
+        var handlers = host.Services.GetServices<IDiagnosticActionHandler>().ToArray();
+
+        handlers.Where(h => UnattendedFixIds.Contains(h.ActionId)).Select(h => h.ActionId).Should().BeEquivalentTo(UnattendedFixIds);
+        handlers.Where(h => UnattendedFixIds.Contains(h.ActionId)).Should().OnlyContain(h => h.RunsUnattended);
+    }
+
+    [Theory]
+    [InlineData("as-main")]
+    [InlineData("")]
+    public void EachGraphRegistersEveryDiagnosticActionHandlerOnce(string input)
+    {
+        var handlerTypes = Describe(Mode(input.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
+            .Where(d => d.ServiceType == typeof(IDiagnosticActionHandler))
+            .Select(d => d.ImplementationType)
+            .ToArray();
+
+        handlerTypes.Should().OnlyHaveUniqueItems();
+        handlerTypes.Should().HaveCountGreaterThanOrEqualTo(UnattendedFixIds.Length);
+    }
+
     [Fact]
     public void OnlyTheWindowGraphResumesAnInterruptedModlistDownload()
     {

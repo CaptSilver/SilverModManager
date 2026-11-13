@@ -1,14 +1,12 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
-using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Folds the copy of a game's folder on the host into the one inside its Proton prefix and sends the host copy to
@@ -35,7 +33,7 @@ public sealed class MoveHostFolderIntoGameActionHandler(IServiceProvider service
 
         var installation = loadout.InstallationInstance;
         if (serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation))
-            throw new HostFolderMoveRefusedException(string.Format(Language.ErrorGameAlreadyRunning_Description, installation.Game.DisplayName));
+            throw new HostFolderMoveRefusedException($"It looks like {installation.Game.DisplayName} is already running.\nTo apply changes or launch the game again, please close the game first.");
 
         await Task.Run(() => HostFolderMove.Run(hostPath, prefixPath, trash));
         await diagnosticManager.RefreshAsync(loadoutId);

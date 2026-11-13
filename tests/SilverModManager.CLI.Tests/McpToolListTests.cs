@@ -38,6 +38,14 @@ public sealed class McpToolListTests : IAsyncDisposable
     }
 
     [Fact]
+    public void TheHealthCheckTool_SaysItReturnsTheIndexAndTheFixesTheFixToolTakes()
+    {
+        var description = Tools(readOnly: true).Single(t => t.Name == "loadout_health_check").Description;
+
+        description.Should().Contain("index").And.Contain("fixes").And.Contain("canRunHere").And.Contain("loadout_diagnostic_fix");
+    }
+
+    [Fact]
     public void AReadOnlyServer_LeavesOutTheLoadoutOrderToolsThatWrite()
     {
         Tools(readOnly: true).Select(t => t.Name).Should().NotContain(

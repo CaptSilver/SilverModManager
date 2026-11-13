@@ -20,20 +20,13 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestoreFolderFromBackupActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, FixCleanupActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ShowCleanupStepsActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestampBuildActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, InstallMe3ActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DismissGameMovedActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, CheckModUpdatesActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DisableModsActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, SetUpPrefixActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ReapplyCollectionOrderActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RemoveLoadoutFileActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, MoveHostFolderIntoGameActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestoreRegulationActionHandler>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, VerifyGameFilesInSteamActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, OpenWabbajackModlistActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DiscardOverlayFindingActionHandler>());
-        services.AddFreedesktopTrash();
         services.TryAddSingleton<IPrefixSetupLauncher, PrefixSetupLauncher>();
         services.AddView<PrefixSetupView, IPrefixSetupViewModel>();
 

@@ -1,10 +1,9 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
-using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>
 /// Takes the build of Elden Ring that is installed now as the one future launches are compared with, once the user

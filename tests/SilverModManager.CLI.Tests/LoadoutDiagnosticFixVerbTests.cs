@@ -155,8 +155,8 @@ public class LoadoutDiagnosticFixVerbTests(ITestOutputHelper helper) : EldenRing
         var (exit, output) = await Run("loadout", "diagnostic", "fix", "-l", loadout.ToString(), "-d", "0");
 
         exit.Should().Be(1, output);
-        // A terminal run with the window closed answers in a headless process, which has no handlers at all.
-        output.Should().Contain("nobody-handles-this").And.Contain("Open SilverModManager");
+        // The words must hold whether or not the window is open: a missing handler is not about the window being closed.
+        output.Should().Contain("nobody-handles-this").And.Contain("Health Check page").And.NotContain("is not open");
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class LoadoutDiagnosticFixVerbTests(ITestOutputHelper helper) : EldenRing
 
         exit.Should().Be(0, output);
         output.Should().Contain("Fix: Delete things (needs the Health Check page)");
-        output.Should().Contain("Fix: Do it (open SilverModManager to run it from here)");
+        output.Should().Contain("Fix: Do it (no command line fix, use the Health Check page)");
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Sdk.Settings;
@@ -11,6 +12,7 @@ public static class Services
     public static IServiceCollection AddNexusModsCollections(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnusedCollectionRuleEmitter>());
+        services.AddDiagnosticActionHandler<ReapplyCollectionOrderActionHandler>();
 
         return services
             .AddManagedCollectionLoadoutGroupModel()

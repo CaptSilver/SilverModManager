@@ -3,12 +3,10 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Diagnostics;
-using SilverModManager.App.UI.Resources;
-using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Collections;
 
 /// <summary>
 /// Imports a collection's load order again, for the card that lists the entries an earlier import left out. The work runs
@@ -22,9 +20,6 @@ public sealed class ReapplyCollectionOrderActionHandler(IServiceProvider service
 
     /// <inheritdoc />
     public bool RunsUnattended => true;
-
-    /// <inheritdoc />
-    public string? LabelFor(DiagnosticAction action) => Language.DiagnosticAction_ReapplyCollectionOrder;
 
     /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)

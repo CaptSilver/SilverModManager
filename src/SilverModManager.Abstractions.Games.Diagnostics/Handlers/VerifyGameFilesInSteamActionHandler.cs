@@ -1,11 +1,10 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using JetBrains.Annotations;
-using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk;
 
-namespace SilverModManager.App.UI.Pages.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Hands Steam the request to verify a game's files. Steam asks before it starts, and what it finds is only visible

@@ -3,7 +3,6 @@ using FluentAssertions;
 using NSubstitute;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.App.UI.Pages.Diagnostics;
-using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
@@ -17,12 +16,12 @@ public class ReapplyCollectionOrderActionHandlerTests(IServiceProvider provider)
     private static readonly LoadoutId Loadout = LoadoutId.From(EntityId.From(0xBEEF));
 
     [Fact]
-    public void Test_TheButtonUsesTheLocalizedLabel()
+    public void Test_TheHandlerRunsTheActionTheEmitterOffers()
     {
         var action = DiagnosticActions.ReapplyCollectionOrder(42);
 
-        Handler.LabelFor(action).Should().Be(Language.DiagnosticAction_ReapplyCollectionOrder).And.NotBeNullOrWhiteSpace();
         Handler.ActionId.Should().Be(action.Id);
+        action.Label.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

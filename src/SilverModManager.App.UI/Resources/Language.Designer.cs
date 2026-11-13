@@ -6208,15 +6208,6 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Apply the collection's load order again.
-        /// </summary>
-        public static string DiagnosticAction_ReapplyCollectionOrder {
-            get {
-                return ResourceManager.GetString("DiagnosticAction_ReapplyCollectionOrder", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to No copy kept.
         /// </summary>
         public static string IFileTreeNodeViewModel_ToFormattedChangeState_Unrestorable {

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -88,6 +89,7 @@ public static class Services
 
         // Providing me3 for a loadout
         services.AddSingleton<Me3HostProvisioner>()
+            .AddDiagnosticActionHandler<InstallMe3ActionHandler>()
             .AddSingleton<Me3AutoInstaller>()
             .AddSingleton<IHostedService>(provider => provider.GetRequiredService<Me3AutoInstaller>());
 

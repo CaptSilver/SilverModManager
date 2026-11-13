@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Merge;
@@ -172,6 +173,7 @@ public static class Services
             .AddLibraryModels()
             .AddJobMonitor()
             .AddNexusModsCollections()
+            .AddUnattendedDiagnosticActionHandlers()
             .AddProton()
             .AddHeadlessLaunch()
 
