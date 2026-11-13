@@ -164,7 +164,11 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         Logger.LogDebug("Installing {ToInstall} of the {Given} mods given for `{CollectionName}/{RevisionNumber}` into {Group}", items.Length, Items.Length,
             RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, Group.HasValue ? $"the existing collection {Group.Value.Id}" : "a new collection");
 
-        Progress.Begin(total: items.Length, alreadyInstalled: skipCount);
+        var toInstall = items.Select(static item => item.ArrayIndex).ToHashSet();
+        Progress.Begin(
+            total: items.Length,
+            alreadyInstalled: skipCount,
+            mods: Items.Select(item => (item.ArrayIndex, item.Name, AlreadyInstalled: !toInstall.Contains(item.ArrayIndex))));
 
         var isFullyDownloaded = CollectionDownloader.IsFullyDownloaded(items, db: Connection.Db);
         if (!isFullyDownloaded) throw new InvalidOperationException("The collection hasn't fully been downloaded!");
@@ -229,23 +233,23 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
                 try
                 {
                     Logger.LogDebug("Installing `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
-                    Progress.ModStarted(modAndDownload.Mod.Name);
+                    Progress.ModStarted(modAndDownload.Download.ArrayIndex);
                     await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
-                    Progress.ModInstalled(modAndDownload.Mod.Name);
+                    Progress.ModInstalled(modAndDownload.Download.ArrayIndex);
                 }
                 catch (ReviewRequiredException e)
                 {
                     Logger.LogDebug("`{DownloadName}` (index={Index}) of `{CollectionName}/{RevisionNumber}` needs a person: {Reason}", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber, e.Reason);
                     var pending = new PendingItem(modAndDownload.Download, modAndDownload.Mod.Name, e.Kind, e.Reason);
                     _pendingItems.Enqueue(pending);
-                    Progress.ModNeedsReview(pending.Name, pending.Kind, pending.Reason);
+                    Progress.ModNeedsReview(modAndDownload.Download.ArrayIndex, pending.Kind, pending.Reason);
                 }
                 catch (Exception e)
                 {
                     Logger.LogFailure(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
                     var failed = new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e);
                     _failedItems.Enqueue(failed);
-                    Progress.ModFailed(failed.Name, failed.Reason);
+                    Progress.ModFailed(modAndDownload.Download.ArrayIndex, failed.Reason);
                 }
             });
 

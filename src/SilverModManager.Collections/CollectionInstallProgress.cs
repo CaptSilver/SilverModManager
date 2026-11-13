@@ -1,5 +1,6 @@
 using System.Reactive.Subjects;
 using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Sdk.Loadouts.Install;
 
 namespace SilverModManager.Collections;
 
@@ -11,50 +12,38 @@ public sealed class CollectionInstallProgress
 {
     private readonly object _lock = new();
     private readonly BehaviorSubject<Snapshot> _subject = new(Snapshot.Empty);
-    private readonly List<string> _installing = [];
-    private readonly List<FailedMod> _failed = [];
-    private readonly List<PendingMod> _pending = [];
+    private readonly ModInstallRows _mods = new();
     private int _total;
     private int _alreadyInstalled;
     private int _installed;
+    private int _failed;
+    private int _rowsInstalled;
+    private int _rowsFailed;
     private bool _isFinished;
     private bool _leftDisabled;
 
     /// <summary>
-    /// A mod that could not be installed.
-    /// </summary>
-    public record FailedMod(string Name, string Reason);
-
-    /// <summary>
-    /// A mod that was not installed because it needs a person to finish it.
-    /// </summary>
-    public record PendingMod(string Name, ReviewKind Kind, string Reason);
-
-    /// <summary>
-    /// The state at one point in time.
+    /// The counts at one point in time. The mods themselves are <see cref="Mods"/>: a snapshot is copied on every change,
+    /// which is fine for a few numbers and not for a row per mod.
     /// </summary>
     /// <param name="Total">Mods this run installs, after leaving out the already installed ones.</param>
     /// <param name="AlreadyInstalled">Mods of the collection that were installed before this run.</param>
     /// <param name="Installed">Mods this run has installed so far.</param>
-    /// <param name="Failed">Mods that failed, with the reason.</param>
-    /// <param name="Pending">Mods that wait for a person to finish them, with the reason.</param>
-    /// <param name="Installing">Names of the mods being installed right now.</param>
+    /// <param name="Failed">Mods that failed.</param>
     /// <param name="IsFinished">The job is done, whether or not mods failed.</param>
     /// <param name="LeftDisabled">The collection was left disabled because required mods are missing.</param>
     public record Snapshot(
         int Total,
         int AlreadyInstalled,
         int Installed,
-        IReadOnlyList<FailedMod> Failed,
-        IReadOnlyList<PendingMod> Pending,
-        IReadOnlyList<string> Installing,
+        int Failed,
         bool IsFinished,
         bool LeftDisabled)
     {
         /// <summary>
         /// Nothing has happened yet.
         /// </summary>
-        public static readonly Snapshot Empty = new(0, 0, 0, [], [], [], IsFinished: false, LeftDisabled: false);
+        public static readonly Snapshot Empty = new(0, 0, 0, 0, IsFinished: false, LeftDisabled: false);
     }
 
     /// <summary>
@@ -67,46 +56,73 @@ public sealed class CollectionInstallProgress
     /// </summary>
     public IObservable<Snapshot> Changes => _subject;
 
-    internal void Begin(int total, int alreadyInstalled) => Update(() =>
+    /// <summary>
+    /// One row per mod of the collection the job was given, including the ones installed before this run. Rows are keyed
+    /// by the mod's index in the collection, since two mods can share a name.
+    /// </summary>
+    public IModInstallRows Mods => _mods;
+
+    // The concrete set, for the job's own tests to read rows back from.
+    internal ModInstallRows Rows => _mods;
+
+    internal void Begin(int total, int alreadyInstalled, IEnumerable<(int Index, string Name, bool AlreadyInstalled)> mods)
     {
-        _total = total;
-        _alreadyInstalled = alreadyInstalled;
-    });
+        lock (_lock)
+        {
+            _total = total;
+            _alreadyInstalled = alreadyInstalled;
+            var rows = mods.Select(static mod => new ModInstallRow(
+                mod.Index.ToString(),
+                mod.Name,
+                mod.Index,
+                new ModInstallRowState(mod.AlreadyInstalled ? ModInstallState.Installed : ModInstallState.Waiting, mod.AlreadyInstalled ? 1 : 0, mod.AlreadyInstalled ? 1 : 0, 1))).ToArray();
+            _rowsInstalled = rows.Count(static row => row.Current.State == ModInstallState.Installed);
+            _mods.Add(rows);
+            Publish();
+        }
+    }
 
-    internal void ModStarted(string name) => Update(() => _installing.Add(name));
+    internal void ModStarted(int index) => Update(index, ModInstallState.Installing, reason: null);
 
-    internal void ModInstalled(string name) => Update(() =>
+    internal void ModInstalled(int index) => Update(index, ModInstallState.Installed, reason: null, onChange: () => _installed++);
+
+    internal void ModFailed(int index, string reason) => Update(index, ModInstallState.Failed, reason, onChange: () => _failed++);
+
+    internal void ModNeedsReview(int index, ReviewKind kind, string reason) => Update(index, ModInstallState.NeedsUser, reason);
+
+    internal void Finish(bool leftDisabled)
     {
-        _installing.Remove(name);
-        _installed++;
-    });
+        lock (_lock)
+        {
+            _isFinished = true;
+            _leftDisabled = leftDisabled;
+            // A run that was cancelled leaves mods half way; they did not install, so they wait for the next run.
+            foreach (var row in _mods.Snapshot().Where(static row => row.Current.State == ModInstallState.Installing))
+                row.Set(row.Current with { State = ModInstallState.Waiting, Resolved = 0, Written = 0 });
+            Publish();
+        }
+    }
 
-    internal void ModFailed(string name, string reason) => Update(() =>
-    {
-        _installing.Remove(name);
-        _failed.Add(new FailedMod(name, reason));
-    });
-
-    internal void ModNeedsReview(string name, ReviewKind kind, string reason) => Update(() =>
-    {
-        _installing.Remove(name);
-        _pending.Add(new PendingMod(name, kind, reason));
-    });
-
-    internal void Finish(bool leftDisabled) => Update(() =>
-    {
-        _isFinished = true;
-        _leftDisabled = leftDisabled;
-        _installing.Clear();
-    });
-
-    private void Update(Action change)
+    private void Update(int index, ModInstallState state, string? reason, Action? onChange = null)
     {
         // Emitting under the lock keeps the snapshots in the order the changes happened.
         lock (_lock)
         {
-            change();
-            _subject.OnNext(new Snapshot(_total, _alreadyInstalled, _installed, _failed.ToArray(), _pending.ToArray(), _installing.ToArray(), _isFinished, _leftDisabled));
+            if (!_mods.TryGet(index.ToString(), out var row)) return;
+            if (row.Current.State == ModInstallState.Installed) _rowsInstalled--;
+            if (row.Current.State == ModInstallState.Failed) _rowsFailed--;
+            if (state == ModInstallState.Installed) _rowsInstalled++;
+            if (state == ModInstallState.Failed) _rowsFailed++;
+            var done = state == ModInstallState.Installed ? 1 : 0;
+            row.Set(row.Current with { State = state, Resolved = done, Written = done, Reason = reason });
+            onChange?.Invoke();
+            Publish();
         }
+    }
+
+    private void Publish()
+    {
+        _mods.SetTotals(new ModInstallTotals(_mods.Count, _rowsInstalled, _rowsFailed));
+        _subject.OnNext(new Snapshot(_total, _alreadyInstalled, _installed, _failed, _isFinished, _leftDisabled));
     }
 }

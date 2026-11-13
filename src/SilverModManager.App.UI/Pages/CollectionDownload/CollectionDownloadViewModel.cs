@@ -29,6 +29,7 @@ using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Games.FOMOD;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Collections;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.UI.Sdk.Icons;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -426,7 +427,8 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     })
                     .AddTo(disposables);
 
-                // A job that ends leaves the active set; its last snapshot stays on screen if it finished.
+                // A job that ends leaves the active set; its last snapshot and its rows stay on screen if it finished.
+                // The rows travel with the snapshot so the two always belong to the same job.
                 jobMonitor
                     .ObserveActiveJobs<InstallCollectionJob>()
                     .QueryWhenChanged(query => query.Items
@@ -435,14 +437,22 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                         .FirstOrDefault(job => job.RevisionMetadata.Id == _revision.Id))
                     .DistinctUntilChanged()
                     .Select(static job => job is null
-                        ? Observable.Return<CollectionInstallProgress.Snapshot?>(null)
-                        : job.Progress.Changes.Select(static snapshot => (CollectionInstallProgress.Snapshot?)snapshot))
+                        ? Observable.Return<(CollectionInstallProgress.Snapshot? Snapshot, IModInstallRows? Rows)>((null, null))
+                        : job.Progress.Changes.Select(snapshot => (Snapshot: (CollectionInstallProgress.Snapshot?)snapshot, Rows: (IModInstallRows?)job.Progress.Mods)))
                     .Switch()
                     .OnUI()
-                    .Subscribe(snapshot =>
+                    .Subscribe(update =>
                     {
-                        if (snapshot is not null) InstallProgress.Value = snapshot;
-                        else if (InstallProgress.Value is { IsFinished: false }) InstallProgress.Value = null;
+                        if (update.Snapshot is not null)
+                        {
+                            InstallProgress.Value = update.Snapshot;
+                            InstallRows.Value = update.Rows;
+                        }
+                        else if (InstallProgress.Value is { IsFinished: false })
+                        {
+                            InstallProgress.Value = null;
+                            InstallRows.Value = null;
+                        }
                     })
                     .AddTo(disposables);
 
@@ -793,6 +803,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: null);
+    public BindableReactiveProperty<IModInstallRows?> InstallRows { get; } = new(value: null);
 
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();

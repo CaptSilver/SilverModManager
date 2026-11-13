@@ -1,8 +1,12 @@
+using System.Collections.Concurrent;
+using System.Reactive.Disposables;
 using System.IO.Compression;
 using System.Reactive.Linq;
 using System.Text.Json;
+using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
+using SilverModManager.Sdk.Loadouts.Install;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -328,21 +332,37 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var snapshots = new List<CollectionInstallProgress.Snapshot>();
         using var subscription = job.JobDefinition.Progress.Changes.Subscribe(snapshots.Add);
+        // The job can have started its mods before this line runs, so each row's state is read when it reaches the
+        // subscription and then followed.
+        var steps = new ConcurrentQueue<(string Name, ModInstallState State)>();
+        using var rowSubscriptions = new CompositeDisposable();
+        using var rowSteps = job.JobDefinition.Progress.Mods.Connect().Subscribe(changes =>
+        {
+            foreach (var change in changes.Where(static change => change.Reason == ChangeReason.Add))
+            {
+                var row = change.Current;
+                steps.Enqueue((row.Name, row.Current.State));
+                rowSubscriptions.Add(row.Changed.Subscribe(state => steps.Enqueue((row.Name, state.State))));
+            }
+        });
         await AwaitJob(job);
 
         // The job starts on the thread pool, so subscribing can still replay the empty snapshot from before it began.
         var seen = snapshots.SkipWhile(s => ReferenceEquals(s, CollectionInstallProgress.Snapshot.Empty)).ToArray();
         seen.Select(s => s.Installed).Should().BeInAscendingOrder();
-        seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed.Count + s.Pending.Count + s.Installing.Count <= s.Total);
-        seen.SelectMany(s => s.Installing).Distinct().Should().BeEquivalentTo(mods.Select(m => m.Item2));
+        seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed <= s.Total);
+        var rows = job.JobDefinition.Progress.Rows;
+        rows.Snapshot().OrderBy(static row => row.Index).Select(static row => row.Name).Should().Equal(mods.Select(m => m.Item2));
 
         var last = seen[^1];
         last.IsFinished.Should().BeTrue();
         last.Installed.Should().Be(6);
-        last.Installing.Should().BeEmpty();
-        last.Failed.Should().BeEmpty();
-        last.Pending.Should().BeEmpty();
+        last.Failed.Should().Be(0);
         last.LeftDisabled.Should().BeFalse();
+        rows.Snapshot().Should().OnlyContain(static row => row.Current.State == ModInstallState.Installed);
+        foreach (var (_, name) in mods)
+            steps.Where(step => step.Name == name).Select(static step => step.State).SkipWhile(static state => state == ModInstallState.Waiting)
+                .Should().Equal([ModInstallState.Installing, ModInstallState.Installed], "{0} is reported as installing before it counts", name);
     }
 
     [Fact]
@@ -365,10 +385,10 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var last = job.JobDefinition.Progress.Current;
         last.IsFinished.Should().BeTrue();
         last.Installed.Should().Be(2);
-        last.Failed.Should().ContainSingle();
-        last.Failed[0].Name.Should().Be("Broken mod");
-        last.Failed[0].Reason.Should().Be("broken on purpose");
-        last.Pending.Should().BeEmpty();
+        last.Failed.Should().Be(1);
+        var failed = job.JobDefinition.Progress.Rows.Snapshot().Should().ContainSingle(static row => row.Current.State == ModInstallState.Failed).Which;
+        failed.Name.Should().Be("Broken mod");
+        failed.Current.Reason.Should().Be("broken on purpose");
         last.LeftDisabled.Should().BeTrue();
     }
 
@@ -821,8 +841,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var group = await AwaitJob(job);
 
         LoadoutItem.Load(Connection.Db, group.Id).IsDisabled.Should().BeTrue();
-        job.JobDefinition.Progress.Current.Failed.Should().ContainSingle();
-        job.JobDefinition.Progress.Current.Pending.Should().ContainSingle();
+        job.JobDefinition.Progress.Current.Failed.Should().Be(1);
+        job.JobDefinition.Progress.Rows.Snapshot().Should().ContainSingle(static row => row.Current.State == ModInstallState.NeedsUser);
         job.JobDefinition.Progress.Current.LeftDisabled.Should().BeTrue();
     }
 
@@ -956,8 +976,10 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         await AwaitJob(job);
 
         var last = job.JobDefinition.Progress.Current;
-        last.Pending.Should().ContainSingle().Which.Name.Should().Be("Unknown mod");
-        last.Failed.Should().ContainSingle().Which.Name.Should().Be("Broken mod");
+        var rows = job.JobDefinition.Progress.Rows.Snapshot();
+        rows.Should().ContainSingle(static row => row.Current.State == ModInstallState.NeedsUser).Which.Name.Should().Be("Unknown mod");
+        rows.Should().ContainSingle(static row => row.Current.State == ModInstallState.Failed).Which.Name.Should().Be("Broken mod");
+        last.Failed.Should().Be(1, "a mod waiting for a person is no failure");
     }
 
     private static async Task WaitUntil(Func<bool> condition)

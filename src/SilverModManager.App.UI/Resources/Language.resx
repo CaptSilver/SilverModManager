@@ -1552,23 +1552,8 @@ Use it for {0}?</value>
     <data name="CollectionInstallProgress_SummaryFinished" xml:space="preserve">
         <value>Installed {0} of {1}</value>
     </data>
-    <data name="CollectionInstallProgress_Installing" xml:space="preserve">
-        <value>Now installing: {0}</value>
-    </data>
-    <data name="CollectionInstallProgress_InstallingWithMore" xml:space="preserve">
-        <value>Now installing: {0} and {1} more</value>
-    </data>
-    <data name="CollectionInstallProgress_FailedMod" xml:space="preserve">
-        <value>{0}: {1}</value>
-    </data>
     <data name="CollectionInstallProgress_LeftDisabled" xml:space="preserve">
         <value>The collection was left disabled because required mods failed to install.</value>
-    </data>
-    <data name="CollectionInstallProgress_PendingOne" xml:space="preserve">
-        <value>1 mod needs review, see below</value>
-    </data>
-    <data name="CollectionInstallProgress_PendingMany" xml:space="preserve">
-        <value>{0} mods need review, see below</value>
     </data>
     <data name="CollectionReview_HeaderOne" xml:space="preserve">
         <value>1 mod needs review</value>

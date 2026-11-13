@@ -7,6 +7,8 @@ using Observable = System.Reactive.Linq.Observable;
 using FluentAssertions;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.Collections;
+using SilverModManager.Sdk.Loadouts.Install;
 
 namespace SilverModManager.UI.Tests;
 
@@ -129,5 +131,18 @@ public class CollectionDownloadEmbeddedTests(IServiceProvider provider) : AUiTes
         var text = await Dispatcher.UIThread.InvokeAsync(() => Find<TextBlock>(view, "ErrorGuidanceTextBlock").Text);
 
         text.Should().Contain($"'{tabName}' tab");
+    }
+
+    [Fact]
+    public async Task TheInstallRowsOfThePageReachTheSharedSection()
+    {
+        var view = await ShowDownloadView(isEmbedded: true);
+        var rows = new ModInstallRows();
+        rows.Add([new ModInstallRow("0", "Mod 0", 0, new ModInstallRowState(ModInstallState.Failed, 0, 0, 1, Reason: "broken"))]);
+        rows.SetTotals(new ModInstallTotals(1, 0, 1));
+
+        await Dispatcher.UIThread.InvokeAsync(() => ((CollectionDownloadDesignViewModel)view.ViewModel!).InstallRows.Value = rows);
+
+        await EventuallyOnUi(() => Find<ModInstallRowsSection>(view, "ModsSection").Rows.Should().BeSameAs(rows));
     }
 }

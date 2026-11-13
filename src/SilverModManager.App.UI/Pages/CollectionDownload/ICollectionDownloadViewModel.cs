@@ -7,6 +7,7 @@ using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
+using SilverModManager.Sdk.Loadouts.Install;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using R3;
@@ -121,6 +122,11 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     /// Stays set after the job ends so its failures remain visible.
     /// </summary>
     BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; }
+
+    /// <summary>
+    /// The mods of the latest install on this page, one row each; it follows <see cref="InstallProgress"/>.
+    /// </summary>
+    BindableReactiveProperty<IModInstallRows?> InstallRows { get; }
 
     /// <summary>
     /// The mods of the collection waiting for a person that the player has not dismissed.

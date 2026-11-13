@@ -1495,56 +1495,11 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Now installing: {0}.
-        /// </summary>
-        public static string CollectionInstallProgress_Installing {
-            get {
-                return ResourceManager.GetString("CollectionInstallProgress_Installing", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Now installing: {0} and {1} more.
-        /// </summary>
-        public static string CollectionInstallProgress_InstallingWithMore {
-            get {
-                return ResourceManager.GetString("CollectionInstallProgress_InstallingWithMore", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to {0}: {1}.
-        /// </summary>
-        public static string CollectionInstallProgress_FailedMod {
-            get {
-                return ResourceManager.GetString("CollectionInstallProgress_FailedMod", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The collection was left disabled because required mods failed to install..
         /// </summary>
         public static string CollectionInstallProgress_LeftDisabled {
             get {
                 return ResourceManager.GetString("CollectionInstallProgress_LeftDisabled", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to 1 mod needs review, see below.
-        /// </summary>
-        public static string CollectionInstallProgress_PendingOne {
-            get {
-                return ResourceManager.GetString("CollectionInstallProgress_PendingOne", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to {0} mods need review, see below.
-        /// </summary>
-        public static string CollectionInstallProgress_PendingMany {
-            get {
-                return ResourceManager.GetString("CollectionInstallProgress_PendingMany", resourceCulture);
             }
         }
         

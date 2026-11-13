@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Collections;
+using SilverModManager.Sdk.Loadouts.Install;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using R3;
@@ -86,10 +87,8 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public BindableReactiveProperty<bool> IsOlderThanInstalledRevision { get; } = new();
     public BindableReactiveProperty<bool> IsInstalling { get; } = new();
     public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: new CollectionInstallProgress.Snapshot(
-        Total: 46, AlreadyInstalled: 241, Installed: 12,
-        Failed: [new CollectionInstallProgress.FailedMod("Broken Mod", "Saved choices do not apply: no option named \"X\".")],
-        Pending: [new CollectionInstallProgress.PendingMod("Docs-only Mod", ReviewKind.NoInstaller, "Archive contains no matching files")],
-        Installing: ["Mod A", "Mod B"], IsFinished: false, LeftDisabled: false));
+        Total: 46, AlreadyInstalled: 241, Installed: 12, Failed: 1, IsFinished: false, LeftDisabled: false));
+    public BindableReactiveProperty<IModInstallRows?> InstallRows { get; } = new(value: DesignRows());
     public ReadOnlyObservableCollection<PendingReviewRow> PendingItems { get; } = new(new ObservableCollection<PendingReviewRow>(
     [
         new PendingReviewRow("Docs-only Mod", ReviewKind.NoInstaller, "Archive contains no matching files", isOptional: false),
@@ -114,4 +113,18 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public ReactiveCommand<Unit> CommandOpenJsonFile { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandDeleteAllDownloads { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandDeleteCollectionRevision { get; } = new ReactiveCommand();
+
+    private static ModInstallRows DesignRows()
+    {
+        var rows = new ModInstallRows();
+        rows.Add(
+        [
+            new ModInstallRow("0", "Installed Mod", 0, new ModInstallRowState(ModInstallState.Installed, 1, 1, 1)),
+            new ModInstallRow("1", "Mod A", 1, new ModInstallRowState(ModInstallState.Installing, 0, 0, 1)),
+            new ModInstallRow("2", "Broken Mod", 2, new ModInstallRowState(ModInstallState.Failed, 0, 0, 1, Reason: "Saved choices do not apply: no option named \"X\".")),
+            new ModInstallRow("3", "Docs-only Mod", 3, new ModInstallRowState(ModInstallState.NeedsUser, 0, 0, 1, Reason: "Archive contains no matching files")),
+        ]);
+        rows.SetTotals(new ModInstallTotals(4, 1, 1));
+        return rows;
+    }
 }

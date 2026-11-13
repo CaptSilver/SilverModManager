@@ -34,6 +34,7 @@ using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts.Install;
 using SilverModManager.Sdk.Resources;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
@@ -62,6 +63,7 @@ public sealed class NexusCollectionSource : CollectionSource
     private readonly CollectionJsonParser? _parse;
     private readonly BehaviorSubject _instructions = new(CollectionInstructions.None);
     private readonly Lazy<CollectionLink> _link;
+    private CollectionDownloadViewModel? _downloads;
 
     private NexusCollectionSource(
         IServiceProvider services,
@@ -159,13 +161,23 @@ public sealed class NexusCollectionSource : CollectionSource
         // The collection's archive can leave the library while the collection stays installed; the page has nothing to list then.
         if (HasCollectionLibraryFile() is false) return null;
 
-        return new CollectionDownloadViewModel(
+        _downloads = new CollectionDownloadViewModel(
             windowManager: Services.GetRequiredService<IWindowManager>(),
             serviceProvider: Services,
             revisionMetadata: _revision,
             targetLoadout: _loadout,
             isEmbedded: true);
+        return _downloads;
     }
+
+    // The rows come from the install job the Downloads tab's model follows. Without that tab (no library file for the
+    // collection) no install of it can run from here, so there is nothing to show.
+    public override IObservable<IModInstallRows?> InstallRows => Observable.Defer(() =>
+    {
+        if (_downloads is { } downloads) return downloads.InstallRows.AsSystemObservable();
+        if (HasCollectionLibraryFile() is false) return Observable.Return<IModInstallRows?>(null);
+        throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
+    });
 
     public override CollectionLink? Link => _link.Value;
 

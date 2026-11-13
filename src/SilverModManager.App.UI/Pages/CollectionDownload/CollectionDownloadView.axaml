@@ -7,6 +7,7 @@
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:collectionDownload="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
     xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:collections="clr-namespace:SilverModManager.App.UI.Pages.Collections"
     xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner;assembly=SilverModManager.App.UI"
     xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
@@ -89,10 +90,8 @@
 
             <StackPanel DockPanel.Dock="Top" x:Name="InstallProgressPanel" IsVisible="False" Margin="16 8" Spacing="4">
                 <TextBlock x:Name="TextInstallSummary" />
-                <TextBlock x:Name="TextInstallRunning" TextWrapping="Wrap" />
                 <TextBlock x:Name="TextInstallDisabled" TextWrapping="Wrap" />
-                <TextBlock x:Name="TextInstallPending" TextWrapping="Wrap" />
-                <ItemsControl x:Name="ListInstallFailures" />
+                <collections:ModInstallRowsSection x:Name="ModsSection" />
             </StackPanel>
 
             <!-- the mods an install left for a person; shown for as long as any are waiting, not only after a run -->
