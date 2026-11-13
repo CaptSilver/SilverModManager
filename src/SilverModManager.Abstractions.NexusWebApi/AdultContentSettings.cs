@@ -1,12 +1,13 @@
 using SilverModManager.Sdk.Settings;
 
-namespace SilverModManager.App.UI.Settings;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 public record AdultContentSettings : ISettings
 {
     /// <summary>Off by default: a fresh install lists nothing a user hasn't asked to see.</summary>
     public bool ShowAdultContent { get; set; }
 
+    // Kept from where the setting used to live: the stored settings file is keyed by it.
     public static string SettingsId => "SilverModManager.App.UI.Settings.AdultContentSettings";
 
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)

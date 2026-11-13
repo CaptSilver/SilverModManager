@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.NexusWebApi;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;

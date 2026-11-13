@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.NexusWebApi;
 using System.Reactive.Subjects;
 using SilverModManager.App.UI.Settings;
 

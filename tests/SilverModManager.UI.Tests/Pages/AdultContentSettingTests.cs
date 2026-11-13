@@ -1,12 +1,19 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using SilverModManager.App.UI.Settings;
+using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.UI.Tests.Pages;
 
 public class AdultContentSettingTests(IServiceProvider provider) : AUiTest(provider)
 {
+    [Fact]
+    public void SettingsId_IsUnchangedByTheMove()
+    {
+        // The stored settings file is keyed by this string; a different one would reset every user's choice.
+        AdultContentSettings.SettingsId.Should().Be("SilverModManager.App.UI.Settings.AdultContentSettings");
+    }
+
     [Fact]
     public void AdultContent_IsHiddenByDefault()
     {

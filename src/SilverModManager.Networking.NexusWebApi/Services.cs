@@ -85,6 +85,8 @@ public static class Services
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
             .AddSettings<NxmHandlerSettings>()
             .AddSettings<NexusAuthSettings>()
+            .AddSettings<AdultContentSettings>()
+            .AddSingleton<IAdultContentSetting, SettingsAdultContentSetting>()
             .AddNexusApiVerbs();
 
         collection.AddTransient<NexusAuthHandler>();

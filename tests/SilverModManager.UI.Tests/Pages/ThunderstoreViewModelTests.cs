@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive.Linq;
 using System.Collections.Immutable;

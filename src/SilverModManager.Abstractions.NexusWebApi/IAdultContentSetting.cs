@@ -1,11 +1,11 @@
-using System.Reactive.Linq;
+using R3;
 using SilverModManager.Sdk.Settings;
 
-namespace SilverModManager.App.UI.Settings;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
-/// The app-wide "Show adult content" choice. Every browse page reads it from here, so the pages can't disagree
-/// about it and all react the moment it changes.
+/// The app-wide "Show adult content" choice. Every browse page and the CLI read it from here, so they can't
+/// disagree about it and the pages react the moment it changes.
 /// </summary>
 public interface IAdultContentSetting
 {
@@ -20,8 +20,8 @@ public sealed class SettingsAdultContentSetting(ISettingsManager settings) : IAd
 {
     public bool ShowAdultContent => settings.Get<AdultContentSettings>().ShowAdultContent;
 
-    public IObservable<bool> Changes => R3.ObservableExtensions
-        .AsSystemObservable(settings.GetChanges<AdultContentSettings>(prependCurrent: true))
+    public IObservable<bool> Changes => settings.GetChanges<AdultContentSettings>(prependCurrent: true)
         .Select(static s => s.ShowAdultContent)
-        .DistinctUntilChanged();
+        .DistinctUntilChanged()
+        .AsSystemObservable();
 }

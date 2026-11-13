@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.NexusWebApi;
 using FluentAssertions;
 using SilverModManager.App.UI.Settings;
 using Microsoft.Extensions.DependencyInjection;

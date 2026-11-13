@@ -353,7 +353,6 @@ public static class Services
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, IniPageFactory>()
             .AddSingleton<IStoreSortMemory, SettingsStoreSortMemory>()
-            .AddSingleton<IAdultContentSetting, SettingsAdultContentSetting>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
             .AddSingleton<IPageFactory, NexusModsPageFactory>()
             .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()

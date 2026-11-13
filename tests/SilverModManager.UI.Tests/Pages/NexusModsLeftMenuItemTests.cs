@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.NexusWebApi;
 using FluentAssertions;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.LeftMenu.Loadout;
