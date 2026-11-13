@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Channels;
+using SilverModManager.Sdk.Diagnostics;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -104,6 +105,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// <summary>How far the install is. Observe <see cref="ModlistInstallProgress.Changes"/> to follow it live.</summary>
     public ModlistInstallProgress Progress { get; } = new();
 
+    /// <summary>Reads the memory figures the install log ends each line with. <see cref="Create"/> takes it from the container so contributors registered there are included.</summary>
+    public IMemorySampler MemorySampler { get; init; } = new ProcessMemorySampler();
+
     public static IJobTask<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly> Create(
         IServiceProvider provider,
         LoadoutId target,
@@ -133,6 +137,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             OrderImporter = provider.GetRequiredService<ModOrderImporter>(),
             LoadoutManager = provider.GetRequiredService<ILoadoutManager>(),
             Locator = provider.GetRequiredService<ILibraryArchiveLocator>(),
+            MemorySampler = provider.GetRequiredService<IMemorySampler>(),
         };
         return monitor.Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
@@ -140,7 +145,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public async ValueTask<WabbajackModlistLoadoutGroup.ReadOnly> StartAsync(IJobContext<InstallModlistJob> context)
     {
         var cancellationToken = context.CancellationToken;
-        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name, new ProcessMemorySampler(), TimeProvider.System).Report);
+        using var progressLog = Progress.Changes.Subscribe(new InstallProgressLog(Logger, Modlist.Name, MemorySampler, TimeProvider.System).Report);
 
         // Before the check, which may record the digests of game files: a refused update writes nothing.
         var existing = FindGroup();

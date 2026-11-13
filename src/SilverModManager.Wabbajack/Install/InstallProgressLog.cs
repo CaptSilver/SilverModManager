@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Diagnostics;
 
 namespace SilverModManager.Wabbajack.Install;
 
@@ -67,7 +68,9 @@ public sealed class InstallProgressLog(ILogger logger, string list, IMemorySampl
     private void Write(string text)
     {
         _lastWrite = time.GetTimestamp();
-        logger.LogInformation("Install of {List}: {Progress}; memory: {Memory}", list, text, memory.Sample().Describe());
+        var sample = memory.Sample();
+        logger.LogInformation("Install of {List}: {Progress}; memory: {Memory}", list, text, sample.Describe());
+        if (sample.Native is { Count: > 0 }) logger.LogTrace("Install of {List}: native memory: {Native}", list, sample.DescribeNative());
     }
 
     private static string PhaseName(InstallPhase phase) => phase switch

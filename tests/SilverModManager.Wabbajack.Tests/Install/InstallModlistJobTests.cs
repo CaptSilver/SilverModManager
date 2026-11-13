@@ -1419,13 +1419,18 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
 {
     private readonly ConcurrentQueue<string> _messages = new();
 
+    private readonly ConcurrentQueue<string> _traces = new();
+
     public IReadOnlyCollection<string> Messages => _messages;
 
-    public ILogger CreateLogger(string categoryName) => new Capture(_messages);
+    /// <summary>The Trace lines, kept apart so the Information assertions stay exact.</summary>
+    public IReadOnlyCollection<string> Traces => _traces;
+
+    public ILogger CreateLogger(string categoryName) => new Capture(_messages, _traces);
 
     public void Dispose() { }
 
-    private sealed class Capture(ConcurrentQueue<string> messages) : ILogger
+    private sealed class Capture(ConcurrentQueue<string> messages, ConcurrentQueue<string> traces) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -1434,6 +1439,7 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (logLevel == LogLevel.Information) messages.Enqueue(formatter(state, exception));
+            else if (logLevel == LogLevel.Trace) traces.Enqueue(formatter(state, exception));
         }
     }
 }

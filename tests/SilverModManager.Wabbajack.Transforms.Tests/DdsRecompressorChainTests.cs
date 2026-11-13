@@ -5,6 +5,7 @@ using SilverModManager.Wabbajack.Transforms;
 namespace SilverModManager.Wabbajack.Transforms.Tests;
 
 /// <summary>Which encoder, block format and thread count the recompressor asks for.</summary>
+[Collection(SkiaRasterMemoryTests.Collection)]
 public class DdsRecompressorChainTests
 {
     private sealed class RecordingEncoder(string name, params BlockFormat[] takes) : ITextureEncoder

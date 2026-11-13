@@ -12,6 +12,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Diagnostics;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.Settings;
@@ -42,6 +43,9 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ModlistFetchInference>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICollectionLock, WabbajackModlistLock>());
         services.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
+        services.TryAddSingleton<IMemorySampler>(p => new ProcessMemorySampler(p.GetServices<IMemoryContributor>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IMemoryContributor, GlibcMallocContributor>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IMemoryContributor, SkiaRasterContributor>());
         return services
             .AddWabbajackModlistLibraryFileModel()
             .AddWabbajackModlistArchiveModel()

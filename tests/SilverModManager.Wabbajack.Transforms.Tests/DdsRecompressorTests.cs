@@ -6,6 +6,7 @@ using SilverModManager.Wabbajack.Transforms;
 
 namespace SilverModManager.Wabbajack.Transforms.Tests;
 
+[Collection(SkiaRasterMemoryTests.Collection)]
 public class DdsRecompressorTests(ITestOutputHelper output)
 {
     private static (double R, double G, double B) Mean(ColorRgba32[] pixels)

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Diagnostics;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Wabbajack.Format;
@@ -352,10 +353,36 @@ public class InstallProgressLogTests
         public MemorySample Sample() => new(1_073_741_824, 2_147_483_648, 3, null, null);
     }
 
-    private static (InstallProgressLog Log, CapturingLoggerProvider Messages) Create(TimeProvider? time = null)
+    private sealed class NativeSampler : IMemorySampler
+    {
+        public MemorySample Sample() => new(1_073_741_824, 2_147_483_648, 3, null, null, Native: [("malloc-used", 2_147_483_648), ("rocksdb-readers", 1_073_741_824)]);
+    }
+
+    private static (InstallProgressLog Log, CapturingLoggerProvider Messages) Create(TimeProvider? time = null, IMemorySampler? sampler = null)
     {
         var provider = new CapturingLoggerProvider();
-        return (new InstallProgressLog(provider.CreateLogger("test"), "Example List", new FixedSampler(), time ?? TimeProvider.System), provider);
+        return (new InstallProgressLog(provider.CreateLogger("test"), "Example List", sampler ?? new FixedSampler(), time ?? TimeProvider.System), provider);
+    }
+
+    [Fact]
+    public void ANativeBreakdownGoesOnATraceLine()
+    {
+        var (log, logged) = Create(sampler: new NativeSampler());
+
+        log.Report(Snap(InstallPhase.Check, 0, 0));
+
+        logged.Messages.Should().ContainSingle().Which.Should().EndWith(Memory);
+        logged.Traces.Should().ContainSingle().Which.Should().Be("Install of Example List: native memory: malloc-used 2.0 GB (rocksdb-readers 1.0 GB, other 1.0 GB)");
+    }
+
+    [Fact]
+    public void NoTraceLineWithoutANativeBreakdown()
+    {
+        var (log, logged) = Create();
+
+        log.Report(Snap(InstallPhase.Check, 0, 0));
+
+        logged.Traces.Should().BeEmpty();
     }
 
     [Fact]

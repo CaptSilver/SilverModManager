@@ -206,6 +206,32 @@ public class Backend : IStoreBackend
         lock (s_openLock) s_open.Add(this);
     }
 
+    /// <summary>
+    /// The database's own memory counters, or null before it is opened and once it is closing or closed. Takes a use lease, so
+    /// the native database is never freed under the property reads.
+    /// </summary>
+    public RocksDbMemoryReport? Sample()
+    {
+        UseLease lease;
+        try { lease = BeginUse(); }
+        catch (ObjectDisposedException) { return null; }
+
+        using (lease)
+        {
+            if (Db is not { } db || _dbClosed) return null;
+
+            var memTables = Property(db, "rocksdb.cur-size-all-mem-tables");
+            var readers = Property(db, "rocksdb.estimate-table-readers-mem");
+            var usage = Property(db, "rocksdb.block-cache-usage");
+            var pinned = Property(db, "rocksdb.block-cache-pinned-usage");
+            var capacity = Property(db, "rocksdb.block-cache-capacity");
+            return new RocksDbMemoryReport(memTables, readers, usage, pinned, capacity, memTables + readers + usage);
+        }
+    }
+
+    private static long Property(RocksDb db, string name)
+        => RocksDbMemoryReport.ParseProperty(db.GetProperty(name));
+
     private void CancelBackgroundWork()
     {
         if (Db is not null) Native.Instance.rocksdb_cancel_all_background_work(Db.Handle, true);

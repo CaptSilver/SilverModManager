@@ -170,7 +170,7 @@ public sealed class DdsRecompressor
 
     private static ReadOnlySpan<byte> Bytes(ColorRgba32[] pixels) => MemoryMarshal.AsBytes(pixels.AsSpan());
 
-    private static ColorRgba32[] Resize(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight, bool srgb)
+    internal static ColorRgba32[] Resize(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight, bool srgb)
     {
         if (width == newWidth && height == newHeight) return pixels;
 
@@ -180,18 +180,21 @@ public sealed class DdsRecompressor
         if (srgb) return ResizeLinear(pixels, width, height, newWidth, newHeight);
 
         using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul));
+        using var sourceLease = new SkiaRasterMemory.RasterLease(source.ByteCount);
         MemoryMarshal.AsBytes(pixels.AsSpan()).CopyTo(source.GetPixelSpan());
 
         // Mitchell cubic is the closest Skia sampler to the Welch filter upstream uses.
         var targetInfo = new SKImageInfo(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         using var resized = source.Resize(targetInfo, new SKSamplingOptions(SKCubicResampler.Mitchell))
                             ?? throw new InvalidOperationException($"Could not resize a {width}x{height} texture to {newWidth}x{newHeight}");
+        using var resizedLease = new SkiaRasterMemory.RasterLease(resized.ByteCount);
         return MemoryMarshal.Cast<byte, ColorRgba32>(resized.GetPixelSpan()).ToArray();
     }
 
     private static ColorRgba32[] ResizeLinear(ColorRgba32[] pixels, int width, int height, int newWidth, int newHeight)
     {
         using var source = new SKBitmap(new SKImageInfo(width, height, SKColorType.RgbaF32, SKAlphaType.Unpremul));
+        using var sourceLease = new SkiaRasterMemory.RasterLease(source.ByteCount);
         var floats = MemoryMarshal.Cast<byte, float>(source.GetPixelSpan());
         var table = SrgbTransfer.LinearValues;
         for (var i = 0; i < pixels.Length; i++)
@@ -205,6 +208,7 @@ public sealed class DdsRecompressor
         using var resized = source.Resize(new SKImageInfo(newWidth, newHeight, SKColorType.RgbaF32, SKAlphaType.Unpremul),
             new SKSamplingOptions(SKCubicResampler.Mitchell));
         if (resized is null) throw new InvalidOperationException($"Could not resize a {width}x{height} texture to {newWidth}x{newHeight}");
+        using var resizedLease = new SkiaRasterMemory.RasterLease(resized.ByteCount);
 
         var result = new ColorRgba32[newWidth * newHeight];
         var back = MemoryMarshal.Cast<byte, float>(resized.GetPixelSpan());

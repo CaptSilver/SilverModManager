@@ -7,6 +7,7 @@ namespace SilverModManager.Wabbajack.Transforms.Tests;
 /// Reads the raw header bytes of what <see cref="DdsRecompressor"/> writes. The FourCCs, pixel-format flags, caps and
 /// DX10 fields are the values the BCnEncoder writer produced before the header was written by hand.
 /// </summary>
+[Collection(SkiaRasterMemoryTests.Collection)]
 public class DdsWriterTests
 {
     private const uint Magic = 0x20534444;

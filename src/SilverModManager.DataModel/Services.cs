@@ -34,6 +34,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Storage.Abstractions;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Diagnostics;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.ForeignDeployments;
 using SilverModManager.Sdk.Games;
@@ -83,6 +84,7 @@ public static class Services
         );
         
         coll.AddSingleton<IStoreBackend>(_ => new Backend());
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IMemoryContributor, RocksDbMemoryContributor>());
 
         coll.AddSingleton<JsonConverter, AbsolutePathConverter>();
         coll.AddSingleton<JsonConverter, RelativePathConverter>();

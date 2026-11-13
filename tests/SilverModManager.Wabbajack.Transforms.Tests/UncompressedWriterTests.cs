@@ -5,6 +5,7 @@ using DdsFile = BCnEncoder.Shared.ImageFiles.DdsFile;
 
 namespace SilverModManager.Wabbajack.Transforms.Tests;
 
+[Collection(SkiaRasterMemoryTests.Collection)]
 public class UncompressedWriterTests
 {
     private const uint PixelAlphaPixels = 0x1, PixelAlpha = 0x2, PixelRgb = 0x40, PixelLuminance = 0x20000, PixelFourCc = 0x4;
