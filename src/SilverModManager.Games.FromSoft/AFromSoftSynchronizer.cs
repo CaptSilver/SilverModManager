@@ -134,6 +134,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
         if (_listingFailures.TryGetValue(loadout.LoadoutId, out var failed) && failed.Revision == loadout.Db.BasisTxId)
             throw new MergeRefusedException(failed.Reason);
 
+        RefuseIfLooseParamsHideTheRegulation(loadout);
         RefuseIfNotMergeable(Plan(loadout, MergeSourceMode.Report));
         return Task.CompletedTask;
     }
@@ -155,6 +156,14 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
                 throw new MergeRefusedException($"{merged.Path} is provided by several mods but its merged file is not part of this apply, and deploying the copies whole would leave it to me3 which one wins");
         }
         return Task.CompletedTask;
+    }
+
+    private void RefuseIfLooseParamsHideTheRegulation(Loadout.ReadOnly loadout)
+    {
+        if (_definition.LooseParams is not { } rule) return;
+
+        var verdict = LooseParamsCheck.Check(rule, _sources.Value.Providers(loadout));
+        if (verdict is { RegulationMods.Count: > 0 }) throw LooseParamsCheck.Refusal(rule, verdict);
     }
 
     private MergePlan Plan(Loadout.ReadOnly loadout, MergeSourceMode mode)

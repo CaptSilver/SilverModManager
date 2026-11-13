@@ -81,6 +81,7 @@ public static class Services
             .AddSingleton<IFromSoftDiagnosticEmitter, GameFolderArtifactsEmitter>()
             .AddSingleton<SteamFolderCheck>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SteamFolderEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, LooseParamsEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SpawnerEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, OverlaySupportEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Saves;
 using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
@@ -26,6 +27,7 @@ public static class TestSoulsDefinition
     {
         Layout = Layout,
         HasOnlinePlay = false,
+        LooseParams = new LooseParamsRule(["param/gameparam/gameparam.parambnd.dcx"], DisablesFile: "Data0.bdt"),
         SaveNames = new FromSoftSaveNames("TS0000.sl2", "TS0000_silver.sl2", null, "TS0000.sl3"),
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd3,

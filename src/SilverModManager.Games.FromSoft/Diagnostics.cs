@@ -398,4 +398,23 @@ outside Steam, or Steam's cached copy of the manifest may be missing.
             .AddValue<string>("Game")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RegulationOffForLooseParams = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 19))
+        .WithTitle("Loose params replace the regulation")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{DisablesFile} is off for this loadout: me3 loads the loose params instead")
+        .WithDetails("""
+{Mods} provide loose parameter files. When me3 finds one, it stops loading **{DisablesFile}** for {Game}, so a mod
+that edits the regulation would do nothing in this loadout. The app does not merge loose params into the regulation.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("DisablesFile")
+            .AddValue<string>("Mods")
+        )
+        .Finish();
 }

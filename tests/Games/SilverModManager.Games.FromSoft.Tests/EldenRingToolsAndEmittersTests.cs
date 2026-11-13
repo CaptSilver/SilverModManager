@@ -73,6 +73,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(UpperdirAuditEmitter),
             typeof(GameFolderArtifactsEmitter),
             typeof(SteamFolderEmitter),
+            typeof(LooseParamsEmitter),
             typeof(SpawnerEmitter),
             typeof(OverlaySupportEmitter),
             typeof(SaveWrittenByModdedSessionEmitter),
