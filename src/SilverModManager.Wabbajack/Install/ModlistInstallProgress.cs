@@ -1,5 +1,7 @@
 using System.Reactive.Subjects;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Loadouts.Install;
+using SilverModManager.Wabbajack.Models;
 
 namespace SilverModManager.Wabbajack.Install;
 
@@ -18,6 +20,29 @@ public sealed class ModlistInstallProgress
     private readonly Dictionary<int, (ArchiveBuild Build, long Touched)> _building = new();
     private long _touches;
     private int _finished;
+    private readonly ModInstallRows _mods = new();
+    private readonly Dictionary<string, Folder> _folders = new();
+    private int _installed;
+    private int _failed;
+
+    /// <summary>What the install knows of one mod folder besides what its row shows.</summary>
+    private sealed class Folder(ModInstallRow row, ModFolderPlan plan)
+    {
+        public ModInstallRow Row { get; } = row;
+        public ModFolderPlan Plan { get; } = plan;
+
+        /// <summary>The numbers of this folder's archives still being built; a folder can build two at once.</summary>
+        public HashSet<int> Builds { get; } = [];
+
+        /// <summary>The one of <see cref="Builds"/> still running that reported last, which the row shows.</summary>
+        public ArchiveBuild? Building { get; set; }
+    }
+
+    /// <summary>
+    /// One row per mod folder, empty until <see cref="SetMods"/>. It is the same object for the whole run, so a page
+    /// that attached during the check phase gets the rows when they are added.
+    /// </summary>
+    public IModInstallRows Mods => _mods;
 
     /// <summary>
     /// A Bethesda archive the Write phase is building. The archive is one item of the phase however long it takes, so
@@ -82,8 +107,113 @@ public sealed class ModlistInstallProgress
     public void Enter(InstallPhase phase, int totalItems, long totalBytes)
         => Update(s => s with { Phase = phase, DoneItems = 0, TotalItems = totalItems, DoneBytes = 0, TotalBytes = totalBytes });
 
-    public void Advance(int items, long bytes)
-        => Update(s => s with { DoneItems = s.DoneItems + items, DoneBytes = s.DoneBytes + bytes });
+    public void Advance(int items, long bytes) => Advance(null, items, bytes);
+
+    /// <summary>Counts <paramref name="items"/> done and, when <paramref name="folder"/> is a mod folder of this run, moves its row.</summary>
+    public void Advance(string? folder, int items, long bytes)
+    {
+        lock (_lock)
+        {
+            var next = _subject.Value with { DoneItems = _subject.Value.DoneItems + items, DoneBytes = _subject.Value.DoneBytes + bytes };
+            _subject.OnNext(next);
+            if (folder is not null && _folders.TryGetValue(folder, out var known)) AdvanceRow(known, next.Phase, items);
+        }
+    }
+
+    /// <summary>Gives the page one row per folder, in the order of their index. Called once per run.</summary>
+    public void SetMods(IEnumerable<ModFolderPlan> folders)
+    {
+        lock (_lock)
+        {
+            var rows = new List<ModInstallRow>();
+            foreach (var plan in folders.OrderBy(f => f.Index))
+            {
+                var row = new ModInstallRow(plan.Folder, plan.Folder, plan.Index, StartOf(plan));
+                _folders[plan.Folder] = new Folder(row, plan);
+                rows.Add(row);
+                if (row.Current.State == ModInstallState.Installed) _installed++;
+            }
+            _mods.Add(rows);
+            PublishTotals();
+        }
+    }
+
+    /// <summary>
+    /// Marks the folder failed with <paramref name="reason"/>. A skip the list asked for is no failure, a folder that
+    /// already failed keeps its first reason, and a folder with no row is not this run's.
+    /// </summary>
+    public void MarkFailed(string folder, SkipKind kind, string reason)
+    {
+        if (kind.IsByDesign()) return;
+        lock (_lock)
+        {
+            if (!_folders.TryGetValue(folder, out var known) || known.Row.Current.State == ModInstallState.Failed) return;
+            if (known.Row.Current.State == ModInstallState.Installed) _installed--;
+            known.Row.Set(known.Row.Current with { State = ModInstallState.Failed, Reason = reason, Detail = null });
+            _failed++;
+            PublishTotals();
+        }
+    }
+
+    /// <summary>
+    /// Tells the row of <paramref name="folder"/> that archive <paramref name="number"/> (see <see cref="BeginArchive"/>)
+    /// is its own and has just started, packed a file or ended. The counts come from the archive's own bookkeeping, so
+    /// files packed in parallel cannot show out of order; the row shows whichever of the folder's running archives
+    /// reported last, the same rule as the snapshot's slot, and nothing once they have all ended.
+    /// </summary>
+    public void MarkArchiveBuild(string folder, int number)
+    {
+        lock (_lock)
+        {
+            if (!_folders.TryGetValue(folder, out var known)) return;
+            known.Builds.Add(number);
+            known.Builds.RemoveWhere(n => !_building.ContainsKey(n));
+            known.Building = known.Builds.Count == 0 ? null : known.Builds.Select(n => _building[n]).MaxBy(b => b.Touched).Build;
+            if (known.Row.Current.State == ModInstallState.Failed) return;
+            known.Row.Set(known.Row.Current with { Detail = DetailOf(known) });
+        }
+    }
+
+    private static ModInstallRowState StartOf(ModFolderPlan plan)
+    {
+        if (plan.AlreadyDone >= plan.Total) return new ModInstallRowState(ModInstallState.Installed, plan.Total, plan.Total, plan.Total);
+        if (plan.AlreadyDone > 0) return new ModInstallRowState(ModInstallState.Installing, plan.AlreadyDone, plan.AlreadyDone, plan.Total);
+        return new ModInstallRowState(ModInstallState.Waiting, 0, 0, plan.Total);
+    }
+
+    private void AdvanceRow(Folder folder, InstallPhase phase, int items)
+    {
+        var state = folder.Row.Current;
+        if (state.State is ModInstallState.Failed or ModInstallState.Installed) return;
+        if (phase == InstallPhase.Resolve)
+            state = state with { State = ModInstallState.Extracting, Resolved = state.Resolved + items };
+        else if (phase == InstallPhase.Write)
+            state = state with { State = ModInstallState.Installing, Written = state.Written + items };
+        else
+            return;
+
+        if (state.State == ModInstallState.Installing && state.Written >= state.Total)
+        {
+            folder.Row.Set(state with { State = ModInstallState.Installed, Detail = null });
+            _installed++;
+            PublishTotals();
+            return;
+        }
+        folder.Row.Set(state with { Detail = DetailOf(folder, state) });
+    }
+
+    private static string? DetailOf(Folder folder) => DetailOf(folder, folder.Row.Current);
+
+    private static string? DetailOf(Folder folder, ModInstallRowState state)
+    {
+        if (folder.Building is { } build) return $" · building {build.Name} ({build.DoneFiles:N0} of {build.TotalFiles:N0})";
+        var plan = folder.Plan;
+        if (state.State != ModInstallState.Installing || plan.LaterPasses <= 0 || state.Written < plan.Total - plan.LaterPasses) return null;
+        return plan.LaterPasses == plan.MergePasses ? " · waiting for the merge pass" : " · waiting for the archive pass";
+    }
+
+    // The totals move only when a row enters Installed or Failed, so a long run does not recount 3,000 rows per file.
+    private void PublishTotals() => _mods.SetTotals(new ModInstallTotals(_folders.Count, _installed, _failed));
 
     public void AddDropped(int count) => Update(s => s with { DroppedCount = s.DroppedCount + count });
 
