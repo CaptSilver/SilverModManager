@@ -114,6 +114,8 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
         row[1].Should().Be("fmg-union");
         row[2].Should().Be("merged");
         row[3].Should().Contain("Alpha.zip").And.Contain("Beta.zip");
+        var plan = ServiceProvider.GetRequiredService<MergePlanCache>().Current(loadout, MergeSourceMode.Report);
+        row[3].Should().EndWith(plan.Merged.Single().Contributors[0].ModName, "the mod that wins is listed last");
         output.Should().Contain("both mods ship it and differ");
         output.TrimEnd().Split('\n').Last().Should().Be(MergeReports.PriorityOrderHint);
         DataRootListing().Should().Equal(before);

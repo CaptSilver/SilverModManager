@@ -89,7 +89,7 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         => [.. (DataRoot.DirectoryExists() ? TreeSnapshot.Take(DataRoot) : []), .. (Mods.DirectoryExists() ? TreeSnapshot.Take(Mods) : [])];
 
     [Fact]
-    public async Task AMergingMsgbndPairIsMergedWithBothModsInPriorityOrderAndTheTextKeptNote()
+    public async Task AMergingMsgbndPairIsMergedWithTheWinnerLastAndTheTextKeptNote()
     {
         var loadout = await CreateLoadout();
         await InstallPackage(loadout.LoadoutId, "Alpha", (Msg, Msgbnd("alpha text")));
@@ -104,7 +104,7 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         entry.Path.Should().Be(Msg);
         entry.Strategy.Should().Be("fmg-union");
         entry.Outcome.Should().Be(MergeReportOutcome.Merged, entry.Reason);
-        entry.Contributors.Should().Equal(plan.Merged.Single().Contributors.Select(c => c.ModName));
+        entry.Contributors.Should().Equal(plan.Merged.Single().Contributors.Select(c => c.ModName).Reverse());
         entry.Contributors.Should().BeEquivalentTo("Alpha.zip", "Beta.zip");
         entry.Notes.Should().Equal(plan.Merged.Single().Notes.Select(n => n.Describe()));
         entry.Notes.Should().Contain(n => n.Contains("both mods ship it and differ"));

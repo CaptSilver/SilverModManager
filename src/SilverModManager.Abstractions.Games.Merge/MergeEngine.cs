@@ -108,14 +108,15 @@ public sealed class MergeEngine : IMergeEngine
 
     private static MergeReportEntry Describe(PathResult result)
     {
-        var contributors = result.Path.Contributors.Select(c => c.ModName).ToArray();
+        // Contributors are folded highest priority first; the report lists them in load order, the winner last.
+        var contributors = result.Path.Contributors.Select(c => c.ModName).Reverse().ToArray();
         if (result.Output is not { } output)
             return new MergeReportEntry(result.Path.Rel, result.Path.Strategy?.Name ?? "", contributors, MergeReportOutcome.NotMergeable, [], "",
                 result.NotMergedReason ?? throw new InvalidOperationException($"`{result.Path.Rel}` has neither a merged output nor a reason it wasn't merged"));
 
         var source = output.Notes.OfType<IVanillaSourceNote>().FirstOrDefault()?.Describe() ?? GamesOwnCopy;
         var notes = output.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
-        return new MergeReportEntry(result.Path.Rel, output.Strategy, output.Contributors, MergeReportOutcome.Merged, notes, source, "");
+        return new MergeReportEntry(result.Path.Rel, output.Strategy, [.. output.Contributors.Reverse()], MergeReportOutcome.Merged, notes, source, "");
     }
 
     private IReadOnlyList<ContestedPath> Contested(Loadout.ReadOnly loadout, AMergeGame game)

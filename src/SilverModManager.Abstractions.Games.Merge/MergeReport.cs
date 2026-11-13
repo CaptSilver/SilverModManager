@@ -30,7 +30,7 @@ public static class MergeReportOutcomes
 /// <summary>One path of a <see cref="MergeReport"/>.</summary>
 /// <param name="Path">The package-relative path.</param>
 /// <param name="Strategy">The strategy's name as the game's strategy names spell it; empty when the engine has none.</param>
-/// <param name="Contributors">The mods that provide the path, the highest priority first, which is the order they are folded in.</param>
+/// <param name="Contributors">The mods that provide the path in load order, the one loaded last winning.</param>
 /// <param name="Outcome">What the apply does with the path.</param>
 /// <param name="Notes">What the merge kept, dropped or took whole, as sentences.</param>
 /// <param name="VanillaSource">Where the ancestor of the merge comes from; empty for the unions, which compare nothing.</param>

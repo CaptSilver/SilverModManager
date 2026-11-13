@@ -118,7 +118,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         entry.Path.Should().Be(X);
         entry.Outcome.Should().Be(MergeReportOutcome.Merged);
         entry.Strategy.Should().Be("text-3way");
-        entry.Contributors.Should().Equal("A", "B");
+        entry.Contributors.Should().Equal("B", "A");
         entry.VanillaSource.Should().Be("the game's own copy");
         entry.Reason.Should().BeEmpty();
         entry.Notes.Should().ContainSingle().Which.Should().Contain("kept A's");
@@ -374,7 +374,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
 
         output.Contributors.Should().Equal("Foo (modA)", "Foo (modB)");
         output.Notes.OfType<LinesKept>().Should().ContainSingle().Which.Should().Match<LinesKept>(n => n.KeptMod == "Foo (modA)" && n.DroppedMod == "Foo (modB)");
-        engine.Report(loadout, MergeSourceMode.Report).Entries.Single().Contributors.Should().Equal("Foo (modA)", "Foo (modB)");
+        engine.Report(loadout, MergeSourceMode.Report).Entries.Single().Contributors.Should().Equal("Foo (modB)", "Foo (modA)");
     }
 
     private async Task<Loadout.ReadOnly> WithBinaryContributor()
@@ -413,7 +413,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
 
         entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
         entry.Reason.Should().Be("not a file the app merges; load order decides");
-        entry.Contributors.Should().Equal("A", "B");
+        entry.Contributors.Should().Equal("B", "A");
     }
 
     [Fact]

@@ -16,7 +16,7 @@ public sealed class MergeReports(
 {
     /// <summary>The sentence that tells the user how the contributor order is changed.</summary>
     public const string PriorityOrderHint =
-        "Contributors are ordered by the loadout's mod priority; change it under Rules, File Conflicts on the loadout page (Move up / Move down), which allows edits in a loadout with a single collection";
+        "Contributors are listed in load order, the last one wins; change it under Rules, File Conflicts on the loadout page (Move up / Move down), which allows edits in a loadout with a single collection";
 
     private const string HeldBack = "not merged: the apply is refused";
 
@@ -96,7 +96,8 @@ public sealed class MergeReports(
     private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed, string? archiveFailure)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
-        var mods = candidate.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).ToArray();
+        // The merge folds the highest priority first; the report lists the same mods winner last, like every ordering page.
+        var mods = candidate.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).Reverse().ToArray();
 
         if (!candidate.Outcome.Merges)
         {

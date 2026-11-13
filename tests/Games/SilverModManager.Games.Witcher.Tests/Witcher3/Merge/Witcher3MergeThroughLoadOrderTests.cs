@@ -156,7 +156,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         Text(Merged(loadout).Bytes).Should().Be(Script("\n", (4, "  a = 12;")), "modB is ranked over modA");
         var entry = OnlyEntry(loadout);
         entry.Outcome.Should().Be(MergeReportOutcome.Merged);
-        entry.Contributors.Should().Equal("modB", "modA");
+        entry.Contributors.Should().Equal("modA", "modB");
         entry.Notes.Should().ContainSingle().Which.Should().Contain("kept modB's");
         entry.VanillaSource.Should().Be("the game's own copy");
     }
@@ -170,7 +170,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         await Variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, Connection.Db);
 
         Text(Merged(loadout).Bytes).Should().Be(Script("\n", (4, "  a = 11;")), "modA now loads last");
-        OnlyEntry(loadout).Contributors.Should().Equal("modA", "modB");
+        OnlyEntry(loadout).Contributors.Should().Equal("modB", "modA");
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         loadout = Fresh(loadout);
 
         Text(Merged(loadout).Bytes).Should().Be(Script("\n", (4, "  a = 21;")), "the folder holds a priority 3 group, which beats modB's 2");
-        OnlyEntry(loadout).Contributors.Should().Equal("SdlLow", "modB");
+        OnlyEntry(loadout).Contributors.Should().Equal("modB", "SdlLow");
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public class Witcher3MergeThroughLoadOrderTests(ITestOutputHelper helper)
         var entry = OnlyEntry(loadout);
 
         entry.Outcome.Should().Be(MergeReportOutcome.Merged);
-        entry.Contributors.Should().Equal("modB", "modA");
+        entry.Contributors.Should().Equal("modA", "modB");
         (await CardDetails(loadout)).Should().NotContain(details => details.Contains("could not be merged"));
     }
 
