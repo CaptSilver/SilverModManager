@@ -119,11 +119,18 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     /// The script extender's own DLLs and loader (EngineFiles, in the engine folder) and every DLL in its plugin
     /// folder. The loader's xml and ini files are not code, so the extension check drops them.
     /// </summary>
-    public bool HooksGameCode(GamePath path)
+    public bool HooksGameCode(GamePath path) => RoleOf(path) is not null;
+
+    /// <summary>
+    /// EngineFiles in the engine folder are the script extender's runtime; DLLs below its plugin folder are plugins.
+    /// </summary>
+    public NativeCodeRole? RoleOf(GamePath path)
     {
-        if (NativePluginFolder is { } plugins && NativeCodePaths.IsLibraryBelow(path, plugins)) return true;
-        if (EngineFiles.Length == 0) return false;
-        return NativeCodePaths.IsDirectlyIn(path, EnginePath, NativeExtensions) && EngineFilesRegex.IsMatch(path.FileName.ToString());
+        if (NativePluginFolder is { } plugins && NativeCodePaths.IsLibraryBelow(path, plugins)) return NativeCodeRole.LoaderPlugin;
+        if (EngineFiles.Length == 0) return null;
+        return NativeCodePaths.IsDirectlyIn(path, EnginePath, NativeExtensions) && EngineFilesRegex.IsMatch(path.FileName.ToString())
+            ? NativeCodeRole.LoaderRuntime
+            : null;
     }
     protected virtual string[] TopLevelDirs => KnownPaths.CommonTopLevelFolders;
     protected virtual Extension[] PluginLikeExtensions => [KnownCEExtensions.ESM, KnownCEExtensions.ESP, KnownCEExtensions.ESL];

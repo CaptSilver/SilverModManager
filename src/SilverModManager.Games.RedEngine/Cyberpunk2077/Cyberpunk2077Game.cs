@@ -44,12 +44,17 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
 
     // RED4ext and Cyber Engine Tweaks load through the winmm.dll / version.dll proxies in bin/x64 and hook by the
     // game's addresses, so each one, its plugins and the .asi plugins are built for one build of the game.
-    public bool HooksGameCode(GamePath path)
-        => NativeCodePaths.IsLibraryBelow(path, RedFourExtPluginsFolder)
-           || NativeCodePaths.IsDirectlyIn(path, RedFourExtFolder, Dll)
-           || NativeCodePaths.IsDirectlyIn(path, AsiFolder, Asi)
-           || (NativeCodePaths.IsDirectlyIn(path, BinFolder, Dll)
-               && (path.FileName.Equals("winmm.dll") || path.FileName.Equals("version.dll")));
+    public bool HooksGameCode(GamePath path) => RoleOf(path) is not null;
+
+    public NativeCodeRole? RoleOf(GamePath path)
+    {
+        if (NativeCodePaths.IsLibraryBelow(path, RedFourExtPluginsFolder) || NativeCodePaths.IsDirectlyIn(path, AsiFolder, Asi))
+            return NativeCodeRole.LoaderPlugin;
+        if (NativeCodePaths.IsDirectlyIn(path, RedFourExtFolder, Dll)) return NativeCodeRole.LoaderRuntime;
+        return NativeCodePaths.IsDirectlyIn(path, BinFolder, Dll) && (path.FileName.Equals("winmm.dll") || path.FileName.Equals("version.dll"))
+            ? NativeCodeRole.LoaderRuntime
+            : null;
+    }
 
     public TimeSpan? DateWindow => TimeSpan.FromDays(30);
 

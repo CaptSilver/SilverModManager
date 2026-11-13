@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.Values;
@@ -34,6 +35,18 @@ public sealed class UnityGame : DefinedGame<UnityGameDefinition>, IUnityGame, IG
 
     // The loader pack's own files (winhttp.dll, BepInEx/core) are not listed: they are not a mod the user picked.
     public bool HooksGameCode(GamePath path) => NativeCodePaths.IsLibraryBelow(path, PluginsFolder);
+
+    private static readonly GamePath CoreFolder = new(LocationId.Game, $"{BepInExFiles.Root}/core");
+    private static readonly Extension Dll = new(".dll");
+
+    // winhttp.dll is the proxy BepInEx puts beside the executable; it sits at the game root for every Unity game.
+    public NativeCodeRole? RoleOf(GamePath path)
+    {
+        if (NativeCodePaths.IsLibraryBelow(path, PluginsFolder)) return NativeCodeRole.LoaderPlugin;
+        if (path.LocationId == LocationId.Game && path.Path.Parent.Equals(RelativePath.Empty) && path.FileName.Equals("winhttp.dll"))
+            return NativeCodeRole.LoaderRuntime;
+        return NativeCodePaths.IsDirectlyIn(path, CoreFolder, Dll) ? NativeCodeRole.LoaderRuntime : null;
+    }
 
     public TimeSpan? DateWindow => Definition.DateWindow;
 

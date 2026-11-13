@@ -15,6 +15,24 @@ public interface IGameNativeCode
     /// archives and textures are not.
     /// </summary>
     bool HooksGameCode(GamePath path);
+
+    /// <summary>
+    /// What a native file at <paramref name="path"/> is to the loader that brings it in, or null for a file that
+    /// is not loader code. Every path <see cref="HooksGameCode"/> accepts is at least a plugin; games also name
+    /// the loader's own runtime files, which <see cref="HooksGameCode"/> leaves out so baseline classification
+    /// does not change.
+    /// </summary>
+    NativeCodeRole? RoleOf(GamePath path) => HooksGameCode(path) ? NativeCodeRole.LoaderPlugin : null;
+}
+
+/// <summary>Which part of a mod loader a native file is.</summary>
+public enum NativeCodeRole : byte
+{
+    /// <summary>A library the loader loads from its plugin folder.</summary>
+    LoaderPlugin,
+
+    /// <summary>The loader itself: its launcher, proxy DLL or core libraries.</summary>
+    LoaderRuntime,
 }
 
 /// <summary>Helpers for the path rules games share when they implement <see cref="IGameNativeCode"/>.</summary>
