@@ -277,4 +277,76 @@ its `runtime.library_path` names.
             .AddValue<string>("Problem")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate UnownedNativeCode = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 11))
+        .WithTitle("Code No Mod Provides")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{File} is in {GameName}'s {Where} but no mod provides it")
+        .WithDetails("""
+**{File}** is in {GameName}'s {Where}, but no enabled mod in the loadout provides it. The loadout does not manage it, so
+switching loadouts or turning mods off will not take it out, and {GameName} loads it anyway.
+
+{Details}
+
+Files that were adopted into the loadout's Overrides group count as not provided by a mod: they are leftovers from
+the game folder, not something you installed.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("File")
+            .AddValue<string>("Where")
+            .AddValue<MarkdownFragment>("Details")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate UnownedLoaderFiles = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 12))
+        .WithTitle("Loader Files The Loadout Does Not Own")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{GameName}'s {Loader} files in the game folder are not from a mod")
+        .WithDetails("""
+These files belong to {GameName}'s {Loader}, and no mod in the loadout provides them:
+
+{Files}
+
+The game needs them to start the loader, so they are not a problem. But the app cannot update or remove them along
+with the loadout. To change that, install the loader through the app so a mod owns the files.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("Loader")
+            .AddValue<MarkdownFragment>("Files")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate UnloadedGameRootLibrary = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 13))
+        .WithTitle("DLL In The Game Folder No Mod Provides")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{File} is in {GameName}'s game folder but no mod provides it")
+        .WithDetails("""
+**{File}** is in {GameName}'s game folder next to the game's executable, and no enabled mod in the loadout provides
+it. The loadout does not manage it, so switching loadouts or turning mods off will not take it out.
+
+{Reason}
+
+If you do not know where it came from, delete the file. If a mod you still use needs it, install that mod through the
+app so the loadout owns the file.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("File")
+            .AddValue<MarkdownFragment>("Reason")
+        )
+        .Finish();
 }

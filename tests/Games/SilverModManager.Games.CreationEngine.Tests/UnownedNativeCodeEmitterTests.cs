@@ -3,12 +3,13 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Sdk.Hashes;
-using SilverModManager.Games.CreationEngine.Emitters;
+using SilverModManager.Games.Generic.Diagnostics;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -21,13 +22,13 @@ using Xunit;
 namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
-/// Plugin DLLs that sit in the script extender's folder while no enabled mod provides them. The files are written to
+/// Native code that sits in the script extender's folders while no enabled mod provides it. The files are written to
 /// the stubbed game folder and the loadout is read through the real sync tree.
 /// </summary>
-public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
-    : AIsolatedGameTest<UnmanagedScriptExtenderPluginEmitterTests, CreationEngine.SkyrimVR.SkyrimVR>(helper)
+public class UnownedNativeCodeEmitterTests(ITestOutputHelper helper)
+    : AIsolatedGameTest<UnownedNativeCodeEmitterTests, CreationEngine.SkyrimVR.SkyrimVR>(helper)
 {
-    private static readonly DiagnosticId UnmanagedPluginId = new("SilverModManager.Games.CreationEngine", number: 9);
+    private static readonly DiagnosticId UnownedNativeCodeId = new("SilverModManager.Games.Generic", number: 11);
 
     private static readonly GamePath Plugins = new(LocationId.Game, "Data/SKSE/Plugins");
 
@@ -38,8 +39,8 @@ public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
             .AddUniversalGameLocator<CreationEngine.SkyrimVR.SkyrimVR>(new Version("1.4.15"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
-    // The emitter belongs to the game and is not a service, so it is found through the game.
-    private UnmanagedScriptExtenderPluginEmitter Emitter => Game.DiagnosticEmitters.OfType<UnmanagedScriptExtenderPluginEmitter>().Single();
+    // Shared by every game, so it is a service rather than part of the game's own emitter list.
+    private UnownedNativeCodeEmitter Emitter => ServiceProvider.GetServices<IDiagnosticEmitter>().OfType<UnownedNativeCodeEmitter>().Single();
 
     private async Task<Diagnostic[]> GetAllDiagnostics(Loadout.ReadOnly loadout)
     {
@@ -81,7 +82,7 @@ public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Id.Should().Be(UnmanagedPluginId);
+        diagnostic.Id.Should().Be(UnownedNativeCodeId);
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         Details(diagnostic).Should().Contain("leftover.dll").And.Contain("no enabled mod");
     }
@@ -175,12 +176,50 @@ public class UnmanagedScriptExtenderPluginEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task FilesThatAreNotDllsOrNotInThePluginFolderAreIgnored()
+    public async Task AFileThatIsNotADllIsIgnored()
     {
         var loadout = await CreateLoadout();
         await WriteOnDisk("Data/SKSE/Plugins/settings.ini");
+        await WriteOnDisk("Data/helper.exe");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task ADllOutsideThePluginFolderAndTheGameRootIsIgnored()
+    {
+        var loadout = await CreateLoadout();
         await WriteOnDisk("Data/SKSE/other.dll");
-        await WriteOnDisk("helper.dll");
+        await WriteOnDisk("Data/x.dll");
+
+        await ShouldHaveNoDiagnostics(loadout);
+    }
+
+    [Fact]
+    public async Task TheScriptExtendersOwnFilesAreASuggestion()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "sksevr_loader.exe");
+        await AddToOverrides(loadout, "sksevr_1_4_15.dll");
+        await WriteOnDisk("sksevr_loader.exe");
+        await WriteOnDisk("sksevr_1_4_15.dll");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Generic", number: 12));
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        Details(diagnostic).Should().Contain("sksevr_loader.exe").And.Contain("sksevr_1_4_15.dll");
+        var action = diagnostic.Actions.Should().ContainSingle(a => a.Id == DiagnosticActions.RemoveLoadoutFilesId).Subject;
+        DiagnosticActions.ParseRemoveLoadoutFiles(action.Arguments).Paths.Should().BeEquivalentTo(
+            [new GamePath(LocationId.Game, "sksevr_loader.exe"), new GamePath(LocationId.Game, "sksevr_1_4_15.dll")]);
+    }
+
+    [Fact]
+    public async Task AMohiddenCopyIsNotReported()
+    {
+        var loadout = await CreateLoadout();
+        await AddToOverrides(loadout, "Data/SKSE/Plugins/x.dll.mohidden");
+        await WriteOnDisk("Data/SKSE/Plugins/x.dll.mohidden");
 
         await ShouldHaveNoDiagnostics(loadout);
     }

@@ -24,6 +24,11 @@ public static class Services
         // (IGameUserDataFolders) rather than having to list the emitter.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UserDataLinkEmitter>());
 
+        // Shared for the same reason: any game can have a loader or a proxy DLL no mod owns. Also registered as its own
+        // type, so tests resolve the one instance the diagnostic manager runs.
+        services.TryAddSingleton<UnownedNativeCodeEmitter>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnownedNativeCodeEmitter>(sp => sp.GetRequiredService<UnownedNativeCodeEmitter>()));
+
         return services;
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
@@ -58,7 +59,8 @@ public class DanglingUserDataLinkTests : IDisposable
     [Fact]
     public void TheBrokenLinkCheckIsRegisteredOnceForEveryGame()
     {
-        using var provider = new ServiceCollection().AddGenericGameSupport().BuildServiceProvider();
+        // The shared native-code emitter reads the store's file list, so the bare container needs one.
+        using var provider = new ServiceCollection().AddGenericGameSupport().AddSingleton(Substitute.For<IFileHashesService>()).BuildServiceProvider();
 
         provider.GetServices<IDiagnosticEmitter>().OfType<UserDataLinkEmitter>().Should().ContainSingle();
     }
