@@ -13,6 +13,12 @@ public sealed class SteamWorkshopModSource(uint appId, IExternalModNamer namer, 
     public ExternalListing Listing => listing;
 
     public IReadOnlyList<string> Find(AbsolutePath gameFolder)
+        => Items(gameFolder).SelectMany(namer.Names).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    /// <summary>The folder name of each mod is the item's Steam id.</summary>
+    public IReadOnlyList<ExternalMod> FindMods(AbsolutePath gameFolder) => ExternalMod.Read(namer, Items(gameFolder));
+
+    private IEnumerable<AbsolutePath> Items(AbsolutePath gameFolder)
     {
         // Plain strings: a game folder at the top of a drive has no parents to ask for.
         var common = Path.GetDirectoryName(gameFolder.GetFullPath());
@@ -24,10 +30,6 @@ public sealed class SteamWorkshopModSource(uint appId, IExternalModNamer namer, 
         var content = gameFolder.FileSystem.FromUnsanitizedFullPath(library).Combine("workshop/content").Combine(appId.ToString());
         if (!content.DirectoryExists()) return [];
 
-        return content.EnumerateDirectories(recursive: false)
-            .OrderBy(item => item.FileName, StringComparer.Ordinal)
-            .SelectMany(namer.Names)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return content.EnumerateDirectories(recursive: false).OrderBy(item => item.FileName, StringComparer.Ordinal);
     }
 }

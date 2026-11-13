@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.LoadOrderFile.Manifests;
 using SilverModManager.Games.LoadOrderFile.Naming;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -26,8 +27,6 @@ namespace SilverModManager.Games.LoadOrderFile;
 public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, ILogger<GeneratedOrderFile> logger) : IIntrinsicFileRenderedFromLoadout
 {
     public GamePath Path { get; } = definition.OrderFile.ToGamePath();
-
-    private GamePath ModFolder => new(LocationId.Game, definition.ModFolder);
 
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
@@ -83,22 +82,51 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
            && node.Loadout.HaveEntityId
            && !isInOverrides(node.Loadout.EntityId);
 
+    /// <summary>A mod folder the loadout installs, with the manifest it carries when it has one.</summary>
+    internal sealed record ManagedMod(string Folder, ModManifest? Manifest)
+    {
+        /// <summary>What the order file lists it under: its manifest's id when the folder still has one, else the folder's name.</summary>
+        public string Name => Manifest?.Id ?? Folder;
+    }
+
     /// <summary>The file's text for <paramref name="managedFolders"/> and the external mods the game folder holds.</summary>
     /// <param name="gameFolder">The game folder, where the external sources and the managed mods' manifests are looked for.</param>
     /// <param name="currentFileText">The order file on disk, or null when there is none.</param>
     /// <param name="managedFolders">The loadout's mod folders, loser first.</param>
     internal string Render(AbsolutePath gameFolder, string? currentFileText, IReadOnlyList<string> managedFolders)
+        => definition.Format.Render(Order(gameFolder, currentFileText, managedFolders.Select(folder => new ManagedMod(folder, ManifestOnDisk(gameFolder, folder))).ToList()), currentFileText);
+
+    /// <summary>
+    /// The names the file lists, loser first: the external mods the file keeps, then the managed mods, except that a
+    /// managed mod whose manifest says it loads before an external mod goes directly before the first one it names.
+    /// A mod is placed that way only against the external mods, never another managed mod, whose order is the loadout's.
+    /// </summary>
+    internal IReadOnlyList<string> Order(AbsolutePath gameFolder, string? currentFileText, IReadOnlyList<ManagedMod> managedMods)
     {
-        var managed = managedFolders.Select(folder => ListedNameOf(gameFolder, folder)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var external = ExternalNames(gameFolder, currentFileText, managed);
-        return definition.Format.Render([.. external, .. managed], currentFileText);
+        var managed = managedMods.DistinctBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var order = ExternalNames(gameFolder, currentFileText, managed.Select(mod => mod.Name).ToList()).ToList();
+        var externals = order.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var tail = new List<string>();
+        foreach (var mod in managed)
+        {
+            var before = mod.Manifest is { } manifest ? manifest.LoadBefore.Concat(manifest.ForceLoadBefore).ToHashSet(StringComparer.OrdinalIgnoreCase) : [];
+            var target = before.Count == 0 ? -1 : order.FindIndex(name => externals.Contains(name) && before.Contains(name));
+            if (target >= 0) order.Insert(target, mod.Name);
+            else tail.Add(mod.Name);
+        }
+
+        return [.. order, .. tail];
     }
 
-    private readonly ManifestNamer? _managedNamer = definition.ManifestReader is { } reader ? new ManifestNamer(reader) : null;
+    /// <summary>The manifest a managed folder carries on disk, or null when it has none, or no reader exists for the game.</summary>
+    private ModManifest? ManifestOnDisk(AbsolutePath gameFolder, string folder)
+    {
+        if (definition.ManifestReader is not { } reader) return null;
 
-    /// <summary>The name the file lists a managed folder under: its manifest's id when the folder still has one, else the folder's name.</summary>
-    private string ListedNameOf(AbsolutePath gameFolder, string folder)
-        => _managedNamer?.Names(gameFolder.Combine(definition.ModFolder).Combine(folder)) is [var id, ..] ? id : folder;
+        var manifest = gameFolder.Combine(definition.ModFolder).Combine(folder).Combine(reader.ManifestPath);
+        return manifest.FileExists ? reader.Read(ManifestNamer.ReadAll(manifest)) : null;
+    }
 
     /// <summary>
     /// The external mods the file lists, in the file's order, minus any the loadout installs itself. A mod the file
@@ -131,11 +159,5 @@ public sealed class GeneratedOrderFile(LoadOrderFileGameDefinition definition, I
         return [.. front, .. inFile, .. tail];
     }
 
-    /// <summary>The mod a file in the game folder belongs to; the order file itself belongs to none.</summary>
-    private string? ModOf(GamePath file)
-    {
-        if (file == Path || !file.InFolder(ModFolder)) return null;
-
-        return definition.Format.ModOf(file.Path.RelativeTo(ModFolder.Path));
-    }
+    private string? ModOf(GamePath file) => ManagedModList.ModOf(definition, file);
 }

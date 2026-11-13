@@ -28,7 +28,7 @@ public class LoadOrderFileGamesNexusIdTests(IServiceProvider provider)
             new[]
             {
                 "LoadOrderFile.KingdomComeDeliverance", "LoadOrderFile.KingdomComeDeliverance2",
-                "LoadOrderFile.XCom2", "LoadOrderFile.XCom2WarOfTheChosen",
+                "LoadOrderFile.XCom2", "LoadOrderFile.XCom2WarOfTheChosen", "LoadOrderFile.RimWorld",
             }.Select(GameId.From));
     }
 
@@ -50,6 +50,7 @@ public class LoadOrderFileGamesNexusIdTests(IServiceProvider provider)
     [InlineData("LoadOrderFile.KingdomComeDeliverance", 2298u)]
     [InlineData("LoadOrderFile.KingdomComeDeliverance2", 7286u)]
     [InlineData("LoadOrderFile.XCom2", 1271u)]
+    [InlineData("LoadOrderFile.RimWorld", 424u)]
     public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
         NexusModsGameScope.ResolveNxmGame(FamilyGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)

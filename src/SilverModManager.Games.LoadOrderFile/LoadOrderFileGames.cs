@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using DynamicData.Kernel;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Games.Generic.Simple;
+using SilverModManager.Games.LoadOrderFile.Manifests;
 using SilverModManager.Games.LoadOrderFile.Naming;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
@@ -128,6 +130,48 @@ public static class LoadOrderFileGames
         NativeBuildFiles = XCom2NativeBuildFiles,
     };
 
+    // RimWorld lists a mod by the packageId in its About.xml (the game compares ids without regard to case), so the
+    // folder takes that name; an archive that has none cannot be listed and is refused. One archive holds one mod.
+    private static readonly AboutXmlManifestReader RimWorldManifests = new();
+
+    private static readonly SimpleInstallRules RimWorldInstall = SimpleInstallPresets.InOwnFolderByMarker(
+        "About/About.xml", new ManifestIdFolderName(RimWorldManifests, "RimWorld", "packageId") { RequireName = true }, refuseWhenSeveral: true);
+
+    // The game cannot run without Core, so it is always listed; an expansion is on only when the file says so. Both
+    // live in the game's own Data folder.
+    private static readonly GameDataFolderModSource RimWorldCore = new("Data", RimWorldManifests, id => id == "ludeon.rimworld", ExternalListing.Always);
+
+    private static readonly GameDataFolderModSource RimWorldExpansions = new("Data", RimWorldManifests, id => id.StartsWith("ludeon.rimworld.", StringComparison.Ordinal), ExternalListing.WhenListed);
+
+    /// <summary>Vortex (game-rimworld) and Mod Organizer 2's Nexus id; ids and executables from the Steam launch entry.</summary>
+    public static readonly LoadOrderFileGameDefinition RimWorld = new()
+    {
+        GameId = GameId.From("LoadOrderFile.RimWorld"),
+        DisplayName = "RimWorld",
+        NexusModsGameId = Optional<NexusModsGameId>.Create(NexusModsGameId.From(424)),
+        SteamAppIds = [294100],
+        GogProductIds = [1094900565],
+        Executable = "RimWorldWin64.exe",
+        NativeLinuxExecutable = "start_RimWorld.sh",
+        ModFolder = "Mods",
+        Install = RimWorldInstall,
+        OrderFile = new OrderFileLocation(
+            ModLocationRoot.LocalAppDataLow,
+            "Ludeon Studios/RimWorld by Ludeon Studios/Config/ModsConfig.xml",
+            NativeLinuxPath: "unity3d/Ludeon Studios/RimWorld by Ludeon Studios/Config/ModsConfig.xml"),
+        Format = new ModsConfigXmlFormat(),
+        ManifestReader = RimWorldManifests,
+        ExternalMods =
+        [
+            RimWorldCore,
+            RimWorldExpansions,
+            new SteamWorkshopModSource(294100, new ManifestNamer(RimWorldManifests)),
+            new ModFolderModSource("Mods", new ManifestNamer(RimWorldManifests), ExternalListing.WhenListed),
+        ],
+        LocationNames = new Dictionary<string, string> { ["Simple.LocalAppDataLow"] = "Config folder" }.ToImmutableDictionary(),
+        LocationSentenceNames = new Dictionary<string, string> { ["Simple.LocalAppDataLow"] = "the game's config folder" }.ToImmutableDictionary(),
+    };
+
     public static IReadOnlyList<LoadOrderFileGameDefinition> All { get; } =
-        [KingdomComeDeliverance, KingdomComeDeliverance2, XCom2, XCom2WarOfTheChosen];
+        [KingdomComeDeliverance, KingdomComeDeliverance2, XCom2, XCom2WarOfTheChosen, RimWorld];
 }

@@ -45,10 +45,17 @@ public abstract class ALoadOrderFileGameTests<TTest>(ITestOutputHelper outputHel
     }
 
     /// <summary>Like <see cref="InstallTargets(string[], string?)"/>, for an archive the test built.</summary>
-    protected async Task<string[]?> InstallTargets(LibraryArchive.ReadOnly archive)
+    protected async Task<string[]?> InstallTargets(LibraryArchive.ReadOnly archive) => (await TryInstall(archive)).Targets;
+
+    /// <summary>
+    /// Like <see cref="InstallTargets(LibraryArchive.ReadOnly)"/>, plus the first reason an installer gave for not taking
+    /// the archive, which is what the player reads when none of them does.
+    /// </summary>
+    protected async Task<(string[]? Targets, string? Reason)> TryInstall(LibraryArchive.ReadOnly archive)
     {
         var loadout = await CreateLoadout();
         var libraryItem = archive.AsLibraryFile().AsLibraryItem();
+        string? reason = null;
 
         foreach (var installer in Game.LibraryItemInstallers)
         {
@@ -60,16 +67,22 @@ public abstract class ALoadOrderFileGameTests<TTest>(ITestOutputHelper outputHel
             };
 
             var result = await installer.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+            if (result.IsNotSupported(out var why))
+            {
+                reason ??= why;
+                continue;
+            }
+
             if (result.IsSuccess is false) continue;
 
             var committed = (await tx.Commit()).Remap(group);
-            return committed.Children.OfTypeLoadoutItemWithTargetPath()
+            return (committed.Children.OfTypeLoadoutItemWithTargetPath()
                 .Select(file => (GamePath)file.TargetPath)
                 .Select(path => $"{path.LocationId}:{path.Path}")
                 .Order(StringComparer.Ordinal)
-                .ToArray();
+                .ToArray(), null);
         }
 
-        return null;
+        return (null, reason);
     }
 }

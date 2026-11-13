@@ -12,14 +12,15 @@ public sealed class ModFolderModSource(RelativePath modFolder, IExternalModNamer
     public ExternalListing Listing => listing;
 
     public IReadOnlyList<string> Find(AbsolutePath gameFolder)
+        => Folders(gameFolder).SelectMany(namer.Names).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    public IReadOnlyList<ExternalMod> FindMods(AbsolutePath gameFolder) => ExternalMod.Read(namer, Folders(gameFolder));
+
+    private IEnumerable<AbsolutePath> Folders(AbsolutePath gameFolder)
     {
         var folder = gameFolder.Combine(modFolder);
-        if (!folder.DirectoryExists()) return [];
-
-        return folder.EnumerateDirectories(recursive: false)
-            .OrderBy(mod => mod.FileName, StringComparer.Ordinal)
-            .SelectMany(namer.Names)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return folder.DirectoryExists()
+            ? folder.EnumerateDirectories(recursive: false).OrderBy(mod => mod.FileName, StringComparer.Ordinal)
+            : [];
     }
 }

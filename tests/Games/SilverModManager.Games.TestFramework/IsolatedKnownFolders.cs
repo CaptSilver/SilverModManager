@@ -18,6 +18,7 @@ public static class IsolatedKnownFolders
         var prefix = new WinePrefix { ConfigurationDirectory = pfx.Path };
         var overlay = prefix.CreateOverlayFileSystem(FileSystem.Shared);
         overlay.GetKnownPath(KnownPath.LocalApplicationDataDirectory).CreateDirectory();
+        overlay.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Parent.Combine("LocalLow").CreateDirectory();
         overlay.GetKnownPath(KnownPath.MyDocumentsDirectory).CreateDirectory();
         return overlay;
     }

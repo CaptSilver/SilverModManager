@@ -15,7 +15,7 @@ public class LoadOrderFileGamesTableTests
     {
         LoadOrderFileGames.All.Should().Equal(
             LoadOrderFileGames.KingdomComeDeliverance, LoadOrderFileGames.KingdomComeDeliverance2,
-            LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen);
+            LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen, LoadOrderFileGames.RimWorld);
     }
 
     // Steam ids, GOG ids and executables from each app's Steam launch entry (api.steamcmd.net), the Mod Organizer 2
@@ -28,6 +28,7 @@ public class LoadOrderFileGamesTableTests
         { "LoadOrderFile.KingdomComeDeliverance2", "Kingdom Come: Deliverance II", "Bin/Win64MasterMasterSteamPGO/KingdomCome.exe", 1771300, 7286 },
         { "LoadOrderFile.XCom2", "XCOM 2", "Binaries/Win64/XCom2.exe", 268500, 1271 },
         { "LoadOrderFile.XCom2WarOfTheChosen", "XCOM 2: War of the Chosen", "XCom2-WarOfTheChosen/Binaries/Win64/XCom2.exe", 268500, 1271 },
+        { "LoadOrderFile.RimWorld", "RimWorld", "RimWorldWin64.exe", 294100, 424 },
     };
 
     [Theory]

@@ -93,6 +93,13 @@ public abstract class AKingdomComeRowTests<TTest>(ITestOutputHelper outputHelper
         => $"<?xml version=\"1.0\" encoding=\"utf-8\"?><kcd_mod><info><name>Some Name</name><modid>{modId}</modid></info></kcd_mod>";
 
     [Fact]
+    public void TheGameHasNoManifestDiagnostics()
+    {
+        Game.DiagnosticEmitters.OfType<WorkshopDuplicateEmitter>().Should().BeEmpty("the game has no Steam Workshop source");
+        Game.DiagnosticEmitters.OfType<ManifestOrderEmitter>().Should().BeEmpty("the game has no manifest reader");
+    }
+
+    [Fact]
     public void ModsLiveInTheModsFolderAndTheOrderFileBesideThem()
     {
         Definition.ModFolder.ToString().Should().Be("Mods");

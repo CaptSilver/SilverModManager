@@ -170,6 +170,112 @@ public class GeneratedOrderFileTests : IDisposable
         OrderFile(ListedOrNoFile).Render(Game, "Old", ["old"]).Should().Be("old");
     }
 
+    private static readonly ModsConfigXmlFormat Xml = new();
+
+    private static GeneratedOrderFile RimWorldShaped(params IExternalModSource[] sources) => new(
+        LoadOrderFileGames.KingdomComeDeliverance with { Format = Xml, ManifestReader = new AboutXmlManifestReader(), ExternalMods = sources },
+        NullLogger<GeneratedOrderFile>.Instance);
+
+    private static GameDataFolderModSource CoreSource() => new("Data", new AboutXmlManifestReader(), id => id == "ludeon.rimworld", ExternalListing.Always);
+
+    private void WriteCore() => Write("Data/Core/About/About.xml", "<ModMetaData><packageId>Ludeon.RimWorld</packageId></ModMetaData>");
+
+    private void WriteManaged(string folder, string packageId, params string[] loadBefore)
+        => Write($"Mods/{folder}/About/About.xml", $"<ModMetaData><packageId>{packageId}</packageId><loadBefore>{string.Join("", loadBefore.Select(id => $"<li>{id}</li>"))}</loadBefore></ModMetaData>");
+
+    private static string[] OrderOf(string text) => Xml.Listed(text).ToArray();
+
+    [Fact]
+    public void AManagedModThatLoadsBeforeAnExternalGoesDirectlyBeforeIt()
+    {
+        WriteCore();
+        WriteManaged("Harmony", "Brrainz.Harmony", "Ludeon.RimWorld");
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, Xml.Render(["ludeon.rimworld"], null), ["Harmony"]);
+
+        OrderOf(text).Should().Equal("brrainz.harmony", "ludeon.rimworld");
+    }
+
+    [Fact]
+    public void AManagedModWithoutItsManifestOnDiskIsAppended()
+    {
+        WriteCore();
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, Xml.Render(["ludeon.rimworld"], null), ["Harmony"]);
+
+        OrderOf(text).Should().Equal("ludeon.rimworld", "harmony");
+    }
+
+    [Fact]
+    public void AManagedModThatLoadsBeforeNothingTheFileHoldsIsAppended()
+    {
+        WriteCore();
+        WriteManaged("Harmony", "Brrainz.Harmony", "Some.Other");
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, Xml.Render(["ludeon.rimworld"], null), ["Harmony"]);
+
+        OrderOf(text).Should().Equal("ludeon.rimworld", "brrainz.harmony");
+    }
+
+    [Fact]
+    public void AHoistedModGoesAheadOfAManagedModWithNoRule()
+    {
+        WriteCore();
+        WriteManaged("Harmony", "Brrainz.Harmony", "Ludeon.RimWorld");
+        WriteManaged("Plain", "Some.Plain");
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, null, ["Plain", "Harmony"]);
+
+        OrderOf(text).Should().Equal("brrainz.harmony", "ludeon.rimworld", "some.plain");
+    }
+
+    [Fact]
+    public void AHoistedModKeepsItsOrderAmongOtherHoistedMods()
+    {
+        WriteCore();
+        WriteManaged("A", "Mod.A", "ludeon.rimworld");
+        WriteManaged("B", "Mod.B", "ludeon.rimworld");
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, null, ["A", "B"]);
+
+        OrderOf(text).Should().Equal("mod.a", "mod.b", "ludeon.rimworld");
+    }
+
+    [Fact]
+    public void AHoistGoesBeforeTheFirstOfSeveralExternalsItNames()
+    {
+        WriteCore();
+        WriteManaged("Harmony", "Brrainz.Harmony", "Ludeon.RimWorld.Royalty", "Ludeon.RimWorld");
+        Write("Data/Royalty/About/About.xml", "<ModMetaData><packageId>Ludeon.RimWorld.Royalty</packageId></ModMetaData>");
+        var royalty = new GameDataFolderModSource("Data", new AboutXmlManifestReader(), id => id.StartsWith("ludeon.rimworld."), ExternalListing.WhenListed);
+
+        var text = RimWorldShaped(CoreSource(), royalty).Render(Game, Xml.Render(["ludeon.rimworld", "ludeon.rimworld.royalty"], null), ["Harmony"]);
+
+        OrderOf(text).Should().Equal("brrainz.harmony", "ludeon.rimworld", "ludeon.rimworld.royalty");
+    }
+
+    [Fact]
+    public void AForceLoadBeforeRuleHoistsToo()
+    {
+        WriteCore();
+        Write("Mods/Harmony/About/About.xml", "<ModMetaData><packageId>Brrainz.Harmony</packageId><forceLoadBefore><li>Ludeon.RimWorld</li></forceLoadBefore></ModMetaData>");
+
+        var text = RimWorldShaped(CoreSource()).Render(Game, null, ["Harmony"]);
+
+        OrderOf(text).Should().Equal("brrainz.harmony", "ludeon.rimworld");
+    }
+
+    [Fact]
+    public void AWorkshopHarmonyAboveCoreStaysAboveCore()
+    {
+        WriteCore();
+        var workshop = new FixedSource(ExternalListing.WhenListed, "brrainz.harmony");
+
+        var text = RimWorldShaped(CoreSource(), workshop).Render(Game, Xml.Render(["brrainz.harmony", "ludeon.rimworld"], null), []);
+
+        OrderOf(text).Should().Equal("brrainz.harmony", "ludeon.rimworld");
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
