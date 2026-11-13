@@ -11,6 +11,11 @@ public readonly record struct WineDllOverride(string DllName, ImmutableArray<Win
     /// </summary>
     public bool IsDisabled => OverrideTypes is [WineDllOverrideType.Disabled];
 
+    /// <summary>
+    /// Gets whether Wine tries a native DLL of this name before its own builtin, so a file in the game folder loads.
+    /// </summary>
+    public bool PrefersNative => OverrideTypes is [WineDllOverrideType.Native, ..];
+
     internal static readonly ImmutableArray<WineDllOverrideType> Disabled = [WineDllOverrideType.Disabled];
 
     /// <inheritdoc/>
