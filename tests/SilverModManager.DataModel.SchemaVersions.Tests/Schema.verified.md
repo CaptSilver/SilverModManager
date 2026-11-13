@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xFDC858D5FB838FC2
-   - Total attributes: 425
+   - Fingerprint: 0xEE596E4059C5DE81
+   - Total attributes: 426
    - Total namespaces: 114
    
 ## Attributes
@@ -283,6 +283,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.LoadoutItem/ProtectedPathsAllowed                               | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroup/GameSettingsGroup                              | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroup/Group                                          | Null                    | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutItemGroup/SetAsideGroup                                  | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Loadout                                | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Priority                               | UInt64                  | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Target                                 | Reference               | False   | False | False     | 

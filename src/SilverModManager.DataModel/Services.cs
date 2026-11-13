@@ -140,6 +140,7 @@ public static class Services
         coll.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
+        coll.AddSingleton<ISetAsideFiles, SetAsideFiles>();
         coll.AddFreedesktopTrash();
         coll.AddSingleton<IGameFolderFileRemoval, GameFolderFileRemoval>();
         coll.AddSingleton<ILoadoutFileRemover, LoadoutFileRemover>();

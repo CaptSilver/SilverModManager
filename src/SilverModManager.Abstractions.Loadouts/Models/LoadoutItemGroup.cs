@@ -25,6 +25,12 @@ public partial class LoadoutItemGroup : IModelDefinition
     public static readonly MarkerAttribute GameSettingsGroup = new(Namespace, nameof(GameSettingsGroup)) { IsIndexed = true };
 
     /// <summary>
+    /// Marks the disabled group that holds files the Health Check set aside. Looked up by the marker, so the group's
+    /// name is free text the user can change.
+    /// </summary>
+    public static readonly MarkerAttribute SetAsideGroup = new(Namespace, nameof(SetAsideGroup)) { IsIndexed = true };
+
+    /// <summary>
     /// Children of the group.
     /// </summary>
     public static readonly BackReferenceAttribute<LoadoutItem> Children = new(LoadoutItem.Parent);
