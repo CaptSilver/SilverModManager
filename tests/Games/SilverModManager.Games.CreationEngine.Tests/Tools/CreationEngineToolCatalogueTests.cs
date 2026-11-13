@@ -44,8 +44,17 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
 
         configurator.Arguments.Words.Should().BeEmpty();
         configurator.Prefix.Should().Be(ToolPrefixRequirements.None);
-        configurator.Output.Should().Be(ToolOutput.None);
         configurator.ExitCodes.Should().Be(ExitCodePolicy.AnyExitIsFine);
+    }
+
+    [Fact]
+    public void TheOcuConfiguratorKeepsItsOutput()
+    {
+        var configurator = Definition("oc-unleashed-configurator");
+
+        configurator.Output.Should().Be(new ToolOutput.GameFolder("OpenComposite Unleashed Configurator output"));
+        configurator.IgnoredOutput.Should().Contain("**/*.log");
+        configurator.IgnoredOutput.Should().Contain("**/*.log?");
     }
 
     [Theory]

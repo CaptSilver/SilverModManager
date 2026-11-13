@@ -172,6 +172,10 @@ public static class CreationEngineToolCatalogue
                 AppliesTo = game => game.GameId == SkyrimVR.SkyrimVR.GameId,
                 ExecutableNames = _ => OcUnleashedConfiguratorNames,
                 Arguments = ArgumentTemplate.Empty,
+                // It edits opencomposite.ini and ConfiguratorUI.json beside the game; without a group those writes
+                // sit in Overrides where nothing says where they came from.
+                Output = new ToolOutput.GameFolder("OpenComposite Unleashed Configurator output"),
+                IgnoredOutput = ["**/*.log", "**/*.log?"],
                 ExitCodes = ExitCodePolicy.AnyExitIsFine,
             },
         ];
