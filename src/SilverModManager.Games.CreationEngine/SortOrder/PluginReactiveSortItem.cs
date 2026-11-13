@@ -9,10 +9,11 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 /// <summary>
 /// One plugin on the Load Order page.
 /// </summary>
-public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSortItem, SortItemKey<string>>, ISortItemDetails
+public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSortItem, SortItemKey<string>>, ISortItemDetails, IGroundcoverSortItem
 {
     /// <param name="isEnabled">The plugin's own switch in the sort order.</param>
-    public PluginReactiveSortItem(int sortIndex, string name, bool isEnabled, PluginLoadoutData loadoutData)
+    /// <param name="isGroundcover">Whether OpenMW loads the plugin as groundcover.</param>
+    public PluginReactiveSortItem(int sortIndex, string name, bool isEnabled, PluginLoadoutData loadoutData, bool isGroundcover = false)
     {
         SortIndex = sortIndex;
         DisplayName = name;
@@ -20,6 +21,7 @@ public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSor
         // The row's own switch is ignored for a plugin the game installed: the group's switch is the only one.
         IsEnabled = loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled;
         LoadoutData = loadoutData;
+        IsGroundcover = isGroundcover;
         ModName = loadoutData.ModName;
         ModGroupId = loadoutData.ModGroupId is { } id ? LoadoutItemGroupId.From(id) : Optional<LoadoutItemGroupId>.None;
         Masters = loadoutData.Masters;
@@ -46,4 +48,5 @@ public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSor
     public bool IsLocked { get; }
     public SortItemLockReason? LockReason { get; }
     public bool IsEnabled { get; }
+    public bool IsGroundcover { get; }
 }

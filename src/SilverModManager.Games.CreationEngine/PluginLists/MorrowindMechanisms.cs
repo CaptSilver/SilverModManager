@@ -56,7 +56,10 @@ public sealed class OpenMwMechanism : IPluginListMechanism
         var file = loadout.InstallationInstance.Locations.ToAbsolutePath(OpenMwConstants.OpenMwConfigFile);
         if (!file.FileExists) return null;
 
-        var names = OpenMwContentWriter.ContentNames(new OpenMwConfigFormat().Decode(await file.ReadAllBytesAsync()));
-        return new GamePluginListState(names.Select(name => (name, true)).ToList());
+        var text = new OpenMwConfigFormat().Decode(await file.ReadAllBytesAsync());
+        return new GamePluginListState(OpenMwContentWriter.ContentNames(text).Select(name => (name, true)).ToList())
+        {
+            Groundcover = OpenMwContentWriter.GroundcoverNames(text).ToHashSet(PluginNameComparer.Instance),
+        };
     }
 }

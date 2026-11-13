@@ -4714,6 +4714,15 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Groundcover.
+        /// </summary>
+        public static string LoadOrder_GroundcoverColumnHeader {
+            get {
+                return ResourceManager.GetString("LoadOrder_GroundcoverColumnHeader", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Details.
         /// </summary>
         public static string LoadOrder_DetailsColumnHeader {

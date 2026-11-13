@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x216E1CF3BC21946A
-   - Total attributes: 432
+   - Fingerprint: 0xDD2A404461EB8C75
+   - Total attributes: 433
    - Total namespaces: 115
    
 ## Attributes
@@ -127,6 +127,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.CreationEngine.PluginListNotice/Summary                            | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginSortOrder/Marker                              | Null                    | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginSortOrder/SeededFromGameFile                  | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginSortableEntry/Groundcover                     | UInt8                   | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginSortableEntry/IsEnabled                       | UInt8                   | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginSortableEntry/PluginName                      | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 

@@ -71,6 +71,9 @@ public class OpenMw(IServiceProvider provider) : ACreationEngineGame<OpenMw>(pro
 
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
 
+    // Same rule as the base: one instance per game, because the variety owns a header cache.
+    protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new OpenMwPluginSortOrderVariety(provider, this)];
+
     public override IReadOnlyList<string> HardcodedPlugins => [];
 
     // OpenMW loads plugins in the order of its content= lines and ignores the master flag
@@ -95,7 +98,7 @@ public class OpenMw(IServiceProvider provider) : ACreationEngineGame<OpenMw>(pro
         {
             var dataLocal = installation.Locations.ToAbsolutePath(DataPath);
             var elsewhere = PluginDirectories(installation).Where(directory => directory != dataLocal).ToList();
-            early.AddRange(OpenMwContentWriter.ContentNames(config).Where(name => IsMasterIn(elsewhere, name)));
+            early.AddRange(OpenMwContentWriter.PlainContentNames(config).Where(name => IsMasterIn(elsewhere, name)));
         }
 
         return early.Distinct(PluginNameComparer.Instance).ToList();

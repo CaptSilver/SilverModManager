@@ -159,4 +159,44 @@ public class OpenMwContentWriterTests
     [Fact]
     public void ContentNamesDropsADuplicateKeepingTheFirst() =>
         OpenMwContentWriter.ContentNames("content=A.esp\ncontent=B.esp\ncontent=a.ESP\n").Should().Equal("A.esp", "B.esp");
+
+    [Fact]
+    public void AGroundcoverNameIsWrittenUnderGroundcoverAndNotContent()
+    {
+        var result = OpenMwContentWriter.Rewrite("content=Morrowind.esm\ncontent=Grass.esp\n", ["Morrowind.esm", "Mod.esp"], ["Grass.esp"], Names("Morrowind.esm", "Mod.esp", "Grass.esp"));
+
+        result.Should().Be("content=Morrowind.esm\ncontent=Mod.esp\ngroundcover=Grass.esp\n");
+    }
+
+    [Fact]
+    public void TurningGroundcoverOffMovesTheNameBack()
+    {
+        var result = OpenMwContentWriter.Rewrite("content=Morrowind.esm\ngroundcover=Grass.esp\n", ["Morrowind.esm", "Grass.esp"], [], Names("Morrowind.esm", "Grass.esp"));
+
+        result.Should().Be("content=Morrowind.esm\ncontent=Grass.esp\n");
+    }
+
+    [Fact]
+    public void UnownedGroundcoverLinesAndDoubleHashLinesAreUntouched()
+    {
+        var text = "groundcover=Theirs.esp\n##content=Parked.esp\n##groundcover=Parked2.esp\ncontent=Morrowind.esm\n";
+
+        var result = OpenMwContentWriter.Rewrite(text, ["Morrowind.esm"], ["Grass.esp"], Names("Morrowind.esm", "Grass.esp"));
+
+        // The owned block follows the last unowned groundcover line, so the user's line keeps its place first.
+        result.Should().Be("groundcover=Theirs.esp\ngroundcover=Grass.esp\n##content=Parked.esp\n##groundcover=Parked2.esp\ncontent=Morrowind.esm\n");
+    }
+
+    [Fact]
+    public void ALauncherStyleRewriteReadsBackBothKeys()
+    {
+        var launcher = "data=\"/games/Morrowind/Data Files\"\r\ncontent=Morrowind.esm\r\ncontent=Mod.esp\r\ngroundcover=Grass.esp\r\n";
+
+        OpenMwContentWriter.ContentNames(launcher).Should().Equal("Morrowind.esm", "Mod.esp", "Grass.esp");
+        OpenMwContentWriter.GroundcoverNames(launcher).Should().Equal("Grass.esp");
+
+        var rewritten = OpenMwContentWriter.Rewrite(launcher, ["Morrowind.esm", "Mod.esp"], ["Grass.esp"], Names("Morrowind.esm", "Mod.esp", "Grass.esp"));
+
+        rewritten.Should().Be(launcher);
+    }
 }

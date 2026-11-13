@@ -55,7 +55,7 @@ internal static class PluginListSeeder
                 .Select(row => new PluginSortData(row.DisplayName, row.SortIndex, row.IsEnabled, (row.LoadoutData as PluginLoadoutData)?.EarlyLoaderIndex))
                 .ToList();
             var order = PluginOrderMerge.Build(existing, state.Entries.Select(e => (e.Name, (bool?)e.Active)).ToList(), early);
-            variety.StageOrder(sortOrderId, order, tx);
+            variety.StageOrder(sortOrderId, order, state.Groundcover, tx);
         }
 
         tx.Add(sortOrderId.Value, PluginSortOrder.SeededFromGameFile, true);

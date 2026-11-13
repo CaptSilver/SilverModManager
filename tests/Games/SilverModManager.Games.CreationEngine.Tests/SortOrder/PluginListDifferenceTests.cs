@@ -45,6 +45,48 @@ public class PluginListDifferenceTests
     }
 
     [Fact]
+    public void APluginTheGameMovedBetweenContentAndGroundcover_IsGroundcoverChanged()
+    {
+        var expected = new[] { On("A.esp"), new PluginListEntry("B.esp", true, Groundcover: true) };
+        var onDisk = new[] { On("A.esp"), On("B.esp") };
+
+        var diff = PluginListDifference.Between(expected, onDisk);
+
+        diff.GroundcoverChanged.Should().Equal("B.esp");
+        diff.SwitchedOff.Should().BeEmpty();
+        diff.Moved.Should().BeEmpty();
+        diff.IsEmpty.Should().BeFalse();
+        diff.Summary().Should().Be("1 groundcover changed: B.esp");
+    }
+
+    [Fact]
+    public void GroundcoverLinesAfterTheContentLines_AreNotMoved()
+    {
+        // openmw.cfg as the app writes it: groundcover= lines are a block of their own, after content=.
+        var expected = new[] { On("A.esp"), new PluginListEntry("G.esp", true, Groundcover: true), On("B.esp") };
+        var onDisk = new[] { On("A.esp"), On("B.esp"), new PluginListEntry("G.esp", true, Groundcover: true) };
+
+        PluginListDifference.Between(expected, onDisk).IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GroundcoverLinesInADifferentOrder_AreMoved()
+    {
+        var expected = new[] { new PluginListEntry("G.esp", true, Groundcover: true), new PluginListEntry("H.esp", true, Groundcover: true), On("A.esp") };
+        var onDisk = new[] { On("A.esp"), new PluginListEntry("H.esp", true, Groundcover: true), new PluginListEntry("G.esp", true, Groundcover: true) };
+
+        PluginListDifference.Between(expected, onDisk).Moved.Should().ContainSingle().Which.Should().BeOneOf("G.esp", "H.esp");
+    }
+
+    [Fact]
+    public void AGroundcoverFlagIsOnlyComparedForAnActivePlugin()
+    {
+        var expected = new[] { new PluginListEntry("B.esp", false, Groundcover: true) };
+
+        PluginListDifference.Between(expected, [Off("B.esp")]).IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
     public void Combining_UnitesEachKindAndKeepsTheNamesDistinct()
     {
         var first = new PluginListDifference(["A.esp"], [], ["C.esp"]);

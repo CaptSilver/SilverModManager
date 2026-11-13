@@ -1588,6 +1588,9 @@ Use it for {0}?</value>
     <data name="LoadOrder_EnabledColumnHeader" xml:space="preserve">
         <value>On</value>
     </data>
+    <data name="LoadOrder_GroundcoverColumnHeader" xml:space="preserve">
+        <value>Groundcover</value>
+    </data>
     <data name="LoadOrder_DetailsColumnHeader" xml:space="preserve">
         <value>Details</value>
     </data>

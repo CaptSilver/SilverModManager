@@ -55,6 +55,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
 
     public bool SupportsToggle { get; }
     public ReactiveUI.ReactiveCommand<ISortItemKey, Unit> ToggleEnabledCommand { get; }
+    public ReactiveUI.ReactiveCommand<ISortItemKey, Unit> ToggleGroundcoverCommand { get; }
     [Reactive] public partial string? ReplacedEditSummary { get; private set; }
     [Reactive] public partial bool HasReplacedEdit { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
@@ -197,6 +198,28 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
             canExecute: System.Reactive.Linq.Observable.Return(SupportsToggle)
         );
 
+        var groundcoverVariety = sortOrderVariety as IGroundcoverSortOrderVariety;
+        ToggleGroundcoverCommand = ReactiveCommand.CreateFromTask<ISortItemKey>(
+            async key =>
+            {
+                if (groundcoverVariety is null)
+                    throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no groundcover switch to toggle");
+
+                await RunEdit(async () =>
+                {
+                    var item = await Task.Run(() => sortOrderVariety.GetSortOrderItems(sortOrderId).FirstOrDefault(item => item.Key.Equals(key)));
+                    if (item is null) return;
+                    if (item is not IGroundcoverSortItem groundcoverItem || item is not ISortItemDetails details)
+                        throw new InvalidOperationException($"Item {key} of {sortOrderVariety.SortOrderVarietyId} has no groundcover switch");
+
+                    // The switch is disabled for these rows already; this covers a stale click.
+                    if (details.IsLocked || details.LockReason is not null) return;
+                    await groundcoverVariety.SetGroundcover(sortOrderId, key, !groundcoverItem.IsGroundcover);
+                });
+            },
+            canExecute: System.Reactive.Linq.Observable.Return(groundcoverVariety is not null)
+        );
+
         var replacedEdits = sortOrderVariety as IReplacedGameEditSource;
         DismissReplacedEditCommand = ReactiveCommand.CreateFromTask(
             () => replacedEdits?.Dismiss(sortOrderId)
@@ -312,6 +335,11 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                         awaitOperation: AwaitOperation.Sequential)
                     .DisposeWith(d);
 
+                adapter.ToggleGroundcoverSubject
+                    .SubscribeAwait(async (key, _) => await ToggleGroundcoverCommand.Execute(key),
+                        awaitOperation: AwaitOperation.Sequential)
+                    .DisposeWith(d);
+
                 // Drag and drop
                 adapter.RowDragOverSubject
                     .Subscribe(dragDropPayload =>
@@ -393,6 +421,11 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
     /// </summary>
     public Subject<ISortItemKey> ToggleSubject { get; } = new();
 
+    /// <summary>
+    /// Emits the key of a row whose groundcover switch the user clicked.
+    /// </summary>
+    public Subject<ISortItemKey> ToggleGroundcoverSubject { get; } = new();
+
     public LoadOrderTreeDataGridAdapter(
         ISortOrderVariety sortOrderVariety,
         LoadoutId loadoutId,
@@ -473,6 +506,16 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
                 )
         );
 
+        // Groundcover switch
+        model.SubscribeToComponentAndTrack<LoadOrderToggleComponent, LoadOrderTreeDataGridAdapter>(
+            key: LoadOrderColumns.GroundcoverColumn.GroundcoverComponentKey,
+            state: this,
+            factory: static (adapter, itemModel, component) => component.Toggle
+                .Subscribe((adapter, itemModel),
+                    static (_, tuple) => tuple.adapter.ToggleGroundcoverSubject.OnNext(tuple.itemModel.Key)
+                )
+        );
+
         // IsActive styling
         model.SubscribeToComponentAndTrack<ValueComponent<bool>, LoadOrderTreeDataGridAdapter>(
             key: LoadOrderColumns.IsActiveComponentKey,
@@ -523,6 +566,14 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
                 canUserSortColumn: false,
                 canUserResizeColumn: false
             ));
+            if (_sortOrderVariety is IGroundcoverSortOrderVariety)
+            {
+                columns.Add(ColumnCreator.Create<ISortItemKey, LoadOrderColumns.GroundcoverColumn>(
+                    columnHeader: Language.LoadOrder_GroundcoverColumnHeader,
+                    canUserSortColumn: false,
+                    canUserResizeColumn: false
+                ));
+            }
             columns.Add(ColumnCreator.Create<ISortItemKey, LoadOrderColumns.DetailsColumn>(
                 columnHeader: Language.LoadOrder_DetailsColumnHeader,
                 canUserSortColumn: false,
@@ -546,7 +597,7 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
         {
             if (disposing)
             {
-                R3.Disposable.Dispose(_disposables, MessageSubject, ToggleSubject);
+                R3.Disposable.Dispose(_disposables, MessageSubject, ToggleSubject, ToggleGroundcoverSubject);
             }
 
             _isDisposed = true;

@@ -266,7 +266,8 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
             // The group's switch alone decides a plugin the game installed; its own row is ignored.
             var active = isEarly || implicitlyActive.Contains(name)
                 || (installed ? gameInstalled.GroupEnabled : !rowsByName.TryGetValue(name, out var row) || row.IsEnabled);
-            return new PluginListEntry(name, active, isEarly);
+            var groundcover = !installed && !isEarly && rowsByName.TryGetValue(name, out var groundcoverRow) && groundcoverRow.IsGroundcover;
+            return new PluginListEntry(name, active, isEarly, Groundcover: groundcover);
         }).ToList();
     }
 

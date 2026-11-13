@@ -30,13 +30,14 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 /// REDmod order, with three differences: new plugins go at the end, a row whose plugin left the loadout is kept
 /// (see <see cref="Reconcile"/>), and every row has its own on/off switch.
 /// </summary>
-public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<string>, PluginReactiveSortItem, PluginLoadoutData, PluginSortData>,
+public class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<string>, PluginReactiveSortItem, PluginLoadoutData, PluginSortData>,
     IPluginSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, ILootSortSource
 {
     // The live-rows query returns the owning mod's state as flags: a value tuple of more than seven columns is
     // not something the query layer can read.
     private const int LoadoutStateEnabled = 1;
     private const int LoadoutStateGameInstalled = 2;
+    private const int LoadoutStateGroundcover = 4;
 
     private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("6F2B1C0E-7D3A-4B8E-9A61-3C5D2E8F4A17"));
 
@@ -132,7 +133,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         return Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, string Identity, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
                 SELECT PluginName, SortIndex, IsEnabled, Identity, ModName, ModGroupId,
-                    CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
+                    CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END + CASE WHEN Groundcover THEN 4 ELSE 0 END AS LoadoutState
                 FROM plugins.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {DataLocation}, {DataFolder})
                 """)
             .ObserveInBackground(row => PluginSortData.KeyFor(row.PluginName))
@@ -142,7 +143,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                 var identity = FileIdentity.ParseHex(row.Identity);
                 await _headers.WarmAsync([(identity, row.PluginName)]);
                 var data = ToLoadoutData(row.PluginName, identity, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0, installation, early);
-                return new PluginReactiveSortItem(row.SortIndex, row.PluginName, row.IsEnabled, data);
+                return new PluginReactiveSortItem(row.SortIndex, row.PluginName, row.IsEnabled, data, (row.LoadoutState & LoadoutStateGroundcover) != 0);
             });
     }
 
@@ -155,7 +156,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         // Shows what a reconciliation would store, so a plugin that has just arrived is listed before it is persisted.
         return ReconcileAgainst(sortOrder, dbToUse, dbToUse)
-            .Select(tuple => new PluginReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData))
+            .Select(tuple => new PluginReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData, tuple.SortedEntry.IsGroundcover))
             .ToList();
     }
 
@@ -190,6 +191,24 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         await tx.Commit();
     }
 
+    /// <summary>
+    /// Marks one plugin as groundcover or takes the mark off. Only a game whose list has the two keys offers it.
+    /// </summary>
+    protected async Task SetGroundcoverCore(SortOrderId sortOrderId, ISortItemKey item, bool groundcover, CancellationToken token)
+    {
+        if (item is not SortItemKey<string> key)
+            throw new ArgumentException($"A plugin is identified by a string key, not {item.GetType().Name}.", nameof(item));
+
+        var row = RetrieveSortOrder(sortOrderId, Connection.Db).FirstOrDefault(r => r.Key.Equals(key))
+            ?? throw new InvalidOperationException($"Plugin '{key.Key}' is not in sort order {sortOrderId}.");
+        if (row.EarlyLoaderIndex is not null)
+            throw new InvalidOperationException($"'{row.Name}' is always loaded by the game and cannot be made groundcover.");
+
+        using var tx = Connection.BeginTransaction();
+        tx.Add(row.StoredRowId, PluginSortOrderItem.Groundcover, groundcover);
+        await tx.Commit();
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<PluginSortData> StoredOrder(Loadout.ReadOnly loadout)
     {
@@ -212,6 +231,10 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public void StageOrder(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx) =>
         Stage(sortOrderId, entries, tx, Connection.Db);
+
+    /// <inheritdoc />
+    public void StageOrder(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, IReadOnlySet<string> groundcover, ITransaction tx) =>
+        Stage(sortOrderId, entries, tx, Connection.Db, groundcover);
 
     /// <inheritdoc />
     public void StageEnabled(SortOrderId sortOrderId, string name, bool enabled, ITransaction tx)
@@ -289,10 +312,10 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             return [];
 
         var early = EarlyLoaderIndexes(InstallationOf(sortOrder.LoadoutId, dbToUse));
-        var rows = dbToUse.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id, bool IsGameInstalled)>($"""
-                SELECT PluginName, SortIndex, IsEnabled, Id, IsGameInstalled FROM plugins.LiveSortOrderItems({dbToUse}, {sortOrderEntityId.Value}, {sortOrder.LoadoutId}, {DataLocation}, {DataFolder})
+        var rows = dbToUse.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id, bool IsGameInstalled, bool Groundcover)>($"""
+                SELECT PluginName, SortIndex, IsEnabled, Id, IsGameInstalled, Groundcover FROM plugins.LiveSortOrderItems({dbToUse}, {sortOrderEntityId.Value}, {sortOrder.LoadoutId}, {DataLocation}, {DataFolder})
                 """)
-            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, early.TryGetValue(row.PluginName, out var earlyIndex) ? earlyIndex : null, row.Id) { IsGameInstalled = row.IsGameInstalled })
+            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, early.TryGetValue(row.PluginName, out var earlyIndex) ? earlyIndex : null, row.Id) { IsGameInstalled = row.IsGameInstalled, IsGroundcover = row.Groundcover })
             .GroupBy(row => row.SortIndex)
             .OrderBy(group => group.Key)
             // A row that was hidden while its plugin was away keeps the index it had and can share it with a row
@@ -390,7 +413,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return results;
 
         PluginSortData New(PluginLoadoutData data, PluginSortData? stored = null) =>
-            new(data.Name, results.Count, stored?.IsEnabled ?? true, data.EarlyLoaderIndex, stored?.RowId);
+            new(data.Name, results.Count, stored?.IsEnabled ?? true, data.EarlyLoaderIndex, stored?.RowId) { IsGroundcover = stored?.IsGroundcover ?? false };
     }
 
     /// <summary>
@@ -438,18 +461,22 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         Stage(sortOrderId, names.Select(name => (name, (bool?)null)).ToList(), tx, db);
     }
 
-    private void Stage(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx, IDb db)
+    /// <param name="groundcover">Names to mark as groundcover. It is set here rather than afterwards because a row
+    /// created in <paramref name="tx"/> cannot be found by name until the transaction commits.</param>
+    private void Stage(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx, IDb db, IReadOnlySet<string>? groundcover = null)
     {
         var stored = StoredRows(sortOrderId, db);
         for (var index = 0; index < entries.Count; index++)
         {
             var (name, isEnabled) = entries[index];
+            var markGroundcover = groundcover?.Contains(name) ?? false;
             if (stored.TryGetValue(PluginSortData.KeyFor(name).Key, out var row))
             {
                 var id = row.StoredRowId;
                 if (row.SortIndex != index) tx.Add(id, SortOrderItem.SortIndex, index);
                 if (row.Name != name) tx.Add(id, PluginSortOrderItem.PluginName, name);
                 if (isEnabled is { } enabled && row.IsEnabled != enabled) tx.Add(id, PluginSortOrderItem.IsEnabled, enabled);
+                if (markGroundcover && !row.IsGroundcover) tx.Add(id, PluginSortOrderItem.Groundcover, true);
                 continue;
             }
 
@@ -464,15 +491,16 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                 PluginName = name,
                 IsEnabled = isEnabled ?? true,
             };
+            if (markGroundcover) tx.Add(item.Id, PluginSortOrderItem.Groundcover, true);
         }
     }
 
     /// <summary>Every stored row of the sort order, tombstones included, by lower-cased name. The lowest index wins a duplicate.</summary>
     private static Dictionary<string, PluginSortData> StoredRows(SortOrderId sortOrderId, IDb db) =>
-        db.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id)>($"""
-                SELECT PluginName, SortIndex, IsEnabled, Id FROM plugins.SortOrderItems({db}, {sortOrderId.Value})
+        db.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id, bool Groundcover)>($"""
+                SELECT PluginName, SortIndex, IsEnabled, Id, Groundcover FROM plugins.SortOrderItems({db}, {sortOrderId.Value})
                 """)
-            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, rowId: row.Id))
+            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, rowId: row.Id) { IsGroundcover = row.Groundcover })
             .GroupBy(row => row.Key.Key)
             .ToDictionary(group => group.Key, group => group.OrderBy(row => row.SortIndex).First());
 

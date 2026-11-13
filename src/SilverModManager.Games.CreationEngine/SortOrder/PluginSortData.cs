@@ -24,6 +24,9 @@ public sealed class PluginSortData : SortItemData<SortItemKey<string>>
     /// <summary>The user's on/off switch for the plugin.</summary>
     public bool IsEnabled { get; set; }
 
+    /// <summary>Whether OpenMW loads the plugin as groundcover; always false for a game that has no such switch.</summary>
+    public bool IsGroundcover { get; init; }
+
     /// <summary>Where the game loads the plugin among the early loaders, or null when it is not one of them.</summary>
     public int? EarlyLoaderIndex { get; }
 

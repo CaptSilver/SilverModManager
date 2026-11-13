@@ -314,6 +314,23 @@ OpenMW will not start until these lines are removed. Remove them in the OpenMW l
 
     [DiagnosticTemplate]
     [UsedImplicitly]
+    internal static IDiagnosticTemplate OpenMwGroundcoverOff = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 15))
+        .WithTitle("OpenMW's groundcover is switched off")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("Groundcover is off in OpenMW's settings.cfg; the groundcover plugins will not load. Turn it on in the OpenMW launcher")
+        .WithDetails("""
+These plugins are marked as groundcover in the load order, so they are written as `groundcover=` lines: {Plugins}. OpenMW skips every one of them while the Groundcover setting in {Path} is off. Turn on "Enable separate groundcover handling" in the OpenMW launcher's Advanced tab.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Plugins")
+            .AddValue<string>("Path")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
     internal static IDiagnosticTemplate OpenMwUnregisteredArchive = DiagnosticTemplateBuilder
         .Start()
         .WithId(new DiagnosticId(Source, number: 16))

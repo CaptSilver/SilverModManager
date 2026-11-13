@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 using SilverModManager.Games.Bethesda.Loot.Conditions;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -13,7 +14,8 @@ namespace SilverModManager.Games.CreationEngine.OpenMw;
 /// <summary>
 /// Reads openmw.cfg for what stops OpenMW or leaves a mod unused: <c>content=</c> lines for files no data directory
 /// has (OpenMW refuses to start on one), and deployed archives nothing registers with a <c>fallback-archive=</c> line.
-/// The file is only read; the user decides what to remove.
+/// It also reads settings.cfg for the groundcover switch, which silences every <c>groundcover=</c> line while it is
+/// off. The files are only read; the user decides what to change.
 /// </summary>
 public class OpenMwConfigEmitter(OpenMw game) : ILoadoutDiagnosticEmitter
 {
@@ -25,6 +27,8 @@ public class OpenMwConfigEmitter(OpenMw game) : ILoadoutDiagnosticEmitter
         await Task.Yield();
 
         var installation = loadout.InstallationInstance;
+        if (GroundcoverOff(loadout) is { } groundcoverOff) yield return groundcoverOff;
+
         var file = installation.Locations.ToAbsolutePath(OpenMwConstants.OpenMwConfigFile);
         if (OpenMwPaths.ReadConfig(file) is not { } text) yield break;
 
@@ -46,6 +50,18 @@ public class OpenMwConfigEmitter(OpenMw game) : ILoadoutDiagnosticEmitter
             .ToList();
         if (unregistered.Count > 0)
             yield return Diagnostics.CreateOpenMwUnregisteredArchive(string.Join(", ", unregistered));
+    }
+
+    private Diagnostic? GroundcoverOff(Loadout.ReadOnly loadout)
+    {
+        var variety = game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
+        var groundcover = variety.StoredOrder(loadout).Where(row => row.IsGroundcover && row.IsEnabled).Select(row => row.Name).ToList();
+        if (groundcover.Count == 0) return null;
+
+        var settings = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(OpenMwConstants.OpenMwConfig, "settings.cfg"));
+        if (settings.FileExists && OpenMwSettings.GroundcoverEnabled(File.ReadAllText(settings.GetFullPath()))) return null;
+
+        return Diagnostics.CreateOpenMwGroundcoverOff(string.Join(", ", groundcover), settings.GetFullPath());
     }
 
     private IEnumerable<string> DeployedArchives(Loadout.ReadOnly loadout) => LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId)

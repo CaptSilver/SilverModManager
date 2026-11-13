@@ -110,7 +110,7 @@ WHERE IsEnabled;
 
 -- Every persisted row of a plugin sort order, whether or not the loadout still has the plugin.
 CREATE MACRO plugins.SortOrderItems(db, sortOrderId) AS TABLE
-SELECT s.PluginName, s.SortIndex, s.IsEnabled, s.Id
+SELECT s.PluginName, s.SortIndex, s.IsEnabled, s.Id, COALESCE(s.Groundcover, FALSE) AS Groundcover
 FROM mdb_PluginSortOrderItem(Db=>db) s
 WHERE s.ParentSortOrder = sortOrderId
 ORDER BY s.SortIndex;
@@ -125,6 +125,7 @@ SELECT
     s.SortIndex,
     s.IsEnabled,
     s.Id,
+    COALESCE(s.Groundcover, FALSE) AS Groundcover,
     p.Identity,
     p.IsEnabled AS LoadoutIsEnabled,
     p.ModName,

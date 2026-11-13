@@ -97,6 +97,22 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         }
     }
 
+    private sealed class FakeGroundcoverVariety(params IReactiveSortItem[] items) : FakeVariety(items), IToggleableSortOrderVariety, IGroundcoverSortOrderVariety
+    {
+        public List<(ISortItemKey Key, bool Groundcover)> Marked { get; } = [];
+
+        public Task SetEnabled(SortOrderId sortOrderId, ISortItemKey item, bool enabled, CancellationToken token = default) => Task.CompletedTask;
+
+        public Task SetGroundcover(SortOrderId sortOrderId, ISortItemKey item, bool groundcover, CancellationToken token = default)
+        {
+            Marked.Add((item, groundcover));
+            return Task.CompletedTask;
+        }
+
+        public override IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) =>
+            items.AsObservableChangeSet(item => item.Key);
+    }
+
     private sealed class FakeHeldVariety(params IReactiveSortItem[] items) : FakeVariety(items), IHeldGameEditSource
     {
         public int Releases { get; private set; }
@@ -148,7 +164,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         return (new LoadOrderViewModel(new WindowManagerProvider(Provider, windows), variety, LoadoutId.From(1)), windows);
     }
 
-    private sealed class FakeItem(bool isEnabled, bool isLocked, string key = "a.esp") : IReactiveSortItem, ISortItemDetails
+    private sealed class FakeItem(bool isEnabled, bool isLocked, string key = "a.esp") : IReactiveSortItem, ISortItemDetails, IGroundcoverSortItem
     {
         public ISortItemKey Key { get; } = new SortItemKey<string>(key);
         public int SortIndex { get; set; }
@@ -162,6 +178,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         public bool IsLocked { get; } = isLocked;
         public SortItemLockReason? LockReason { get; init; }
         public bool IsEnabled { get; } = isEnabled;
+        public bool IsGroundcover { get; init; }
     }
 
     private LoadOrderViewModel NewViewModel(ISortOrderVariety variety) => new(Provider, variety, LoadoutId.From(1));
@@ -366,6 +383,51 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         var toggle = row.Get<LoadOrderToggleComponent>(LoadOrderColumns.EnabledColumn.EnabledComponentKey);
         toggle.IsLocked.Should().BeFalse();
         toggle.ToolTip.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ToggleGroundcoverCommand_FlipsTheRowsMark()
+    {
+        var variety = new FakeGroundcoverVariety(new FakeItem(isEnabled: true, isLocked: false) { IsGroundcover = true });
+        var vm = NewViewModel(variety);
+
+        await vm.ToggleGroundcoverCommand.Execute(PluginKey);
+
+        variety.Marked.Should().Equal((PluginKey, false));
+    }
+
+    [Fact]
+    public async Task ToggleGroundcoverCommand_RefusesALockedRow()
+    {
+        var variety = new FakeGroundcoverVariety(new FakeItem(isEnabled: true, isLocked: true));
+        var vm = NewViewModel(variety);
+
+        await vm.ToggleGroundcoverCommand.Execute(PluginKey);
+
+        variety.Marked.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AGroundcoverVarietyGivesItsRowsAGroundcoverSwitch()
+    {
+        var provider = new LoadOrderDataProvider(Provider);
+        var cache = provider
+            .ObserveLoadOrder(new FakeGroundcoverVariety(new FakeItem(isEnabled: true, isLocked: false) { IsGroundcover = true }), LoadoutId.From(1), R3.Observable.Return(ListSortDirection.Ascending))
+            .AsObservableCache();
+        await Eventually(() => cache.Count.Should().Be(1));
+
+        var toggle = cache.Items.Single().Get<LoadOrderToggleComponent>(LoadOrderColumns.GroundcoverColumn.GroundcoverComponentKey);
+
+        toggle.IsOn.Should().BeTrue();
+        toggle.IsLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AVarietyWithoutAGroundcoverSwitchGivesItsRowsNone()
+    {
+        var row = await RowFor(new FakeItem(isEnabled: true, isLocked: false) { IsGroundcover = true });
+
+        row.TryGet<LoadOrderToggleComponent>(LoadOrderColumns.GroundcoverColumn.GroundcoverComponentKey, out _).Should().BeFalse();
     }
 
     [Fact]

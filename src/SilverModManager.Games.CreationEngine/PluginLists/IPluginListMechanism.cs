@@ -23,4 +23,8 @@ public interface IPluginListMechanism
 }
 
 /// <summary>A plugin list file as read from disk. A plugin the file does not mention is not in <paramref name="Entries"/>.</summary>
-public sealed record GamePluginListState(IReadOnlyList<(string Name, bool Active)> Entries);
+public sealed record GamePluginListState(IReadOnlyList<(string Name, bool Active)> Entries)
+{
+    /// <summary>The entries the file loads as groundcover; only openmw.cfg has any.</summary>
+    public IReadOnlySet<string> Groundcover { get; init; } = new HashSet<string>();
+}

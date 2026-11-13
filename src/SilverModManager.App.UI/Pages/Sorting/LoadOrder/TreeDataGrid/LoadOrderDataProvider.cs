@@ -123,15 +123,22 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         var details = reactiveSortItem as ISortItemDetails;
         if (details is not null)
         {
+            // A row can be movable and still have a locked switch (a game-installed plugin follows its group), so
+            // the switches look at the reason as well; the drag handle below keeps reading IsLocked alone.
+            var switchLocked = details.IsLocked || details.LockReason is not null;
+            var toolTip = details.LockReason == SortItemLockReason.GameInstalledGroup
+                ? Language.LoadOrder_GameInstalledLockedToolTip
+                : Language.LoadOrder_LockedToolTip;
             if (sortOrderVariety is IToggleableSortOrderVariety)
             {
-                // A row can be movable and still have a locked switch (a game-installed plugin follows its group), so
-                // the switch looks at the reason as well; the drag handle below keeps reading IsLocked alone.
-                var toolTip = details.LockReason == SortItemLockReason.GameInstalledGroup
-                    ? Language.LoadOrder_GameInstalledLockedToolTip
-                    : Language.LoadOrder_LockedToolTip;
                 compositeModel.Add(LoadOrderColumns.EnabledColumn.EnabledComponentKey,
-                    new LoadOrderToggleComponent(details.IsEnabled, details.IsLocked || details.LockReason is not null, toolTip));
+                    new LoadOrderToggleComponent(details.IsEnabled, switchLocked, toolTip));
+            }
+
+            if (sortOrderVariety is IGroundcoverSortOrderVariety && reactiveSortItem is IGroundcoverSortItem groundcoverItem)
+            {
+                compositeModel.Add(LoadOrderColumns.GroundcoverColumn.GroundcoverComponentKey,
+                    new LoadOrderToggleComponent(groundcoverItem.IsGroundcover, switchLocked, toolTip));
             }
 
             var mastersToolTip = details.Masters.Count == 0

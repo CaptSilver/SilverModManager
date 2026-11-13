@@ -46,6 +46,12 @@ public interface IPluginSortOrderVariety : ISortOrderVariety
     void StageOrder(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx);
 
     /// <summary>
+    /// <see cref="StageOrder(SortOrderId, IReadOnlyList{ValueTuple{string, bool?}}, ITransaction)"/> that also marks
+    /// each name in <paramref name="groundcover"/> as groundcover. The mark of any other row is left as it is.
+    /// </summary>
+    void StageOrder(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, IReadOnlySet<string> groundcover, ITransaction tx);
+
+    /// <summary>
     /// Writes the on/off state of an existing plugin row into <paramref name="tx"/>. Throws when the sort order has
     /// no row for <paramref name="name"/>, so stage the order in an earlier transaction when the row is new.
     /// </summary>

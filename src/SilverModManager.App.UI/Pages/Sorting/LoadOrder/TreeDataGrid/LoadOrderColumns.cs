@@ -84,6 +84,27 @@ public static class LoadOrderColumns
     }
 
     /// <summary>
+    /// The groundcover switch of a row, for varieties whose plugins can be loaded as groundcover.
+    /// </summary>
+    [UsedImplicitly]
+    public sealed class GroundcoverColumn : ICompositeColumnDefinition<GroundcoverColumn>
+    {
+        public const string ColumnTemplateResourceKey = nameof(LoadOrderColumns) + "_" + nameof(GroundcoverColumn);
+
+        public static readonly ComponentKey GroundcoverComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LoadOrderToggleComponent));
+
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            throw new NotImplementedException();
+        }
+
+        // The header is set on column creation, as it comes from the resources
+        public static string GetColumnHeader() => throw new NotSupportedException();
+
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
+    /// <summary>
     /// The flags and masters of a row, for rows that describe them.
     /// </summary>
     [UsedImplicitly]

@@ -1,5 +1,6 @@
 using System.Text;
 using SilverModManager.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.Bethesda.LoadOrder;
 
 namespace SilverModManager.Games.CreationEngine.PluginLists;
 
@@ -77,7 +78,7 @@ public sealed class MorrowindIniFormat : IPluginListCodec
         MorrowindIniGameFiles.Parse(text).Select(name => new PluginListEntry(name, true)).ToList();
 }
 
-/// <summary>The <c>content=</c> lines of openmw.cfg for the plugins in Data Files.</summary>
+/// <summary>The <c>content=</c> and <c>groundcover=</c> lines of openmw.cfg for the plugins the app deploys.</summary>
 public sealed class OpenMwConfigFormat : IPluginListCodec
 {
     public const string FileName = "openmw.cfg";
@@ -101,8 +102,15 @@ public sealed class OpenMwConfigFormat : IPluginListCodec
 
     public string Render(IEnumerable<PluginListEntry> entries, PluginListTarget target) =>
         // OpenMW loads builtin.omwscripts without being told; the line for it is not one the app owns.
-        OpenMwContentWriter.Rewrite(target.Existing, entries.Where(e => e.Active && !e.IsEarlyLoader).Select(e => e.Name).ToList(), target.DataPlugins);
+        OpenMwContentWriter.Rewrite(
+            target.Existing,
+            entries.Where(e => e.Active && !e.IsEarlyLoader && !e.Groundcover).Select(e => e.Name).ToList(),
+            entries.Where(e => e.Active && !e.IsEarlyLoader && e.Groundcover).Select(e => e.Name).ToList(),
+            target.DataPlugins);
 
-    public IReadOnlyList<PluginListEntry> Parse(string text) =>
-        OpenMwContentWriter.ContentNames(text).Select(name => new PluginListEntry(name, true)).ToList();
+    public IReadOnlyList<PluginListEntry> Parse(string text)
+    {
+        var groundcover = OpenMwContentWriter.GroundcoverNames(text).ToHashSet(PluginNameComparer.Instance);
+        return OpenMwContentWriter.ContentNames(text).Select(name => new PluginListEntry(name, true, Groundcover: groundcover.Contains(name))).ToList();
+    }
 }

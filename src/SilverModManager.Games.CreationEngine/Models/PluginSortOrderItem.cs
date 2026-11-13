@@ -23,4 +23,10 @@ public partial class PluginSortOrderItem : IModelDefinition
     /// Whether the plugin is switched on in the load order.
     /// </summary>
     public static readonly BooleanAttribute IsEnabled = new(Namespace, nameof(IsEnabled));
+
+    /// <summary>
+    /// Whether OpenMW loads the plugin as groundcover (a <c>groundcover=</c> line) instead of as content. Absent
+    /// means off; only the OpenMW game ever sets it.
+    /// </summary>
+    public static readonly BooleanAttribute Groundcover = new(Namespace, nameof(Groundcover)) { IsOptional = true };
 }
