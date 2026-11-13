@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using NexusMods.Paths;
 using SilverModManager.Sdk.ProxyConsole;
 using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
@@ -158,20 +159,21 @@ public static class RendererExtensions
     /// </summary>
     /// <param name="renderer"></param>
     /// <param name="ex"></param>
+    /// <param name="fileSystem">The file system a crash's log folder is resolved on.</param>
     /// <param name="template">What was being done, without the exception's message.</param>
     /// <param name="args"></param>
-    public static async Task Error(this IRenderer renderer, Exception ex, string template, params object[] args)
+    public static async Task Error(this IRenderer renderer, Exception ex, IFileSystem fileSystem, string template, params object[] args)
     {
         await renderer.TextLine(template, args);
-        await renderer.Error(ex);
+        await renderer.Error(ex, fileSystem);
     }
 
     /// <summary>
     /// Prints the sentence for an exception: the refusal's message, or where the log has the details of a crash.
     /// </summary>
-    public static async Task Error(this IRenderer renderer, Exception ex)
+    public static async Task Error(this IRenderer renderer, Exception ex, IFileSystem fileSystem)
     {
-        await renderer.TextLine("{0}", CliErrors.Describe(ex));
+        await renderer.TextLine("{0}", CliErrors.Describe(ex, fileSystem));
     }
 
     /// <summary>

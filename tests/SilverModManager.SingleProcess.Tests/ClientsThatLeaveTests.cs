@@ -31,7 +31,7 @@ public sealed class ClientsThatLeaveTests : IDisposable
     public void ABurstOfClientsThatHangUpAfterTheGreeting_LeavesTheServerGreeting()
     {
         var syncPath = FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(_directory, "test.sync"));
-        var services = new ServiceCollection().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>)).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>)).AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared).BuildServiceProvider();
         var server = new CliServer(
             NullLogger<CliServer>.Instance, new CommandLineConfigurator(services, [], []), Substitute.For<ISettingsManager>(),
             new SyncFile(NullLogger<SyncFile>.Instance, syncPath), services

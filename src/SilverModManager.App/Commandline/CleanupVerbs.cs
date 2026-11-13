@@ -96,7 +96,7 @@ internal static class CleanupVerbs
             {
                 failed = true;
                 logger.LogFailure(ex, "Error reverting {Game}", installation.Game.DisplayName);
-                await renderer.Error(ex, "Error reverting {0}", installation.Game.DisplayName);
+                await renderer.Error(ex, fileSystem, "Error reverting {0}", installation.Game.DisplayName);
             }
         }
 
@@ -132,12 +132,12 @@ internal static class CleanupVerbs
                 DataModelSettings.GetLocalApplicationDataDirectory(fileSystem),
             }.Concat(dataModelSettings.ArchiveLocations.Select(path => path.ToPath(fileSystem)));
 
-            failed |= !await DeleteDirectoriesUnix(renderer, logger, appDirectories);
+            failed |= !await DeleteDirectoriesUnix(renderer, fileSystem, logger, appDirectories);
 
             if (!failed)
             {
-                failed |= !await DeleteFilesUnix(renderer, logger, logFiles);
-                failed |= !await DeleteDirectoriesUnix(renderer, logger, [LoggingSettings.GetLogBaseFolder(fileSystem)]);
+                failed |= !await DeleteFilesUnix(renderer, fileSystem, logger, logFiles);
+                failed |= !await DeleteDirectoriesUnix(renderer, fileSystem, logger, [LoggingSettings.GetLogBaseFolder(fileSystem)]);
             }
 
             if (failed)
@@ -152,13 +152,13 @@ internal static class CleanupVerbs
         catch (Exception ex)
         {
             logger.LogFailure(ex, "Error deleting application directories");
-            await renderer.Error(ex, "Error deleting application directories");
+            await renderer.Error(ex, fileSystem, "Error deleting application directories");
             return CliErrors.ExitCode(ex);
         }
     }
 
     /// <returns>False when any directory could not be deleted.</returns>
-    private static async Task<bool> DeleteDirectoriesUnix(IRenderer renderer, ILogger logger, IEnumerable<AbsolutePath> appDirectories)
+    private static async Task<bool> DeleteDirectoriesUnix(IRenderer renderer, IFileSystem fileSystem, ILogger logger, IEnumerable<AbsolutePath> appDirectories)
     {
         var allDeleted = true;
         foreach (var directory in appDirectories)
@@ -174,7 +174,7 @@ internal static class CleanupVerbs
             catch (Exception e)
             {
                 logger.LogFailure(e, "Failed to delete directory {Directory}", directory);
-                await renderer.Error(e, "Failed to delete directory: {0}", directory);
+                await renderer.Error(e, fileSystem, "Failed to delete directory: {0}", directory);
                 allDeleted = false;
             }
         }
@@ -183,7 +183,7 @@ internal static class CleanupVerbs
     }
 
     /// <returns>False when any file could not be deleted.</returns>
-    private static async Task<bool> DeleteFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles)
+    private static async Task<bool> DeleteFilesUnix(IRenderer renderer, IFileSystem fileSystem, ILogger logger, AbsolutePath[] appFiles)
     {
         var allDeleted = true;
         foreach (var appFile in appFiles)
@@ -199,7 +199,7 @@ internal static class CleanupVerbs
             catch (Exception e)
             {
                 logger.LogFailure(e, "Failed to delete file {File}", appFile);
-                await renderer.Error(e, "Failed to delete file: {0}", appFile);
+                await renderer.Error(e, fileSystem, "Failed to delete file: {0}", appFile);
                 allDeleted = false;
             }
         }

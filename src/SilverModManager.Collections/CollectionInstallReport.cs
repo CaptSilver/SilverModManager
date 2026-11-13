@@ -1,3 +1,5 @@
+using NexusMods.Paths;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.NexusModsLibrary;
@@ -33,11 +35,12 @@ public static class CollectionInstallReport
         await Install().WaitAsync(cancellationToken);
 
         var definition = job.JobDefinition;
+        var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
 
         if (definition.FailedItems.Count > 0)
         {
             await renderer.TextLine($"Not installed ({definition.FailedItems.Count}):");
-            await renderer.Table(["Name", "Reason"], definition.FailedItems.Select(item => new object[] { item.Name, CliErrors.Describe(item.Exception) }));
+            await renderer.Table(["Name", "Reason"], definition.FailedItems.Select(item => new object[] { item.Name, CliErrors.Describe(item.Exception, fileSystem) }));
         }
 
         if (definition.PendingItems.Count > 0)

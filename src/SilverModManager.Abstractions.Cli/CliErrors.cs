@@ -24,9 +24,6 @@ public static class CliErrors
     /// The sentence to print for <paramref name="exception"/>: the refusal's message followed by its command line hint, or where to find the details of a crash.
     /// A refusal's message is Markdown, so it is printed as plain text.
     /// </summary>
-    public static string Describe(Exception exception) => Describe(exception, FileSystem.Shared);
-
-    /// <inheritdoc cref="Describe(Exception)"/>
     /// <param name="exception">The failure to describe.</param>
     /// <param name="fileSystem">The file system the crash pointer's log folder is resolved on.</param>
     public static string Describe(Exception exception, IFileSystem fileSystem) => UserFacingErrors.Find(exception) switch
@@ -43,13 +40,7 @@ public static class CliErrors
         UserFacingErrors.Find(exception) is null ? CrashExitCode : RefusalExitCode;
 
     /// <summary>
-    /// What a crash prints in place of its exception.
-    /// </summary>
-    public static string CrashPointer => CrashPointerFor(FileSystem.Shared);
-
-    /// <summary>
-    /// <see cref="CrashPointer"/> with the log folder resolved on <paramref name="fileSystem"/>, for a caller that has
-    /// the injected file system and tests that run on an in-memory one.
+    /// What a crash prints in place of its exception: where the log folder is, resolved on <paramref name="fileSystem"/>.
     /// </summary>
     public static string CrashPointerFor(IFileSystem fileSystem) =>
         $"Something went wrong. Details are in the log at {LoggingSettings.GetLogBaseFolder(fileSystem)}.";

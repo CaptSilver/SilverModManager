@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -243,7 +244,7 @@ public sealed class CliServer : IHostedService, IDisposable
         catch (Exception e)
         {
             _logger.LogFailure(e, "Deciding whether to run a forwarded launch failed");
-            await TrySendAsync(serializer, new LaunchDeclined { Reason = CliErrors.Describe(e) });
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = CliErrors.Describe(e, _serviceProvider.GetRequiredService<IFileSystem>()) });
             return;
         }
 
@@ -263,7 +264,7 @@ public sealed class CliServer : IHostedService, IDisposable
         catch (Exception e)
         {
             _logger.LogFailure(e, "A forwarded launch failed");
-            exit = new ForwardedLaunchExit(CliErrors.ExitCode(e), CliErrors.Describe(e));
+            exit = new ForwardedLaunchExit(CliErrors.ExitCode(e), CliErrors.Describe(e, _serviceProvider.GetRequiredService<IFileSystem>()));
         }
 
         await TrySendAsync(serializer, new LaunchExited { ExitCode = exit.ExitCode, Message = exit.Message });

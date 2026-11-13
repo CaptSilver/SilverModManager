@@ -21,6 +21,7 @@ public class ProcessStartupTests
     private sealed class Recorder
     {
         public List<string> Calls { get; } = [];
+        public IFileSystem LogFileSystem { get; } = FakeLogFileSystem.Create();
         public (Process? Process, MainKind Kind, int Port) SyncInfo { get; set; } = (null, MainKind.Gui, 0);
 
         /// <summary>What every read after the first returns, when someone takes the slot in between.</summary>
@@ -70,6 +71,7 @@ public class ProcessStartupTests
                 return new HostBuilder()
                     .ConfigureServices(services => services
                         .AddSingleton<IEnvironmentReader>(new FakeEnvironment(Environment))
+                        .AddSingleton(LogFileSystem)
                         .AddHostedService(_ => new RecordingHostedService(Calls)))
                     .ConfigureLogging(logging => logging.AddProvider(new WarningRecorder(Warnings)))
                     .Build();
@@ -961,8 +963,8 @@ public class ProcessStartupTests
 
         Run(recorder, Command("run")).Should().Be(-1);
 
-        recorder.Errors.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
-        recorder.Notifications.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(FakeLogFileSystem.Pointer(recorder.LogFileSystem));
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(FakeLogFileSystem.Pointer(recorder.LogFileSystem));
         recorder.Calls.Should().NotContain(NothingStarted);
     }
 
@@ -1106,8 +1108,8 @@ public class ProcessStartupTests
 
         Run(recorder, Command("run")).Should().Be(-1);
 
-        recorder.Errors.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
-        recorder.Notifications.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(FakeLogFileSystem.Pointer(recorder.LogFileSystem));
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(FakeLogFileSystem.Pointer(recorder.LogFileSystem));
         recorder.Calls.Should().NotContain("run-launch");
     }
 

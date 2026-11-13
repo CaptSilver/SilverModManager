@@ -395,7 +395,7 @@ public class BuildHashesDb : IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogFailure(ex, "Failed to import build {BuildId}", build.BuildId);
-                await _renderer.Error(ex, "Failed to import {0}", build.BuildId);
+                await _renderer.Error(ex, Provider.GetRequiredService<IFileSystem>(), "Failed to import {0}", build.BuildId);
             }
             buildCount++;
         }
@@ -421,7 +421,7 @@ public class BuildHashesDb : IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogFailure(ex, "Failed to load {File}", file);
-                await _renderer.Error(ex, "Failed to load {0}", file);
+                await _renderer.Error(ex, Provider.GetRequiredService<IFileSystem>(), "Failed to load {0}", file);
             }
         }
 
@@ -492,7 +492,7 @@ public class BuildHashesDb : IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogFailure(ex, "Failed to import {Id}", id);
-                await _renderer.Error(ex, "Failed to import {0}", id);
+                await _renderer.Error(ex, Provider.GetRequiredService<IFileSystem>(), "Failed to import {0}", id);
             }
         }
         
@@ -542,7 +542,7 @@ public class BuildHashesDb : IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogFailure(ex, "Failed to import {File}", file);
-                await _renderer.Error(ex, "Failed to import {0}", file);
+                await _renderer.Error(ex, Provider.GetRequiredService<IFileSystem>(), "Failed to import {0}", file);
             }
         }
 

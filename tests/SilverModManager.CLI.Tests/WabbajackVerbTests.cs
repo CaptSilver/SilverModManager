@@ -402,7 +402,7 @@ public class WabbajackUpdateVerbTests(ITestOutputHelper helper) : WabbajackUpdat
         var (exitCode, renderer) = await RunVerb(yes ? UpdateArgs(loadout, "--yes") : UpdateArgs(loadout));
 
         exitCode.Should().Be(CliErrors.RefusalExitCode);
-        LinesOf(renderer).Should().ContainSingle().Which.Should().Be(CliErrors.Describe(refusal));
+        LinesOf(renderer).Should().ContainSingle().Which.Should().Be(CliErrors.Describe(refusal, NexusMods.Paths.FileSystem.Shared));
         await Updater.DidNotReceiveWithAnyArgs().Download(default!, default, default);
         await Updater.DidNotReceiveWithAnyArgs().Apply(default, default!, default, default!, default);
     }
@@ -423,7 +423,7 @@ public class WabbajackUpdateVerbTests(ITestOutputHelper helper) : WabbajackUpdat
 
         exitCode.Should().Be(CliErrors.RefusalExitCode);
         LinesOf(renderer).Should().ContainSingle().Which.Should().Be(CliErrors.Describe(new ModlistUpdateRefusedException(
-            "Fancy List 1.0 is not newer than the installed 1.1, and an update only moves forward. 'wabbajack undo-update' goes back to the version before the last update.")));
+            "Fancy List 1.0 is not newer than the installed 1.1, and an update only moves forward. 'wabbajack undo-update' goes back to the version before the last update."), NexusMods.Paths.FileSystem.Shared));
         await Updater.DidNotReceiveWithAnyArgs().Review(default, default!, default);
     }
 
@@ -455,11 +455,11 @@ public class WabbajackUpdateVerbTests(ITestOutputHelper helper) : WabbajackUpdat
         var (unmatchedExit, unmatched) = await RunVerb("wabbajack", "update", "-m", "Other List 2.0.wabbajack", "-l", loadout.LoadoutId.ToString());
 
         refusedExit.Should().Be(CliErrors.RefusalExitCode);
-        LinesOf(refused).Should().EndWith(CliErrors.Describe(refusal));
+        LinesOf(refused).Should().EndWith(CliErrors.Describe(refusal, NexusMods.Paths.FileSystem.Shared));
         LinesOf(refused).Should().NotContain(l => l.Contains('`') || l.Contains("   at "), "a refusal is plain text, never a stack trace");
         unmatchedExit.Should().Be(CliErrors.RefusalExitCode);
         LinesOf(unmatched).Should().ContainSingle().Which.Should().Be(
-            CliErrors.Describe(new ModlistUpdateRefusedException($"No modlist in {loadout.Name} is an earlier version of Other List 2.0. Name the installed list with --from.")));
+            CliErrors.Describe(new ModlistUpdateRefusedException($"No modlist in {loadout.Name} is an earlier version of Other List 2.0. Name the installed list with --from."), NexusMods.Paths.FileSystem.Shared));
     }
 }
 
@@ -610,6 +610,6 @@ public class WabbajackFinishUpdateVerbTests(ITestOutputHelper helper) : Wabbajac
         var (exitCode, renderer) = await RunVerb("wabbajack", "undo-update", "-m", "Fancy List 1.1.wabbajack", "-l", loadout.LoadoutId.ToString());
 
         exitCode.Should().Be(CliErrors.RefusalExitCode);
-        LinesOf(renderer).Should().ContainSingle().Which.Should().Be(CliErrors.Describe(new ModlistUpdateRefusedException("Fancy List has no update to undo.")));
+        LinesOf(renderer).Should().ContainSingle().Which.Should().Be(CliErrors.Describe(new ModlistUpdateRefusedException("Fancy List has no update to undo."), NexusMods.Paths.FileSystem.Shared));
     }
 }

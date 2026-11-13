@@ -66,6 +66,7 @@ public class SettingsVerbTests
         {
             Provider = new ServiceCollection()
                 .AddLogging()
+                .AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared)
                 .AddDefaultParsers()
                 .AddSingleton<CommandLineConfigurator>()
                 .AddCLI()

@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -259,7 +260,7 @@ public static class ProcessStartup
                     // Opening runs the migrations, so this fails every start until it is fixed. A window or a game
                     // launch has no terminal, so stderr alone would look like the app never started.
                     logger.LogFailure(ex, "Could not open the database");
-                    var failure = CliErrors.Describe(ex);
+                    var failure = CliErrors.Describe(ex, services.GetRequiredService<IFileSystem>());
                     steps.WriteError(failure);
                     if (startupMode.ShowUI || startupMode.StartsUiWhenNoMainRunning || startupMode.IsHeadlessRun) steps.Notify(services, failure);
                     return startupMode.IsHeadlessRun ? RunFailureExitCode : 1;
@@ -304,7 +305,7 @@ public static class ProcessStartup
                 logger.LogFailure(ex, "Unhandled exception");
 
                 // Steam starts the launch option without a terminal, so the log alone would leave the game silently not starting.
-                var failure = CliErrors.Describe(ex);
+                var failure = CliErrors.Describe(ex, services.GetRequiredService<IFileSystem>());
                 steps.WriteError(failure);
 
                 // Like the headless refusal above: a link clicked in a browser shows no stderr.
@@ -384,7 +385,7 @@ public static class ProcessStartup
         catch (Exception ex)
         {
             logger.LogFailure(ex, "Could not hand the launch to the running window");
-            var failure = CliErrors.Describe(ex);
+            var failure = CliErrors.Describe(ex, services.GetRequiredService<IFileSystem>());
             steps.WriteError(failure);
             steps.Notify(services, failure);
             return CliErrors.ExitCode(ex);
@@ -491,7 +492,7 @@ public static class ProcessStartup
         var busy = new MainProcessBusy();
         logger.LogWarning("The main process {PID} on port {Port} did not answer; leaving it running and not starting", pid, port);
 
-        var message = CliErrors.Describe(busy);
+        var message = CliErrors.Describe(busy, services.GetRequiredService<IFileSystem>());
         steps.WriteError(message);
         var asksFromDesktop = startupMode.ShowUI || startupMode.StartsUiWhenNoMainRunning;
         if (asksFromDesktop) steps.Notify(services, message);

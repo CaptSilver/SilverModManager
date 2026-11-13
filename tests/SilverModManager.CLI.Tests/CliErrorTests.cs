@@ -72,6 +72,7 @@ public sealed class CliErrorTests : IAsyncLifetime
 
     private static ServiceProvider Services(LevelRecorder? log = null) => new ServiceCollection()
         .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(log ?? new LevelRecorder()))
+        .AddSingleton(FakeLogFileSystem.Create())
         .AddDefaultRenderers()
         .AddVerb(() => TestVerbs.Refuse)
         .AddVerb(() => TestVerbs.Crash)
@@ -120,7 +121,7 @@ public sealed class CliErrorTests : IAsyncLifetime
 
         exitCode.Should().Be(-1);
         var text = TextOf(renderer);
-        text.Should().Contain("Details are in the log at").And.Contain(LoggingSettings.GetLogBaseFolder(FileSystem.Shared).ToString());
+        text.Should().Contain("Details are in the log at").And.Contain(FakeLogFileSystem.StateFolder);
         text.Should().NotContain("   at ").And.NotContain("InvalidOperationException").And.NotContain("sequence contains");
     }
 

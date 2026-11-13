@@ -48,7 +48,7 @@ public class CommandLineFailureTests
 
     private static CommandLineConfigurator Configure(ExceptionLog log, params VerbDefinition[] verbs)
     {
-        var services = new ServiceCollection().AddLogging(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(log)).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared).AddLogging(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(log)).BuildServiceProvider();
         return new CommandLineConfigurator(services, verbs, []);
     }
 

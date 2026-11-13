@@ -38,11 +38,14 @@ public sealed class ForwardedLaunchFailureTests : IAsyncLifetime
         Directory.Delete(_directory, recursive: true);
     }
 
+    private readonly IFileSystem _fileSystem = FakeLogFileSystem.Create();
+
     private async Task<CliClient> StartMain()
     {
         var services = new ServiceCollection()
             .AddSingleton(typeof(ILogger<>), typeof(NullLogger<>))
             .AddSingleton<IForwardedLaunchHandler>(_handler)
+            .AddSingleton(_fileSystem)
             .BuildServiceProvider();
         var syncPath = FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(_directory, "test.sync"));
         _server = new CliServer(new RecordingLogger<CliServer>(_log), new CommandLineConfigurator(services, [], []), Substitute.For<ISettingsManager>(), new SyncFile(NullLogger<SyncFile>.Instance, syncPath), services);
@@ -71,7 +74,7 @@ public sealed class ForwardedLaunchFailureTests : IAsyncLifetime
 
         var outcome = await client.ForwardLaunchAsync(Launch(), CancellationToken.None);
 
-        outcome.Should().Be(new ForwardedLaunchOutcome.Exited(-1, CliErrors.CrashPointer));
+        outcome.Should().Be(new ForwardedLaunchOutcome.Exited(-1, FakeLogFileSystem.Pointer(_fileSystem)));
         _log.Should().ContainSingle(e => e.Exception != null).Which.Level.Should().Be(LogLevel.Error);
     }
 
@@ -95,7 +98,7 @@ public sealed class ForwardedLaunchFailureTests : IAsyncLifetime
 
         var outcome = await client.ForwardLaunchAsync(Launch(), CancellationToken.None);
 
-        outcome.Should().Be(new ForwardedLaunchOutcome.Declined(CliErrors.CrashPointer));
+        outcome.Should().Be(new ForwardedLaunchOutcome.Declined(FakeLogFileSystem.Pointer(_fileSystem)));
         _log.Should().ContainSingle(e => e.Exception != null).Which.Level.Should().Be(LogLevel.Error);
     }
 

@@ -44,7 +44,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
 
     private static ServiceProvider Services(IForwardedLaunchHandler? handler)
     {
-        var services = new ServiceCollection().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        var services = new ServiceCollection().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>)).AddSingleton<IFileSystem>(FileSystem.Shared);
         if (handler is not null) services.AddSingleton(handler);
         return services.BuildServiceProvider();
     }

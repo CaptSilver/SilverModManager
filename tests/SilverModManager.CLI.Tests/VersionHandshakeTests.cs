@@ -123,7 +123,7 @@ public sealed class VersionHandshakeTests : IAsyncLifetime
         var refusal = (await act.Should().ThrowAsync<VersionMismatch>()).Which;
         refusal.Message.Should().Be("The running SilverModManager is 0.2.0 but this command is 0.1.2. Close the app and run the command again, or run the same version.");
         CliErrors.ExitCode(refusal).Should().Be(CliErrors.RefusalExitCode);
-        CliErrors.Describe(refusal).Should().Be(refusal.Message);
+        CliErrors.Describe(refusal, FileSystem.Shared).Should().Be(refusal.Message);
         _verbRuns.Should().Be(0);
     }
 

@@ -102,6 +102,7 @@ public class WabbajackBatchVerbTests(IServiceProvider provider)
         // A headless main: the same verbs and doubles, but no WindowHost.
         var headless = new ServiceCollection()
             .AddLogging()
+            .AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared)
             .AddSingleton<CommandLineConfigurator>()
             .AddCLI()
             .AddWabbajackVerbs()

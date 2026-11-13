@@ -31,6 +31,7 @@ public sealed class McpTestHost : IAsyncDisposable
     {
         var services = new ServiceCollection()
             .AddLogging()
+            .AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared)
             .AddDefaultRenderers()
             .AddOptionParser<string>(s => (s, null))
             .AddOptionParser<int>(s => (int.Parse(s), null))

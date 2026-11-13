@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.CommandLine;
@@ -244,7 +245,7 @@ public class CommandLineConfigurator
             // only this command. Escaping here would leave the client without an exit code and the server with
             // an unobserved task exception.
             _logger.LogFailure(ex, "The parser for --{Option} threw", optionDefinition.LongName);
-            result.ErrorMessage = CliErrors.Describe(ex);
+            result.ErrorMessage = CliErrors.Describe(ex, _provider.GetRequiredService<IFileSystem>());
         }
         return false;
     }

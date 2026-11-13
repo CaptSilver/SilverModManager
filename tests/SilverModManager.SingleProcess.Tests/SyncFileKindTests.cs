@@ -216,6 +216,7 @@ public sealed class SyncFileKindTests : IDisposable
         var syncFile = Create();
         var services = new ServiceCollection()
             .AddSingleton(typeof(ILogger<>), typeof(NullLogger<>))
+            .AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared)
             .BuildServiceProvider();
         var configurator = new CommandLineConfigurator(services, [], []);
         using var server = new CliServer(
