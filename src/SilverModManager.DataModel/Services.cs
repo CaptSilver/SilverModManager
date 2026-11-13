@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Loadouts;
@@ -137,6 +138,8 @@ public static class Services
         coll.TryAddSingleton<ICollectionOwnership, CollectionOwnership>();
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
+        coll.AddFreedesktopTrash();
+        coll.AddSingleton<IGameFolderFileRemoval, GameFolderFileRemoval>();
         coll.AddSingleton<ILoadoutFileRemover, LoadoutFileRemover>();
         coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();
         coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
