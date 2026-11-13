@@ -3,7 +3,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.Engine.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -13,45 +13,45 @@ using SilverModManager.Sdk.Loadouts;
 using OneOf;
 using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.Engine.SortOrder;
 
 /// <summary>
-/// The pak load order of a Baldur's Gate 3 loadout, one instance per game. Follows the shape of the Creation
+/// The pak load order of a Larian game's loadout, one instance per game. Follows the shape of the Creation
 /// Engine plugin order: new paks go at the end, a row whose pak left the loadout is kept (see
-/// <see cref="Reconcile(IReadOnlyList{Bg3PakSortData}, IReadOnlyList{Bg3PakLoadoutData}, Func{string, Bg3PakSortData?})"/>),
+/// <see cref="Reconcile(IReadOnlyList{LarianPakSortData}, IReadOnlyList{LarianPakLoadoutData}, Func{string, LarianPakSortData?})"/>),
 /// and every row has its own on/off switch, except the paks the game installed itself, whose switch is their group's.
 /// </summary>
-public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<string>, Bg3PakReactiveSortItem, Bg3PakLoadoutData, Bg3PakSortData>,
-    IBg3PakSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, IHeldGameEditSource
+public sealed class LarianPakSortOrderVariety : ASortOrderVariety<SortItemKey<string>, LarianPakReactiveSortItem, LarianPakLoadoutData, LarianPakSortData>,
+    ILarianPakSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, IHeldGameEditSource
 {
-    private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("A3D1F6B2-5C84-4E0B-9F27-6B1D0C8E2A55"));
-
     // Reconciling stores an order too, but it is the app tidying up, not the user changing anything.
     private static readonly AsyncLocal<bool> Reconciling = new();
 
-    public Bg3PakSortOrderVariety(IServiceProvider serviceProvider, IGame game) : base(serviceProvider)
+    public LarianPakSortOrderVariety(IServiceProvider serviceProvider, ILarianGame game) : base(serviceProvider)
     {
+        SortOrderVarietyId = game.Profile.VarietyId;
+        SortOrderUiMetadata = new SortOrderUiMetadata
+        {
+            SortOrderName = "Mod Load Order",
+            OverrideInfoTitle = LoadOrderConvention.Title("Mod Load Order"),
+            OverrideInfoMessage = $"""
+                                   When two paks change the same data, the one that loads later wins. {game.Profile.GameName} reads the order from its mod list, so a pak that is switched off is left out of it.
+                                   Paks the game downloaded itself can be moved, but they are switched on and off together.
+                                   """,
+            WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("paks that load later overwrite data from paks that load before them."),
+            IndexColumnHeader = "Load Order",
+            DisplayNameColumnHeader = "Pak",
+            EmptyStateMessageTitle = "No paks detected",
+            EmptyStateMessageContents = "Paks from your mods and the ones the game downloaded appear here once the loadout has any.",
+            LearnMoreUrl = "https://github.com/CaptSilver/SilverModManager#readme",
+        };
     }
 
-    public override SortOrderVarietyId SortOrderVarietyId => StaticVarietyId;
+    public override SortOrderVarietyId SortOrderVarietyId { get; }
 
-    public override SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
-    {
-        SortOrderName = "Mod Load Order",
-        OverrideInfoTitle = LoadOrderConvention.Title("Mod Load Order"),
-        OverrideInfoMessage = """
-                               When two paks change the same data, the one that loads later wins. The game reads the order from its mod list, so a pak that is switched off is left out of it.
-                               Paks the game downloaded itself can be moved, but they are switched on and off together.
-                               """,
-        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("paks that load later overwrite data from paks that load before them."),
-        IndexColumnHeader = "Load Order",
-        DisplayNameColumnHeader = "Pak",
-        EmptyStateMessageTitle = "No paks detected",
-        EmptyStateMessageContents = "Paks from your mods and the ones the game downloaded appear here once the loadout has any.",
-        LearnMoreUrl = "https://github.com/CaptSilver/SilverModManager#readme",
-    };
+    public override SortOrderUiMetadata SortOrderUiMetadata { get; }
 
-    private ulong ModsLocation => Bg3Constants.ModsLocationId.Value;
+    private ulong ModsLocation => LarianConstants.ModsLocationId.Value;
 
     public override async ValueTask<SortOrderId> GetOrCreateSortOrderFor(
         LoadoutId loadoutId,
@@ -80,11 +80,11 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         }, token);
     }
 
-    public override IObservable<IChangeSet<Bg3PakReactiveSortItem, SortItemKey<string>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)
+    public override IObservable<IChangeSet<LarianPakReactiveSortItem, SortItemKey<string>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)
     {
         var sortOrder = LoadoutSortOrder.Load(Connection.Db, sortOrderId);
         if (!sortOrder.IsValid())
-            return Observable.Empty<IChangeSet<Bg3PakReactiveSortItem, SortItemKey<string>>>();
+            return Observable.Empty<IChangeSet<LarianPakReactiveSortItem, SortItemKey<string>>>();
 
         var loadoutId = sortOrder.LoadoutId;
 
@@ -95,18 +95,18 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                     CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
                 FROM bg3.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {ModsLocation})
                 """)
-            .ObserveInBackground(row => Bg3PakSortData.KeyFor(row.PakName))
+            .ObserveInBackground(row => LarianPakSortData.KeyFor(row.PakName))
             .Transform(row =>
             {
-                var data = new Bg3PakLoadoutData(row.PakName, FileIdentity.ParseHex(row.Identity), (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
-                return new Bg3PakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data);
+                var data = new LarianPakLoadoutData(row.PakName, FileIdentity.ParseHex(row.Identity), (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
+                return new LarianPakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data);
             });
     }
 
     private const int LoadoutStateEnabled = 1;
     private const int LoadoutStateGameInstalled = 2;
 
-    public override IReadOnlyList<Bg3PakReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db)
+    public override IReadOnlyList<LarianPakReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db)
     {
         var dbToUse = db ?? Connection.Db;
         var sortOrder = LoadoutSortOrder.Load(dbToUse, sortOrderId);
@@ -115,7 +115,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         // Shows what a reconciliation would store, so a pak that has just arrived is listed before it is persisted.
         return ReconcileAgainst(sortOrder, dbToUse, dbToUse)
-            .Select(tuple => new Bg3PakReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData))
+            .Select(tuple => new LarianPakReactiveSortItem(tuple.SortedEntry.SortIndex, tuple.ItemLoadoutData.Name, tuple.SortedEntry.IsEnabled, tuple.ItemLoadoutData))
             .ToList();
     }
 
@@ -150,7 +150,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var row = RetrieveSortOrder(sortOrderId, dbToUse).FirstOrDefault(r => r.Key.Equals(item))
             ?? throw new InvalidOperationException($"Pak '{item.Key}' is not in sort order {sortOrderId}.");
 
-        if (QueryLoadoutPaks(sortOrder.LoadoutId, dbToUse).Any(pak => pak.IsGameInstalled && Bg3PakSortData.KeyFor(pak.Name).Equals(item)))
+        if (QueryLoadoutPaks(sortOrder.LoadoutId, dbToUse).Any(pak => pak.IsGameInstalled && LarianPakSortData.KeyFor(pak.Name).Equals(item)))
             throw new InvalidOperationException($"'{row.Name}' was installed by the game; switch its group instead.");
 
         using var tx = Connection.BeginTransaction();
@@ -160,7 +160,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<Bg3PakSortData> StoredOrder(Loadout.ReadOnly loadout)
+    public IReadOnlyList<LarianPakSortData> StoredOrder(Loadout.ReadOnly loadout)
     {
         var sortOrderId = GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
         return sortOrderId.HasValue ? RetrieveSortOrder(sortOrderId.Value, loadout.Db) : [];
@@ -177,7 +177,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public void StageEnabled(SortOrderId sortOrderId, string name, bool enabled, ITransaction tx)
     {
-        var row = StoredRows(sortOrderId, Connection.Db).GetValueOrDefault(Bg3PakSortData.KeyFor(name).Key)
+        var row = StoredRows(sortOrderId, Connection.Db).GetValueOrDefault(LarianPakSortData.KeyFor(name).Key)
             ?? throw new InvalidOperationException($"Pak '{name}' has no row in sort order {sortOrderId} to switch.");
         tx.Add(row.StoredRowId, Bg3PakSortOrderItem.IsEnabled, enabled);
     }
@@ -194,10 +194,10 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         foreach (var notice in notices)
         {
             // While the list is held the summary says why, and only releasing the hold ends it.
-            if (notice.ResetCount.HasValue && notice.ResetCount.Value >= Bg3ModListNotices.HoldAfterResets) continue;
+            if (notice.ResetCount.HasValue && notice.ResetCount.Value >= LarianModListNotices.HoldAfterResets) continue;
 
             // The pak lists the app wrote live on the same entity, so only the note is emptied.
-            if (Bg3ModListNotices.HoldsMoreThanTheNote(notice))
+            if (LarianModListNotices.HoldsMoreThanTheNote(notice))
             {
                 if (notice.Summary == "") continue;
                 tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
@@ -225,7 +225,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         foreach (var notice in notices)
         {
             // Below the hold the summary is the ordinary note about a replaced list, which this does not end.
-            if (notice.ResetCount.Value >= Bg3ModListNotices.HoldAfterResets) tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
+            if (notice.ResetCount.Value >= LarianModListNotices.HoldAfterResets) tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
             tx.Add(notice.Id, Bg3ModListNotice.ResetCount, 0);
         }
         await tx.Commit();
@@ -233,7 +233,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     /// <inheritdoc />
     public IObservable<string?> HoldSummary(SortOrderId sortOrderId) =>
-        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
+        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value}, {LarianModListNotices.HoldAfterResets})")
             .ObserveInBackground(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
@@ -258,7 +258,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <summary>An order the user changed puts the app back in charge of the mod list.</summary>
-    protected override async ValueTask<bool> TryPersistSortOrder(SortOrderId sortOrderId, IReadOnlyList<Bg3PakSortData> newOrder, IDb startingDb, CancellationToken token = default)
+    protected override async ValueTask<bool> TryPersistSortOrder(SortOrderId sortOrderId, IReadOnlyList<LarianPakSortData> newOrder, IDb startingDb, CancellationToken token = default)
     {
         var persisted = await base.TryPersistSortOrder(sortOrderId, newOrder, startingDb, token);
         if (persisted && !Reconciling.Value) await ClearModListReset(sortOrderId);
@@ -267,7 +267,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     /// <inheritdoc />
     public IObservable<string?> ReplacedEditSummary(SortOrderId sortOrderId) =>
-        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.Notices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
+        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.Notices({Connection}, {sortOrderId.Value}, {LarianModListNotices.HoldAfterResets})")
             .ObserveInBackground(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
@@ -280,7 +280,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// The visible rows: those whose pak the loadout still has. A row without its pak is kept in the database but
     /// hidden here, so that moving an item by one steps over the rows the user sees.
     /// </summary>
-    protected override IReadOnlyList<Bg3PakSortData> RetrieveSortOrder(SortOrderId sortOrderEntityId, IDb dbToUse)
+    protected override IReadOnlyList<LarianPakSortData> RetrieveSortOrder(SortOrderId sortOrderEntityId, IDb dbToUse)
     {
         var sortOrder = LoadoutSortOrder.Load(dbToUse, sortOrderEntityId);
         if (!sortOrder.IsValid())
@@ -289,7 +289,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var rows = dbToUse.Connection.Query<(string PakName, int SortIndex, bool IsEnabled, EntityId Id)>($"""
                 SELECT PakName, SortIndex, IsEnabled, Id FROM bg3.LiveSortOrderItems({dbToUse}, {sortOrderEntityId.Value}, {sortOrder.LoadoutId}, {ModsLocation})
                 """)
-            .Select(row => new Bg3PakSortData(row.PakName, row.SortIndex, row.IsEnabled, row.Id))
+            .Select(row => new LarianPakSortData(row.PakName, row.SortIndex, row.IsEnabled, row.Id))
             .GroupBy(row => row.SortIndex)
             .OrderBy(group => group.Key)
             // A row that was hidden while its pak was away keeps the index it had and can share it with a row
@@ -303,15 +303,15 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return rows;
     }
 
-    protected override IReadOnlyList<Bg3PakLoadoutData> RetrieveLoadoutData(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId, IDb? db)
+    protected override IReadOnlyList<LarianPakLoadoutData> RetrieveLoadoutData(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId, IDb? db)
     {
         var dbToUse = db ?? Connection.Db;
         return QueryLoadoutPaks(loadoutId, dbToUse)
-            .Select(row => new Bg3PakLoadoutData(row.Name, row.Identity, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled))
+            .Select(row => new LarianPakLoadoutData(row.Name, row.Identity, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled))
             .ToList();
     }
 
-    protected override IReadOnlyList<(Bg3PakSortData SortedEntry, Bg3PakLoadoutData ItemLoadoutData)> ReconcileSortOrderCore(SortOrderId sortOrderId, IDb loadoutRevisionDb)
+    protected override IReadOnlyList<(LarianPakSortData SortedEntry, LarianPakLoadoutData ItemLoadoutData)> ReconcileSortOrderCore(SortOrderId sortOrderId, IDb loadoutRevisionDb)
     {
         var latestDb = loadoutRevisionDb.Connection.Db;
         return ReconcileAgainst(LoadoutSortOrder.Load(latestDb, sortOrderId), latestDb, loadoutRevisionDb);
@@ -320,9 +320,9 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <summary>
     /// Reconciles without any tombstones to bring back, so every pak the order does not know is new.
     /// </summary>
-    protected override IReadOnlyList<(Bg3PakSortData SortedEntry, Bg3PakLoadoutData ItemLoadoutData)> Reconcile(
-        IReadOnlyList<Bg3PakSortData> sourceSortedEntries,
-        IReadOnlyList<Bg3PakLoadoutData> loadoutDataItems) =>
+    protected override IReadOnlyList<(LarianPakSortData SortedEntry, LarianPakLoadoutData ItemLoadoutData)> Reconcile(
+        IReadOnlyList<LarianPakSortData> sourceSortedEntries,
+        IReadOnlyList<LarianPakLoadoutData> loadoutDataItems) =>
         Reconcile(sourceSortedEntries, loadoutDataItems, _ => null);
 
     /// <summary>
@@ -331,13 +331,13 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// it had; otherwise it goes at the end, switched on, in name order.
     /// </summary>
     /// <param name="tombstone">Finds the stored row of a pak by its lower-cased name.</param>
-    internal static IReadOnlyList<(Bg3PakSortData SortedEntry, Bg3PakLoadoutData ItemLoadoutData)> Reconcile(
-        IReadOnlyList<Bg3PakSortData> sourceSortedEntries,
-        IReadOnlyList<Bg3PakLoadoutData> loadoutDataItems,
-        Func<string, Bg3PakSortData?> tombstone)
+    internal static IReadOnlyList<(LarianPakSortData SortedEntry, LarianPakLoadoutData ItemLoadoutData)> Reconcile(
+        IReadOnlyList<LarianPakSortData> sourceSortedEntries,
+        IReadOnlyList<LarianPakLoadoutData> loadoutDataItems,
+        Func<string, LarianPakSortData?> tombstone)
     {
         var loadoutByKey = loadoutDataItems.ToDictionary(item => item.Key);
-        var results = new List<(Bg3PakSortData SortedEntry, Bg3PakLoadoutData ItemLoadoutData)>(sourceSortedEntries.Count);
+        var results = new List<(LarianPakSortData SortedEntry, LarianPakLoadoutData ItemLoadoutData)>(sourceSortedEntries.Count);
         var seen = new HashSet<SortItemKey<string>>();
 
         foreach (var entry in sourceSortedEntries.OrderBy(entry => entry.SortIndex))
@@ -349,8 +349,8 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         }
 
         // Tombstones go back in the order they were stored in, so that each insert lands where it was.
-        var restored = new List<(Bg3PakLoadoutData Data, Bg3PakSortData Stored)>();
-        var added = new List<Bg3PakLoadoutData>();
+        var restored = new List<(LarianPakLoadoutData Data, LarianPakSortData Stored)>();
+        var added = new List<LarianPakLoadoutData>();
         foreach (var item in loadoutDataItems.Where(item => !seen.Contains(item.Key)))
         {
             if (tombstone(item.Key.Key) is { } stored) restored.Add((item, stored));
@@ -368,7 +368,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         return results;
 
-        Bg3PakSortData New(Bg3PakLoadoutData data, Bg3PakSortData? stored = null) =>
+        LarianPakSortData New(LarianPakLoadoutData data, LarianPakSortData? stored = null) =>
             new(data.Name, results.Count, stored?.IsEnabled ?? true, stored?.RowId);
     }
 
@@ -378,7 +378,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// </summary>
     protected override void PersistSortOrderCore(
         SortOrderId sortOrderId,
-        IReadOnlyList<Bg3PakSortData> newOrder,
+        IReadOnlyList<LarianPakSortData> newOrder,
         ITransaction tx,
         IDb startingDb,
         CancellationToken token = default)
@@ -393,7 +393,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         for (var index = 0; index < entries.Count; index++)
         {
             var (name, isEnabled) = entries[index];
-            if (stored.TryGetValue(Bg3PakSortData.KeyFor(name).Key, out var row))
+            if (stored.TryGetValue(LarianPakSortData.KeyFor(name).Key, out var row))
             {
                 var id = row.StoredRowId;
                 if (row.SortIndex != index) tx.Add(id, SortOrderItem.SortIndex, index);
@@ -417,15 +417,15 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <summary>Every stored row of the sort order, tombstones included, by lower-cased name. The lowest index wins a duplicate.</summary>
-    private static Dictionary<string, Bg3PakSortData> StoredRows(SortOrderId sortOrderId, IDb db) =>
+    private static Dictionary<string, LarianPakSortData> StoredRows(SortOrderId sortOrderId, IDb db) =>
         db.Connection.Query<(string PakName, int SortIndex, bool IsEnabled, EntityId Id)>($"""
                 SELECT PakName, SortIndex, IsEnabled, Id FROM bg3.SortOrderItems({db}, {sortOrderId.Value})
                 """)
-            .Select(row => new Bg3PakSortData(row.PakName, row.SortIndex, row.IsEnabled, row.Id))
+            .Select(row => new LarianPakSortData(row.PakName, row.SortIndex, row.IsEnabled, row.Id))
             .GroupBy(row => row.Key.Key)
             .ToDictionary(group => group.Key, group => group.OrderBy(row => row.SortIndex).First());
 
-    private IReadOnlyList<(Bg3PakSortData SortedEntry, Bg3PakLoadoutData ItemLoadoutData)> ReconcileAgainst(LoadoutSortOrder.ReadOnly sortOrder, IDb latestDb, IDb loadoutRevisionDb)
+    private IReadOnlyList<(LarianPakSortData SortedEntry, LarianPakLoadoutData ItemLoadoutData)> ReconcileAgainst(LoadoutSortOrder.ReadOnly sortOrder, IDb latestDb, IDb loadoutRevisionDb)
     {
         var collectionGroupId = sortOrder.ParentEntity.IsT1 ? sortOrder.ParentEntity.AsT1 : Optional<CollectionGroupId>.None;
         var loadoutData = RetrieveLoadoutData(sortOrder.LoadoutId, collectionGroupId, loadoutRevisionDb);

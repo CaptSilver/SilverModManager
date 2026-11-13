@@ -1,12 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.Engine;
+using SilverModManager.Games.Larian.Engine.Utils;
 using SilverModManager.Sdk.Settings;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
-using SilverModManager.Games.Larian.BaldursGate3.RunGameTools;
-using SilverModManager.Games.Larian.BaldursGate3.Utils;
 
 namespace SilverModManager.Games.Larian.BaldursGate3;
 
@@ -16,12 +15,10 @@ public static class Services
     {
         services
             .AddGame<BaldursGate3>()
-            .AddSingleton<ITool, BG3RunGameTool>()
+            .AddSingleton<ITool, LarianRunGameTool<BaldursGate3>>()
             .AddSettings<BaldursGate3Settings>()
             .AddPipelines()
             .AddSingleton<GameModuleCatalog>()
-            // diagnostics
-            .AddSingleton<DependencyDiagnosticEmitter>()
             // models
             .AddBg3PakSortOrderModel()
             .AddBg3PakSortOrderItemModel()

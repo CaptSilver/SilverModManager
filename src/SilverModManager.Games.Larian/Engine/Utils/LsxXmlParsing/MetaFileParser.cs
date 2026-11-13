@@ -1,6 +1,6 @@
 using System.Xml;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing
+namespace SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing
 {
     /// <summary>
     /// Class to parse and extract dependencies and metadata from a bg3 `meta.lsx` file.

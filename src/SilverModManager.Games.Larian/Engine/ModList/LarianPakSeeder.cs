@@ -1,17 +1,17 @@
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.Engine.ModList;
 
 /// <summary>
 /// Fills a loadout's pak order once, from the mod list the game already has on disk, so the first Apply writes
 /// back what the user was playing with instead of a guess.
 /// </summary>
-public static class Bg3PakSeeder
+public static class LarianPakSeeder
 {
     public static bool IsSeeded(IDb db, SortOrderId sortOrderId) => Bg3PakSortOrder.Load(db, sortOrderId.Value).SeededFromGameFile;
 
@@ -24,14 +24,14 @@ public static class Bg3PakSeeder
     /// Entries for modules with no pak at all are skipped; with no readable file the order only gets the flag.
     /// </summary>
     public static async Task Seed(
-        IBg3PakSortOrderVariety variety,
+        ILarianPakSortOrderVariety variety,
         IConnection connection,
         SortOrderId sortOrderId,
-        IReadOnlyList<Bg3PakCandidate> candidates,
-        IReadOnlyList<Bg3PakCandidate> notYetInLoadout,
+        IReadOnlyList<LarianPakCandidate> candidates,
+        IReadOnlyList<LarianPakCandidate> notYetInLoadout,
         ModsettingsDocument? gameFile)
     {
-        var byUuid = new Dictionary<string, Bg3PakCandidate>(StringComparer.OrdinalIgnoreCase);
+        var byUuid = new Dictionary<string, LarianPakCandidate>(StringComparer.OrdinalIgnoreCase);
         foreach (var pak in candidates.Concat(notYetInLoadout))
         {
             if (pak.Entry is not null) byUuid.TryAdd(pak.Entry.Uuid, pak);

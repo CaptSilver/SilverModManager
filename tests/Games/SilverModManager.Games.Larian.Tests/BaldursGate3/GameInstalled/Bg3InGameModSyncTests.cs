@@ -9,9 +9,10 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.Engine;
+using SilverModManager.Games.Larian.Engine.Emitters;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
+using SilverModManager.Games.Larian.Engine.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
@@ -183,8 +184,8 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
         probe.ExtrasDiffer(Connection.Db, Item(Refresh(loadout), RecordedPak).Id, content).Should().BeFalse();
     }
 
-    private sealed class SynchronizerProbe(IServiceProvider provider, IGame game)
-        : BaldursGate3Synchronizer(provider, game, new Bg3PakModules(provider))
+    private sealed class SynchronizerProbe(IServiceProvider provider, ILarianGame game)
+        : LarianSynchronizer(provider, game, new LarianPakModules(provider))
     {
         public bool ExtrasDiffer(IDb db, EntityId itemId, GameInstalledContent content) => GameInstalledExtrasDiffer(db, itemId, content);
     }
@@ -281,7 +282,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
     private async Task<List<Diagnostic>> Dependencies(Loadout.ReadOnly loadout)
     {
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         return await emitter.Diagnose(Refresh(loadout), CancellationToken.None).ToListAsync();
     }
 

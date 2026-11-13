@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.Engine.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3;
@@ -32,6 +32,24 @@ public class ModsettingsFileWriteTests(ITestOutputHelper helper) : ModsettingsFi
         await Apply(loadout);
 
         await Verify(DiskText());
+    }
+
+    [Fact]
+    public async Task AFileWithABomAndWindowsLineEndingsKeepsBoth()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
+        await WriteModsettings(BaseEntries);
+        var file = OnDisk(ModsettingsPath).ToString();
+        await File.WriteAllTextAsync(file, File.ReadAllText(file).Replace("\r\n", "\n").Replace("\n", "\r\n"), new System.Text.UTF8Encoding(true));
+
+        await Apply(loadout);
+
+        var bytes = await File.ReadAllBytesAsync(file);
+        bytes.Take(3).Should().Equal(0xEF, 0xBB, 0xBF);
+        var text = System.Text.Encoding.UTF8.GetString(bytes);
+        text.Replace("\r\n", "").Should().NotContain("\n", "every line ends the way the game's file did");
+        DiskNames().Should().Contain("Alpha");
     }
 
     [Fact]

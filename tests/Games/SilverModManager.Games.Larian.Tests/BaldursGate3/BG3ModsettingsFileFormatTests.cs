@@ -1,6 +1,6 @@
 using System.Text;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 using NexusMods.Paths;
 
 namespace SilverModManager.Games.Larian.Tests.BaldursGate3;

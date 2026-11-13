@@ -1,15 +1,15 @@
 using SilverModManager.Abstractions.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.Engine.SortOrder;
 
 /// <summary>
 /// A stored pak row: its place in the order and its on/off switch, plus the on-disk spelling of the name the
 /// base class does not carry.
 /// </summary>
-public sealed class Bg3PakSortData : SortItemData<SortItemKey<string>>
+public sealed class LarianPakSortData : SortItemData<SortItemKey<string>>
 {
-    public Bg3PakSortData(string name, int sortIndex, bool isEnabled, EntityId? rowId = null)
+    public LarianPakSortData(string name, int sortIndex, bool isEnabled, EntityId? rowId = null)
         : base(KeyFor(name), sortIndex)
     {
         Name = name;

@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;

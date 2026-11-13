@@ -2,14 +2,14 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
 using SilverModManager.MnemonicDB.Abstractions;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.Engine.ModList;
 
 /// <summary>
 /// The one <see cref="Bg3ModListNotice"/> of a pak sort order. It holds the note that the game's mod list was
 /// replaced (an empty summary means there is none) and the pak lists the app wrote, so the entity outlives the
 /// note.
 /// </summary>
-public static class Bg3ModListNotices
+public static class LarianModListNotices
 {
     private const char Separator = '\n';
 

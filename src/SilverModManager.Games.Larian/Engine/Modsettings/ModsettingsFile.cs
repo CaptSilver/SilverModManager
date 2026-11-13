@@ -4,53 +4,42 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
+using SilverModManager.Games.Larian.Engine.ModList;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.Engine.Modsettings;
 
 /// <summary>
 /// The game's mod list, <c>modsettings.lsx</c>. The paks in it, and their order, come from the loadout's pak sort
-/// order as <see cref="BaldursGate3Synchronizer"/> worked them out before the sync (<see cref="Bg3ModListNotices"/>
+/// order as <see cref="LarianSynchronizer"/> worked them out before the sync (<see cref="LarianModListNotices"/>
 /// holds the result); the game's own modules and the file's version are kept from the file on disk. This only
 /// renders and compares, it never changes the loadout's order: the same sync that finds the game's edits writes
 /// the app's list over them.
 /// </summary>
 public sealed class ModsettingsFile : IIntrinsicFileWithReset
 {
-    public static readonly GamePath FilePath = new(Bg3Constants.PlayerProfilesLocationId, "modsettings.lsx");
-
-    // The shape of a file the current game writes, used only when there is none on disk to keep.
-    private static readonly IReadOnlyDictionary<string, string> DefaultVersion = new Dictionary<string, string>
-    {
-        ["major"] = "4", ["minor"] = "8", ["revision"] = "0", ["build"] = "400",
-    };
-
-    private static readonly IReadOnlyList<ModsettingsDocument.ModuleEntry> DefaultBaseEntries =
-    [
-        new("GustavX", "GustavX", "0", "cb555efe-2d9e-131f-8195-a89329d218ea", "145241302737902957", ""),
-        new("HonourX", "HonourX", "0", "767d0062-d82c-279c-e16b-dfee7fe94cdd", "36028797025827000", ""),
-    ];
-
     private readonly IGame _game;
-    private readonly Bg3PakModules _modules;
+    private readonly LarianPakModules _modules;
+    private readonly IModsettingsSchema _schema;
     private readonly ILogger<ModsettingsFile> _logger;
 
-    public ModsettingsFile(IGame game, Bg3PakModules modules, ILogger<ModsettingsFile> logger)
+    public ModsettingsFile(IGame game, LarianPakModules modules, IModsettingsSchema schema, GamePath path, ILogger<ModsettingsFile> logger)
     {
         _game = game;
         _modules = modules;
+        _schema = schema;
+        Path = path;
         _logger = logger;
     }
 
-    public GamePath Path => FilePath;
+    public GamePath Path { get; }
 
-    private IBg3PakSortOrderVariety Variety =>
-        _game.SortOrderManager.GetSortOrderVarieties().OfType<IBg3PakSortOrderVariety>().Single();
+    private ILarianPakSortOrderVariety Variety =>
+        _game.SortOrderManager.GetSortOrderVarieties().OfType<ILarianPakSortOrderVariety>().Single();
 
     /// <inheritdoc />
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
@@ -61,22 +50,24 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         var byName = ByName(candidates);
 
         var disk = ReadDocument(loadout);
+        if (disk is null && !_schema.CanCreateFromNothing) throw new LarianModListMissingException(_game.DisplayName);
+
         var pakUuids = UuidsOf(candidates);
         var baseEntries = disk is null
-            ? DefaultBaseEntries
-            : disk.BaseEntries.Where(e => !pakUuids.Contains(e.Uuid)).ToList();
+            ? _schema.EntriesWhenNoFile
+            : _schema.GameEntries(disk, NoAdventures).Where(e => !pakUuids.Contains(e.Uuid)).ToList();
 
-        var pakEntries = Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId)
+        var pakEntries = LarianModListNotices.LastWritten(loadout.Db, sortOrderId)
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant())?.Entry)
             .OfType<ModsettingsDocument.ModuleEntry>();
 
         // While the game's list is held, the file is written back as it is.
-        IEnumerable<ModsettingsDocument.ModuleEntry> entries = disk is not null && Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)
+        IEnumerable<ModsettingsDocument.ModuleEntry> entries = disk is not null && LarianModListNotices.IsHeld(loadout.Db, sortOrderId)
             ? disk.Entries
             : baseEntries.Concat(pakEntries);
 
         var version = VersionOf(disk);
-        var text = ModsettingsDocument.Render(version, entries);
+        var text = _schema.Render(version, entries, disk);
         await stream.WriteAsync(new UTF8Encoding(false).GetBytes(text));
     }
 
@@ -90,13 +81,14 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         var sortOrderId = found.Value;
 
         // The file is the game's while the list is held, so there is no app list to compare it with.
-        if (Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)) return;
+        if (LarianModListNotices.IsHeld(loadout.Db, sortOrderId)) return;
 
         ModsettingsDocument document;
         try
         {
-            using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-            document = ModsettingsDocument.Parse(await reader.ReadToEndAsync());
+            // Not detecting the byte order mark leaves it in the text, where the document notes it.
+            using var reader = new StreamReader(stream, new UTF8Encoding(false), detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+            document = _schema.Parse(await reader.ReadToEndAsync());
         }
         catch (Exception e) when (e is XmlException or InvalidDataException)
         {
@@ -106,7 +98,7 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         }
 
         var candidates = await _modules.Candidates(loadout, variety, sortOrderId);
-        var lastWritten = Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId);
+        var lastWritten = LarianModListNotices.LastWritten(loadout.Db, sortOrderId);
 
         // A list the game threw away was already reported while the sync was prepared, with the paks that
         // went into it; describing the same file again here would replace that note.
@@ -116,21 +108,21 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
 
         var expected = lastWritten
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant()))
-            .OfType<Bg3PakCandidate>()
+            .OfType<LarianPakCandidate>()
             .ToList();
 
         // The paks that were written come first, so an entry that two paks provide is taken for the one written.
         var byUuid = ByUuid(expected.Concat(candidates));
 
         // Base entries and modules the loadout has no pak for are the game's business, not part of the comparison.
-        var onDisk = new List<Bg3PakCandidate>();
+        var onDisk = new List<LarianPakCandidate>();
         foreach (var entry in document.Entries)
         {
             if (byUuid.TryGetValue(entry.Uuid, out var pak) && !onDisk.Contains(pak)) onDisk.Add(pak);
         }
 
         var summary = Describe(expected, onDisk);
-        Bg3ModListNotices.StageSummary(loadout.Db, sortOrderId, summary, DateTimeOffset.UtcNow, tx);
+        LarianModListNotices.StageSummary(loadout.Db, sortOrderId, summary, DateTimeOffset.UtcNow, tx);
     }
 
     /// <inheritdoc />
@@ -145,8 +137,8 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
 
         // A pak the reset leaves behind (the game's own, or one nobody deployed) keeps its entry; the app's paks
         // go off disk, and the game would refuse to start a list that names them.
-        bool StaysOnDisk(Bg3PakCandidate pak) =>
-            desiredState.TryGetValue(new GamePath(Bg3Constants.ModsLocationId, pak.Name), out var node) && node.HaveLoadout;
+        bool StaysOnDisk(LarianPakCandidate pak) =>
+            desiredState.TryGetValue(new GamePath(LarianConstants.ModsLocationId, pak.Name), out var node) && node.HaveLoadout;
 
         var removed = candidates
             .Where(p => !p.IsGameInstalled)
@@ -166,7 +158,7 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
             if (pak.Entry is { } entry && listed.Add(entry.Uuid)) kept.Add(entry);
         }
 
-        var text = ModsettingsDocument.Render(VersionOf(disk), kept);
+        var text = _schema.Render(VersionOf(disk), kept, disk);
         return new UTF8Encoding(false).GetBytes(text);
     }
 
@@ -176,24 +168,25 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
     /// still names a pak is the game changing the list, which the notice reports, and a list with nothing on disk
     /// to name is not one the game could have thrown away.
     /// </summary>
-    public bool GameThrewTheListAway(Loadout.ReadOnly loadout, IReadOnlyList<Bg3PakCandidate> candidates, IReadOnlyList<string> lastWritten)
+    public bool GameThrewTheListAway(Loadout.ReadOnly loadout, IReadOnlyList<LarianPakCandidate> candidates, IReadOnlyList<string> lastWritten)
     {
         var byName = ByName(candidates);
         var writtenAndOnDisk = lastWritten
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant()))
-            .OfType<Bg3PakCandidate>()
+            .OfType<LarianPakCandidate>()
             .Where(pak => pak.Entry is not null)
-            .Where(pak => loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(Bg3Constants.ModsLocationId, pak.Name)).FileExists)
+            .Where(pak => loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LarianConstants.ModsLocationId, pak.Name)).FileExists)
             .ToList();
         if (writtenAndOnDisk.Count == 0) return false;
 
         if (ReadDocument(loadout) is not { } disk) return false;
         var pakUuids = UuidsOf(candidates);
-        return !disk.Entries.Any(e => e.IsPublished || pakUuids.Contains(e.Uuid));
+        var gameEntries = _schema.GameEntries(disk, NoAdventures).ToHashSet();
+        return !disk.Entries.Any(e => !gameEntries.Contains(e) || pakUuids.Contains(e.Uuid));
     }
 
     /// <summary>The paks of the loadout that the file on disk lists, in the file's order.</summary>
-    public IReadOnlyList<string> PaksListedOnDisk(Loadout.ReadOnly loadout, IReadOnlyList<Bg3PakCandidate> candidates)
+    public IReadOnlyList<string> PaksListedOnDisk(Loadout.ReadOnly loadout, IReadOnlyList<LarianPakCandidate> candidates)
     {
         if (ReadDocument(loadout) is not { } disk) return [];
 
@@ -207,7 +200,7 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
     }
 
     /// <summary>What the game changed, in a sentence, or null when the paks and their order are as the app wrote them.</summary>
-    private static string? Describe(IReadOnlyList<Bg3PakCandidate> expected, IReadOnlyList<Bg3PakCandidate> onDisk)
+    private static string? Describe(IReadOnlyList<LarianPakCandidate> expected, IReadOnlyList<LarianPakCandidate> onDisk)
     {
         var removed = expected.Where(p => !onDisk.Contains(p)).Select(p => p.Name).ToList();
         var added = onDisk.Where(p => !expected.Contains(p)).Select(p => p.Name).ToList();
@@ -228,7 +221,8 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
 
         try
         {
-            return ModsettingsDocument.Parse(File.ReadAllText(file.ToString()));
+            using var reader = new StreamReader(file.ToString(), new UTF8Encoding(false), detectEncodingFromByteOrderMarks: false);
+            return _schema.Parse(reader.ReadToEnd());
         }
         catch (Exception e) when (e is XmlException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
@@ -237,16 +231,19 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         }
     }
 
-    private static IReadOnlyDictionary<string, string> VersionOf(ModsettingsDocument? disk) =>
-        disk is { VersionAttributes.Count: > 0 } ? disk.VersionAttributes : DefaultVersion;
+    private IReadOnlyDictionary<string, string> VersionOf(ModsettingsDocument? disk) =>
+        disk is { VersionAttributes.Count: > 0 } ? disk.VersionAttributes : _schema.DefaultVersion;
 
-    private static Dictionary<string, Bg3PakCandidate> ByName(IEnumerable<Bg3PakCandidate> candidates) =>
+    // Only a dialect that tells the game's entries apart by adventure reads this; Baldur's Gate 3's does not.
+    private static readonly IReadOnlySet<string> NoAdventures = new HashSet<string>();
+
+    private static Dictionary<string, LarianPakCandidate> ByName(IEnumerable<LarianPakCandidate> candidates) =>
         candidates.ToDictionary(p => p.Name.ToLowerInvariant());
 
     /// <summary>The pak each module comes from; the first one in order when several provide it.</summary>
-    private static Dictionary<string, Bg3PakCandidate> ByUuid(IEnumerable<Bg3PakCandidate> candidates)
+    private static Dictionary<string, LarianPakCandidate> ByUuid(IEnumerable<LarianPakCandidate> candidates)
     {
-        var byUuid = new Dictionary<string, Bg3PakCandidate>(StringComparer.OrdinalIgnoreCase);
+        var byUuid = new Dictionary<string, LarianPakCandidate>(StringComparer.OrdinalIgnoreCase);
         foreach (var pak in candidates)
         {
             if (pak.Entry is not null) byUuid.TryAdd(pak.Entry.Uuid, pak);
@@ -254,6 +251,6 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         return byUuid;
     }
 
-    private static HashSet<string> UuidsOf(IEnumerable<Bg3PakCandidate> candidates) =>
+    private static HashSet<string> UuidsOf(IEnumerable<LarianPakCandidate> candidates) =>
         candidates.Select(p => p.Entry?.Uuid).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
 }

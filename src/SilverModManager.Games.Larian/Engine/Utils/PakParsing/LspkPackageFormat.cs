@@ -1,8 +1,8 @@
 using System.Text;
 using DynamicData.Kernel;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+namespace SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 
 /// <summary>
 /// Static class containing definitions for the Larian Package (LSPK, `.pak`) format.

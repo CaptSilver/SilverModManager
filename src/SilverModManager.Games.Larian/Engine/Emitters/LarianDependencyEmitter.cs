@@ -13,10 +13,10 @@ using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Games.Generic;
-using SilverModManager.Games.Larian.BaldursGate3.Utils;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -24,30 +24,40 @@ using SilverModManager.Sdk.NexusModsApi;
 using Polly;
 using SilverModManager.Sdk.Resources;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
+namespace SilverModManager.Games.Larian.Engine.Emitters;
 
-public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
+public class LarianDependencyEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly ILogger _logger;
     private readonly IResourceLoader<FileIdentity, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
     private readonly GameDomain _gameDomain;
     private readonly GameModuleCatalog _gameModules;
+    private readonly LarianGameProfile _profile;
     private int _loggedUnreadableGame;
 
-    public DependencyDiagnosticEmitter(IServiceProvider serviceProvider, ILogger<DependencyDiagnosticEmitter> logger, IGameDomainToGameIdMappingCache mappingCache, GameModuleCatalog gameModules)
+    public LarianDependencyEmitter(
+        IServiceProvider serviceProvider,
+        LarianGameProfile profile,
+        Optional<NexusModsGameId> nexusModsGameId,
+        ILogger<LarianDependencyEmitter> logger,
+        IGameDomainToGameIdMappingCache mappingCache,
+        GameModuleCatalog gameModules)
     {
+        _profile = profile;
         _logger = logger;
         _gameModules = gameModules;
         _metadataPipeline = Pipelines.GetMetadataPipeline(serviceProvider);
-        _gameDomain = mappingCache[BaldursGate3.NexusModsGameId.Value];
+        _gameDomain = mappingCache[nexusModsGameId.Value];
     }
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var bg3LoadoutFile = ScriptExtenderFile.Find(loadout);
+        var extenderFile = _profile.ScriptExtender is { } extender
+            ? ScriptExtenderFile.Find(loadout, extender.DllPath)
+            : Optional<LoadoutFile.ReadOnly>.None;
 
-        if (bg3LoadoutFile.HasValue && BaldursGate3.IsNativeBuild(loadout.InstallationInstance.LocatorResult))
-            yield return Diagnostics.CreateBg3SeOnNativeBuild(GameName: BaldursGate3.DisplayName);
+        if (extenderFile.HasValue && LarianBuild.IsNative(loadout.InstallationInstance.LocatorResult))
+            yield return Diagnostics.CreateBg3SeOnNativeBuild(GameName: _profile.GameName);
 
         // The script extender's DWrite.dll only loads under Wine when it is overridden; the diagnostic clears once the prefix has it.
         var dllOverrideInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(
@@ -62,7 +72,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 with { Actions = WineDiagnosticHelper.GetWineDllOverridesFixActions(loadout.InstallationInstance) };
         }
 
-        var diagnostics = await DiagnosePakModulesAsync(loadout, bg3LoadoutFile, cancellationToken);
+        var diagnostics = await DiagnosePakModulesAsync(loadout, extenderFile, cancellationToken);
         foreach (var diagnostic in diagnostics)
         {
             yield return diagnostic;
@@ -71,7 +81,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 
 #region Diagnosers
 
-    private async Task<IEnumerable<Diagnostic>> DiagnosePakModulesAsync(Loadout.ReadOnly loadout, Optional<LoadoutFile.ReadOnly> bg3LoadoutFile, CancellationToken cancellationToken)
+    private async Task<IEnumerable<Diagnostic>> DiagnosePakModulesAsync(Loadout.ReadOnly loadout, Optional<LoadoutFile.ReadOnly> extenderFile, CancellationToken cancellationToken)
     {
         var paks = GetAllPaks(loadout, onlyEnabledMods: true);
         var metaFileTuples = await GetAllPakMetadata(paks,
@@ -102,7 +112,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             {
                 diagnostics.Add(Diagnostics.CreateInvalidPakFile(
                         ModName: loadoutItemGroup.ToReference(loadout),
-                        PakFileName: mod.FileName
+                        PakFileName: mod.FileName,
+                        GameName: _profile.GameName
                     )
                 );
                 continue;
@@ -111,14 +122,16 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             // non error case
             var pakMetaData = metadataOrError.Result;
 
-            // check if the mod requires the script extender and if SE is missing
-            if (pakMetaData.ScriptExtenderConfigMetadata is { HasValue: true, Value.RequiresScriptExtender: true } &&
-                !bg3LoadoutFile.HasValue)
+            // check if the mod requires the script extender and if SE is missing; a game with no extender has no page to send the player to
+            if (_profile.ScriptExtender is { } extender &&
+                pakMetaData.ScriptExtenderConfigMetadata is { HasValue: true, Value.RequiresScriptExtender: true } &&
+                !extenderFile.HasValue)
             {
                 diagnostics.Add(Diagnostics.CreateMissingRequiredScriptExtender(
                     ModName: loadoutItemGroup.ToReference(loadout),
                     PakName:pakMetaData.MetaFileData.ModuleShortDesc.Name,
-                    BG3SENexusLink:BG3SENexusModsLink));
+                    GameName: _profile.GameName,
+                    BG3SENexusLink:ScriptExtenderNexusModsLink(extender)));
             }
 
             // check dependencies
@@ -132,7 +145,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 // Modules the game itself ships (GustavX, PhotoMode, ...) are not in the loadout.
                 LsxXmlFormat.ModuleShortDesc gameModule = default;
                 var providedByGame = gameModules?.TryGetValue(dependencyUuid, out gameModule) ?? false;
-                if (gameModules is null && LsxXmlFormat.DependencyUuidsToIgnore.Contains(dependencyUuid, StringComparer.OrdinalIgnoreCase))
+                if (gameModules is null && _profile.GameModuleUuids.Contains(dependencyUuid))
                     continue;
 
                 var requiredVersion = dependency.SemanticVersion;
@@ -154,7 +167,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                             PakModuleVersion: pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString(),
                             DepName: dependency.Name,
                             MinDepVersion: requiredVersion.ToString(),
-                            CurrentDepVersion: gameModule.SemanticVersion.ToString()
+                            CurrentDepVersion: gameModule.SemanticVersion.ToString(),
+                            GameName: _profile.GameName
                         )
                     );
                     continue;
@@ -255,7 +269,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
     /// </summary>
     private IReadOnlyDictionary<string, LsxXmlFormat.ModuleShortDesc>? GetGameModules(Loadout.ReadOnly loadout)
     {
-        var dataFolder = loadout.InstallationInstance.Locations[LocationId.Game].Path.Combine("Data");
+        var dataFolder = loadout.InstallationInstance.Locations[LocationId.Game].Path.Combine(_profile.GameData);
         var modules = _gameModules.GetModules(dataFolder);
         if (modules is null && Interlocked.Exchange(ref _loggedUnreadableGame, 1) == 0)
         {
@@ -311,7 +325,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 // Log the InvalidDataException case, but still return the resource
                 if (resource.Data.Exception is not null)
                 {
-                    logger.LogWarning(resource.Data.Exception, "Detected invalid BG3 Pak file: `{Name}`", pak.Path);
+                    logger.LogWarning(resource.Data.Exception, "Detected invalid pak file: `{Name}`", pak.Path);
                 }
 
                 outcome = resource.Data;
@@ -331,14 +345,14 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         }
         catch (Exception e) when (e is InvalidDataException or XmlException or IOException or UnauthorizedAccessException)
         {
-            logger.LogWarning(e, "Unable to read the BG3 Pak file the game installed: `{Name}`", pak.Path);
+            logger.LogWarning(e, "Unable to read the pak file the game installed: `{Name}`", pak.Path);
             return Outcome.FromException<LspkPackageFormat.PakMetaData>(e);
         }
     }
 
     private static PakEntry[] GetAllPaks(Loadout.ReadOnly loadout, bool onlyEnabledMods)
     {
-        static bool IsPak(GamePath path) => path.LocationId == Bg3Constants.ModsLocationId && path.Extension == Bg3Constants.PakFileExtension;
+        static bool IsPak(GamePath path) => path.LocationId == LarianConstants.ModsLocationId && path.Extension == LarianConstants.PakFileExtension;
 
         var modPaks = LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemGroup()
@@ -367,8 +381,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         return modPaks.Concat(gameInstalledPaks).ToArray();
     }
 
-    private NamedLink NexusModsLink => new("Nexus Mods - Baldur's Gate 3", NexusModsUrlBuilder.GetGameUri(_gameDomain));
-    private NamedLink BG3SENexusModsLink => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(2172)));
+    private NamedLink NexusModsLink => new($"Nexus Mods - {_profile.GameName}", NexusModsUrlBuilder.GetGameUri(_gameDomain));
+    private NamedLink ScriptExtenderNexusModsLink(LarianScriptExtender extender) => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(extender.NexusModId)));
 
 #endregion Helpers
 }

@@ -2,11 +2,11 @@ using System.Runtime.CompilerServices;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.ModList;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
+namespace SilverModManager.Games.Larian.Engine.Emitters;
 
 /// <summary>
 /// Says when two active paks are the same module. The mod list names a module once, so the writer leaves the
@@ -15,9 +15,9 @@ namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
 public sealed class DuplicateModuleEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly IGame _game;
-    private readonly Bg3PakModules _modules;
+    private readonly LarianPakModules _modules;
 
-    public DuplicateModuleEmitter(IGame game, Bg3PakModules modules)
+    public DuplicateModuleEmitter(IGame game, LarianPakModules modules)
     {
         _game = game;
         _modules = modules;
@@ -25,10 +25,10 @@ public sealed class DuplicateModuleEmitter : ILoadoutDiagnosticEmitter
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var variety = _game.SortOrderManager.GetSortOrderVarieties().OfType<IBg3PakSortOrderVariety>().Single();
+        var variety = _game.SortOrderManager.GetSortOrderVarieties().OfType<ILarianPakSortOrderVariety>().Single();
         if (variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db) is not { HasValue: true } found) yield break;
 
-        var plan = Bg3ModListPlan.Build(await _modules.Candidates(loadout, variety, found.Value, cancellationToken));
+        var plan = LarianModListPlan.Build(await _modules.Candidates(loadout, variety, found.Value, cancellationToken));
         foreach (var duplicate in plan.Duplicates)
         {
             yield return Diagnostics.CreateDuplicateModule(

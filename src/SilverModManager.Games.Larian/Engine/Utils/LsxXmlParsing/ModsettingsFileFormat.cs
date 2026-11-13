@@ -1,6 +1,6 @@
 using System.Xml;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+namespace SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
 
 /// <summary>
 /// Class to parse and write the `modsettings.lsx` xml file format used for the BG3 Load Order.

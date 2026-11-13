@@ -11,21 +11,25 @@ using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Installers;
+namespace SilverModManager.Games.Larian.Engine.Installers;
 
 /// <summary>
-/// Installer for the Baldur's Gate 3 Script Extender
-/// <see href="https://github.com/Norbyte/bg3se">BG3SE GitHub Repository</see>
-/// <see href="https://www.nexusmods.com/baldursgate3/mods/2172">BG3SE Nexus Mods Page</see>
+/// Installer for a Larian game's script extender, which is one DLL and the files beside it, installed next to the
+/// game's engine binaries. For Baldur's Gate 3 that is
+/// <see href="https://github.com/Norbyte/bg3se">BG3SE</see>
+/// (<see href="https://www.nexusmods.com/baldursgate3/mods/2172">Nexus Mods page</see>).
 /// </summary>
-public class BG3SEInstaller : ALibraryArchiveInstaller
+public class LarianScriptExtenderInstaller : ALibraryArchiveInstaller
 {
-    public BG3SEInstaller(IServiceProvider serviceProvider) :
-        base(serviceProvider, serviceProvider.GetRequiredService<ILogger<BG3SEInstaller>>())
+    private readonly string _gameName;
+    private readonly LarianScriptExtender _extender;
+
+    public LarianScriptExtenderInstaller(IServiceProvider serviceProvider, string gameName, LarianScriptExtender extender) :
+        base(serviceProvider, serviceProvider.GetRequiredService<ILogger<LarianScriptExtenderInstaller>>())
     {
+        _gameName = gameName;
+        _extender = extender;
     }
-    
-    private const string BG3SEFileName = "DWrite.dll";
 
     public override ValueTask<InstallerResult> ExecuteAsync(
         LibraryArchive.ReadOnly libraryArchive,
@@ -34,24 +38,25 @@ public class BG3SEInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
-        // BG3SE is a Windows DWrite.dll; the native build can't load it, so it would only sit in bin/.
-        if (BaldursGate3.IsNativeBuild(loadout.InstallationInstance.LocatorResult))
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The BG3 Script Extender is a Windows DLL and cannot load into the native Linux build of Baldur's Gate 3"));
+        // The extender is a Windows DLL; the native build can't load it, so it would only sit next to the binaries.
+        if (LarianBuild.IsNative(loadout.InstallationInstance.LocatorResult))
+            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"The Script Extender is a Windows DLL and cannot load into the native Linux build of {_gameName}"));
 
+        var dllName = _extender.DllPath.FileName.ToString();
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
-        var nodes = tree.FindSubPathsByKeyUpward([BG3SEFileName]);
-        if (!nodes.TryGetFirst(out var dllNode)) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"Found no file named `{BG3SEFileName}`"));
+        var nodes = tree.FindSubPathsByKeyUpward([dllName]);
+        if (!nodes.TryGetFirst(out var dllNode)) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"Found no file named `{dllName}`"));
 
         var parent = dllNode.Parent() ?? tree;
 
         foreach (var fileNode in parent.EnumerateFilesBfs())
         {
-            var relativePath = RelativePath.FromUnsanitizedInput("bin").Join(fileNode.Value.Item.Path.DropFirst(parent.Depth()));
+            var relativePath = _extender.DllPath.Parent.Path.Join(fileNode.Value.Item.Path.DropFirst(parent.Depth()));
             _ = new LoadoutFile.New(transaction, out var id)
             {
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(transaction, id)
                 {
-                    TargetPath = (loadout.Id, LocationId.Game, relativePath),
+                    TargetPath = (loadout.Id, _extender.DllPath.LocationId, relativePath),
                     LoadoutItem = new LoadoutItem.New(transaction, id)
                     {
                         Name = relativePath.Name,

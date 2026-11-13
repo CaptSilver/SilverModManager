@@ -9,8 +9,8 @@ using SilverModManager.Games.Generic.Installers;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
-using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.Larian.Engine.Emitters;
+using SilverModManager.Games.Larian.Engine.Installers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
@@ -35,7 +35,7 @@ public class BG3WineDllOverrideTests(ITestOutputHelper outputHelper) : ALibraryA
         requirements.RequiredWineDllOverrides(loadout).Should().BeEmpty();
 
         var archive = await AddFromPaths("DWrite.dll", "ScriptExtenderSettings.json");
-        await Install(typeof(BG3SEInstaller), loadout, archive);
+        await Install(typeof(LarianScriptExtenderInstaller), loadout, archive);
         Refresh(ref loadout);
 
         requirements.RequiredWineDllOverrides(loadout).Select(o => o.ToString()).Should().Equal("DWrite=n,b");
@@ -72,7 +72,7 @@ public class BG3NativeScriptExtenderTests(ITestOutputHelper outputHelper) : ALib
     {
         var loadout = await CreateLoadout();
         var archive = await AddFromPaths("DWrite.dll", "ScriptExtenderSettings.json");
-        var installer = Game.LibraryItemInstallers.OfType<BG3SEInstaller>().Single();
+        var installer = Game.LibraryItemInstallers.OfType<LarianScriptExtenderInstaller>().Single();
 
         using var tx = Connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var groupId)
@@ -94,7 +94,7 @@ public class BG3NativeScriptExtenderTests(ITestOutputHelper outputHelper) : ALib
         await Install(typeof(GenericPatternMatchInstaller), loadout, archive);
         Refresh(ref loadout);
 
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
 
         diagnostics.Where(d => d.Id == ScriptExtenderOnNativeId).Should().ContainSingle()
@@ -106,7 +106,7 @@ public class BG3NativeScriptExtenderTests(ITestOutputHelper outputHelper) : ALib
     {
         var loadout = await CreateLoadout();
 
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
 
         diagnostics.Where(d => d.Id == ScriptExtenderOnNativeId).Should().BeEmpty();

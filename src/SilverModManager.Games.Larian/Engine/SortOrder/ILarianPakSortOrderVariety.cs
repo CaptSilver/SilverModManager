@@ -3,13 +3,13 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.Engine.SortOrder;
 
 /// <summary>
 /// What the pak load order offers beyond <see cref="ISortOrderVariety"/>: switching a pak on and off, and the
 /// staging calls the deployment writers use to put a changed order or switch into a transaction of their own.
 /// </summary>
-public interface IBg3PakSortOrderVariety : ISortOrderVariety
+public interface ILarianPakSortOrderVariety : ISortOrderVariety
 {
     /// <summary>
     /// Switches one pak on or off. Throws when the pak has no row in the sort order, or when the game installed
@@ -22,7 +22,7 @@ public interface IBg3PakSortOrderVariety : ISortOrderVariety
     /// game's mod list is written from. A pak without a row is not listed, and a loadout without an order gives
     /// an empty list.
     /// </summary>
-    IReadOnlyList<Bg3PakSortData> StoredOrder(Loadout.ReadOnly loadout);
+    IReadOnlyList<LarianPakSortData> StoredOrder(Loadout.ReadOnly loadout);
 
     /// <summary>
     /// Writes the position of each pak in <paramref name="names"/> (index in the list) into

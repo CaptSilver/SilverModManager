@@ -1,13 +1,13 @@
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Games.Larian.BaldursGate3.Utils;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.Engine.Utils;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using System.Collections.Concurrent;
 using System.Xml;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Engine.GameInstalled;
 
 /// <summary>
 /// Finds the paks the game downloaded from mod.io itself. A pak is the game's when a `modsettings.lsx` entry
@@ -18,7 +18,7 @@ public sealed class Bg3InGameModRecognizer : IGameInstalledContentRecognizer
 {
     public const string SourceName = "Bg3InGameMod";
 
-    private static readonly GamePath ModsettingsPath = new(Bg3Constants.PlayerProfilesLocationId, "modsettings.lsx");
+    private static readonly GamePath ModsettingsPath = new(LarianConstants.PlayerProfilesLocationId, "modsettings.lsx");
 
     // The result is null for a pak that is unreadable or has no handle, so those are not opened every sync either.
     private readonly ConcurrentDictionary<GamePath, (ulong Size, long Ticks, PakIdentity? Identity)> _metaCache = new();
@@ -63,7 +63,7 @@ public sealed class Bg3InGameModRecognizer : IGameInstalledContentRecognizer
         {
             token.ThrowIfCancellationRequested();
 
-            var stem = path.FileName.ToString()[..^Bg3Constants.PakFileExtension.ToString().Length];
+            var stem = path.FileName.ToString()[..^LarianConstants.PakFileExtension.ToString().Length];
             var fileName = path.FileName.ToString();
 
             var entry = FindEntry(stem, published);
@@ -89,9 +89,9 @@ public sealed class Bg3InGameModRecognizer : IGameInstalledContentRecognizer
     }
 
     private static bool IsCandidate(GamePath path)
-        => path.LocationId == Bg3Constants.ModsLocationId
+        => path.LocationId == LarianConstants.ModsLocationId
            && path.Path.Parent.Equals(RelativePath.Empty)
-           && path.Extension == Bg3Constants.PakFileExtension;
+           && path.Extension == LarianConstants.PakFileExtension;
 
     /// <summary>
     /// An entry naming the whole folder beats one the head only starts. Two entries that tie in the same way

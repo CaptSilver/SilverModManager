@@ -2,14 +2,14 @@ using System.Reactive;
 using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
 using Polly;
 using SilverModManager.Sdk.Resources;
 
-namespace SilverModManager.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.Engine;
 
 public static class Pipelines
 {

@@ -1,10 +1,10 @@
 using System.Xml;
 using Microsoft.Extensions.Logging;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 using NexusMods.Paths;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Utils;
+namespace SilverModManager.Games.Larian.Engine.Utils;
 
 /// <summary>
 /// The modules the installed game ships (Gustav, GustavX, PhotoMode, ...), read from the
@@ -29,7 +29,7 @@ public sealed class GameModuleCatalog(ILogger<GameModuleCatalog> logger)
     {
         if (!dataFolder.DirectoryExists()) return null;
 
-        var paks = dataFolder.EnumerateFiles(Bg3Constants.PakFileExtension, recursive: false)
+        var paks = dataFolder.EnumerateFiles(LarianConstants.PakFileExtension, recursive: false)
             .OrderBy(p => p.FileName.ToString(), StringComparer.Ordinal)
             .ToArray();
         var pakNames = paks.Select(p => p.FileName.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -74,6 +74,6 @@ public sealed class GameModuleCatalog(ILogger<GameModuleCatalog> logger)
         var underscore = stem.LastIndexOf('_');
         if (underscore <= 0 || underscore == stem.Length - 1) return false;
         if (stem.AsSpan(underscore + 1).ContainsAnyExceptInRange('0', '9')) return false;
-        return pakNames.Contains(stem[..underscore] + Bg3Constants.PakFileExtension.ToString());
+        return pakNames.Contains(stem[..underscore] + LarianConstants.PakFileExtension.ToString());
     }
 }

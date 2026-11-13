@@ -1,6 +1,7 @@
 using System.Xml;
 using FluentAssertions;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
+using SilverModManager.Games.Larian.Engine.Modsettings;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 
@@ -82,11 +83,14 @@ public class ModsettingsDocumentTests(IFileSystem fs)
             Md5: "abc123"));
     }
 
+    private static IEnumerable<ModsettingsDocument.ModuleEntry> GameEntries(ModsettingsDocument doc) =>
+        new Bg3ModsettingsSchema().GameEntries(doc, new HashSet<string>());
+
     [Fact]
     public void BaseEntries_AreTheOnesWithoutAPublishHandle()
     {
         var doc = ModsettingsDocument.Parse(Synthetic);
-        doc.BaseEntries.Select(e => e.Folder).Should().Equal("GustavX", "HonourX", "Local_Mod");
+        GameEntries(doc).Select(e => e.Folder).Should().Equal("GustavX", "HonourX", "Local_Mod");
     }
 
     [Fact]
@@ -98,7 +102,7 @@ public class ModsettingsDocumentTests(IFileSystem fs)
 
         doc.Entries[2].PublishHandle.Should().BeEmpty();
         doc.Entries[2].IsPublished.Should().BeFalse();
-        doc.BaseEntries.Select(e => e.Folder).Should().Equal("GustavX", "HonourX", "Cool_Mod_9f8e7d6c", "Local_Mod");
+        GameEntries(doc).Select(e => e.Folder).Should().Equal("GustavX", "HonourX", "Cool_Mod_9f8e7d6c", "Local_Mod");
     }
 
     [Fact]

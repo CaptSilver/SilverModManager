@@ -7,9 +7,9 @@ using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB;
@@ -132,8 +132,8 @@ public abstract class ModsettingsFixture(ITestOutputHelper helper)
 
     protected async Task<Loadout.ReadOnly> Apply(Loadout.ReadOnly loadout) => await Synchronizer.Synchronize(Refresh(loadout));
 
-    protected IBg3PakSortOrderVariety Variety =>
-        Game.SortOrderManager.GetSortOrderVarieties().OfType<IBg3PakSortOrderVariety>().Single();
+    protected ILarianPakSortOrderVariety Variety =>
+        Game.SortOrderManager.GetSortOrderVarieties().OfType<ILarianPakSortOrderVariety>().Single();
 
     protected SortOrderId SortOrderOf(Loadout.ReadOnly loadout) => Variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
 

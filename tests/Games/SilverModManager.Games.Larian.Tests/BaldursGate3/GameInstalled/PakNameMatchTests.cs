@@ -1,5 +1,5 @@
 using FluentAssertions;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
 
 namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 

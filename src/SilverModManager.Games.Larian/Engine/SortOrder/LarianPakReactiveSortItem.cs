@@ -2,19 +2,19 @@ using DynamicData.Kernel;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.Engine.SortOrder;
 
 /// <summary>
 /// One pak on the Load Order page.
 /// </summary>
-public sealed class Bg3PakReactiveSortItem : IReactiveSortItem<Bg3PakReactiveSortItem, SortItemKey<string>>, ISortItemDetails
+public sealed class LarianPakReactiveSortItem : IReactiveSortItem<LarianPakReactiveSortItem, SortItemKey<string>>, ISortItemDetails
 {
     /// <param name="isEnabled">The pak's own switch in the sort order, which a game-installed pak does not use.</param>
-    public Bg3PakReactiveSortItem(int sortIndex, string name, bool isEnabled, Bg3PakLoadoutData loadoutData)
+    public LarianPakReactiveSortItem(int sortIndex, string name, bool isEnabled, LarianPakLoadoutData loadoutData)
     {
         SortIndex = sortIndex;
         DisplayName = name;
-        Key = Bg3PakSortData.KeyFor(name);
+        Key = LarianPakSortData.KeyFor(name);
         LoadoutData = loadoutData;
         ModName = loadoutData.ModName;
         ModGroupId = loadoutData.ModGroupId is { } id ? LoadoutItemGroupId.From(id) : Optional<LoadoutItemGroupId>.None;

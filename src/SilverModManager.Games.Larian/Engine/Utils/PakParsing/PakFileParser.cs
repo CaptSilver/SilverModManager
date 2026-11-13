@@ -3,11 +3,11 @@ using System.Text;
 using System.Text.Json;
 using DynamicData.Kernel;
 using K4os.Compression.LZ4;
-using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.Engine.Utils.LsxXmlParsing;
 using NexusMods.Paths;
 using ZstdSharp;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
+namespace SilverModManager.Games.Larian.Engine.Utils.PakParsing;
 
 /// <summary>
 /// Class to parse and extract files and data from a bg3 .pak file.

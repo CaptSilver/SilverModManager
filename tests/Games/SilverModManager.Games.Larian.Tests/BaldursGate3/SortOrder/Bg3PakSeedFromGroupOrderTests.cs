@@ -5,7 +5,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -67,7 +67,7 @@ public class Bg3PakSeedFromGroupOrderTests(ITestOutputHelper helper)
         var b = await AddMod(loadout, "b", "b.pak");
         await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId, token: TestContext.Current.CancellationToken);
 
-        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<Bg3PakSortOrderVariety>().Single();
+        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<LarianPakSortOrderVariety>().Single();
         var sortOrder = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
         int IndexOf(string pak) => variety.GetSortOrderItems(sortOrder, Connection.Db).Single(item => item.Key.Key == pak).SortIndex;
 

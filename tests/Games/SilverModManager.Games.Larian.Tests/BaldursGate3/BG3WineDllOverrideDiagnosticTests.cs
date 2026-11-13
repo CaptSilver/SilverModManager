@@ -6,8 +6,8 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
-using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.Larian.Engine.Emitters;
+using SilverModManager.Games.Larian.Engine.Installers;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -55,7 +55,7 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
     {
         var loadout = await CreateLoadout();
         var archive = await AddFromPaths("DWrite.dll", "ScriptExtenderSettings.json");
-        await Install(typeof(BG3SEInstaller), loadout, archive);
+        await Install(typeof(LarianScriptExtenderInstaller), loadout, archive);
         Refresh(ref loadout);
 
         SetPrefixOverrides();
@@ -86,7 +86,7 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
 
     private async Task<List<Diagnostic>> ScriptExtenderOverrideDiagnostics(Loadout.ReadOnly loadout)
     {
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
         return diagnostics.Where(d => d.Id == ScriptExtenderOverrideId).ToList();
     }
@@ -125,12 +125,12 @@ public class BG3WineDllOverrideSteamDiagnosticTests(ITestOutputHelper outputHelp
     {
         var loadout = await CreateLoadout();
         var archive = await AddFromPaths("DWrite.dll", "ScriptExtenderSettings.json");
-        await Install(typeof(BG3SEInstaller), loadout, archive);
+        await Install(typeof(LarianScriptExtenderInstaller), loadout, archive);
         Refresh(ref loadout);
         _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
 
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
 
         diagnostics.Where(d => d.Id == ScriptExtenderOverrideId).Should().ContainSingle()

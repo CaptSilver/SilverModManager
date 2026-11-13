@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.Generic.Installers;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.Larian.Engine.Installers;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -26,7 +26,7 @@ public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchive
     /// </summary>
     public static readonly List<(string TestName, Type InstallerType, string[] Paths)> TestCases =
     [
-        ("BG3 Script Extender", typeof(BG3SEInstaller), ["DWrite.dll", "ScriptExtenderSettings.json"]),
+        ("BG3 Script Extender", typeof(LarianScriptExtenderInstaller), ["DWrite.dll", "ScriptExtenderSettings.json"]),
         ("Simple Pak Mod", typeof(GenericPatternMatchInstaller), ["myMod.pak", "info.json"]),
         ("Nested Pak Mod", typeof(GenericPatternMatchInstaller), ["Mods/myMod.pak", "Mods/info.json", "readme.txt"]),
         ("Multiple Pak files Mod", typeof(GenericPatternMatchInstaller), ["myMod1.pak", "myMod2.pak", "info.json", "readme.txt"]),

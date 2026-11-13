@@ -7,7 +7,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.Engine.Emitters;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -179,7 +179,7 @@ public abstract class ADependencyDiagnosticTests(ITestOutputHelper outputHelper)
     protected async Task<List<Diagnostic>> Dependencies(Loadout.ReadOnly loadout)
     {
         Refresh(ref loadout);
-        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<LarianDependencyEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
         return diagnostics;
     }

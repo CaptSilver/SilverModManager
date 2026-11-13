@@ -1,33 +1,33 @@
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.Engine.ModList;
 
 /// <summary>
 /// A pak of the loadout and what the game's mod list would say about it.
 /// </summary>
 /// <param name="IsActive">Whether the pak should be in the mod list: the order's verdict, owning mod's state included.</param>
 /// <param name="Entry">The module entry the pak gets, or null when the pak could not be read.</param>
-public sealed record Bg3PakCandidate(string Name, bool IsGameInstalled, bool IsActive, ModsettingsDocument.ModuleEntry? Entry);
+public sealed record LarianPakCandidate(string Name, bool IsGameInstalled, bool IsActive, ModsettingsDocument.ModuleEntry? Entry);
 
 /// <summary>Two active paks that provide the same module; only <paramref name="KeptPak"/> is written.</summary>
-public sealed record Bg3DuplicateModule(string Uuid, string ModuleName, string KeptPak, IReadOnlyList<string> IgnoredPaks);
+public sealed record LarianDuplicateModule(string Uuid, string ModuleName, string KeptPak, IReadOnlyList<string> IgnoredPaks);
 
 /// <summary>
 /// The paks the app writes to <c>modsettings.lsx</c>, in order, worked out once per sync so the writer and the
 /// comparison with the game's file read the same list.
 /// </summary>
-public sealed class Bg3ModListPlan
+public sealed class LarianModListPlan
 {
-    private Bg3ModListPlan(IReadOnlyList<Bg3PakCandidate> paks, IReadOnlyList<Bg3DuplicateModule> duplicates)
+    private LarianModListPlan(IReadOnlyList<LarianPakCandidate> paks, IReadOnlyList<LarianDuplicateModule> duplicates)
     {
         Paks = paks;
         Duplicates = duplicates;
     }
 
     /// <summary>The paks to write, in order. Every one has an entry.</summary>
-    public IReadOnlyList<Bg3PakCandidate> Paks { get; }
+    public IReadOnlyList<LarianPakCandidate> Paks { get; }
 
-    public IReadOnlyList<Bg3DuplicateModule> Duplicates { get; }
+    public IReadOnlyList<LarianDuplicateModule> Duplicates { get; }
 
     public IReadOnlyList<string> Names => Paks.Select(p => p.Name).ToList();
 
@@ -36,14 +36,14 @@ public sealed class Bg3ModListPlan
     /// left out. When two active paks are the same module, the game would load whichever it saw first and report
     /// it twice, so one is written: the app's own copy over one the game installed, otherwise the earlier pak.
     /// </summary>
-    public static Bg3ModListPlan Build(IReadOnlyList<Bg3PakCandidate> inOrder)
+    public static LarianModListPlan Build(IReadOnlyList<LarianPakCandidate> inOrder)
     {
         var active = inOrder
             .Where(p => p.IsActive)
-            .SelectMany(p => p.Entry is { } entry ? [(Pak: p, Entry: entry)] : Array.Empty<(Bg3PakCandidate Pak, ModsettingsDocument.ModuleEntry Entry)>())
+            .SelectMany(p => p.Entry is { } entry ? [(Pak: p, Entry: entry)] : Array.Empty<(LarianPakCandidate Pak, ModsettingsDocument.ModuleEntry Entry)>())
             .ToList();
 
-        var kept = new Dictionary<string, (Bg3PakCandidate Pak, ModsettingsDocument.ModuleEntry Entry)>(StringComparer.OrdinalIgnoreCase);
+        var kept = new Dictionary<string, (LarianPakCandidate Pak, ModsettingsDocument.ModuleEntry Entry)>(StringComparer.OrdinalIgnoreCase);
         foreach (var candidate in active)
         {
             var uuid = candidate.Entry.Uuid;
@@ -55,13 +55,13 @@ public sealed class Bg3ModListPlan
         var duplicates = active
             .GroupBy(a => a.Entry.Uuid, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
-            .Select(g => new Bg3DuplicateModule(
+            .Select(g => new LarianDuplicateModule(
                 g.Key,
                 kept[g.Key].Entry.Name,
                 kept[g.Key].Pak.Name,
                 g.Where(a => !ReferenceEquals(a.Pak, kept[g.Key].Pak)).Select(a => a.Pak.Name).ToList()))
             .ToList();
 
-        return new Bg3ModListPlan(paks, duplicates);
+        return new LarianModListPlan(paks, duplicates);
     }
 }

@@ -5,7 +5,7 @@ using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Generators.Diagnostics;
 
 
-namespace SilverModManager.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.Engine;
 
 internal static partial class Diagnostics
 {
@@ -68,7 +68,7 @@ internal static partial class Diagnostics
         .WithSeverity(DiagnosticSeverity.Warning)
         .WithSummary("Invalid .pak File Detected in {ModName}")
         .WithDetails("""
-                     The mod contains a .pak file, typically used to store mod data for Baldur's Gate 3. However,
+                     The mod contains a .pak file, typically used to store mod data for {GameName}. However,
                      this one appears to be invalid or incompatible: '{PakFileName}'.
                      
                      
@@ -79,6 +79,7 @@ internal static partial class Diagnostics
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("ModName")
             .AddValue<string>("PakFileName")
+            .AddValue<string>("GameName")
         )
         .Finish();
 
@@ -87,17 +88,18 @@ internal static partial class Diagnostics
         .WithId(new DiagnosticId(Source, number: 4))
         .WithTitle("Missing Script Extender")
         .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("Missing BG3 Script Extender, required by {ModName}")
+        .WithSummary("Missing Script Extender, required by {ModName}")
         .WithDetails("""
-                     The .pak file {PakName} lists the Baldur's Gate 3 Script Extender (BG3SE) as a dependency, but it isn't installed.
+                     The .pak file {PakName} lists the {GameName} Script Extender as a dependency, but it isn't installed.
                      
                      ## Recommended Actions
-                     Install the BG3 Script Extender from {BG3SENexusLink} or from the official source.
+                     Install the Script Extender from {BG3SENexusLink} or from the official source.
                      """
         )
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("ModName")
             .AddValue<string>("PakName")
+            .AddValue<string>("GameName")
             .AddValue<NamedLink>("BG3SENexusLink")
         )
         .Finish();
@@ -131,10 +133,10 @@ internal static partial class Diagnostics
         .WithSeverity(DiagnosticSeverity.Warning)
         .WithSummary("The mod {PakModuleName} (in {ModName}) requires at least version {MinDepVersion}+ of the game module '{DepName}' but the game has v{CurrentDepVersion}.")
         .WithDetails("""
-                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}', which ships with Baldur's Gate 3 itself. Your game has v{CurrentDepVersion}.
+                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}', which ships with {GameName} itself. Your game has v{CurrentDepVersion}.
 
                      ## Recommended Actions
-                     Update Baldur's Gate 3 to the latest version, or install a version of {ModName} made for the game version you have.
+                     Update {GameName} to the latest version, or install a version of {ModName} made for the game version you have.
                      """
         )
         .WithMessageData(messageBuilder => messageBuilder
@@ -144,6 +146,7 @@ internal static partial class Diagnostics
             .AddValue<string>("DepName")
             .AddValue<string>("MinDepVersion")
             .AddValue<string>("CurrentDepVersion")
+            .AddValue<string>("GameName")
         )
         .Finish();
 
@@ -336,9 +339,9 @@ internal static partial class Diagnostics
         .WithId(new DiagnosticId(Source, number: 14))
         .WithTitle("Script Extender cannot load in the native Linux build")
         .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("The BG3 Script Extender does not work with the native Linux build of Baldur's Gate 3.")
+        .WithSummary("The Script Extender does not work with the native Linux build of {GameName}.")
         .WithDetails("""
-                     The BG3 Script Extender (BG3SE) is a Windows `DWrite.dll`. The native Linux build of {GameName} cannot load it, so it does nothing there and mods that need it will not work.
+                     The Script Extender is a Windows DLL. The native Linux build of {GameName} cannot load it, so it does nothing there and mods that need it will not work.
 
 
                      ## Recommended Actions

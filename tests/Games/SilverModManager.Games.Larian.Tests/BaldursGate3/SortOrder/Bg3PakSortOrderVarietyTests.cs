@@ -4,9 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Larian.BaldursGate3;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.Engine.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -32,7 +32,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         .AddBaldursGate3()
         .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.61"), locationsFileSystem: IsolatedKnownFolders.Create);
 
-    private Bg3PakSortOrderVariety NewVariety() => new(ServiceProvider, Game);
+    private LarianPakSortOrderVariety NewVariety() => new(ServiceProvider, Game);
 
     private IDb Db => Connection.Db;
 
@@ -118,7 +118,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         return result[groupId];
     }
 
-    private async Task<(Loadout.ReadOnly Loadout, Bg3PakSortOrderVariety Variety, SortOrderId SortOrder)> Reconciled()
+    private async Task<(Loadout.ReadOnly Loadout, LarianPakSortOrderVariety Variety, SortOrderId SortOrder)> Reconciled()
     {
         var loadout = await CreateLoadout();
         var variety = NewVariety();
@@ -262,7 +262,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         await AddGameInstalledPaks(loadout, "FromGame.pak");
         await variety.ReconcileSortOrder(id);
 
-        var rows = variety.GetSortOrderItems(id, Db).ToDictionary(r => r.DisplayName, r => ((Bg3PakLoadoutData)r.LoadoutData!).Identity);
+        var rows = variety.GetSortOrderItems(id, Db).ToDictionary(r => r.DisplayName, r => ((LarianPakLoadoutData)r.LoadoutData!).Identity);
 
         rows["Mine.pak"].Should().Be(hash);
         rows["FromGame.pak"].Should().Be(FileIdentity.XxHash3(Hash.From(0xAB)));
@@ -284,7 +284,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         var changes = await variety.GetSortOrderItemsChangeSet(id).FirstAsync();
 
         var item = changes.Select(c => c.Current).Single();
-        ((Bg3PakLoadoutData)item.LoadoutData!).Identity.Should().Be(hash);
+        ((LarianPakLoadoutData)item.LoadoutData!).Identity.Should().Be(hash);
     }
 
     private EntityId StoredRowId(SortOrderId id, string name) =>
@@ -301,7 +301,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         var row = variety.GetSortOrderItems(id, Db).Single();
         row.ModGroupId.Value.Value.Should().Be(mod.Group.Value);
         row.ModName.Should().Be("Mod");
-        ((Bg3PakLoadoutData)row.LoadoutData!).IsGameInstalled.Should().BeFalse();
+        ((LarianPakLoadoutData)row.LoadoutData!).IsGameInstalled.Should().BeFalse();
     }
 
     [Fact]
@@ -507,7 +507,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         await variety.ClearReplacedGameEdit(id);
 
         await WaitUntil(() => summary is null);
-        Bg3ModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
+        LarianModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
     }
 
     [Fact]
@@ -538,7 +538,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         await AddMod(loadout, "Mod", "First.pak");
         await variety.ReconcileSortOrder(id);
 
-        var seen = new Dictionary<string, Bg3PakReactiveSortItem>();
+        var seen = new Dictionary<string, LarianPakReactiveSortItem>();
         using var subscription = variety.GetSortOrderItemsChangeSet(id).Subscribe(changes =>
         {
             foreach (var change in changes)
@@ -550,7 +550,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
 
         await WaitUntil(() => seen.ContainsKey("first.pak"));
         seen["first.pak"].DisplayName.Should().Be("First.pak");
-        seen["first.pak"].LoadoutData.Should().BeOfType<Bg3PakLoadoutData>().Which.ModName.Should().Be("Mod");
+        seen["first.pak"].LoadoutData.Should().BeOfType<LarianPakLoadoutData>().Which.ModName.Should().Be("Mod");
 
         await AddMod(loadout, "Other", "Second.pak");
         await variety.ReconcileSortOrder(id);
@@ -558,8 +558,8 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Theory]
-    [InlineData(Bg3ModListNotices.HoldAfterResets - 1, true)]
-    [InlineData(Bg3ModListNotices.HoldAfterResets, false)]
+    [InlineData(LarianModListNotices.HoldAfterResets - 1, true)]
+    [InlineData(LarianModListNotices.HoldAfterResets, false)]
     public async Task ReplacedEditSummary_IsHeldBackExactlyFromTheHoldThreshold(int resetCount, bool shown)
     {
         var (_, variety, id) = await Reconciled();
@@ -592,7 +592,7 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         async Task<bool> Plan(params string[] names)
         {
             using var tx = Connection.BeginTransaction();
-            var staged = Bg3ModListNotices.StagePlan(Connection.Db, id, names, DateTimeOffset.UtcNow, tx);
+            var staged = LarianModListNotices.StagePlan(Connection.Db, id, names, DateTimeOffset.UtcNow, tx);
             if (staged) await tx.Commit();
             return staged;
         }
@@ -601,8 +601,8 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         (await Plan("a.pak", "b.pak")).Should().BeTrue();
         (await Plan("a.pak", "b.pak")).Should().BeFalse("nothing changed, so there is nothing to write");
 
-        Bg3ModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
-        Bg3ModListNotices.NewlyActive(Connection.Db, id).Should().Equal("b.pak");
+        LarianModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
+        LarianModListNotices.NewlyActive(Connection.Db, id).Should().Equal("b.pak");
     }
 
     [Fact]

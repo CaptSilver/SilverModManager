@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
-using SilverModManager.Games.Larian.BaldursGate3.Emitters;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.Emitters;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
@@ -147,7 +147,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
     {
         var loadout = await Held();
 
-        await ((Bg3PakSortOrderVariety)Variety).MoveItemDelta(SortOrderOf(loadout), new SortItemKey<string>("alpha.pak"), 1);
+        await ((LarianPakSortOrderVariety)Variety).MoveItemDelta(SortOrderOf(loadout), new SortItemKey<string>("alpha.pak"), 1);
 
         ResetCount(loadout).Should().Be(0);
         (await HoldSummary(loadout)).Should().BeNull();
@@ -220,7 +220,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         await WriteModsettings([.. BaseEntries, Entry("Alpha", "Alpha", "0", AlphaUuid)]);
         await Apply(loadout);
 
-        var diagnostic = (await Diagnose<Bg3ModListReplacedEmitter>(loadout)).Should().ContainSingle().Subject;
+        var diagnostic = (await Diagnose<LarianModListReplacedEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Id.Should().Be(ReplacedId);
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
@@ -234,7 +234,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         var loadout = await AppliedTwoPaks();
         await Apply(loadout);
 
-        (await Diagnose<Bg3ModListReplacedEmitter>(loadout)).Should().BeEmpty();
+        (await Diagnose<LarianModListReplacedEmitter>(loadout)).Should().BeEmpty();
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
         var loadout = await AppliedTwoPaks();
         await GameThrowsTheListAway(loadout);
 
-        (await Diagnose<Bg3ModListResetEmitter>(loadout)).Should().BeEmpty();
+        (await Diagnose<LarianModListResetEmitter>(loadout)).Should().BeEmpty();
     }
 
     [Fact]
@@ -251,14 +251,14 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
     {
         var loadout = await Held();
 
-        var diagnostic = (await Diagnose<Bg3ModListResetEmitter>(loadout)).Should().ContainSingle().Subject;
+        var diagnostic = (await Diagnose<LarianModListResetEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Id.Should().Be(ResetId);
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         Summary(diagnostic).Should().Contain("twice");
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>())
             .Should().Contain("alpha.pak").And.Contain("Restore the mod list");
-        (await Diagnose<Bg3ModListReplacedEmitter>(loadout)).Should().BeEmpty("the hold is reported by the reset warning");
+        (await Diagnose<LarianModListReplacedEmitter>(loadout)).Should().BeEmpty("the hold is reported by the reset warning");
     }
 
     [Fact]

@@ -4,58 +4,66 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
-using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
-using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.Engine.GameInstalled;
+using SilverModManager.Games.Larian.Engine.ModList;
 using SilverModManager.Games.Larian.BaldursGate3.Models;
-using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.Engine.SortOrder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
-using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.Larian.Engine.Modsettings;
 
-namespace SilverModManager.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.Engine;
 
-public class BaldursGate3Synchronizer : ALoadoutSynchronizer
+public class LarianSynchronizer : ALoadoutSynchronizer
 {
-    private readonly BaldursGate3Settings _settings;
-
     private static GamePath GameFolder => new(LocationId.Game, "");
-    private static GamePath PublicPlayerProfiles => new(Bg3Constants.PlayerProfilesLocationId, "");
+    private static GamePath PlayerProfiles => new(LarianConstants.PlayerProfilesLocationId, "");
 
-    private readonly Bg3InGameModRecognizer _inGameModRecognizer = new();
-    private readonly IGame _game;
-    private readonly Bg3PakModules _modules;
-    private readonly ModsettingsFile _modsettings;
+    private readonly LarianGameProfile _profile;
+    private readonly ILarianGame _game;
+    private readonly LarianPakModules _modules;
+    private readonly ModsettingsFile? _modsettings;
+    private readonly GamePath? _modsettingsPath;
 
-    public BaldursGate3Synchronizer(IServiceProvider provider, IGame game, Bg3PakModules modules) : base(provider)
+    public LarianSynchronizer(IServiceProvider provider, ILarianGame game, LarianPakModules modules) : base(provider)
     {
-        var settingsManager = provider.GetRequiredService<ISettingsManager>();
-        _settings = settingsManager.Get<BaldursGate3Settings>();
         _game = game;
+        _profile = game.Profile;
         _modules = modules;
-        _modsettings = new ModsettingsFile(game, _modules, provider.GetRequiredService<ILogger<ModsettingsFile>>());
+
+        if (_profile.Schema is { } schema)
+        {
+            if (_profile.Profiles is not LarianProfileLayout.Fixed)
+                throw new NotSupportedException($"{_profile.GameName} keeps its mod list in a folder per player profile, which this synchronizer does not resolve yet");
+
+            _modsettingsPath = new GamePath(LarianConstants.PlayerProfilesLocationId, "modsettings.lsx");
+            _modsettings = new ModsettingsFile(game, _modules, schema, _modsettingsPath.Value, provider.GetRequiredService<ILogger<ModsettingsFile>>());
+        }
+
+        // Everything inside the player profiles folder is the game's (saves, settings) and stays out of the loadout,
+        // except the mod list the app writes.
+        GameSpecificPathFilter = Abstractions.Loadouts.Synchronizers.GamePathFilters.Create(path =>
+            path.InFolder(PlayerProfiles) && !IsModsettings(path));
     }
+
+    private bool IsModsettings(GamePath path) => _modsettingsPath is { } modsettings && path.Equals(modsettings);
 
     // The native build keeps these under XDG_DATA_HOME, the Windows build in its Proton prefix, so a game that was
     // managed in the prefix finds them in a new folder once it is recognised as native.
     protected override IReadOnlySet<LocationId> RelocatableLocations { get; } =
-        new HashSet<LocationId> { Bg3Constants.ModsLocationId, Bg3Constants.PlayerProfilesLocationId };
+        new HashSet<LocationId> { LarianConstants.ModsLocationId, LarianConstants.PlayerProfilesLocationId };
 
-    protected override IGamePathFilter GameSpecificPathFilter { get; } = Abstractions.Loadouts.Synchronizers.GamePathFilters.Create(path =>
-    {
-        // ignore all files inside the public player profiles directory except the modsettings.lsx file
-        if (path.InFolder(PublicPlayerProfiles)) return !path.Equals(ModsettingsFile.FilePath);
-        return false;
-    });
+    protected override IGamePathFilter GameSpecificPathFilter { get; }
 
     public override bool IsIgnoredBackupPath(GamePath path)
     {
-        if (_settings.DoFullGameBackup) return false;
-        return path.InFolder(GameFolder) || (path.InFolder(PublicPlayerProfiles) && path.Path != ModsettingsFile.FilePath.Path);
+        if (_game.DoFullGameBackup) return false;
+        return path.InFolder(GameFolder) || (path.InFolder(PlayerProfiles) && !IsModsettings(path));
     }
 
-    protected override IGameInstalledContentRecognizer? GameInstalledContent => _inGameModRecognizer;
+    protected override IGameInstalledContentRecognizer? GameInstalledContent => _profile.GameInstalledRecognizer;
 
     /// <summary>
     /// Stores the <c>modsettings.lsx</c> entry of a pak the game installed. A pak the game switched off loses
@@ -96,7 +104,7 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
     private static bool Same(Optional<string> stored, string value) => stored.HasValue && stored.Value == value;
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) =>
-        new() { [ModsettingsFile.FilePath] = _modsettings };
+        _modsettings is null ? new() : new() { [_modsettings.Path] = _modsettings };
 
     /// <summary>
     /// Works out the mod list before the sync tree is built: brings the pak order up to date, fills it from the
@@ -109,10 +117,13 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
     {
         loadout = await base.PrepareLoadoutForSync(loadout);
 
+        // A game the app writes no mod list for has no pak order to work out.
+        if (_modsettings is not { } modsettings) return loadout;
+
         await _game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
         loadout = loadout.Rebase();
 
-        var variety = _game.SortOrderManager.GetSortOrderVarieties().OfType<IBg3PakSortOrderVariety>().Single();
+        var variety = _game.SortOrderManager.GetSortOrderVarieties().OfType<ILarianPakSortOrderVariety>().Single();
         var sortOrderId = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
         loadout = loadout.Rebase();
 
@@ -121,33 +132,33 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
         await variety.ClearReplacedGameEdit(sortOrderId);
         loadout = loadout.Rebase();
 
-        if (!Bg3PakSeeder.IsSeeded(loadout.Db, sortOrderId))
+        if (!LarianPakSeeder.IsSeeded(loadout.Db, sortOrderId))
         {
             var seedCandidates = await _modules.Candidates(loadout, variety, sortOrderId);
             var notYetInLoadout = _modules.PaksOnDiskNotIn(loadout, seedCandidates.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
-            await Bg3PakSeeder.Seed(variety, Connection, sortOrderId, seedCandidates, notYetInLoadout, _modsettings.ReadDocument(loadout));
+            await LarianPakSeeder.Seed(variety, Connection, sortOrderId, seedCandidates, notYetInLoadout, modsettings.ReadDocument(loadout));
             loadout = loadout.Rebase();
         }
 
         var candidates = await _modules.Candidates(loadout, variety, sortOrderId);
 
         // Before the plan replaces the list the app last wrote, which is what the file is compared against.
-        if (!Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId) && _modsettings.GameThrewTheListAway(loadout, candidates, Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId)))
+        if (!LarianModListNotices.IsHeld(loadout.Db, sortOrderId) && modsettings.GameThrewTheListAway(loadout, candidates, LarianModListNotices.LastWritten(loadout.Db, sortOrderId)))
         {
             using var resetTx = Connection.BeginTransaction();
-            Bg3ModListNotices.StageReset(loadout.Db, sortOrderId, Bg3ModListNotices.NewlyActive(loadout.Db, sortOrderId), DateTimeOffset.UtcNow, resetTx);
+            LarianModListNotices.StageReset(loadout.Db, sortOrderId, LarianModListNotices.NewlyActive(loadout.Db, sortOrderId), DateTimeOffset.UtcNow, resetTx);
             await resetTx.Commit();
             loadout = loadout.Rebase();
         }
 
         // Once held, the list is whatever the game's file names, so the comparison after the write finds nothing to replace.
-        var names = Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)
-            ? _modsettings.PaksListedOnDisk(loadout, candidates)
-            : Bg3ModListPlan.Build(candidates).Names;
+        var names = LarianModListNotices.IsHeld(loadout.Db, sortOrderId)
+            ? modsettings.PaksListedOnDisk(loadout, candidates)
+            : LarianModListPlan.Build(candidates).Names;
 
         using var tx = Connection.BeginTransaction();
-        var planChanged = Bg3ModListNotices.StagePlan(loadout.Db, sortOrderId, names, DateTimeOffset.UtcNow, tx);
-        var overrides = OverridesRowsForModsettings(loadout).ToList();
+        var planChanged = LarianModListNotices.StagePlan(loadout.Db, sortOrderId, names, DateTimeOffset.UtcNow, tx);
+        var overrides = OverridesRowsForModsettings(loadout, modsettings.Path).ToList();
         foreach (var row in overrides)
             tx.Delete(row, recursive: false);
 
@@ -158,8 +169,8 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
         return loadout.Rebase();
     }
 
-    private static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> OverridesRowsForModsettings(Loadout.ReadOnly loadout) =>
+    private static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> OverridesRowsForModsettings(Loadout.ReadOnly loadout, GamePath modsettingsPath) =>
         LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id)
             .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
-            .Where(item => item.TargetPath == ModsettingsFile.FilePath);
+            .Where(item => item.TargetPath == modsettingsPath);
 }

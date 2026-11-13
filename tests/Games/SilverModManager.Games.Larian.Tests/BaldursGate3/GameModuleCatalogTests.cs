@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SilverModManager.Games.Larian.BaldursGate3.Utils;
+using SilverModManager.Games.Larian.Engine.Utils;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 

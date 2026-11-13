@@ -4,7 +4,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Hashes;
 
-namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.Engine.SortOrder;
 
 /// <summary>
 /// A pak the loadout offers to the game. <see cref="IsEnabled"/> is the owning mod's state, or the state of the
@@ -12,7 +12,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 /// order row.
 /// </summary>
 /// <param name="ModGroupId">The mod that supplies the pak, or the game-installed item for a pak the game installed.</param>
-public sealed record Bg3PakLoadoutData(
+public sealed record LarianPakLoadoutData(
     string Name,
     FileIdentity Identity,
     bool IsEnabled,
@@ -21,7 +21,7 @@ public sealed record Bg3PakLoadoutData(
     bool IsGameInstalled) : ISortItemLoadoutData<SortItemKey<string>>
 {
     /// <summary>The name lower-cased, the way every pak lookup compares it.</summary>
-    public SortItemKey<string> Key { get; } = Bg3PakSortData.KeyFor(Name);
+    public SortItemKey<string> Key { get; } = LarianPakSortData.KeyFor(Name);
 
     // Declared by hand because the interface wants setters and a positional record only generates init.
     public bool IsEnabled { get; set; } = IsEnabled;
