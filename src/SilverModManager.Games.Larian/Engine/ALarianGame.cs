@@ -26,15 +26,16 @@ public abstract class ALarianGame<TSelf>(IServiceProvider provider) : AGame<TSel
     where TSelf : ALarianGame<TSelf>, IGameData<TSelf>
 {
     private LarianGameProfile? _profileValue;
-    private Lazy<LarianPakModules>? _modules;
+    // One instance, so the synchronizer and the diagnostic read each pak from disk once between them. Built on first
+    // use, which can come from either of them on different threads, so it must not be built twice.
+    private readonly Lazy<LarianPakModules> _modules = new(() => new LarianPakModules(provider));
 
     protected abstract LarianGameProfile CreateProfile();
 
     // Built on first read: CreateProfile is virtual and this constructor runs before a derived one.
     public LarianGameProfile Profile => _profileValue ??= CreateProfile();
 
-    // One instance, so the synchronizer and the diagnostic read each pak from disk once between them.
-    private LarianPakModules Modules => (_modules ??= new Lazy<LarianPakModules>(() => new LarianPakModules(Provider))).Value;
+    private LarianPakModules Modules => _modules.Value;
 
     public abstract bool DoFullGameBackup { get; }
 
