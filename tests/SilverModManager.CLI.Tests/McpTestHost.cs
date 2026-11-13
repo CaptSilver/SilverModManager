@@ -45,6 +45,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddModule("games", "Games verbs")
             .AddModule("settings", "Settings verbs")
             .AddModule("wabbajack", "Wabbajack verbs")
+            .AddModule("nexus", "Nexus verbs")
             .AddModule("fromsoft", "FromSoft verbs")
             .AddModule("fromsoft merge", "Merge verbs")
             .AddModule("fromsoft vanilla", "Vanilla verbs")
@@ -53,6 +54,8 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.MergeList)
             .AddVerb(() => Verbs.VanillaList)
             .AddVerb(() => Verbs.Heal)
+            .AddVerb(() => Verbs.NexusSearch)
+            .AddVerb(() => Verbs.NexusFiles)
             .AddVerb(() => Verbs.Doctor)
             .AddVerb(() => Verbs.ListGames)
             .AddVerb(() => Verbs.SettingsList)
@@ -189,6 +192,31 @@ public sealed class McpTestHost : IAsyncDisposable
         public static async Task<int> SettingsList([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
         {
             await renderer.TextLine($"settings list json={json}");
+            return 0;
+        }
+
+        [Verb("nexus search", "Stand-in for the Nexus catalog search")]
+        public static async Task<int> NexusSearch(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("q", "query", "Query", true)] string? query,
+            [Option("s", "sort", "Sort", true)] string? sort,
+            [Option("p", "page", "Page", true)] int? page,
+            [Option("a", "adult", "Adult", true)] bool adult,
+            [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"nexus search loadout={loadout} query={query} sort={sort} page={page} adult={adult} json={json}");
+            return 0;
+        }
+
+        [Verb("nexus files", "Stand-in for the Nexus file list")]
+        public static async Task<int> NexusFiles(
+            [Injected] IRenderer renderer,
+            [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("m", "modId", "Mod")] int modId,
+            [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"nexus files loadout={loadout} modId={modId} json={json}");
             return 0;
         }
 

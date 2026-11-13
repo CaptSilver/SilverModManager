@@ -53,6 +53,29 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task TheNexusSearchTool_PassesJsonAndAdultOnlyWhenTrue()
+    {
+        var tools = await ToolsAsync();
+
+        var adult = await McpTestHost.CallAsync(tools, "nexus_search",
+            new JsonObject { ["loadout"] = "cyberpunk/main", ["query"] = "tweaks", ["page"] = 2, ["adult"] = true });
+        var plain = await McpTestHost.CallAsync(tools, "nexus_search", Loadout("cyberpunk/main"));
+        var notAdult = await McpTestHost.CallAsync(tools, "nexus_search", new JsonObject { ["loadout"] = "cyberpunk/main", ["adult"] = false });
+
+        adult.Text.Trim().Should().Be("nexus search loadout=cyberpunk/main query=tweaks sort= page=2 adult=True json=True");
+        plain.Text.Trim().Should().Be("nexus search loadout=cyberpunk/main query= sort= page= adult=False json=True");
+        notAdult.Text.Should().Contain("adult=False");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheNexusFilesTool_PassesTheModIdAndJson()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "nexus_files", new JsonObject { ["loadout"] = "cyberpunk/main", ["modId"] = 107 });
+
+        result.Text.Trim().Should().Be("nexus files loadout=cyberpunk/main modId=107 json=True");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task TheWabbajackTools_PassTheModlistAndLeaveOutAnOptionalOneThatWasNotGiven()
     {
         var tools = await ToolsAsync();

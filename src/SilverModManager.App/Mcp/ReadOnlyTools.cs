@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
 
@@ -81,6 +82,23 @@ public static class ReadOnlyTools
             "Find the modlists with wabbajack_list.",
             readOnly: true, ["wabbajack", "status"], takesLoadout: false, context.Limits.ReadTimeout,
             options: [MutatingTools.WabbajackModlistParam(required: false)], flags: ["--json"]),
+        VerbTool.Create(context, "nexus_search",
+            $"Searches the Nexus Mods catalog of a loadout's game, as JSON: one page of {NexusModsSearchQuery.DefaultPageSize} mods with their id, name, author, version, endorsements and downloads, " +
+            "then a last line with the page's offset, the total match count and whether another page exists. " +
+            "Only when the user asked for this search; do not page through the catalog on your own. Find the loadout with loadouts_list.",
+            readOnly: true, ["nexus", "search"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"],
+            options:
+            [
+                new ToolParam("query", "Text the mod name contains; leave it out to list the whole catalog."),
+                new ToolParam("sort", "endorsements (the default), downloads, updated or name."),
+                new ToolParam("page", "Page number, starting at 1.", Type: "integer"),
+                new ToolParam("adult", "true to include adult mods even when the app's Show adult content setting is off.", Type: "boolean"),
+            ]),
+        VerbTool.Create(context, "nexus_files",
+            "Lists, as JSON, the files of one Nexus mod with their id, name, version, category (MAIN, UPDATE, OPTIONAL, OLD_VERSION, MISCELLANEOUS, ARCHIVED, REMOVED), size and date. " +
+            "Find the loadout with loadouts_list.",
+            readOnly: true, ["nexus", "files"], takesLoadout: true, context.Limits.ReadTimeout, flags: ["--json"],
+            options: [new ToolParam("modId", "The mod's id on Nexus Mods, as nexus_search shows it.", Required: true, Type: "integer")]),
         VerbTool.Create(context, "doctor",
             "Reports, as JSON, how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock.",
             readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),

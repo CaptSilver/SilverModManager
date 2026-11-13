@@ -32,6 +32,12 @@ public sealed class ToolArgs(JsonElement arguments)
     public string RequiredString(string name) =>
         String(name) ?? throw new InvalidOperationException($"The tool was called without its required '{name}' argument.");
 
+    /// <summary>The boolean argument, or null when the caller left it out.</summary>
+    public bool? Bool(string name) =>
+        arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : null;
+
     /// <summary>The integer argument, or null when the caller left it out.</summary>
     public int? Int(string name) =>
         arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)

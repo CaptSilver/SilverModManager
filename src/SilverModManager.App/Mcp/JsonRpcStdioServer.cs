@@ -246,6 +246,8 @@ public sealed class JsonRpcStdioServer
                     return new ToolResult($"The argument '{p.Name}' must not start with '-'.", true);
                 case "integer" when value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out _):
                     return new ToolResult($"The argument '{p.Name}' must be a whole number.", true);
+                case "boolean" when value.ValueKind is not (JsonValueKind.True or JsonValueKind.False):
+                    return new ToolResult($"The argument '{p.Name}' must be true or false.", true);
             }
         }
         return null;

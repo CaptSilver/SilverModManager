@@ -25,7 +25,9 @@ internal static class VerbTool
             [
                 .. verb,
                 .. takesLoadout ? new[] { "--loadout", args.RequiredString("loadout") } : [],
-                .. (options ?? []).SelectMany(o => ValueOf(args, o) is { } value
+                .. (options ?? []).SelectMany(o => o.Type == "boolean"
+                    ? args.Bool(o.Name) == true ? new[] { $"--{o.OptionName}" } : []
+                    : ValueOf(args, o) is { } value
                     ? new[] { $"--{o.OptionName}", value }
                     : o.Required ? throw new InvalidOperationException($"The tool was called without its required '{o.Name}' argument.") : []),
                 .. flags ?? [],

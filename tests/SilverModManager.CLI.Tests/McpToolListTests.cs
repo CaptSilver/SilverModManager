@@ -22,7 +22,8 @@ public sealed class McpToolListTests : IAsyncDisposable
             "loadout_revisions", "loadout_priority_list", "loadout_plugins_list",
             "loadout_group_enable", "loadout_group_disable", "loadout_group_priority_set", "loadout_plugins_set", "loadout_plugins_sort", "loadout_revert",
             "loadout_ini_list", "loadout_ini_show", "loadout_ini_set", "loadout_ini_unset", "loadout_ini_replace",
-            "loadout_diagnostic_fix", "loadout_diagnostic_clear");
+            "loadout_diagnostic_fix", "loadout_diagnostic_clear",
+            "nexus_search", "nexus_files");
     }
 
     [Fact]
@@ -108,6 +109,30 @@ public sealed class McpToolListTests : IAsyncDisposable
     public void AReadOnlyServer_OffersGamesAndTheHealthCheck()
     {
         Tools(readOnly: true).Select(t => t.Name).Should().Contain(["games_list", "loadout_health_check"]);
+    }
+
+    [Fact]
+    public void AReadOnlyServer_OffersToSearchNexusAndListAModsFiles()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().Contain(["nexus_search", "nexus_files"]);
+    }
+
+    [Fact]
+    public void TheNexusSearchTool_SaysOnlyWhenTheUserAsked()
+    {
+        var tool = Tools(readOnly: true).Single(t => t.Name == "nexus_search");
+
+        tool.Description.Should().Contain("Only when the user asked for this search").And.Contain("do not page through the catalog");
+        tool.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(
+            ("loadout", "string", true), ("query", "string", false), ("sort", "string", false), ("page", "integer", false), ("adult", "boolean", false));
+    }
+
+    [Fact]
+    public void TheNexusFilesTool_TakesTheModIdAsARequiredInteger()
+    {
+        var tool = Tools(readOnly: true).Single(t => t.Name == "nexus_files");
+
+        tool.Params.Select(p => (p.Name, p.Type, p.Required)).Should().Equal(("loadout", "string", true), ("modId", "integer", true));
     }
 
     [Fact]

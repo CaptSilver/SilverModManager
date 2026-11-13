@@ -186,6 +186,21 @@ public sealed class McpProtocolTests
     }
 
     [Fact]
+    public async Task ABooleanArgument_MustBeABoolean()
+    {
+        McpTool flagged = new("flagged", "Takes a flag", [new ToolParam("adult", "A flag", Type: "boolean")], ReadOnly: true,
+            (_, _) => Task.FromResult(new ToolResult("ok", false)));
+
+        var replies = await ServeAsync([flagged],
+            Request(1, "tools/call", new { name = "flagged", arguments = new { adult = "yes" } }),
+            Request(2, "tools/call", new { name = "flagged", arguments = new { adult = true } }));
+
+        replies[0]["result"]!["isError"]!.GetValue<bool>().Should().BeTrue();
+        replies[0]["result"]!["content"]![0]!["text"]!.GetValue<string>().Should().Contain("adult").And.Contain("true or false");
+        replies[1]["result"]!["isError"]!.GetValue<bool>().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AToolThatThrows_IsAToolErrorWithoutTheExceptionDetails_AndTheServerKeepsRunning()
     {
         var replies = await ServeAsync([Boom, Echo],
