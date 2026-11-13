@@ -25,10 +25,10 @@ public static class LspkPackageFormat
 
     public enum PackageVersion
     {
-        // V7 = 7, // D:OS 1
-        // V9 = 9, // D:OS 1 EE
-        // V10 = 10, // D:OS 2
-        // V13 = 13, // D:OS 2 DE
+        V7 = 7, // D:OS 1
+        V9 = 9, // D:OS 1 EE
+        V10 = 10, // D:OS 2
+        V13 = 13, // D:OS 2 DE
 
         V15 = 15, // BG3 EA
         V16 = 16, // BG3 EA Patch4
@@ -89,8 +89,17 @@ public static class LspkPackageFormat
 
         public UInt64 FileListOffset;
 
-        // Size of file list; used for legacy (<= v10) packages only
+        // Size of file list; used for legacy (<= v13) packages only
         public UInt32 FileListSize;
+
+        /// <summary>Number of file entries, for the versions that keep the count in the header (7, 9, 10).</summary>
+        public UInt32 NumFiles;
+
+        /// <summary>
+        /// Added to the offset of every part-0 entry in v7, v9 and v10, where offsets are relative to the data
+        /// section; zero for the versions whose offsets are absolute.
+        /// </summary>
+        public UInt32 DataOffset;
         public UInt32 NumParts;
         public PackageFlags Flags;
         public Byte Priority;
@@ -98,6 +107,82 @@ public static class LspkPackageFormat
     }
 
 #region Internal Header versions
+
+    /// <summary>Bare header of v7 and v9: no signature, the first Int32 is the version. The file list follows directly.</summary>
+    internal struct LSPKHeader7
+    {
+        public UInt32 Version;
+        public UInt32 DataOffset;
+        public UInt32 NumParts;
+        public UInt32 FileListSize;
+        public Byte LittleEndian;
+        public UInt32 NumFiles;
+
+        public const int Size = 21;
+
+        public readonly HeaderCommon ToCommonHeader(long fileListOffset) => new()
+        {
+            Version = Version,
+            FileListOffset = (ulong)fileListOffset,
+            FileListSize = FileListSize,
+            NumFiles = NumFiles,
+            DataOffset = DataOffset,
+            NumParts = NumParts,
+            Md5 = [],
+        };
+    }
+
+    /// <summary>v10, read after the "LSPK" signature (the version is the first field). The file list follows directly.</summary>
+    internal struct LSPKHeader10
+    {
+        public UInt32 Version;
+        public UInt32 DataOffset;
+        public UInt32 FileListSize;
+        public UInt16 NumParts;
+        public Byte Flags;
+        public Byte Priority;
+        public UInt32 NumFiles;
+
+        public const int Size = 20;
+
+        public readonly HeaderCommon ToCommonHeader(long fileListOffset) => new()
+        {
+            Version = Version,
+            FileListOffset = (ulong)fileListOffset,
+            FileListSize = FileListSize,
+            NumFiles = NumFiles,
+            DataOffset = DataOffset,
+            NumParts = NumParts,
+            Flags = (PackageFlags)Flags,
+            Priority = Priority,
+            Md5 = [],
+        };
+    }
+
+    /// <summary>v13: stored at the end of the file, in front of an Int32 size and the "LSPK" signature.</summary>
+    internal struct LSPKHeader13
+    {
+        public UInt32 Version;
+        public UInt32 FileListOffset;
+        public UInt32 FileListSize;
+        public UInt16 NumParts;
+        public Byte Flags;
+        public Byte Priority;
+        public byte[] Md5;
+
+        public const int Size = 32;
+
+        public readonly HeaderCommon ToCommonHeader() => new()
+        {
+            Version = Version,
+            FileListOffset = FileListOffset,
+            FileListSize = FileListSize,
+            NumParts = NumParts,
+            Flags = (PackageFlags)Flags,
+            Priority = Priority,
+            Md5 = Md5,
+        };
+    }
 
     internal struct LSPKHeader15
     {
@@ -169,6 +254,9 @@ public static class LspkPackageFormat
         public UInt64 OffsetInFile;
         public UInt64 SizeOnDisk;
         public UInt64 UncompressedSize;
+
+        /// <summary>Which part of a multi-part package holds the data; 0 is the file the entry was read from.</summary>
+        public UInt32 ArchivePart;
     }
 
 #region Internal FileEntry versions
@@ -203,6 +291,55 @@ public static class LspkPackageFormat
             OffsetInFile = OffsetInFile,
             SizeOnDisk = SizeOnDisk,
             UncompressedSize = UncompressedSize,
+            ArchivePart = ArchivePart,
+        };
+    }
+
+    /// <summary>v7 and v9. There is no flags field: LSLib treats an entry as zlib-compressed whenever it has an uncompressed size.</summary>
+    internal struct FileEntry7 : ILSPKFile
+    {
+        public byte[] Name;
+        public UInt32 OffsetInFile;
+        public UInt32 SizeOnDisk;
+        public UInt32 UncompressedSize;
+        public UInt32 ArchivePart;
+
+        public const int Size = 272;
+
+        public readonly FileEntryInfoCommon ToCommonFileEntry() => new FileEntryInfoCommon
+        {
+            Name = NullTerminatedBytesToString(Name),
+            Crc = 0,
+            Flags = UncompressedSize > 0 ? CompressionFlags.MethodZlib : CompressionFlags.MethodNone,
+            OffsetInFile = OffsetInFile,
+            SizeOnDisk = SizeOnDisk,
+            UncompressedSize = UncompressedSize,
+            ArchivePart = ArchivePart,
+        };
+    }
+
+    /// <summary>v10 and v13.</summary>
+    internal struct FileEntry10 : ILSPKFile
+    {
+        public byte[] Name;
+        public UInt32 OffsetInFile;
+        public UInt32 SizeOnDisk;
+        public UInt32 UncompressedSize;
+        public UInt32 ArchivePart;
+        public UInt32 Flags;
+        public UInt32 Crc;
+
+        public const int Size = 280;
+
+        public readonly FileEntryInfoCommon ToCommonFileEntry() => new FileEntryInfoCommon
+        {
+            Name = NullTerminatedBytesToString(Name),
+            Crc = Crc,
+            Flags = (CompressionFlags)Flags,
+            OffsetInFile = OffsetInFile,
+            SizeOnDisk = SizeOnDisk,
+            UncompressedSize = UncompressedSize,
+            ArchivePart = ArchivePart,
         };
     }
 
@@ -227,6 +364,7 @@ public static class LspkPackageFormat
             OffsetInFile = OffsetInFile1 | (UInt64)OffsetInFile2 << 32,
             SizeOnDisk = SizeOnDisk,
             UncompressedSize = UncompressedSize,
+            ArchivePart = ArchivePart,
         };
     }
 
@@ -240,6 +378,8 @@ public static class LspkPackageFormat
     {
         return header.Version switch
         {
+            7 or 9 => FileEntry7.Size,
+            10 or 13 => FileEntry10.Size,
             15 => FileEntry15Or16.Size,
             16 => FileEntry15Or16.Size,
             18 => FileEntry18.Size,

@@ -56,6 +56,101 @@ public class BG3PakParsingTests
             act.Should().Throw<InvalidDataException>();
         }
     }
+
+    private const string Uuid = "5b3c4b7e-8d6a-4f0e-9f5d-2f1d6b0c9a11";
+
+    private static string Meta()
+        => SyntheticPak.MetaLsx("X", "Some Mod", Uuid, SyntheticPak.Version(1));
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(9)]
+    [InlineData(10)]
+    [InlineData(13)]
+    public void ReadsTheMetaLsxOfALegacyPak(int version)
+    {
+        var pak = SyntheticPak.Build(version, ("Mods/X/meta.lsx", Meta()));
+
+        var meta = PakFileParser.ParsePakMeta(new MemoryStream(pak)).MetaFileData;
+
+        meta.ModuleShortDesc.Uuid.Should().Be(Uuid);
+        meta.ModuleShortDesc.Name.Should().Be("Some Mod");
+    }
+
+    [Fact]
+    public void AV13PakWhoseBodyStartsWithTheSignatureIsReadFromTheTrailer()
+    {
+        // The first entry's stored bytes begin with "LSPK" and a plausible version, as a nested pak would.
+        var pak = SyntheticPak.Build(13,
+            ("Mods/X/nested.bin", "LSPK\u0012\0\0\0"),
+            ("Mods/X/meta.lsx", Meta()));
+
+        PakFileParser.ParsePakMeta(new MemoryStream(pak)).MetaFileData.ModuleShortDesc.Uuid.Should().Be(Uuid);
+    }
+
+    [Fact]
+    public void DataOffsetStillLocatesPartZeroEntriesNextToAPartOneEntry()
+    {
+        var pak = SyntheticPak.Build(10, ("Mods/X/meta.lsx", Meta()), ("Mods/X/other.txt", "x"));
+        var inPartOne = SyntheticPak.WithArchivePart(pak, "Mods/X/other.txt", 1);
+
+        // The part-0 meta.lsx still resolves, which it only does when DataOffset was added to its offset.
+        PakFileParser.ParsePakMeta(new MemoryStream(inPartOne)).MetaFileData.ModuleShortDesc.Uuid.Should().Be(Uuid);
+    }
+
+    [Fact]
+    public void AnEntryInAnotherPartIsRefusedByName()
+    {
+        var pak = SyntheticPak.WithArchivePart(SyntheticPak.Build(10, ("Mods/X/meta.lsx", Meta())), "Mods/X/meta.lsx", 1);
+
+        var act = () => PakFileParser.ParsePakMeta(new MemoryStream(pak));
+
+        act.Should().Throw<InvalidDataException>()
+            .WithMessage("Mods/X/meta.lsx is stored in part 1 of a multi-part package, which is not supported");
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(18)]
+    public void AMultiPartEntryIsRefusedInEveryFileEntryLayout(int version)
+    {
+        var pak = SyntheticPak.WithArchivePart(SyntheticPak.Build(version, ("Mods/X/meta.lsx", Meta())), "Mods/X/meta.lsx", 2);
+
+        var act = () => PakFileParser.ParsePakMeta(new MemoryStream(pak));
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*part 2 of a multi-part package*");
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(13)]
+    [InlineData(18)]
+    public void ASolidPakIsRefusedAtTheHeader(int version)
+    {
+        var pak = SyntheticPak.WithSolidFlag(SyntheticPak.Build(version, ("Mods/X/meta.lsx", Meta())));
+
+        var act = () => PakFileParser.ParsePakMeta(new MemoryStream(pak));
+
+        act.Should().Throw<InvalidDataException>().WithMessage("solid packages are not supported");
+    }
+
+    // A foreign file whose first Int32 happens to be 7, or a damaged legacy header, must fail as a bad pak
+    // (the error every caller catches), not as an overflow or a table allocation sized from garbage.
+    [Theory]
+    [InlineData(7, 17, 0x7FFFFFFFu)]   // FileEntry7 count, end of the bare header
+    [InlineData(10, 20, 0x7FFFFFFFu)]  // FileEntry10 count, end of the v10 header
+    [InlineData(10, 20, 1_000_000u)]   // a count whose table fits in an int but not in the file
+    [InlineData(13, -32, 0u)]          // v13 FileListSize, smaller than its own entry count
+    [InlineData(13, -32, 0x7FFFFFF0u)] // v13 FileListSize, past the end of the file
+    public void ALegacyFileTableLargerThanThePakIsRefused(int version, int fieldOffset, uint value)
+    {
+        var pak = SyntheticPak.Build(version, ("Mods/X/meta.lsx", Meta()));
+        BitConverter.GetBytes(value).CopyTo(pak, fieldOffset >= 0 ? fieldOffset : pak.Length + fieldOffset);
+
+        var act = () => PakFileParser.ParsePakMeta(new MemoryStream(pak));
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*file table*");
+    }
     
     
 }
