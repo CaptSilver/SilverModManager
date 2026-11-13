@@ -86,6 +86,8 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
         var remover = Substitute.For<ILoadoutFileRemover>();
         remover.Plan(Arg.Any<FileRemovalRequest>()).Returns(call => new FileRemovalPlan(call.Arg<FileRemovalRequest>(),
             call.Arg<FileRemovalRequest>().Paths.Select(p => new FileRemovalRow(EntityId.From(1), p, "Overrides", LoadoutItemGroupId.From(EntityId.From(2)), null, null, null, false, false, true)).ToArray()));
+        remover.Remove(Arg.Any<FileRemovalRequest>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .Returns(call => new FileRemovalResult(call.Arg<FileRemovalRequest>().Paths, default, new RemovedFromDisk([], [])));
         var dialogs = new List<IDialog>();
         Harness? harness = null;
         var windows = Substitute.For<IWindowManager>();
@@ -157,7 +159,7 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
         await Press(h);
 
         await Eventually(() => h.Remover.Received(1).Remove(
-            Arg.Is<FileRemovalRequest>(r => r.Paths.Length == 2 && r.OnlyInGroups != null && r.OnlyInGroups.Single() == Group), true));
+            Arg.Is<FileRemovalRequest>(r => r.Paths.Length == 2 && r.OnlyInGroups != null && r.OnlyInGroups.Single() == Group), true, true));
         await Eventually(() => h.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!));
     }
 
@@ -173,10 +175,10 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
 
         // One request carrying both paths and both groups would also remove Dll from otherGroup and OtherDll from Group.
         await Eventually(() => h.Remover.Received(1).Remove(
-            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { Dll }) && r.OnlyInGroups!.SequenceEqual(new[] { Group })), true));
+            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { Dll }) && r.OnlyInGroups!.SequenceEqual(new[] { Group })), true, true));
         await Eventually(() => h.Remover.Received(1).Remove(
-            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { OtherDll }) && r.OnlyInGroups!.SequenceEqual(new[] { otherGroup })), true));
-        await h.Remover.DidNotReceive().Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Length > 1 && r.OnlyInGroups!.Length > 1), true);
+            Arg.Is<FileRemovalRequest>(r => r.Paths.SequenceEqual(new[] { OtherDll }) && r.OnlyInGroups!.SequenceEqual(new[] { otherGroup })), true, true));
+        await h.Remover.DidNotReceive().Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Length > 1 && r.OnlyInGroups!.Length > 1), true, true);
     }
 
     [Fact]
@@ -188,7 +190,7 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
         await Press(h);
 
         await Eventually(() => h.Dialogs.Should().ContainSingle());
-        await h.Remover.DidNotReceiveWithAnyArgs().Remove(default!, default);
+        await h.Remover.DidNotReceiveWithAnyArgs().Remove(default!, default, default);
     }
 
     [Fact]

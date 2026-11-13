@@ -1,6 +1,9 @@
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -10,6 +13,7 @@ using SilverModManager.DataModel.Undo;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.DataModel.Tests;
@@ -23,6 +27,13 @@ public class LoadoutFileRemoverTests(ITestOutputHelper helper) : ANexusCollectio
     private static readonly GamePath PathA = new(LocationId.Game, "archive/pc/mod/a.archive");
     private static readonly GamePath PathB = new(LocationId.Game, "archive/pc/mod/b.archive");
     private static readonly GamePath Vanilla = new(LocationId.Game, "bin/x64/Cyberpunk2077.exe");
+
+    // Under the test scratch root, beside the game folders: a removal trashes there rather than in whatever
+    // XDG_DATA_HOME the test host was started with.
+    private readonly string _trashHome = TestScratch.Combine($"LoadoutFileRemoverTests-trash-{Guid.NewGuid():N}");
+
+    protected override IServiceCollection AddServices(IServiceCollection services) =>
+        base.AddServices(services).AddSingleton<ITrash>(new FreedesktopTrash(_trashHome));
 
     private ILoadoutFileRemover Remover => ServiceProvider.GetRequiredService<ILoadoutFileRemover>();
     private ICollectionOwnership Ownership => ServiceProvider.GetRequiredService<ICollectionOwnership>();
@@ -209,6 +220,75 @@ public class LoadoutFileRemoverTests(ITestOutputHelper helper) : ANexusCollectio
     }
 
     [Fact]
+    public async Task RemovingAnOverridesRowTakesTheFileOffDiskWhenAsked()
+    {
+        var loadout = await NewLoadout();
+        await AddOverridesFile(loadout, PathA, "mine");
+        var onDisk = await PutOnDisk(loadout, PathA, "mine");
+
+        var result = await Remover.Remove(Request(loadout, PathA), includeLocked: true, takeOffDisk: true);
+
+        onDisk.FileExists.Should().BeFalse();
+        result.OffDisk.Should().NotBeNull();
+        result.OffDisk!.Trashed.Should().Equal(PathA);
+        File.Exists(Path.Combine(_trashHome, "Trash", "files", "a.archive")).Should().BeTrue();
+        RowsAt(PathA).Should().BeEmpty();
+        (await FileStore.HaveFile(FileIdentity.XxHash3("mine".xxHash3AsUtf8()))).Should().BeTrue("the bytes are in the store before the file goes");
+    }
+
+    [Fact]
+    public async Task RemovingWithoutAskingLeavesTheFileOnDisk()
+    {
+        var loadout = await NewLoadout();
+        await AddOverridesFile(loadout, PathA, "mine");
+        var onDisk = await PutOnDisk(loadout, PathA, "mine");
+
+        var result = await Remover.Remove(Request(loadout, PathA), includeLocked: true);
+
+        onDisk.FileExists.Should().BeTrue();
+        result.OffDisk.Should().BeNull();
+        RowsAt(PathA).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RemovingAFileThatChangedOnDiskIsRefusedBeforeAnyRowGoes()
+    {
+        var loadout = await NewLoadout();
+        await AddOverridesFile(loadout, PathA, "mine");
+        var onDisk = await PutOnDisk(loadout, PathA, "edited since");
+        var revisions = Undo.RevisionsFor(loadout.Id).Count;
+
+        var act = () => Remover.Remove(Request(loadout, PathA), includeLocked: true, takeOffDisk: true);
+
+        await act.Should().ThrowAsync<GameFolderFileRemovalRefusedException>();
+        RowsAt(PathA).Should().ContainSingle("no row went");
+        Undo.RevisionsFor(loadout.Id).Count.Should().Be(revisions, "no restore point was written");
+        onDisk.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OnlyExternalChangesLeaveTheDiskWhenAskedAModRowIsLeftForTheApply()
+    {
+        var loadout = await NewLoadout();
+        await AddMod(loadout.LoadoutId, "Mod", 1UL, [(PathA, "from a mod")]);
+        var onDisk = await PutOnDisk(loadout, PathA, "from a mod");
+
+        var result = await Remover.Remove(Request(loadout, PathA), includeLocked: true, takeOffDisk: true);
+
+        onDisk.FileExists.Should().BeTrue("the next apply removes what a mod put there");
+        result.OffDisk!.Trashed.Should().BeEmpty();
+        result.OffDisk.Deleted.Should().BeEmpty();
+    }
+
+    private static async Task<AbsolutePath> PutOnDisk(Loadout.ReadOnly loadout, GamePath path, string content)
+    {
+        var file = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync(content);
+        return file;
+    }
+
+    [Fact]
     public async Task RemoveSkipsLockedRowsUnlessAsked()
     {
         var loadout = await NewLoadout();
@@ -272,7 +352,7 @@ public class LoadoutFileRemoverTests(ITestOutputHelper helper) : ANexusCollectio
     {
         var loadout = await NewLoadout();
         await AddMod(loadout.LoadoutId, "One", 1UL, [(PathA, "a")]);
-        var failing = new LoadoutFileRemover(Connection, Ownership, NullLogger<LoadoutFileRemover>.Instance)
+        var failing = new LoadoutFileRemover(Connection, Ownership, ServiceProvider.GetRequiredService<IGameFolderFileRemoval>(), NullLogger<LoadoutFileRemover>.Instance)
         {
             BeforeRemovalCommit = _ => throw new InvalidOperationException("injected"),
         };

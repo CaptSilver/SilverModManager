@@ -41,6 +41,13 @@ public enum SyncTrigger
 
     /// <summary>Deleting a loadout that is applied.</summary>
     DeleteLoadout,
+
+    /// <summary>
+    /// Removing files from the loadout from the Health Check or the Apply preview, which applies right after. Not a
+    /// removal the player asked for in bulk: the apply carries every other pending change too, so a mass removal still
+    /// asks.
+    /// </summary>
+    RemoveFiles,
 }
 
 /// <summary>
@@ -95,6 +102,7 @@ public static class SyncOrigin
         SyncTrigger.DeploymentMethodSwitch => "changing the deployment method",
         SyncTrigger.Unmanage => "removing the game from the app",
         SyncTrigger.DeleteLoadout => "deleting the loadout",
+        SyncTrigger.RemoveFiles => "removing files from the loadout",
         _ => throw new ArgumentOutOfRangeException(nameof(trigger), trigger, null),
     };
 

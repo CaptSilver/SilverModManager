@@ -30,7 +30,15 @@ public class FileRemovalTextTests
         text.Should().StartWith("These files leave the loadout:\n\n");
         text.Should().Contain("Data/a.dll — Upscaler Base Plugin, in FUS\n");
         text.Should().Contain("Data/b.dll — Other\n");
-        text.Should().Contain("The next Apply deletes the ones that are in the game folder, or puts the game's own version back");
+    }
+
+    [Fact]
+    public void TheConfirmationSaysTheLoadoutIsAppliedNow()
+    {
+        var text = Text(Row("Data/a.dll"));
+
+        text.Should().Contain("applied now, including any other changes waiting to be applied");
+        text.Should().NotContain("next Apply");
     }
 
     [Fact]

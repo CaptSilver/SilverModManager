@@ -168,11 +168,20 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Files removed from the loadout..
+        ///   Looks up a localized string similar to {0} removed{1}; the loadout was applied..
         /// </summary>
         public static string ApplyDiff_Remove_Toast {
             get {
                 return ResourceManager.GetString("ApplyDiff_Remove_Toast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} removed; the apply did not finish, run Apply..
+        /// </summary>
+        public static string ApplyDiff_Remove_ApplyFailedToast {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_ApplyFailedToast", resourceCulture);
             }
         }
         

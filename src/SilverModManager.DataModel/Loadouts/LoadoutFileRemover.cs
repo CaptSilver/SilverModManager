@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.DataModel.Loadouts;
@@ -18,6 +19,7 @@ namespace SilverModManager.DataModel.Loadouts;
 internal sealed class LoadoutFileRemover(
     IConnection connection,
     ICollectionOwnership ownership,
+    IGameFolderFileRemoval fileRemoval,
     ILogger<LoadoutFileRemover> logger) : ILoadoutFileRemover
 {
     private const string ExternalChangesName = "External Changes";
@@ -50,7 +52,7 @@ internal sealed class LoadoutFileRemover(
         return new FileRemovalPlan(request, rows.Values.OrderBy(r => r.Path.Path.ToString(), StringComparer.Ordinal).ThenBy(r => r.RowId.Value).ToArray());
     }
 
-    public async Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked)
+    public async Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked, bool takeOffDisk = false)
     {
         if (!Loadout.Load(connection.Db, request.LoadoutId).IsValid())
             throw new FileRemovalRefusedException("The loadout no longer exists.");
@@ -60,6 +62,9 @@ internal sealed class LoadoutFileRemover(
         if (!plan.HasAnythingToRemove(includeLocked))
             throw new FileRemovalRefusedException(plan.RefusalMessage());
         var toRemove = (includeLocked ? plan.Removable.Concat(plan.Locked) : plan.Removable).ToArray();
+
+        // Before the restore point and the row deletes, so a refusal leaves the database as it was.
+        var onDisk = takeOffDisk ? await StoreExternalChanges(request.LoadoutId, toRemove) : [];
 
         // The marker has to precede the removal: reverting restores the state as of the marked transaction.
         var restorePoint = await LoadoutSnapshot.WriteRestorePoint(connection, request.LoadoutId);
@@ -72,7 +77,30 @@ internal sealed class LoadoutFileRemover(
 
         var removed = toRemove.Select(r => r.Path).Distinct().ToArray();
         logger.LogInformation("Removed {RowCount} file rows at {PathCount} paths from loadout {Loadout}", toRemove.Length, removed.Length, request.LoadoutId);
-        return new FileRemovalResult(removed, restorePoint);
+
+        var offDisk = takeOffDisk
+            ? await fileRemoval.TakeOffDisk(Loadout.Load(connection.Db, request.LoadoutId), onDisk, CancellationToken.None)
+            : null;
+        return new FileRemovalResult(removed, restorePoint, offDisk);
+    }
+
+    /// <summary>
+    /// Stores the bytes of the files the user put in the game folder themselves, since the rows being removed are the
+    /// only record of them. Rows in a mod need nothing: the mod's archive still has the bytes.
+    /// </summary>
+    /// <returns>The game-folder paths of those rows, to take off disk once the rows are gone.</returns>
+    private async Task<GamePath[]> StoreExternalChanges(LoadoutId loadoutId, IEnumerable<FileRemovalRow> rows)
+    {
+        var db = connection.Db;
+        var files = new List<(GamePath Path, FileIdentity Identity)>();
+        foreach (var row in rows.Where(r => r.IsExternalChange && r.Path.LocationId == LocationId.Game))
+        {
+            var file = LoadoutFile.Load(db, row.RowId);
+            if (file.IsValid()) files.Add((row.Path, file.Identity));
+        }
+
+        await fileRemoval.EnsureStored(Loadout.Load(db, loadoutId), files, CancellationToken.None);
+        return files.Select(f => f.Path).Distinct().ToArray();
     }
 
     /// <summary>

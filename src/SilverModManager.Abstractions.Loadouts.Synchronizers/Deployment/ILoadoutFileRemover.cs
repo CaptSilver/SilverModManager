@@ -23,7 +23,16 @@ public interface ILoadoutFileRemover
     /// asked) in one transaction. Throws <see cref="FileRemovalRefusedException"/> before writing when nothing would
     /// be removed.
     /// </summary>
-    Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked);
+    /// <param name="takeOffDisk">
+    /// Also takes the files of removed External Changes rows out of the game folder, after storing their bytes. The
+    /// disk then no longer matches what the loadout last synced, so whoever passes true must apply the loadout before
+    /// anything else can happen. Otherwise the next apply settles the disk.
+    /// </param>
+    /// <exception cref="GameFolderFileRemovalRefusedException">
+    /// <paramref name="takeOffDisk"/> was asked for and a file changed on disk since its row was recorded; nothing was
+    /// written.
+    /// </exception>
+    Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked, bool takeOffDisk = false);
 }
 
 /// <summary>
@@ -92,7 +101,8 @@ public sealed record FileRemovalRow(
 /// <param name="RestorePoint">
 /// The revision written before the removal; <c>loadout revert -r</c> with it brings the rows back.
 /// </param>
-public sealed record FileRemovalResult(IReadOnlyList<GamePath> Removed, TxId RestorePoint);
+/// <param name="OffDisk">What happened to the files on disk; null when the caller did not ask for them to go.</param>
+public sealed record FileRemovalResult(IReadOnlyList<GamePath> Removed, TxId RestorePoint, RemovedFromDisk? OffDisk = null);
 
 /// <summary>A removal that was refused before anything was written.</summary>
 [PublicAPI]

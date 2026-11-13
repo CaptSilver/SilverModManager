@@ -13,7 +13,9 @@ using NexusMods.Paths;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Controls.Trees;
 using SilverModManager.App.UI.Controls.Trees.Files;
@@ -362,13 +364,90 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task AcceptingTheDeleteAppliesTheLoadout()
+    {
+        var h = await Open("Remove Applies", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+
+        await Press(h);
+
+        await Eventually(() => RowsAt(h.Loadout, ModFile).Should().Be(0));
+        await Eventually(() => _ = h.Sync.Received(1).Synchronize(h.Loadout.LoadoutId, Arg.Any<BackupOverflowChoice?>(), Arg.Any<CancellationToken>()));
+        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the loadout was applied")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+    }
+
+    [Fact]
+    public async Task TheApplyAfterADeleteRunsOffTheUiThreadAndSaysWhatStartedIt()
+    {
+        var h = await Open("Remove Apply Origin", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        SyncTrigger? origin = null;
+        bool? onUiThread = null;
+        h.Sync.Synchronize(Arg.Any<LoadoutId>(), Arg.Any<BackupOverflowChoice?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                origin = SyncOrigin.Current;
+                onUiThread = Dispatcher.UIThread.CheckAccess();
+                return Task.CompletedTask;
+            });
+        h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+
+        await Press(h);
+
+        await Eventually(() => onUiThread.Should().NotBeNull());
+        origin.Should().Be(SyncTrigger.RemoveFiles, "the sync log names what started it");
+        onUiThread.Should().BeFalse("an apply builds the whole sync tree");
+    }
+
+    [Fact]
+    public async Task CancellingAppliesNothing()
+    {
+        var h = await Open("Remove Cancel No Apply", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel };
+
+        await Press(h);
+
+        await Eventually(() => h.Dialogs.Should().ContainSingle());
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        _ = h.Sync.DidNotReceive().Synchronize(Arg.Any<LoadoutId>(), Arg.Any<BackupOverflowChoice?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AFailedApplyAfterTheRemovalIsReportedNotHidden()
+    {
+        var h = await Open("Remove Apply Fails", entries: (ModFile, FileChangeType.Added));
+        await SeedGroup(h.Loadout.LoadoutId, "Mod", files: [ModFile]);
+        await Select(h, Node(ModFile));
+        await Eventually(() => h.CanRun.Should().BeTrue());
+        h.Sync.Synchronize(Arg.Any<LoadoutId>(), Arg.Any<BackupOverflowChoice?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ExecutableInUseException("The game is running."));
+        h.Answer = new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+
+        await Press(h);
+
+        await Eventually(() => RowsAt(h.Loadout, ModFile).Should().Be(0));
+        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the apply did not finish")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+        await Eventually(() => h.Sync.Received(2).GetApplyDiffTree(Arg.Any<LoadoutId>()));
+        _ = h.Presenter.DidNotReceiveWithAnyArgs().Report(default!, default!);
+        h.Thrown.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AFailureFromTheServiceGoesToTheErrorPresenterAndNothingIsThrown()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Remove Fault Seed");
         var row = new FileRemovalRow(EntityId.From(1), ModFile, "Mod", LoadoutItemGroupId.From(EntityId.From(2)), null, null, null, false, false, true);
         var remover = Substitute.For<ILoadoutFileRemover>();
         remover.Plan(Arg.Any<FileRemovalRequest>()).Returns(call => new FileRemovalPlan(call.Arg<FileRemovalRequest>(), [row]));
-        remover.Remove(Arg.Any<FileRemovalRequest>(), Arg.Any<bool>()).ThrowsAsync(new InvalidOperationException("the commit failed"));
+        remover.Remove(Arg.Any<FileRemovalRequest>(), Arg.Any<bool>(), Arg.Any<bool>()).ThrowsAsync(new InvalidOperationException("the commit failed"));
         var h = await Open("Remove Fault", remover, (ModFile, FileChangeType.Added));
         await Select(h, Node(ModFile));
         await Eventually(() => h.CanRun.Should().BeTrue());
@@ -379,7 +458,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         await Eventually(() => _ = h.Presenter.Received(1).Report(Arg.Is<Exception>(e => e is InvalidOperationException), Arg.Any<string>()));
         await Task.Delay(200, TestContext.Current.CancellationToken);
         h.Thrown.Should().BeEmpty();
-        await remover.Received(1).Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Single() == ModFile), true);
+        await remover.Received(1).Remove(Arg.Is<FileRemovalRequest>(r => r.Paths.Single() == ModFile), true, true);
     }
 
     [Fact]

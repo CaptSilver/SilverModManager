@@ -157,10 +157,10 @@ public class LoadoutFileRemovalVerbTests(ITestOutputHelper helper) : AIsolatedGa
 
         public FileRemovalPlan Plan(FileRemovalRequest request) => inner.Plan(request);
 
-        public Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked)
+        public Task<FileRemovalResult> Remove(FileRemovalRequest request, bool includeLocked, bool takeOffDisk = false)
         {
             Calls.Add((request, includeLocked));
-            return inner.Remove(request, includeLocked);
+            return inner.Remove(request, includeLocked, takeOffDisk);
         }
     }
 }

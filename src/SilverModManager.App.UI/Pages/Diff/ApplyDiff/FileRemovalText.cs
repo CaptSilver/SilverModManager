@@ -25,11 +25,11 @@ public static class FileRemovalText
         if (blocked.Length > 0)
             paragraphs.Add(string.Join('\n', blocked));
 
-        paragraphs.Add("The next Apply deletes the ones that are in the game folder, or puts the game's own version back where a mod had replaced it. The mods stay in the loadout.");
+        paragraphs.Add("The files come off disk and the loadout is applied now, including any other changes waiting to be applied. The mods stay in the loadout.");
 
         var external = rows.Where(r => r.IsExternalChange).Select(r => Show(r.Path)).Distinct().ToArray();
         if (external.Length > 0)
-            paragraphs.Add($"{Join(external)} {(external.Length == 1 ? "is a file" : "are files")} you put in the game folder yourself. The next Apply deletes {(external.Length == 1 ? "it" : "them")} from disk; {(external.Length == 1 ? "it was" : "they were")} archived when the app found {(external.Length == 1 ? "it" : "them")}, so `loadout revert` brings {(external.Length == 1 ? "it" : "them")} back.");
+            paragraphs.Add($"{Join(external)} {(external.Length == 1 ? "is a file" : "are files")} you put in the game folder yourself. {(external.Length == 1 ? "It goes" : "They go")} to the trash, or are deleted when the trash is on another drive; {(external.Length == 1 ? "it was" : "they were")} archived when the app found {(external.Length == 1 ? "it" : "them")}, so `loadout revert` brings {(external.Length == 1 ? "it" : "them")} back.");
 
         foreach (var locked in plan.Locked.GroupBy(r => r.CollectionName).OrderBy(g => g.Key, StringComparer.Ordinal))
             paragraphs.Add($"{locked.First().LockReason}. Removing files from its mods is a local edit: reinstalling or resuming the list puts them back.");
