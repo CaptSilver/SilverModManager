@@ -73,10 +73,10 @@ public sealed class WabbajackArchiveLine : Grid
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        // A row can change on a download thread; the line is drawn on the UI thread.
-        _subscription = _row.Changed.ObserveOn(RxApp.MainThreadScheduler).Subscribe(_ => Show());
+        // A row can change on a download thread; the line is drawn on the UI thread, and only its latest state is worth a turn.
+        _subscription = _row.Changed.ObserveLatestOn(RxApp.MainThreadScheduler).Subscribe(_ => Show());
         // Off while downloads run, like the toolbar's Download.
-        _retryEnabled = _canRetry.ObserveOn(RxApp.MainThreadScheduler).Subscribe(can => _retry.IsEnabled = can);
+        _retryEnabled = _canRetry.ObserveLatestOn(RxApp.MainThreadScheduler).Subscribe(can => _retry.IsEnabled = can);
         Show();
     }
 
