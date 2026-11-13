@@ -7,8 +7,8 @@ namespace SilverModManager.Games.CreationEngine.Loot;
 
 /// <summary>
 /// A plugin of the loadout as the sorter sees it. <paramref name="records"/> and <paramref name="assets"/> are what
-/// the plugin overrides and the archive files it loads; both stay null for a game whose overlap is not read, or a
-/// plugin whose bytes could not be read, and then the plugin overlaps nothing.
+/// the plugin overrides and the archive files it loads; both stay null for a plugin that could not be read, and then the
+/// plugin overlaps nothing.
 /// </summary>
 internal sealed class LootSortPlugin(PluginLoadoutData data, PluginRecordIds? records = null, ArchiveAssetSet? assets = null) : ISortingPlugin
 {

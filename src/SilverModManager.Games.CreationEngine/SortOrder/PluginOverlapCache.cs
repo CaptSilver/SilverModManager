@@ -18,29 +18,29 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 /// </remarks>
 internal sealed class PluginOverlapCache(IStreamSourceDispatcher streams, PluginFormat format, ILogger logger)
 {
-    private readonly ConcurrentDictionary<FileIdentity, Lazy<Task<Cached<uint[]>>>> _formIds = new();
+    private readonly ConcurrentDictionary<FileIdentity, Lazy<Task<Cached<PluginRecords>>>> _records = new();
     private readonly ConcurrentDictionary<FileIdentity, Lazy<Task<Cached<ArchiveAssetSet>>>> _assets = new();
 
     // A result is either a value, a verdict that the file is unusable, or a gap in the store that is not a verdict.
     private readonly record struct Cached<T>(T? Value, bool Final) where T : class;
 
-    /// <summary>The raw FormIDs of the plugin's records, or <c>null</c> when it cannot be read.</summary>
-    public Task<uint[]?> FormIds(FileIdentity identity, string name) =>
-        Load(_formIds, identity, async () =>
+    /// <summary>The plugin's records before they are resolved against its masters, or <c>null</c> when it cannot be read.</summary>
+    public Task<PluginRecords?> Records(FileIdentity identity, string name) =>
+        Load(_records, identity, async () =>
         {
             await using var stream = await streams.OpenAsync(identity);
-            if (stream is null) return new Cached<uint[]>(null, false);
+            if (stream is null) return new Cached<PluginRecords>(null, false);
 
             try
             {
                 // A store stream can be slow to read small pieces from; the walker reads headers and skips bodies.
                 using var buffered = new BufferedStream(stream, 64 * 1024);
-                return new Cached<uint[]>(PluginRecordWalker.ReadFormIds(buffered, format, name), true);
+                return new Cached<PluginRecords>(PluginRecordWalker.Read(buffered, format, name), true);
             }
             catch (InvalidPluginException e)
             {
                 logger.LogWarning("Not reading the records of {Plugin} for LOOT: {Reason}", name, e.Message);
-                return new Cached<uint[]>(null, true);
+                return new Cached<PluginRecords>(null, true);
             }
         });
 

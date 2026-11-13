@@ -63,7 +63,7 @@ internal sealed class LootSortService(
         var earlyLoading = game.EarlyLoadingPlugins(installation);
         var activeNames = items.Where(i => i.Item.IsActive).Select(i => i.Data.Name).ToList();
         var loadoutData = items.Select(i => i.Data).ToList();
-        var archives = overlap.Covers(lootGame) ? overlap.Archives(sortOrder.LoadoutId, db, lootGame) : [];
+        var archives = overlap.Archives(sortOrder.LoadoutId, db, lootGame);
 
         // Hashing cleaned plugins, reading headers and walking every plugin's records is synchronous disk I/O, and
         // the command that calls this starts on the UI thread.
@@ -118,9 +118,8 @@ internal sealed class LootSortService(
     }
 
     /// <summary>
-    /// The plugins as the sorter sees them. For a game whose overlap is read, each carries its resolved records and
-    /// the files of its archives, and the flag says every plugin's records could be read; for any other game they
-    /// carry nothing and the flag is false, so the outcome reports overlap as skipped.
+    /// The plugins as the sorter sees them, each carrying its resolved records and the files of its archives. The
+    /// flag says every plugin's records could be read; when one could not, the outcome reports overlap as skipped.
     /// </summary>
     private async Task<(List<LootSortPlugin> Plugins, bool OverlapInputsRead)> ReadPlugins(
         LootGame lootGame,
@@ -128,9 +127,6 @@ internal sealed class LootSortService(
         IReadOnlyList<(string Name, FileIdentity Identity)> archives,
         CancellationToken token)
     {
-        if (!overlap.Covers(lootGame))
-            return ([.. loadoutData.Select(d => new LootSortPlugin(d))], false);
-
         var read = await overlap.Reader.Read(lootGame, loadoutData, archives, token);
         var plugins = loadoutData
             .Select(d => read.Plugins.TryGetValue(d.Name, out var found) ? new LootSortPlugin(d, found.Records, found.Assets) : new LootSortPlugin(d))

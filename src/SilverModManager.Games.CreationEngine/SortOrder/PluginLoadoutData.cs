@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 
@@ -38,6 +39,12 @@ public sealed record PluginLoadoutData(
 
     /// <summary>The header's blueprint flag; the order only treats a blueprint that is also a master specially.</summary>
     public bool IsBlueprint { get; init; }
+
+    /// <summary>
+    /// How many bits of a FormID the plugin's own records use (Starfield's full, medium and small plugins), or null
+    /// when the header could not be read.
+    /// </summary>
+    public PluginScale? Scale { get; init; }
 
     /// <summary>The name lower-cased, the way every plugin lookup compares it.</summary>
     public SortItemKey<string> Key { get; } = PluginSortData.KeyFor(Name);

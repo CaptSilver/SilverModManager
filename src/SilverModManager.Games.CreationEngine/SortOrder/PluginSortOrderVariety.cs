@@ -533,6 +533,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         string? flags = null;
         string? description = null;
         var isBlueprint = false;
+        PluginScale? scale = null;
 
         if (_headers.TryGet(identity, name, out var header))
         {
@@ -550,6 +551,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                 flags = FlagsOf(named, isMaster);
                 description = named.Description;
                 isBlueprint = _game.IsBlueprint(named);
+                scale = _game.IsLight(named) ? PluginScale.Small : _game.IsMedium(named) ? PluginScale.Medium : PluginScale.Full;
             }
         }
 
@@ -558,6 +560,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             Flags = flags,
             Description = description,
             IsBlueprint = isBlueprint,
+            Scale = scale,
             IsGameInstalled = isGameInstalled,
             EarlyLoaderIndex = early.TryGetValue(name, out var index) ? index : null,
         };

@@ -21,14 +21,8 @@ internal sealed class LootOverlapReader(PluginOverlapCache cache, PluginFormat f
     private const int MaxParallelReads = 4;
 
     /// <summary>
-    /// True for the games whose records can be compared by their FormIDs alone. Morrowind names its records, and
-    /// Starfield's medium and small plugins resolve a FormID by the scale of each master; neither is read yet.
-    /// </summary>
-    public bool Covers(LootGame game) => format != PluginFormat.Tes3 && game != LootGame.Starfield;
-
-    /// <summary>
     /// Reads the records of <paramref name="plugins"/> and the archives each loads, from <paramref name="archives"/>
-    /// (the archive files of the Data folder). Only call for a game <see cref="Covers"/> says is covered.
+    /// (the archive files of the Data folder).
     /// </summary>
     public async Task<LootOverlapData> Read(
         LootGame game, IReadOnlyList<PluginLoadoutData> plugins, IReadOnlyList<(string Name, FileIdentity Identity)> archives, CancellationToken token)
@@ -48,24 +42,67 @@ internal sealed class LootOverlapReader(PluginOverlapCache cache, PluginFormat f
             lock (assets) assets[name] = set;
         });
 
-        var perPlugin = new Dictionary<string, PluginOverlap>(StringComparer.OrdinalIgnoreCase);
-        var complete = true;
+        // Every plugin's raw records first: a Morrowind plugin is resolved against its masters' records and a Starfield
+        // one against its masters' scales, so each needs the others read.
+        var raw = new Dictionary<string, PluginRecords?>(StringComparer.OrdinalIgnoreCase);
         await Parallel.ForEachAsync(plugins, options, async (plugin, _) =>
         {
-            var formIds = await cache.FormIds(plugin.Identity, plugin.Name);
-            var records = formIds is null ? null : PluginRecordIds.Resolve(plugin.Name, plugin.Masters, formIds);
+            // An OpenMW script list is text, not a record file, and defines no records.
+            var records = IsScriptList(plugin.Name) ? PluginRecords.None : await cache.Records(plugin.Identity, plugin.Name);
+            lock (raw) raw[plugin.Name] = records;
+        });
 
+        var byName = plugins.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+        var perPlugin = new Dictionary<string, PluginOverlap>(StringComparer.OrdinalIgnoreCase);
+        var complete = true;
+        foreach (var plugin in plugins)
+        {
+            var records = Resolve(game, plugin, byName, raw);
             var sets = AssociatedArchives.Find(game, plugin.Name, archiveIdentities.Keys).Select(a => assets[a]).OfType<ArchiveAssetSet>();
 
-            lock (perPlugin)
-            {
-                perPlugin[plugin.Name] = new PluginOverlap(records, ArchiveAssetSet.Union(sets));
-                if (records is null) complete = false;
-            }
-        });
+            perPlugin[plugin.Name] = new PluginOverlap(records, ArchiveAssetSet.Union(sets));
+            if (records is null) complete = false;
+        }
 
         if (!complete) logger.LogInformation("Some plugins' records could not be read, so LOOT's record overlap rules were applied without them");
         return new LootOverlapData(perPlugin, complete);
+    }
+
+    private static bool IsScriptList(string pluginName) => pluginName.EndsWith(".omwscripts", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The plugin's records resolved against its masters, or null when they cannot be: the plugin or a master the
+    /// resolution needs could not be read or is not in the load order, or (Starfield) a header has no scale to take.
+    /// </summary>
+    private PluginRecordIds? Resolve(
+        LootGame game, PluginLoadoutData plugin, IReadOnlyDictionary<string, PluginLoadoutData> byName, IReadOnlyDictionary<string, PluginRecords?> raw)
+    {
+        if (raw[plugin.Name] is not { } own) return null;
+
+        if (format == PluginFormat.Tes3)
+        {
+            var masterIds = new List<ulong[]>(plugin.Masters.Count);
+            foreach (var master in plugin.Masters)
+            {
+                if (!raw.TryGetValue(master, out var masterRecords) || masterRecords is null) return null;
+                masterIds.Add(masterRecords.NamedIds);
+            }
+
+            return PluginRecordIds.ResolveNamed(own.NamedIds, masterIds);
+        }
+
+        if (game != LootGame.Starfield) return PluginRecordIds.Resolve(plugin.Name, plugin.Masters, own.FormIds);
+
+        if (plugin.Scale is not { } scale) return null;
+
+        var masters = new List<(string Name, PluginScale Scale)>(plugin.Masters.Count);
+        foreach (var master in plugin.Masters)
+        {
+            if (!byName.TryGetValue(master, out var found) || found.Scale is not { } masterScale) return null;
+            masters.Add((master, masterScale));
+        }
+
+        return PluginRecordIds.ResolveStarfield(plugin.Name, scale, masters, own.FormIds);
     }
 }
 
@@ -80,7 +117,4 @@ internal sealed record LootOverlapData(IReadOnlyDictionary<string, PluginOverlap
 /// to ask.
 /// </summary>
 /// <param name="Archives">The enabled archives of the game's kind directly in the loadout's Data folder, by file name.</param>
-internal sealed record LootOverlapSource(LootOverlapReader Reader, Func<LoadoutId, IDb, LootGame, IReadOnlyList<(string Name, FileIdentity Identity)>> Archives)
-{
-    public bool Covers(LootGame game) => Reader.Covers(game);
-}
+internal sealed record LootOverlapSource(LootOverlapReader Reader, Func<LoadoutId, IDb, LootGame, IReadOnlyList<(string Name, FileIdentity Identity)>> Archives);

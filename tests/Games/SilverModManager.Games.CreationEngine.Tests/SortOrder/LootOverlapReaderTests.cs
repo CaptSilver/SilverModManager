@@ -151,16 +151,132 @@ public class LootOverlapReaderTests
         second.Plugins["A.esp"].Records!.Count.Should().Be(1);
     }
 
-    [Theory]
-    [InlineData(PluginFormat.Tes4, LootGame.SkyrimSE, true)]
-    [InlineData(PluginFormat.Tes4, LootGame.Fallout4, true)]
-    [InlineData(PluginFormat.Tes4Oblivion, LootGame.Oblivion, true)]
-    [InlineData(PluginFormat.Tes4, LootGame.Starfield, false)]
-    [InlineData(PluginFormat.Tes3, LootGame.Morrowind, false)]
-    [InlineData(PluginFormat.Tes3, LootGame.OpenMW, false)]
-    public void CoversTheGamesWhoseFormIdsAreComparedAsTheyStand(PluginFormat format, LootGame game, bool covered)
+    private static byte[] StarfieldPlugin(PluginScale scale, string[] masters, params uint[] formIds) => PluginBytes.Write(PluginFormat.Tes4, new PluginSpec
     {
-        Reader(format).Covers(game).Should().Be(covered);
+        Masters = masters,
+        Blocks = [new GroupBlock("WEAP", [.. formIds.Select(id => new RecordBlock("WEAP", id))])],
+    });
+
+    private PluginLoadoutData StarfieldLoaded(string name, PluginScale? scale, string[] masters, params uint[] formIds) =>
+        new(name, _streams.Add(StarfieldPlugin(scale ?? PluginScale.Full, masters, formIds)), true, "Mod", null, false, masters) { Scale = scale };
+
+    [Fact]
+    public async Task ResolvesStarfieldFormIdsByTheScaleOfEachMaster()
+    {
+        var starfield = StarfieldLoaded("Starfield.esm", PluginScale.Full, []);
+        var medium = StarfieldLoaded("Medium.esp", PluginScale.Medium, ["Starfield.esm"]);
+        // The medium master is second in the header but the first medium one, so 0xFD000123 names its record.
+        var a = StarfieldLoaded("A.esp", PluginScale.Full, ["Starfield.esm", "Medium.esp"], 0xFD00_0123, 0x0000_0800);
+        var b = StarfieldLoaded("B.esp", PluginScale.Full, ["Medium.esp"], 0xFD00_0123);
+
+        var data = await Reader().Read(LootGame.Starfield, [starfield, medium, a, b], [], CancellationToken.None);
+
+        data.Complete.Should().BeTrue();
+        data.Plugins["A.esp"].Records!.OverrideCount.Should().Be(2);
+        data.Plugins["A.esp"].Records!.Overlaps(data.Plugins["B.esp"].Records!).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StarfieldRecordsOfAPluginAreKeyedByItsOwnScale()
+    {
+        var medium = StarfieldLoaded("Medium.esp", PluginScale.Medium, [], 0x0500_3456);
+        var overrider = StarfieldLoaded("B.esp", PluginScale.Full, ["Medium.esp"], 0xFD00_3456);
+
+        var data = await Reader().Read(LootGame.Starfield, [medium, overrider], [], CancellationToken.None);
+
+        data.Plugins["Medium.esp"].Records!.Overlaps(data.Plugins["B.esp"].Records!).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AStarfieldPluginWhoseMasterIsNotInTheLoadOrderHasNoRecordsAndMakesTheDataIncomplete()
+    {
+        var a = StarfieldLoaded("A.esp", PluginScale.Full, ["Gone.esm"], 0x0000_0800);
+        var fine = StarfieldLoaded("Fine.esp", PluginScale.Full, [], 0x0000_0801);
+
+        var data = await Reader().Read(LootGame.Starfield, [a, fine], [], CancellationToken.None);
+
+        data.Complete.Should().BeFalse();
+        data.Plugins["A.esp"].Records.Should().BeNull();
+        data.Plugins["Fine.esp"].Records.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AStarfieldPluginWhoseMasterHeaderCouldNotBeReadHasNoRecords()
+    {
+        // Without the header there is no scale, and a guess would number the masters wrongly.
+        var master = StarfieldLoaded("Master.esm", scale: null, []);
+        var a = StarfieldLoaded("A.esp", PluginScale.Full, ["Master.esm"], 0x0000_0800);
+
+        var data = await Reader().Read(LootGame.Starfield, [master, a], [], CancellationToken.None);
+
+        data.Complete.Should().BeFalse();
+        data.Plugins["A.esp"].Records.Should().BeNull();
+    }
+
+    private static byte[] MorrowindPlugin(string[] masters, params string[] names) => PluginBytes.Write(PluginFormat.Tes3, new PluginSpec
+    {
+        Masters = masters,
+        Blocks = [.. names.Select(n => new Tes3RecordBlock("GMST", ("NAME", [.. System.Text.Encoding.ASCII.GetBytes(n), (byte)0])))],
+    });
+
+    private PluginLoadoutData MorrowindLoaded(string name, string[] masters, params string[] names) =>
+        new(name, _streams.Add(MorrowindPlugin(masters, names)), true, "Mod", null, false, masters);
+
+    [Fact]
+    public async Task ResolvesMorrowindRecordsAgainstTheRecordsOfTheMasters()
+    {
+        var master = MorrowindLoaded("Morrowind.esm", [], "sGold", "sSilver", "sCopper");
+        var a = MorrowindLoaded("A.esp", ["Morrowind.esm"], "sGold", "sNew");
+        var b = MorrowindLoaded("B.esp", ["Morrowind.esm"], "sGold");
+        var c = MorrowindLoaded("C.esp", ["Morrowind.esm"], "sElse");
+
+        var data = await Reader(PluginFormat.Tes3).Read(LootGame.Morrowind, [master, a, b, c], [], CancellationToken.None);
+
+        data.Complete.Should().BeTrue();
+        data.Plugins["Morrowind.esm"].Records!.OverrideCount.Should().Be(0);
+        data.Plugins["A.esp"].Records!.OverrideCount.Should().Be(1);
+        data.Plugins["A.esp"].Records!.Count.Should().Be(2);
+        data.Plugins["A.esp"].Records!.Overlaps(data.Plugins["B.esp"].Records!).Should().BeTrue();
+        data.Plugins["A.esp"].Records!.Overlaps(data.Plugins["C.esp"].Records!).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AMorrowindPluginWhoseMasterIsNotInTheLoadOrderHasNoRecords()
+    {
+        var a = MorrowindLoaded("A.esp", ["Gone.esm"], "sGold");
+
+        var data = await Reader(PluginFormat.Tes3).Read(LootGame.Morrowind, [a], [], CancellationToken.None);
+
+        data.Complete.Should().BeFalse();
+        data.Plugins["A.esp"].Records.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnOpenMwScriptListHasNoRecordsAndIsNotOpened()
+    {
+        var scripts = new PluginLoadoutData("Mod.omwscripts", _streams.Add("lua: scripts/x.lua\n"u8.ToArray()), true, "Mod", null, false, []);
+        var addon = MorrowindLoaded("Mod.omwaddon", [], "sGold");
+
+        var data = await Reader(PluginFormat.Tes3).Read(LootGame.OpenMW, [scripts, addon], [], CancellationToken.None);
+
+        data.Complete.Should().BeTrue();
+        data.Plugins["Mod.omwscripts"].Records!.Count.Should().Be(0);
+        _streams.Opens(scripts.Identity).Should().Be(0);
+        data.Plugins["Mod.omwaddon"].Records!.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ASecondReadOfMorrowindPluginsOpensNothingAgain()
+    {
+        var master = MorrowindLoaded("Morrowind.esm", [], "sGold");
+        var a = MorrowindLoaded("A.esp", ["Morrowind.esm"], "sGold");
+        var reader = Reader(PluginFormat.Tes3);
+
+        await reader.Read(LootGame.Morrowind, [master, a], [], CancellationToken.None);
+        await reader.Read(LootGame.Morrowind, [master, a], [], CancellationToken.None);
+
+        _streams.Opens(a.Identity).Should().Be(1);
+        _streams.Opens(master.Identity).Should().Be(1);
     }
 
     private sealed class FakeStreams : IStreamSourceDispatcher

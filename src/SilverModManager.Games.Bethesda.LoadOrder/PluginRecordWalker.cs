@@ -1,4 +1,5 @@
 // Follows esplugin src/group.rs (read_form_ids, read_records) and src/record.rs (record_header, read_record_id).
+// The Morrowind half is in PluginRecordWalker.Tes3.cs.
 using System.Buffers.Binary;
 
 namespace SilverModManager.Games.Bethesda.LoadOrder;
@@ -7,7 +8,7 @@ namespace SilverModManager.Games.Bethesda.LoadOrder;
 /// Lists the FormIDs of every record in a TES4-format plugin. Only record and group headers are read: a record's
 /// body is skipped by its size, which is the stored size for a compressed record too, so nothing is decompressed.
 /// </summary>
-public static class PluginRecordWalker
+public static partial class PluginRecordWalker
 {
     /// <summary>
     /// The non-zero FormIDs of the records after the header record, in file order, raw: the high byte is the
@@ -128,6 +129,33 @@ public static class PluginRecordWalker
 
             ReadExactly(bytes.AsSpan(start), "a record header");
             return new RecordHeader(bytes);
+        }
+
+        /// <summary>Reads a record's body whole, for a format whose ids live inside it.</summary>
+        public byte[] ReadBody(uint size)
+        {
+            // A hostile size must not allocate before the file has shown it has that many bytes.
+            if (stream.CanSeek)
+            {
+                if (size > stream.Length - stream.Position)
+                    throw new InvalidPluginException($"{fileName}: the file ends inside a record");
+
+                var body = new byte[size];
+                ReadExactly(body, "a record body");
+                return body;
+            }
+
+            var collected = new MemoryStream();
+            var left = size;
+            while (left > 0)
+            {
+                var chunk = (int)Math.Min(left, (uint)_scratch.Length);
+                ReadExactly(_scratch.AsSpan(0, chunk), "a record body");
+                collected.Write(_scratch, 0, chunk);
+                left -= (uint)chunk;
+            }
+
+            return collected.ToArray();
         }
 
         public void Skip(uint count)

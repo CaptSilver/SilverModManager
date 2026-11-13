@@ -22,6 +22,9 @@ internal abstract record PluginBlock;
 /// <summary>A record header with <paramref name="DataSize"/> bytes of filler behind it, so the walker has a body to skip.</summary>
 internal sealed record RecordBlock(string Type, uint FormId, uint Flags = 0, int DataSize = 0) : PluginBlock;
 
+/// <summary>A Morrowind record: a 16-byte header and subrecords with 4-byte lengths. TES3 formats only.</summary>
+internal sealed record Tes3RecordBlock(string Type, params (string Type, byte[] Data)[] Subrecords) : PluginBlock;
+
 /// <summary>A group holding <paramref name="Children"/>. The size in its header counts the header itself, as in a real plugin.</summary>
 internal sealed record GroupBlock(string Label, params PluginBlock[] Children) : PluginBlock;
 
@@ -44,7 +47,7 @@ internal static class PluginBytes
 
     public static byte[] Tes3(PluginSpec spec)
     {
-        if (spec.Blocks.Count > 0) throw new NotSupportedException("Synthetic TES3 plugins hold only the header record");
+        if (spec.Blocks.Any(b => b is not Tes3RecordBlock)) throw new NotSupportedException("Synthetic TES3 plugins hold records, not groups");
         // The TES3 flag word that marks a master lives in HEDR, not in the record header.
         var hedr = new byte[300];
         BitConverter.GetBytes(spec.HeaderVersion ?? 0f).CopyTo(hedr, 0);
@@ -67,7 +70,20 @@ internal static class PluginBytes
         file.Write(new byte[4]);
         file.Write(BitConverter.GetBytes(0u));
         body.WriteTo(file);
+        foreach (var block in spec.Blocks.Cast<Tes3RecordBlock>()) WriteTes3Record(file, block);
         return file.ToArray();
+    }
+
+    private static void WriteTes3Record(Stream to, Tes3RecordBlock record)
+    {
+        var body = new MemoryStream();
+        foreach (var (type, data) in record.Subrecords) Subrecord(body, type, data, wide: true);
+
+        to.Write(Encoding.ASCII.GetBytes(record.Type));
+        to.Write(BitConverter.GetBytes((uint)body.Length));
+        to.Write(new byte[4]);
+        to.Write(BitConverter.GetBytes(0u));
+        body.WriteTo(to);
     }
 
     public static byte[] Tes4(PluginSpec spec, bool oblivion)
@@ -123,7 +139,7 @@ internal static class PluginBytes
                 children.WriteTo(to);
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(block));
+                throw new NotSupportedException($"{block.GetType().Name} is not a TES4 block");
         }
     }
 

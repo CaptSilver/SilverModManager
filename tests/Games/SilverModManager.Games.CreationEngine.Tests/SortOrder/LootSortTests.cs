@@ -529,4 +529,22 @@ public class LootSortTests(ITestOutputHelper helper)
         outcome.OverlapEdgesSkipped.Should().BeFalse();
         StoredNames(id).Should().Equal("Skyrim.esm", "Z.esp", "A.esp");
     }
+
+    [Fact]
+    public async Task PluginRows_CarryTheScaleTheirHeaderGives()
+    {
+        var (variety, id) = await Loadout_SkyrimThen(
+            ("A.esp", PluginWithRecords(0x0000_0D62)),
+            ("Small.esl", PluginWithRecords(0x0000_0800)));
+
+        var scales = variety.GetSortOrderItems(id, Db).Cast<PluginReactiveSortItem>()
+            .ToDictionary(item => item.DisplayName, item => ((PluginLoadoutData)item.LoadoutData!).Scale);
+
+        scales.Should().Equal(new Dictionary<string, PluginScale?>
+        {
+            ["Skyrim.esm"] = PluginScale.Full,
+            ["A.esp"] = PluginScale.Full,
+            ["Small.esl"] = PluginScale.Small,
+        });
+    }
 }

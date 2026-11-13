@@ -10,9 +10,9 @@ namespace SilverModManager.Games.Bethesda.LoadOrder;
 /// one of the plugin's masters is an override.
 /// </summary>
 /// <remarks>
-/// Every game but Starfield uses the low 24 bits as the index inside the owning plugin and the high byte as the
-/// position in the master list, whether or not the plugin is light. Starfield's medium and small plugins resolve
-/// differently and are not covered here.
+/// <see cref="Resolve"/> is for every game but Starfield: the low 24 bits are the index inside the owning plugin and
+/// the high byte is the position in the master list, whether or not the plugin is light. Starfield numbers each
+/// master by its scale, so it goes through <see cref="ResolveStarfield"/>.
 /// </remarks>
 public sealed class PluginRecordIds
 {
@@ -55,6 +55,104 @@ public sealed class PluginRecordIds
 
         Array.Sort(ids);
         return new PluginRecordIds(ids, overrides);
+    }
+
+    /// <summary>
+    /// Resolves a Starfield plugin's FormIDs. Each master gets a mod index from its own scale: full masters count up
+    /// from 0x00, medium ones from 0xFD000000 in steps of 0x10000 (16 bits each) and small ones from 0xFE000000 in steps of 0x1000 (12 bits each), in
+    /// header order within a scale. A FormID that names no master is the plugin's own, and its object index keeps as
+    /// many bits as the plugin's own scale gives it, whatever mod index it was written with.
+    /// </summary>
+    /// <param name="scale">The plugin's own scale.</param>
+    /// <param name="masters">The plugin's masters in header order, each with its own scale.</param>
+    public static PluginRecordIds ResolveStarfield(
+        string pluginName, PluginScale scale, IReadOnlyList<(string Name, PluginScale Scale)> masters, IReadOnlyList<uint> formIds)
+    {
+        // A master is found by the bits of a FormID above its object index, so each scale gets a table keyed by those
+        // bits. When two masters could match (more than 253 full ones), the earlier in the header wins.
+        var full = new Dictionary<uint, (int Position, ulong Owner)>();
+        var medium = new Dictionary<uint, (int Position, ulong Owner)>();
+        var small = new Dictionary<uint, (int Position, ulong Owner)>();
+        uint fullMask = 0, mediumMask = 0xFD00_0000, smallMask = 0xFE00_0000;
+        for (var position = 0; position < masters.Count; position++)
+        {
+            var (name, masterScale) = masters[position];
+            var owner = Owner(name);
+            // Masks wrap like the game's 32-bit arithmetic does for a header with too many masters.
+            unchecked
+            {
+                switch (masterScale)
+                {
+                    case PluginScale.Full:
+                        full.TryAdd(fullMask >> 24, (position, owner));
+                        fullMask += 0x0100_0000;
+                        break;
+                    case PluginScale.Medium:
+                        medium.TryAdd(mediumMask >> 16, (position, owner));
+                        mediumMask += 0x0001_0000;
+                        break;
+                    default:
+                        small.TryAdd(smallMask >> 12, (position, owner));
+                        smallMask += 0x0000_1000;
+                        break;
+                }
+            }
+        }
+
+        var self = Owner(pluginName);
+        var ownMask = scale switch
+        {
+            PluginScale.Full => 0x00FF_FFFFu,
+            PluginScale.Medium => 0x0000_FFFFu,
+            _ => 0x0000_0FFFu,
+        };
+
+        var ids = new ResolvedId[formIds.Count];
+        var overrides = 0;
+        for (var i = 0; i < ids.Length; i++)
+        {
+            var formId = formIds[i];
+            int best = int.MaxValue;
+            var bestOwner = 0UL;
+            var bestMask = 0u;
+
+            if (full.TryGetValue(formId >> 24, out var f) && f.Position < best) (best, bestOwner, bestMask) = (f.Position, f.Owner, 0x00FF_FFFFu);
+            if (medium.TryGetValue(formId >> 16, out var m) && m.Position < best) (best, bestOwner, bestMask) = (m.Position, m.Owner, 0x0000_FFFFu);
+            if (small.TryGetValue(formId >> 12, out var s) && s.Position < best) (best, bestOwner, bestMask) = (s.Position, s.Owner, 0x0000_0FFFu);
+
+            if (best != int.MaxValue)
+            {
+                overrides++;
+                ids[i] = new ResolvedId(formId & bestMask, bestOwner);
+            }
+            else
+            {
+                ids[i] = new ResolvedId(formId & ownMask, self);
+            }
+        }
+
+        Array.Sort(ids);
+        return new PluginRecordIds(ids, overrides);
+    }
+
+    /// <summary>
+    /// Resolves a Morrowind or OpenMW plugin's record ids. A record is an override when one of the masters has a
+    /// record with the same id; the ids carry no mod index to say which.
+    /// </summary>
+    /// <param name="ids">The plugin's ids from <see cref="PluginRecordWalker.ReadNamedIds"/>, ascending.</param>
+    /// <param name="masterIds">Each master's ids from the same call, ascending.</param>
+    public static PluginRecordIds ResolveNamed(IReadOnlyList<ulong> ids, IReadOnlyList<ulong[]> masterIds)
+    {
+        var resolved = new ResolvedId[ids.Count];
+        var overrides = 0;
+        for (var i = 0; i < resolved.Length; i++)
+        {
+            resolved[i] = new ResolvedId(0, ids[i]);
+            if (masterIds.Any(master => Array.BinarySearch(master, ids[i]) >= 0)) overrides++;
+        }
+
+        Array.Sort(resolved);
+        return new PluginRecordIds(resolved, overrides);
     }
 
     /// <summary>True when the two plugins have a record with the same owner and index, as an override or as the original.</summary>
