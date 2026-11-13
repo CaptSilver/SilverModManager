@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.DataModel.Diagnostics;
@@ -187,6 +188,28 @@ public class GameBackupSpaceTests(ITestOutputHelper helper) : AStubbedGameTest<G
     }
 
     [Fact]
+    public async Task ABackupOfAFileTheGameVersionLists_IsKeptWhileNothingOnDiskNamesIt()
+    {
+        WriteExternalFiles(2, 4096);
+        _prompt.Inner = new RecordingPrompt(BackupOverflowChoice.BackUpAnyway);
+        var loadout = await CreateLoadout();
+
+        // A mod covering a game file of an updated build leaves the build's file list as the only record of its
+        // original: removing the mod puts it back from this backup.
+        var onDisk = DiskStateEntry.FindByGame(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation))
+            .Select(e => e.IdentityOf()).ToHashSet();
+        var listed = ServiceProvider.GetRequiredService<IFileHashesService>()
+            .GetGameFiles(GameInstallation, Loadout.Load(Connection.Db, loadout.LoadoutId).LocatorIds)
+            .First(f => f.Identity.Kind == HashKind.XxHash3 && !onDisk.Contains(f.Identity));
+        await GameBackedUpFile.Root(Connection, Install, [listed.Identity]);
+
+        var removed = await Space.RemoveUnneeded(Install);
+
+        removed.RemovableCount.Should().Be(0, "the loadout's game version lists the file, so the sync restores it from this backup");
+        RootedHashes().Should().Contain(listed.Identity.XxHash3().Value);
+    }
+
+    [Fact]
     public async Task Cleanup_LeavesTheBackupsOfAnotherGameInstallAlone()
     {
         WriteExternalFiles(2, 4096);
@@ -212,5 +235,42 @@ public class GameBackupSpaceTests(ITestOutputHelper helper) : AStubbedGameTest<G
         await Space.RemoveUnneeded(Install);
 
         GameBackedUpFile.All(Connection.Db).Select(f => f.Hash.Value).Should().Contain(otherIdentity.XxHash3().Value);
+    }
+
+    [Fact]
+    public async Task ALoadoutWhoseInstallationIsNotFound_KeepsEveryBackup()
+    {
+        var bytes = Encoding.UTF8.GetBytes("a backup of a game that is not installed any more");
+        var identity = FileIdentity.XxHash3(bytes.xxHash3());
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("gone", new MemoryStream(bytes)), identity, Size.FromLong(bytes.Length))]);
+        GameInstallMetadataId gone;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var metadata = new GameInstallMetadata.New(tx)
+            {
+                Store = GameStore.GOG,
+                Path = "/nowhere/gone-game",
+                GameId = NexusModsGameId.From(4321),
+                Game = Sdk.Games.GameId.From("GoneGame"),
+                Name = "Gone game",
+            };
+            _ = new Loadout.New(tx)
+            {
+                Name = "Gone game loadout",
+                ShortName = "G",
+                InstallationId = metadata,
+                LoadoutKind = LoadoutKind.Default,
+                Revision = 0,
+                GameVersion = VanityVersion.From("Unknown"),
+            };
+            _ = new GameBackedUpFile.New(tx) { Hash = identity.XxHash3(), GameInstallId = metadata };
+            var result = await tx.Commit();
+            gone = GameInstallMetadataId.From(result[metadata.Id]);
+        }
+
+        var removed = await Space.RemoveUnneeded(gone);
+
+        removed.RemovableCount.Should().Be(0, "the loadout's game file list cannot be read, so any backup might be on it");
+        GameBackedUpFile.All(Connection.Db).Select(f => f.Hash.Value).Should().Contain(identity.XxHash3().Value);
     }
 }

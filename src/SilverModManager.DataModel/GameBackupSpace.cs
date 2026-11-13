@@ -24,9 +24,18 @@ public sealed record BackupSpaceReport(Size Total, int Count, Size Removable, in
 /// Measures the backups of a game's own files (the <see cref="GameBackedUpFile"/> roots that keep them out of the
 /// garbage collector) and drops the ones nothing relies on. A backup is relied on when a loadout of the game names
 /// its bytes, or when the disk state the game folder was first indexed in or is in now does: putting the folder
-/// back reads those. The sync never takes a backup away by itself, so without this they only ever grow.
+/// back reads those. The game files the loadout's game version lists count as named by the loadout: the sync
+/// restores them from the store, and after a game update a backup of one that a mod covers is named nowhere else.
+/// The sync never takes a backup away by itself, so without this they only ever grow.
 /// </summary>
-public sealed class GameBackupSpace(IConnection connection, IFileStore fileStore, IFileIdentityResolver identityResolver, IGarbageCollectorRunner garbageCollector, ILogger<GameBackupSpace> logger)
+public sealed class GameBackupSpace(
+    IConnection connection,
+    IFileStore fileStore,
+    IFileIdentityResolver identityResolver,
+    IFileHashesService fileHashes,
+    IGameRegistry gameRegistry,
+    IGarbageCollectorRunner garbageCollector,
+    ILogger<GameBackupSpace> logger)
 {
     /// <summary>Measures the backups of the install; nothing is changed.</summary>
     public async Task<BackupSpaceReport> Measure(GameInstallMetadataId install)
@@ -83,10 +92,12 @@ public sealed class GameBackupSpace(IConnection connection, IFileStore fileStore
 
     private ScanResult Classify(IDb db, GameInstallMetadataId install, SizedBackups backups)
     {
-        var needed = NeededHashes(db, GameInstallMetadata.Load(db, install));
         var removable = Size.Zero;
         var removableCount = 0;
         var unneeded = new List<GameBackedUpFile.ReadOnly>();
+        if (NeededHashes(db, GameInstallMetadata.Load(db, install)) is not { } needed)
+            return new ScanResult(new BackupSpaceReport(backups.Total, backups.Items.Count, removable, removableCount), unneeded);
+
         foreach (var backup in backups.Items)
         {
             if (needed.Contains(backup.Hash)) continue;
@@ -98,7 +109,11 @@ public sealed class GameBackupSpace(IConnection connection, IFileStore fileStore
         return new ScanResult(new BackupSpaceReport(backups.Total, backups.Items.Count, removable, removableCount), unneeded);
     }
 
-    private HashSet<Hash> NeededHashes(IDb db, GameInstallMetadata.ReadOnly metadata)
+    /// <summary>
+    /// The store keys something still restores from, or null when that cannot be told: a loadout whose installation
+    /// is not found has a game file list nobody can read, and any backup might be on it.
+    /// </summary>
+    private HashSet<Hash>? NeededHashes(IDb db, GameInstallMetadata.ReadOnly metadata)
     {
         var needed = new HashSet<Hash>();
 
@@ -106,6 +121,16 @@ public sealed class GameBackupSpace(IConnection connection, IFileStore fileStore
         {
             // The vanilla state loadout counts too: its whole job is putting the game's own files back.
             if (loadout.LoadoutKind == LoadoutKind.Deleted) continue;
+
+            if (!gameRegistry.TryGetGameInstallation(loadout, out var installation))
+            {
+                logger.LogWarning("Keeping every game file backup of {Install}: the installation of loadout {Loadout} is not found, so its game file list cannot be read", metadata.Id, loadout.Name);
+                return null;
+            }
+
+            foreach (var gameFile in fileHashes.GetGameFiles(installation, loadout.LocatorIds))
+                AddKeysOf(needed, gameFile.Identity, gameFile.Size);
+
             foreach (var item in LoadoutItem.FindByLoadout(db, loadout))
             {
                 if (item.TryGetAsLoadoutItemWithTargetPath(out var withPath) && withPath.TryGetAsLoadoutFile(out var file))
