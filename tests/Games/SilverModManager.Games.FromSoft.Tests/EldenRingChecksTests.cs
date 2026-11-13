@@ -38,7 +38,7 @@ public class EldenRingChecksTests
     }
 
     [Fact]
-    public void ArtifactsWithoutTheLauncherWarnAndNameEveryFile()
+    public void ArtifactsWithoutTheLauncherFailBecauseEldenRingPlaysOnline()
     {
         var game = Folder(g =>
         {
@@ -48,7 +48,7 @@ public class EldenRingChecksTests
 
         var artifacts = Single(EldenRingChecks.GameFolder(game), "artifacts");
 
-        artifacts.Level.Should().Be(CheckLevel.Warn);
+        artifacts.Level.Should().Be(CheckLevel.Fail);
         artifacts.Message.Should().Contain("dinput8.dll").And.Contain("modengine.toml");
     }
 
@@ -144,7 +144,7 @@ public class EldenRingChecksTests
     public static TheoryData<string, string, string?, CheckLevel, string> VerdictMapping => new()
     {
         { "proxy beside the launcher", "EAC disarmed + mod artifacts", "artifacts", CheckLevel.Fail, "same" },
-        { "artifacts, no launcher", "mod artifacts present (EAC absent)", "artifacts", CheckLevel.Warn, "same" },
+        { "artifacts, no launcher", "mod artifacts present (EAC absent)", "artifacts", CheckLevel.Fail, "stricter: the game plays online, so a vanilla launch would show the mods to its servers" },
         { "mod/regulation.bin beside the launcher", "EAC armed + mod artifacts", "artifacts", CheckLevel.Fail, "same" },
         { "vanilla files only", "no proxy DLL / ModEngine artifacts", "artifacts", CheckLevel.Ok, "same" },
         { "EAC armed", "EAC state: armed", "eac", CheckLevel.Info, "same" },

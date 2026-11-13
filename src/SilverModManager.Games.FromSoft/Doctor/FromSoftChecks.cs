@@ -28,8 +28,9 @@ public static class FromSoftChecks
     private const string ModRegulationFolder = "mod";
 
     /// <summary>The artifacts, spawner and anti-cheat checks of one <c>Game</c> folder.</summary>
-    public static IReadOnlyList<CheckResult> GameFolder(AbsolutePath gameFolder, GameFolderCheckRules rules)
+    public static IReadOnlyList<CheckResult> GameFolder(AbsolutePath gameFolder, FromSoftGameDefinition definition)
     {
+        var rules = definition.CheckRules;
         if (!gameFolder.DirectoryExists())
             return [new CheckResult("artifacts", CheckLevel.Warn, $"The game folder {gameFolder} does not exist, so it was not checked.")];
 
@@ -39,7 +40,7 @@ public static class FromSoftChecks
 
         var launcher = rules.Launcher is not null && files.Contains(rules.Launcher);
         var hardened = rules.Launcher is not null && files.Contains(LauncherBackup(rules));
-        var results = new List<CheckResult> { Artifacts(gameFolder, rules, files, folders, launcher, hardened) };
+        var results = new List<CheckResult> { Artifacts(gameFolder, definition, files, folders, launcher, hardened) };
 
         // A hardened install has the game's own executable under the launcher's name, so the launcher rules
         // below would call it armed; the artifacts check already fails it.
@@ -55,21 +56,26 @@ public static class FromSoftChecks
     /// What only mods put in <paramref name="gameFolder"/>, relative to it: loader files, the mod regulation, the rules'
     /// extra files, and folders with a trailing slash. Empty when the folder does not exist.
     /// </summary>
-    public static IReadOnlyList<string> ModArtifacts(AbsolutePath gameFolder, GameFolderCheckRules rules)
+    public static IReadOnlyList<string> ModArtifacts(AbsolutePath gameFolder, FromSoftGameDefinition definition)
     {
         if (!gameFolder.DirectoryExists()) return [];
 
         var files = gameFolder.EnumerateFiles(recursive: false).Select(f => f.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var folders = gameFolder.EnumerateDirectories(recursive: false).Select(d => d.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return ModArtifacts(gameFolder, rules, files, folders);
+        return ModArtifacts(gameFolder, definition, files, folders);
     }
 
-    private static List<string> ModArtifacts(AbsolutePath gameFolder, GameFolderCheckRules rules, HashSet<string> files, HashSet<string> folders)
+    private static List<string> ModArtifacts(AbsolutePath gameFolder, FromSoftGameDefinition definition, HashSet<string> files, HashSet<string> folders)
     {
+        var rules = definition.CheckRules;
         var found = new List<string>();
         found.AddRange(rules.ModLoaderFiles.Where(files.Contains));
-        if (folders.Contains(ModRegulationFolder) && (gameFolder / ModRegulationFolder).EnumerateFiles(recursive: false).Any(f => f.FileName.Equals("regulation.bin", StringComparison.OrdinalIgnoreCase)))
-            found.Add("mod/regulation.bin");
+
+        // A game with no regulation file has nothing a mod regulation could replace.
+        if (definition.Formats.RegulationFileName is { } regulation
+            && folders.Contains(ModRegulationFolder)
+            && (gameFolder / ModRegulationFolder).EnumerateFiles(recursive: false).Any(f => f.FileName.Equals(regulation, StringComparison.OrdinalIgnoreCase)))
+            found.Add($"{ModRegulationFolder}/{regulation}");
         found.AddRange(rules.ExtraArtifacts.Where(files.Contains));
         found.AddRange(rules.ModFolders.Where(folders.Contains).Select(f => f + "/"));
         return found;
@@ -79,9 +85,10 @@ public static class FromSoftChecks
     public static string LauncherBackup(GameFolderCheckRules rules)
         => rules.Launcher is null ? throw new InvalidOperationException("The rules have no launcher, so there is no backup name.") : rules.Launcher + rules.LauncherBackupSuffix;
 
-    private static CheckResult Artifacts(AbsolutePath gameFolder, GameFolderCheckRules rules, HashSet<string> files, HashSet<string> folders, bool launcher, bool hardened)
+    private static CheckResult Artifacts(AbsolutePath gameFolder, FromSoftGameDefinition definition, HashSet<string> files, HashSet<string> folders, bool launcher, bool hardened)
     {
-        var found = ModArtifacts(gameFolder, rules, files, folders);
+        var rules = definition.CheckRules;
+        var found = ModArtifacts(gameFolder, definition, files, folders);
 
         if (hardened)
         {
@@ -91,8 +98,12 @@ public static class FromSoftChecks
 
         if (found.Count == 0) return new CheckResult("artifacts", CheckLevel.Ok, "No mod loader files or mod folders in the game folder.");
 
-        return launcher
-            ? new CheckResult("artifacts", CheckLevel.Fail, $"{rules.Launcher} is present and so are mod files ({string.Join(", ", found)}): an online vanilla launch could load a mod.")
+        if (launcher)
+            return new CheckResult("artifacts", CheckLevel.Fail, $"{rules.Launcher} is present and so are mod files ({string.Join(", ", found)}): an online vanilla launch could load a mod.");
+
+        // Without a launcher there is no anti-cheat gate in the way, so an online game loads whatever is in the folder.
+        return definition.HasOnlinePlay
+            ? new CheckResult("artifacts", CheckLevel.Fail, $"{string.Join(", ", found)} are in the game folder and a vanilla launch loads them online: the game has no anti-cheat gate, so its servers see the mods.")
             : new CheckResult("artifacts", CheckLevel.Warn, $"Mod files are in the game folder: {string.Join(", ", found)}.");
     }
 

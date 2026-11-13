@@ -151,8 +151,8 @@ known. Discarding this only records that you have looked at it.
 {Finding}
 
 Mods are loaded from their own folder, and a modded session runs on an overlay, so the app does not put files in the
-game folder. These come from an earlier mod manager or a manual install. While the game's anti-cheat launcher is
-there, starting the game online from Steam can load them.
+game folder. These come from an earlier mod manager or a manual install, and starting the game from Steam can load
+them.
 
 **Fix** lists what it would restore and remove, and changes the folder only after you confirm. If the earlier manager
 marked the launcher immutable, the app asks for your password once to clear that one attribute with `chattr -i`.

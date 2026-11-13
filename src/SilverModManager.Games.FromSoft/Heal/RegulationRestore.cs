@@ -187,7 +187,9 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
     // Names Steam hides leave only the hash to go by, so every nameless entry counts.
     private static HashSet<Sha1Value> ListedRegulationHashes(IFromSoftGame game, IReadOnlyList<ManifestFile> listed)
     {
-        var path = game.Layout.GameSubfolder + "/" + game.Formats.RegulationFileName;
+        var fileName = game.Formats.RegulationFileName
+            ?? throw new InvalidOperationException($"{game.DisplayName} has no regulation file to restore.");
+        var path = FromSoftPaths.InGameFolder(game.Layout, fileName).Path.Path;
         return listed
             .Where(f => f.Path is null || f.Path.Replace('\\', '/').Equals(path, StringComparison.OrdinalIgnoreCase))
             .Select(f => f.Hash)

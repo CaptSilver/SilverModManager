@@ -6,8 +6,9 @@ using SilverModManager.Platform.Proton.Doctor;
 namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
-/// Reports mod files in the real game folder: Critical when an online vanilla launch could load them or the folder
-/// still carries an old launcher swap, a Warning when the launcher that would start them is gone.
+/// Reports mod files in the real game folder: Critical when an online vanilla launch could load them (the anti-cheat
+/// launcher is there, or the game plays online with none) or the folder still carries an old launcher swap, a Warning
+/// when the game is offline and has no launcher to start them.
 /// </summary>
 /// <remarks>
 /// Both findings carry "Show cleanup steps", which opens the steps of the guided cleanup.
@@ -20,7 +21,7 @@ public class GameFolderArtifactsEmitter : AFromSoftCheckEmitter
         var gameFolder = FromSoftPaths.GameFolder(game.Layout, loadout.InstallationInstance);
         if (!gameFolder.DirectoryExists()) return [];
 
-        var artifacts = FromSoftChecks.GameFolder(gameFolder, game.CheckRules).First(r => r.Id == "artifacts");
+        var artifacts = FromSoftChecks.GameFolder(gameFolder, game.Definition).First(r => r.Id == "artifacts");
 
         return artifacts.Level switch
         {

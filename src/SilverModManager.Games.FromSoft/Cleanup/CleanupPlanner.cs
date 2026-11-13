@@ -33,7 +33,7 @@ public static class CleanupPlanner
     // Proton rewrites this cache on every run, and the game's own file list does not know it.
     private const string ProtonShaderCache = "vkd3d-proton.cache";
 
-    public static CleanupPlan Build(CleanupInput input, CleanupRules rules, FromSoftGameLayout layout)
+    public static CleanupPlan Build(CleanupInput input, CleanupRules rules, FromSoftGameDefinition definition)
     {
         var folder = new Folder(input);
         var steps = new List<CleanupStep>();
@@ -42,7 +42,7 @@ public static class CleanupPlanner
         steps.AddRange(ModSteps(folder, rules));
         steps.AddRange(LinkSteps(folder));
         steps.AddRange(LeftoverSteps(folder, rules));
-        steps.AddRange(ReviewSteps(folder, layout));
+        steps.AddRange(ReviewSteps(folder, definition));
         if (input.Baseline is null)
             steps.Add(new CleanupStep(CleanupStepKind.Advice, "The app has no file list for the installed build, so files that are not part of the game cannot be told apart and none are listed for review."));
 
@@ -161,18 +161,18 @@ public static class CleanupPlanner
         }
     }
 
-    private static IEnumerable<CleanupStep> ReviewSteps(Folder folder, FromSoftGameLayout layout)
+    private static IEnumerable<CleanupStep> ReviewSteps(Folder folder, FromSoftGameDefinition definition)
     {
         if (!folder.HasBaseline) yield break;
 
-        foreach (var entry in folder.Entries.Where(e => e.Kind != InventoryKind.Directory && !folder.IsHandled(e) && !folder.InBaseline(e.Path) && !IsGameArchive(layout, e.Path)))
+        foreach (var entry in folder.Entries.Where(e => e.Kind != InventoryKind.Directory && !folder.IsHandled(e) && !folder.InBaseline(e.Path) && !IsGameArchive(definition, e.Path)))
             yield return new CleanupStep(CleanupStepKind.Review, $"Review {entry.Path}: it does not match the game's own file list, so it is left as it is", entry.Path);
     }
 
     // Indexing never hashes the game's archives and videos, so the app's file list can leave them out and the
     // folder still holds them as shipped.
-    private static bool IsGameArchive(FromSoftGameLayout layout, string path)
-        => FromSoftPaths.IsArchiveOrMedia(layout, new GamePath(LocationId.Game, $"{layout.GameSubfolder}/{path}"));
+    private static bool IsGameArchive(FromSoftGameDefinition definition, string path)
+        => FromSoftPaths.IsArchiveOrMedia(definition, FromSoftPaths.InGameFolder(definition.Layout, path));
 
     private static string[] Segments(string path) => path.Split('/');
 

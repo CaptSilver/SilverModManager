@@ -31,7 +31,7 @@ public class CleanupPlannerTests
         => new(Folder, inventory.OrderBy(e => e.Path, StringComparer.Ordinal).ToArray(), baseline ? Vanilla.ToHashSet(StringComparer.OrdinalIgnoreCase) : null, immutable, launchOption, updatePending);
 
     private static CleanupPlan Build(CleanupInput input)
-        => CleanupPlanner.Build(input, EldenRingGame.Definition.Cleanup, EldenRingGame.Definition.Layout);
+        => CleanupPlanner.Build(input, EldenRingGame.Definition.Cleanup, EldenRingGame.Definition);
 
     private static List<InventoryEntry> ErmInstall()
     {
@@ -282,7 +282,7 @@ public class CleanupPlannerTests
     {
         var inventory = VanillaInventory().Concat([Dir("SeamlessCoop"), File("ersc_launcher.exe"), File("start_protected_game.exe.erm-backup")]);
 
-        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Layout);
+        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Definition);
 
         plan.Steps.Select(s => s.Kind).Should().NotContain([CleanupStepKind.Move, CleanupStepKind.Delete]);
         plan.Steps.Where(s => s.Kind == CleanupStepKind.Review).Select(s => s.Source)
@@ -294,7 +294,7 @@ public class CleanupPlannerTests
     {
         var inventory = VanillaInventory().Concat([Dir("mods"), Dir("mods/Foo"), File("mods/Foo/config.ini")]);
 
-        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Layout);
+        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Definition);
 
         plan.Steps.Select(s => s.Kind).Should().NotContain([CleanupStepKind.Copy, CleanupStepKind.Delete]);
     }

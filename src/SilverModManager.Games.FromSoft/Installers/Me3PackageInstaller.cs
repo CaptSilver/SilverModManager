@@ -36,9 +36,10 @@ public class Me3PackageInstaller : ALibraryArchiveInstaller
         var files = Me3InstallerFiles.Files(libraryArchive);
         var paths = files.Select(f => (RelativePath)f.Path).ToArray();
 
-        if (!Me3PackageLayout.TryFindRoot(paths, out var root))
+        var regulationFileName = ((IFromSoftGame)loadout.InstallationInstance.Game).Formats.RegulationFileName;
+        if (!Me3PackageLayout.TryFindRoot(paths, regulationFileName, out var root))
         {
-            var options = Me3PackageLayout.ListOptionDirs(paths);
+            var options = Me3PackageLayout.ListOptionDirs(paths, regulationFileName);
             return Me3InstallerFiles.Decline(Logger, options.Count > 0
                 ? $"The archive holds the option folders {string.Join(", ", options.Select(o => $"'{o}'"))} and the installer cannot pick one. Install the one you want with the Advanced installer."
                 : "The archive has none of the game's asset folders (parts, menu, msg, ...), so it is not a content package.");

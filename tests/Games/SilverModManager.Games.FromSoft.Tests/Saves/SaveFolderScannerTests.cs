@@ -99,4 +99,23 @@ public class SaveFolderScannerTests : IDisposable
 
         scanner.KindOf("TS0000_silver.sl2", out _).Should().Be(SaveKind.Unknown);
     }
+
+    [Fact]
+    public void TheSaveAnotherLoaderLeftIsKnownUnderItsOwnKind()
+    {
+        var scanner = new SaveFolderScanner(new FromSoftSaveNames("DS30000.sl2", "DS30000_silver.sl2", null, "DS30000.sl3"));
+
+        scanner.KindOf("DS30000.sl3", out var isBackup).Should().Be(SaveKind.LegacyModded);
+        isBackup.Should().BeFalse();
+        scanner.KindOf("DS30000.sl3.bak", out var backup).Should().Be(SaveKind.LegacyModded);
+        backup.Should().BeTrue();
+    }
+
+    [Fact]
+    public void WithoutALegacyNameNothingIsLegacy()
+    {
+        var scanner = new SaveFolderScanner(new FromSoftSaveNames("DS30000.sl2", "DS30000_silver.sl2", null));
+
+        scanner.KindOf("DS30000.sl3", out _).Should().Be(SaveKind.Unknown);
+    }
 }

@@ -113,7 +113,7 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
     /// the game's executable offline.
     /// </remarks>
     public GamePath GetPrimaryFile(GameInstallation installation)
-        => new(LocationId.Game, $"{Definition.Layout.GameSubfolder}/{Definition.Layout.Launcher ?? Definition.Layout.GameExecutable}");
+        => FromSoftPaths.InGameFolder(Definition.Layout, Definition.Layout.Launcher ?? Definition.Layout.GameExecutable);
 
     /// <summary>Read from the game's own executable; a launcher carries the anti-cheat's version, not the game's.</summary>
     public Optional<Version> GetLocalVersion(GameInstallation installation)

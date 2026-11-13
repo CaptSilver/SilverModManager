@@ -8,8 +8,10 @@ public class Me3PackageLayoutTests
 {
     private static RelativePath[] Files(params string[] paths) => paths.Select(p => (RelativePath)p).ToArray();
 
-    private static string? Root(params string[] paths)
-        => Me3PackageLayout.TryFindRoot(Files(paths), out var root) ? root.Path : null;
+    private static string? Root(params string[] paths) => RootFor("regulation.bin", paths);
+
+    private static string? RootFor(string? regulation, params string[] paths)
+        => Me3PackageLayout.TryFindRoot(Files(paths), regulation, out var root) ? root.Path : null;
 
     [Fact]
     public void ABareTreeIsItsOwnRoot() => Root("parts/wp_a.dcx", "menu/hud.dds").Should().Be("");
@@ -41,18 +43,44 @@ public class Me3PackageLayoutTests
     [Fact]
     public void OptionFoldersAreTheTopLevelFoldersThatAreEachAPackage()
     {
-        Me3PackageLayout.ListOptionDirs(Files("OPTION 1/menu/x.gfx", "OPTION 2/menu/y.gfx")).Should().Equal("OPTION 1", "OPTION 2");
+        Me3PackageLayout.ListOptionDirs(Files("OPTION 1/menu/x.gfx", "OPTION 2/menu/y.gfx"), "regulation.bin").Should().Equal("OPTION 1", "OPTION 2");
     }
 
     [Fact]
     public void ANormalSingleRootTreeHasNoOptionFolders()
     {
-        Me3PackageLayout.ListOptionDirs(Files("parts/x.dcx")).Should().BeEmpty();
+        Me3PackageLayout.ListOptionDirs(Files("parts/x.dcx"), "regulation.bin").Should().BeEmpty();
     }
 
     [Fact]
     public void AFolderThatIsNotAPackageIsNotAnOption()
     {
-        Me3PackageLayout.ListOptionDirs(Files("OPTION 1/menu/x.gfx", "docs/notes.docx")).Should().Equal("OPTION 1");
+        Me3PackageLayout.ListOptionDirs(Files("OPTION 1/menu/x.gfx", "docs/notes.docx"), "regulation.bin").Should().Equal("OPTION 1");
+    }
+
+    [Fact]
+    public void ARegulationUnderTheGamesOwnNameIsAPackageRoot()
+    {
+        RootFor("Data0.bdt", "Data0.bdt").Should().Be("");
+        Root("Data0.bdt").Should().BeNull("regulation.bin is the name in force here");
+    }
+
+    [Fact]
+    public void OptionFoldersEachHoldingOnlyTheRegulationAreListed()
+    {
+        Me3PackageLayout.ListOptionDirs(Files("A/Data0.bdt", "B/Data0.bdt"), "Data0.bdt").Should().Equal("A", "B");
+    }
+
+    [Fact]
+    public void WithoutARegulationOnlyAssetFoldersMakeARoot()
+    {
+        RootFor(null, "regulation.bin").Should().BeNull();
+        RootFor(null, "adhoc/x.bin").Should().Be("");
+    }
+
+    [Fact]
+    public void TheFoldersTheGamesOwnLayoutAddsAreAssetFolders()
+    {
+        RootFor("Data0.bdt", "testdata/x.bin").Should().Be("");
     }
 }

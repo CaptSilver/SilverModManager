@@ -9,14 +9,14 @@ namespace SilverModManager.Games.FromSoft.Me3;
 public static class Me3PackageLayout
 {
     /// <summary>
-    /// The top-level folders of the game's archive layout. A folder that holds one of these, or a
-    /// <c>regulation.bin</c>, is a package root.
+    /// The top-level folders of the game's archive layout. A folder that holds one of these, or the game's
+    /// regulation file, is a package root.
     /// </summary>
     public static readonly FrozenSet<string> AssetDirs = new[]
     {
         "parts", "chr", "obj", "asset", "menu", "msg", "sfx", "sound", "event",
         "map", "action", "param", "font", "cutscene", "movie", "script", "material",
-        "mtd", "remo", "shader", "other", "expression", "facegen",
+        "mtd", "remo", "shader", "other", "expression", "facegen", "adhoc", "testdata",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -28,35 +28,34 @@ public static class Me3PackageLayout
         ".txt", ".md", ".pdf", ".png", ".jpg", ".jpeg", ".html", ".url", ".ini", ".exe", ".toml", ".bat",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-    private const string RegulationFile = "regulation.bin";
-
     /// <summary>
     /// Looks for the package root among the archive's files, descending through a single wrapper folder when no
     /// stray file sits beside it. On success <paramref name="root"/> is the folder's path inside the archive,
-    /// empty when the archive root itself is the package.
+    /// empty when the archive root itself is the package. A file named <paramref name="regulationFileName"/> marks a
+    /// root too; a game without a regulation file passes <c>null</c> and is recognised by its asset folders alone.
     /// </summary>
-    public static bool TryFindRoot(IEnumerable<RelativePath> archiveFiles, out RelativePath root)
-        => TryFindRoot(Folder.Build(archiveFiles), out root);
+    public static bool TryFindRoot(IEnumerable<RelativePath> archiveFiles, string? regulationFileName, out RelativePath root)
+        => TryFindRoot(Folder.Build(archiveFiles), regulationFileName, out root);
 
     /// <summary>
     /// The names of the archive's top-level folders that are each a complete package. An archive with several
     /// of them is a set of options, and picking one is the user's call.
     /// </summary>
-    public static IReadOnlyList<string> ListOptionDirs(IEnumerable<RelativePath> archiveFiles)
+    public static IReadOnlyList<string> ListOptionDirs(IEnumerable<RelativePath> archiveFiles, string? regulationFileName)
     {
         var top = Folder.Build(archiveFiles);
         return top.Folders
             .OrderBy(f => f.Key, StringComparer.Ordinal)
-            .Where(f => TryFindRoot(f.Value, out _))
+            .Where(f => TryFindRoot(f.Value, regulationFileName, out _))
             .Select(f => f.Key)
             .ToArray();
     }
 
-    private static bool TryFindRoot(Folder folder, out RelativePath root)
+    private static bool TryFindRoot(Folder folder, string? regulationFileName, out RelativePath root)
     {
         while (true)
         {
-            if (folder.Folders.Keys.Any(AssetDirs.Contains) || folder.Files.Any(f => f.Equals(RegulationFile, StringComparison.OrdinalIgnoreCase)))
+            if (folder.Folders.Keys.Any(AssetDirs.Contains) || (regulationFileName is not null && folder.Files.Any(f => f.Equals(regulationFileName, StringComparison.OrdinalIgnoreCase))))
             {
                 root = folder.Path;
                 return true;

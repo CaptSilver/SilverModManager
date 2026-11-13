@@ -17,7 +17,7 @@ public class FromSoftInstallationCheck(
     {
         if (installation.Game is not IFromSoftGame game) return [];
 
-        var results = new List<CheckResult>(FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, installation), game.CheckRules))
+        var results = new List<CheckResult>(FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, installation), game.Definition))
         {
             FromSoftChecks.OverlaySupport(executables, probe),
         };

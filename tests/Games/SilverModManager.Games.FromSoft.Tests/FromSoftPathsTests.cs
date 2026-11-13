@@ -124,21 +124,104 @@ public class FromSoftPathsTests
     [InlineData("Game/Data0.bdt", false)]
     public void IndexingSkipsTheArchivesAndVideosUnderTheLayoutsSubfolder(string path, bool skipped)
     {
-        FromSoftPaths.IsArchiveOrMedia(TestSouls, new GamePath(LocationId.Game, path)).Should().Be(skipped);
+        FromSoftPaths.IsArchiveOrMedia(TestSoulsDefinition.Definition, new GamePath(LocationId.Game, path)).Should().Be(skipped);
+    }
+
+    private static FromSoftGameDefinition Definition(FromSoftGameLayout layout, string? regulation)
+        => TestSoulsDefinition.Definition with { Layout = layout, Formats = TestSoulsDefinition.Definition.Formats with { RegulationFileName = regulation } };
+
+    [Theory]
+    [InlineData("Data0.bdt", false)]
+    [InlineData("data0.BDT", false)]
+    [InlineData("Data1.bdt", true)]
+    [InlineData("param/Data0.bdt", true)]
+    public void TheRegulationIsIndexedEvenWhenItsNameLooksLikeAnArchive(string inside, bool skipped)
+    {
+        var definition = Definition(AtTheRoot, "Data0.bdt");
+
+        FromSoftPaths.IsArchiveOrMedia(definition, FromSoftPaths.InGameFolder(AtTheRoot, inside)).Should().Be(skipped);
+    }
+
+    [Theory]
+    [InlineData(SoundFolderKind.Sd, "sd/x.fsb", true)]
+    [InlineData(SoundFolderKind.Sd, "sound/x.fsb", false)]
+    [InlineData(SoundFolderKind.Sound, "sound/x.fsb", true)]
+    [InlineData(SoundFolderKind.Sound, "SOUND/x.fsb", true)]
+    [InlineData(SoundFolderKind.Sound, "sd/x.fsb", false)]
+    public void OnlyTheLayoutsOwnSoundFolderIsSkipped(SoundFolderKind sound, string inside, bool skipped)
+    {
+        var layout = AtTheRoot with { SoundFolder = sound };
+
+        FromSoftPaths.IsArchiveOrMedia(Definition(layout, null), FromSoftPaths.InGameFolder(layout, inside)).Should().Be(skipped);
+    }
+
+    [Theory]
+    [InlineData("Data1.bdt", true)]
+    [InlineData("x.exe", false)]
+    public void AtTheRootTheArchivesAreStillSkipped(string inside, bool skipped)
+    {
+        FromSoftPaths.IsArchiveOrMedia(Definition(AtTheRoot, null), FromSoftPaths.InGameFolder(AtTheRoot, inside)).Should().Be(skipped);
+    }
+
+    private static readonly FromSoftGameLayout AtTheRoot = new(1, "X", "", "x.exe", null, "X", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd);
+
+    private static FromSoftGameLayout WithSubfolder(string subfolder)
+        => new(1, "X", subfolder, "x.exe", null, "X", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd);
+
+    [Fact]
+    public void ALayoutMayPutTheExecutableAtTheInstallRoot()
+    {
+        var act = () => AtTheRoot;
+
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void AnEmptySubfolderIsRefused()
+    public void AtTheRootTheGameFolderIsTheInstallFolder()
     {
-        var act = () => new FromSoftGameLayout(1, "X", "", "x.exe", null, "X", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal);
+        var installation = InstallationAt("/library/steamapps/common/Root", GameStore.Steam, "1");
 
-        act.Should().Throw<ArgumentException>();
+        FromSoftPaths.GameFolder(AtTheRoot, installation).Should().Be(installation.Locations[LocationId.Game].Path);
+    }
+
+    [Theory]
+    [InlineData("Bin", "parts/x.dcx", "Bin/parts/x.dcx")]
+    [InlineData("", "parts/x.dcx", "parts/x.dcx")]
+    public void InGameFolderJoinsTheSubfolderOnlyWhenThereIsOne(string subfolder, string inside, string expected)
+    {
+        var path = FromSoftPaths.InGameFolder(WithSubfolder(subfolder), inside);
+
+        path.LocationId.Should().Be(LocationId.Game);
+        path.Path.Path.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Bin", "Bin/x.dcx", "x.dcx")]
+    [InlineData("Bin", "bin/x.dcx", "x.dcx")]
+    [InlineData("Bin", "Other/x.dcx", null)]
+    [InlineData("", "Artwork_MiniSoundtrack/a.exe", "Artwork_MiniSoundtrack/a.exe")]
+    public void InsideGameFolderIsTheRemainderOrNull(string subfolder, string path, string? expected)
+    {
+        FromSoftPaths.InsideGameFolder(WithSubfolder(subfolder), new GamePath(LocationId.Game, path)).Should().Be(expected);
+    }
+
+    [Fact]
+    public void AMe3ModsPathIsNeverInsideTheGameFolderEvenAtTheRoot()
+    {
+        FromSoftPaths.InsideGameFolder(AtTheRoot, new GamePath(LocationId.Me3Mods, "parts/x.dcx")).Should().BeNull();
+    }
+
+    [Fact]
+    public void AtTheRootEveryGamePathIsInTheGameFolder()
+    {
+        FromSoftPaths.IsInGameFolder(AtTheRoot, new GamePath(LocationId.Game, "x.exe")).Should().BeTrue();
+        FromSoftPaths.IsInGameFolder(AtTheRoot, new GamePath(LocationId.Me3Mods, "x.exe")).Should().BeFalse();
     }
 
     [Fact]
     public void AWhitespaceSubfolderIsRefused()
     {
-        var act = () => new FromSoftGameLayout(1, "X", "  ", "x.exe", null, "X", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal);
+        var act = () => WithSubfolder("  ");
 
         act.Should().Throw<ArgumentException>();
     }

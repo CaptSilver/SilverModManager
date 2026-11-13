@@ -184,13 +184,13 @@ public class UpperdirAuditTests : IDisposable
         Lower("eldenring.exe", "exe");
         Lower("regulation.bin", "reg");
         Lower("Data0.bdt", "archive");
-        var before = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
+        var before = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition);
 
         Lower("new.dll", "dll");
         Lower("regulation.bin", "REG");
         File.Delete(Path.Combine(_layout.Lower.GetFullPath(), "eldenring.exe"));
         Lower("Data0.bdt", "archive changed");
-        var after = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
+        var after = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition);
 
         before.Entries.Select(e => e.Path).Should().Equal("eldenring.exe", "regulation.bin");
         before.Compare(after).Should().Equal(
@@ -205,7 +205,7 @@ public class UpperdirAuditTests : IDisposable
         Lower("testsouls.exe", "exe");
         Lower("Data0.bdt", "archive");
 
-        var snapshot = await GameFolderSnapshot.Take(_layout.Lower, TestSoulsDefinition.Layout);
+        var snapshot = await GameFolderSnapshot.Take(_layout.Lower, TestSoulsDefinition.Definition);
 
         // "Bin" is Test Souls' subfolder, not Elden Ring's "Game": the archive filter follows the layout it is given.
         snapshot.Entries.Select(e => e.Path).Should().Equal("testsouls.exe");
@@ -217,8 +217,8 @@ public class UpperdirAuditTests : IDisposable
         Lower("eldenring.exe", "exe");
         File.CreateSymbolicLink(Path.Combine(_layout.Lower.GetFullPath(), "dxgi.dll"), "/nonexistent/ReShade64.dll");
 
-        var first = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
-        var second = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
+        var first = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition);
+        var second = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition);
 
         first.Compare(second).Should().BeEmpty();
         first.Entries.Should().Contain(e => e.Path == "dxgi.dll" && e.Hash == "link:/nonexistent/ReShade64.dll");

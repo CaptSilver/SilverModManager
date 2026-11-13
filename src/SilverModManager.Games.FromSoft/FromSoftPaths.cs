@@ -9,9 +9,13 @@ namespace SilverModManager.Games.FromSoft;
 /// </summary>
 public static class FromSoftPaths
 {
-    /// <summary>The folder with the game's executable and archives, <c>&lt;install&gt;/&lt;GameSubfolder&gt;</c>.</summary>
+    /// <summary>The folder with the game's executable and archives, <c>&lt;install&gt;/&lt;GameSubfolder&gt;</c>, or the install folder itself when the subfolder is empty.</summary>
     public static AbsolutePath GameFolder(FromSoftGameLayout layout, GameInstallation installation)
-        => installation.Locations[LocationId.Game].Path / layout.GameSubfolder;
+        => GameFolderIn(layout, installation.Locations[LocationId.Game].Path);
+
+    /// <summary>The game folder of the install folder at <paramref name="installFolder"/>.</summary>
+    public static AbsolutePath GameFolderIn(FromSoftGameLayout layout, AbsolutePath installFolder)
+        => layout.GameSubfolder.Length == 0 ? installFolder : installFolder / layout.GameSubfolder;
 
     /// <summary>The folder the game keeps every account's saves in, inside a Proton prefix.</summary>
     public static AbsolutePath SaveRoot(FromSoftGameLayout layout, AbsolutePath prefixPath) => layout.SaveRoot switch
@@ -46,29 +50,53 @@ public static class FromSoftPaths
     public static AbsolutePath CleanupFolder(FromSoftGameLayout layout, FromSoftSettings settings, IFileSystem fileSystem, string installationFolder)
         => InstallationRoot(layout, settings, fileSystem, installationFolder) / "cleanup";
 
-    /// <summary>
-    /// Whether the path is inside the game's subfolder, which only the confirmed cleanup writes to. Compared without regard
-    /// to case, as Windows would.
-    /// </summary>
-    public static bool IsInGameFolder(FromSoftGameLayout layout, GamePath path)
-        => path.LocationId == LocationId.Game && path.Path.Path.StartsWith(layout.GameSubfolder + "/", StringComparison.OrdinalIgnoreCase);
+    /// <summary>The path of a file inside the game folder, as the game's file tree names it.</summary>
+    public static GamePath InGameFolder(FromSoftGameLayout layout, string inside)
+        => new(LocationId.Game, layout.GameSubfolder.Length == 0 ? inside : $"{layout.GameSubfolder}/{inside}");
 
     /// <summary>
-    /// Whether indexing skips the path: the game's archives (<c>*.bdt</c>, <c>*.bhd</c>, <c>sd/</c>, <c>movie*/</c>)
-    /// add up to tens of gigabytes that are never read. The small files beside them stay indexed, so a stray DLL or a
-    /// swapped launcher is still seen. The rule holds for every game that ships BHD5 archives.
+    /// The part of the path inside the game folder, or null when the path is somewhere else. Compared without regard to
+    /// case, as Windows would. With the game in the install root every <see cref="LocationId.Game"/> path is inside,
+    /// and a path of any other location never is.
     /// </summary>
-    public static bool IsArchiveOrMedia(FromSoftGameLayout layout, GamePath path)
+    public static string? InsideGameFolder(FromSoftGameLayout layout, GamePath path)
     {
-        if (!IsInGameFolder(layout, path)) return false;
+        if (path.LocationId != LocationId.Game) return null;
 
-        var inside = path.Path.Path.AsSpan(layout.GameSubfolder.Length + 1);
+        var full = path.Path.Path;
+        if (layout.GameSubfolder.Length == 0) return full;
+
+        return full.StartsWith(layout.GameSubfolder + "/", StringComparison.OrdinalIgnoreCase) ? full[(layout.GameSubfolder.Length + 1)..] : null;
+    }
+
+    /// <summary>Whether the path is inside the game's folder, which only the confirmed cleanup writes to.</summary>
+    public static bool IsInGameFolder(FromSoftGameLayout layout, GamePath path) => InsideGameFolder(layout, path) is not null;
+
+    /// <summary>
+    /// Whether indexing skips the path: the game's archives (<c>*.bdt</c>, <c>*.bhd</c>, the layout's sound folder,
+    /// <c>movie*/</c>) add up to tens of gigabytes that are never read. The small files beside them stay indexed, so a
+    /// stray DLL or a swapped launcher is still seen. The regulation is exempt even when its name looks like an archive
+    /// (a game that keeps it in <c>Data0.bdt</c>), because it is the file the game's checks hash.
+    /// </summary>
+    public static bool IsArchiveOrMedia(FromSoftGameDefinition definition, GamePath path)
+    {
+        var layout = definition.Layout;
+        if (InsideGameFolder(layout, path) is not { } insideText) return false;
+
+        var inside = insideText.AsSpan();
+        if (definition.Formats.RegulationFileName is { } regulation && inside.Equals(regulation, StringComparison.OrdinalIgnoreCase)) return false;
         if (inside.EndsWith(".bdt", StringComparison.OrdinalIgnoreCase) || inside.EndsWith(".bhd", StringComparison.OrdinalIgnoreCase)) return true;
 
         var slash = inside.IndexOf('/');
         if (slash < 0) return false;
 
+        var soundFolder = layout.SoundFolder switch
+        {
+            SoundFolderKind.Sd => "sd",
+            SoundFolderKind.Sound => "sound",
+            _ => throw new ArgumentOutOfRangeException(nameof(definition), layout.SoundFolder, "Unknown sound folder kind"),
+        };
         var folder = inside[..slash];
-        return folder.Equals("sd", StringComparison.OrdinalIgnoreCase) || folder.StartsWith("movie", StringComparison.OrdinalIgnoreCase);
+        return folder.Equals(soundFolder, StringComparison.OrdinalIgnoreCase) || folder.StartsWith("movie", StringComparison.OrdinalIgnoreCase);
     }
 }

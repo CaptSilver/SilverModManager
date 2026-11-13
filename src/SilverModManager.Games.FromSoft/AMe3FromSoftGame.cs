@@ -48,19 +48,8 @@ public abstract class AMe3FromSoftGame<TSelf> : AFromSoftGame<TSelf>, IPerLoadou
     /// <inheritdoc />
     public SaveAdoptionPlan? PlanAdoptCurrentSave(Loadout.ReadOnly loadout, AbsolutePath saveRoot)
     {
-        if (Definition.SaveNames.Modded is not { } modded) return null;
+        if (Definition.SaveNames.Modded is null) return null;
 
-        var target = LoadoutSave(loadout);
-        var source = saveRoot / modded;
-        var destination = saveRoot / target;
-        // A backup alone is not worth bringing over, and nothing overwrites a slot that already has a save.
-        if (!source.FileExists || destination.FileExists) return null;
-
-        var copies = new List<SaveAdoptionPlan.Copy> { new(source, destination) };
-        var sourceBackup = saveRoot / (modded + ".bak");
-        var destinationBackup = saveRoot / (target + ".bak");
-        if (sourceBackup.FileExists && !destinationBackup.FileExists) copies.Add(new SaveAdoptionPlan.Copy(sourceBackup, destinationBackup));
-
-        return new SaveAdoptionPlan($"Copy {modded} to {target}, so this loadout continues from the save you play today.", copies);
+        return Definition.SaveNames.PlanAdoption(LoadoutSave(loadout), saveRoot);
     }
 }

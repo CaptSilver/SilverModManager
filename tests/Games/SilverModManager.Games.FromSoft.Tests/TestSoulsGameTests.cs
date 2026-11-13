@@ -116,7 +116,7 @@ public class TestSoulsGameTests(ITestOutputHelper helper) : AModdedTestSoulsTest
         };
         var input = new CleanupInput("/steam/TEST SOULS/Bin", inventory, new HashSet<string> { "testsouls.exe" }, false, null, false);
 
-        var plan = CleanupPlanner.Build(input, TestSoulsDefinition.Definition.Cleanup, TestSoulsDefinition.Layout);
+        var plan = CleanupPlanner.Build(input, TestSoulsDefinition.Definition.Cleanup, TestSoulsDefinition.Definition);
 
         plan.Steps.Select(s => (s.Kind, s.Source)).Should().Equal((CleanupStepKind.Review, "SeamlessCoop/ersc.dll"));
         // Whether the guide applies is decided from the game alone; the service it would run is never touched.

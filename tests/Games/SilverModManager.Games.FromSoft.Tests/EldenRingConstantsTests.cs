@@ -20,7 +20,7 @@ public class EldenRingConstantsTests
     {
         Definition.Layout.Should().Be(new FromSoftGameLayout(
             1245620, "EldenRing", "Game", "eldenring.exe", "start_protected_game.exe", "EldenRing",
-            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal));
+            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd));
     }
 
     [Fact]

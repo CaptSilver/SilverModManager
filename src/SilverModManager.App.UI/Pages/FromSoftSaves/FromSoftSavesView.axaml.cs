@@ -111,6 +111,7 @@ public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewM
             SaveKind.Vanilla => "vanilla",
             SaveKind.SeamlessCoop => "Seamless Co-op",
             SaveKind.Modded => "modded session",
+            SaveKind.LegacyModded => "modded session of another loader",
             _ => "not a file this page acts on",
         };
         var owner = loadoutName == "" ? "" : $", loadout {loadoutName}";

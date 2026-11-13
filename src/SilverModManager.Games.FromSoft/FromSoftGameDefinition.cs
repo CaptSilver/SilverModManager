@@ -1,6 +1,7 @@
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Overlay;
 using SilverModManager.Games.FromSoft.Saves;
 
@@ -19,6 +20,12 @@ public sealed record FromSoftGameDefinition
 
     public required FromSoftSaveNames SaveNames { get; init; }
 
+    /// <summary>
+    /// Whether the game has an online side that a modified game folder would reach. With no anti-cheat launcher to
+    /// refuse the mods, loader files in such a game's folder fail the game folder check instead of only warning.
+    /// </summary>
+    public required bool HasOnlinePlay { get; init; }
+
     /// <summary>What the game folder checks look for: the anti-cheat launcher, mod folders and item spawners of this game.</summary>
     public GameFolderCheckRules CheckRules { get; init; } = GameFolderCheckRules.ModEngine2;
 
@@ -30,6 +37,9 @@ public sealed record FromSoftGameDefinition
 
     /// <summary>What a session may write into the overlay without being flagged. Defaults to file name patterns only.</summary>
     public OverlayAllowlist Overlay { get; init; } = OverlayAllowlist.Default;
+
+    /// <summary>Loose parameter files that make the loader drop one of the game's own files; null when the game has no such rule.</summary>
+    public LooseParamsRule? LooseParams { get; init; }
 
     /// <summary>The binder, compression and regulation parameters of the game's files.</summary>
     public required FromSoftFormatTraits Formats { get; init; }

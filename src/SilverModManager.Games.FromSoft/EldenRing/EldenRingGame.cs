@@ -40,8 +40,10 @@ public class EldenRingGame : AMe3FromSoftGame<EldenRingGame>, IGameData<EldenRin
             EldenRingPaths.AntiCheatLauncher,
             "EldenRing",
             SaveRootKind.RoamingAppData,
-            SaveAccountFolderKind.SteamId64Decimal),
+            SaveAccountFolderKind.SteamId64Decimal,
+            SoundFolderKind.Sd),
         SaveNames = new FromSoftSaveNames(EldenRingPaths.VanillaSave, EldenRingPaths.ModdedSave, EldenRingPaths.SeamlessCoopSave),
+        HasOnlinePlay = true,
         CheckRules = GameFolderCheckRules.ModEngine2 with
         {
             Launcher = EldenRingPaths.AntiCheatLauncher,

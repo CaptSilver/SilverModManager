@@ -38,20 +38,19 @@ public sealed class SteamFolderCheck(ILogger<SteamFolderCheck> logger)
     public async Task<SteamFolderFindings> Check(FromSoftGameDefinition definition, AbsolutePath installRoot, IReadOnlyList<ManifestFile> manifest, CancellationToken cancellationToken = default)
     {
         var layout = definition.Layout;
-        var gameFolder = installRoot / layout.GameSubfolder;
+        var gameFolder = FromSoftPaths.GameFolderIn(layout, installRoot);
         if (!gameFolder.DirectoryExists()) return new SteamFolderFindings([], []);
 
         var changed = manifest.Any(f => f.Path is null)
             ? await ChangedByHash(definition, gameFolder, manifest, cancellationToken)
             : await ChangedByName(definition, installRoot, manifest, cancellationToken);
 
-        return new SteamFolderFindings(changed.Order(StringComparer.Ordinal).ToArray(), FromSoftChecks.ModArtifacts(gameFolder, definition.CheckRules));
+        return new SteamFolderFindings(changed.Order(StringComparer.Ordinal).ToArray(), FromSoftChecks.ModArtifacts(gameFolder, definition));
     }
 
     private async Task<List<string>> ChangedByName(FromSoftGameDefinition definition, AbsolutePath installRoot, IReadOnlyList<ManifestFile> manifest, CancellationToken cancellationToken)
     {
         var layout = definition.Layout;
-        var prefix = layout.GameSubfolder + "/";
         var changed = new List<string>();
         foreach (var file in manifest)
         {
@@ -59,10 +58,10 @@ public sealed class SteamFolderCheck(ILogger<SteamFolderCheck> logger)
 
             // Steam writes Windows separators in a depot's file names.
             var path = name.Replace('\\', '/');
-            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            var gamePath = new GamePath(LocationId.Game, path);
+            if (FromSoftPaths.InsideGameFolder(layout, gamePath) is not { } inside) continue;
 
-            var inside = path[prefix.Length..];
-            var archive = FromSoftPaths.IsArchiveOrMedia(layout, new GamePath(LocationId.Game, path));
+            var archive = FromSoftPaths.IsArchiveOrMedia(definition, gamePath);
             if (await Differs(installRoot / path, file, archive, Pinned(definition, inside), cancellationToken)) changed.Add(inside);
         }
         return changed;

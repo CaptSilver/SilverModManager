@@ -56,7 +56,7 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
         {
             if (_fromDatabase is { } cached && cached.Key == key && SameInstances(cached.Databases, databases)) return cached.Hashes;
 
-            var regulationPath = game.Layout.GameSubfolder + "/" + fileName;
+            var regulationPath = FromSoftPaths.InGameFolder(game.Layout, fileName).Path.Path;
             var hashes = new HashSet<FileIdentity>();
             foreach (var version in fileHashes.GetKnownVanityVersions(gameId))
             {

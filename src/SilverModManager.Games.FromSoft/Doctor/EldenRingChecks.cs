@@ -12,7 +12,7 @@ public static class EldenRingChecks
 {
     /// <summary>The artifacts, spawner and anti-cheat checks of one <c>Game</c> folder.</summary>
     public static IReadOnlyList<CheckResult> GameFolder(AbsolutePath gameFolder)
-        => FromSoftChecks.GameFolder(gameFolder, EldenRingGame.Definition.CheckRules);
+        => FromSoftChecks.GameFolder(gameFolder, EldenRingGame.Definition);
 
     /// <inheritdoc cref="FromSoftChecks.OverlaySupport"/>
     public static CheckResult OverlaySupport(IExecutableLocator executables, ISandboxProbe probe)

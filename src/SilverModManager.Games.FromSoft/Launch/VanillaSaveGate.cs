@@ -58,7 +58,7 @@ public sealed class VanillaSaveGate(
         if (ledger.AnyTainted)
             return new Veto("The vanilla save was changed by a modded session and could not be restored; use the saves page to resolve it.");
 
-        var artifacts = FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, context.Installation), game.CheckRules).First(r => r.Id == "artifacts");
+        var artifacts = FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, context.Installation), game.Definition).First(r => r.Id == "artifacts");
         return artifacts.Level == CheckLevel.Fail
             ? new Veto($"Cannot start {context.Installation.Game.DisplayName} without mods: {artifacts.Message}")
             : null;

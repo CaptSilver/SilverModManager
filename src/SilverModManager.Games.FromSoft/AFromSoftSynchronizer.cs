@@ -26,7 +26,7 @@ namespace SilverModManager.Games.FromSoft;
 /// </summary>
 public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 {
-    private readonly FromSoftGameLayout _layout;
+    private readonly FromSoftGameDefinition _definition;
     private readonly Dictionary<GamePath, IIntrinsicFile> _intrinsicFiles;
     private readonly Lazy<LoadoutMergeSources> _sources;
     private readonly Lazy<MergePlanCache> _plans;
@@ -39,11 +39,11 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 
     protected AFromSoftSynchronizer(IServiceProvider provider, IFromSoftGame game, IEnumerable<IIntrinsicFile> intrinsicFiles) : base(provider)
     {
-        _layout = game.Layout;
+        _definition = game.Definition;
         _intrinsicFiles = intrinsicFiles.ToDictionary(file => file.Path);
         _sources = new Lazy<LoadoutMergeSources>(provider.GetRequiredService<LoadoutMergeSources>);
         _plans = new Lazy<MergePlanCache>(provider.GetRequiredService<MergePlanCache>);
-        GameSpecificPathFilter = GamePathFilters.Create(path => FromSoftPaths.IsArchiveOrMedia(_layout, path));
+        GameSpecificPathFilter = GamePathFilters.Create(path => FromSoftPaths.IsArchiveOrMedia(_definition, path));
     }
 
     /// <summary>
@@ -81,9 +81,9 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 
     protected override IGamePathFilter GameSpecificPathFilter { get; }
 
-    public override bool IsIgnoredBackupPath(GamePath path) => FromSoftPaths.IsInGameFolder(_layout, path);
+    public override bool IsIgnoredBackupPath(GamePath path) => FromSoftPaths.IsInGameFolder(_definition.Layout, path);
 
-    protected override bool IsNeverWritten(GamePath path) => FromSoftPaths.IsInGameFolder(_layout, path);
+    protected override bool IsNeverWritten(GamePath path) => FromSoftPaths.IsInGameFolder(_definition.Layout, path);
 
     /// <summary>
     /// A merged file stands in for every mod's copy of its path, so the copies are taken off disk: one already

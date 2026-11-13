@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -12,8 +13,38 @@ namespace SilverModManager.Games.FromSoft.Saves;
 /// uses <see cref="ModdedFor"/>.
 /// </param>
 /// <param name="SeamlessCoop">The save Seamless Co-op writes; <c>null</c> when the game has no Seamless Co-op.</param>
-public sealed record FromSoftSaveNames(string Vanilla, string? Modded, string? SeamlessCoop)
+/// <param name="LegacyModded">
+/// The save a modded session of another loader (the one this app replaces) wrote; <c>null</c> when there is none.
+/// A loadout adopts it when no <paramref name="Modded"/> save exists.
+/// </param>
+public sealed record FromSoftSaveNames(string Vanilla, string? Modded, string? SeamlessCoop, string? LegacyModded = null)
 {
+    /// <summary>
+    /// The copies that bring the save a modded session played on into <paramref name="target"/>, or null when there
+    /// is nothing to bring or the slot already has a save. The modded save is the source, the other loader's save
+    /// only when there is no modded one; a backup alone is not worth bringing over.
+    /// </summary>
+    public SaveAdoptionPlan? PlanAdoption(string target, AbsolutePath saveRoot)
+    {
+        var destination = saveRoot / target;
+        if (destination.FileExists) return null;
+
+        foreach (var name in new[] { Modded, LegacyModded }.OfType<string>())
+        {
+            var source = saveRoot / name;
+            if (!source.FileExists) continue;
+
+            var copies = new List<SaveAdoptionPlan.Copy> { new(source, destination) };
+            var sourceBackup = saveRoot / (name + ".bak");
+            var destinationBackup = saveRoot / (target + ".bak");
+            if (sourceBackup.FileExists && !destinationBackup.FileExists) copies.Add(new SaveAdoptionPlan.Copy(sourceBackup, destinationBackup));
+
+            return new SaveAdoptionPlan($"Copy {name} to {target}, so this loadout continues from the save you play today.", copies);
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// The modded save of one loadout: <see cref="Modded"/> with its last <c>_</c>-separated word, the slot name,
     /// replaced by the loadout's slot id (<c>ER0000_silver.sl2</c> becomes <c>ER0000_&lt;id&gt;.sl2</c>). <c>null</c>

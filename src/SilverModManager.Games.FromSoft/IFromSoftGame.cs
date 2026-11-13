@@ -21,8 +21,8 @@ public interface IFromSoftGame : IGame
 {
     FromSoftGameDefinition Definition { get; }
 
-    /// <summary>Every FromSoft game here has an online side that a modified game folder would reach.</summary>
-    bool IGameData.HasOnlinePlay => true;
+    /// <summary>Whether the game has an online side that a modified game folder would reach.</summary>
+    bool IGameData.HasOnlinePlay => Definition.HasOnlinePlay;
 
     /// <summary>A loadout with mods runs in a bwrap overlay over the game folder (<see cref="RunFromSoftGame"/>).</summary>
     bool IGameData.DeploysThroughOverlay => true;

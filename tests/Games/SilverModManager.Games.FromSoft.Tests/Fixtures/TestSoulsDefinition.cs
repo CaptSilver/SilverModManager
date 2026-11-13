@@ -19,12 +19,14 @@ public static class TestSoulsDefinition
         Launcher: null,
         SaveFolderName: "TestSouls",
         SaveRoot: SaveRootKind.RoamingAppData,
-        AccountFolder: SaveAccountFolderKind.SteamId64Decimal);
+        AccountFolder: SaveAccountFolderKind.SteamId64Decimal,
+        SoundFolder: SoundFolderKind.Sd);
 
     public static readonly FromSoftGameDefinition Definition = new()
     {
         Layout = Layout,
-        SaveNames = new FromSoftSaveNames("TS0000.sl2", "TS0000_silver.sl2", null),
+        HasOnlinePlay = false,
+        SaveNames = new FromSoftSaveNames("TS0000.sl2", "TS0000_silver.sl2", null, "TS0000.sl3"),
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd3,
             [DcxCompression.Dflt],

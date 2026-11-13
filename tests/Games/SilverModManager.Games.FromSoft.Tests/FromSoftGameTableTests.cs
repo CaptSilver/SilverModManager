@@ -23,6 +23,29 @@ public class FromSoftGameTableTests
 
     [Theory]
     [MemberData(nameof(Games))]
+    public void TheOnlinePlayFactIsTheGamesOwn(FromSoftGameFacts facts)
+        => facts.Definition().HasOnlinePlay.Should().Be(facts.HasOnlinePlay);
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void TheLooseParamsRuleIsTheGamesOwn(FromSoftGameFacts facts)
+    {
+        var rule = facts.Definition().LooseParams;
+
+        // The rule holds an array, which compares by reference, so its parts are compared one by one.
+        if (facts.LooseParams is null)
+        {
+            rule.Should().BeNull();
+            return;
+        }
+
+        rule.Should().NotBeNull();
+        rule!.Files.Should().BeEquivalentTo(facts.LooseParams.Files);
+        rule.DisablesFile.Should().Be(facts.LooseParams.DisablesFile);
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
     public void TheLayoutCarriesTheSteamAppIdOfTheGame(FromSoftGameFacts facts)
         => facts.Definition().Layout.SteamAppId.Should().Be(facts.SteamAppId);
 

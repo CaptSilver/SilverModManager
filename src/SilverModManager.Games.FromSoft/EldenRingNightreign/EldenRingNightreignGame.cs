@@ -30,8 +30,9 @@ public class EldenRingNightreignGame : AMe3FromSoftGame<EldenRingNightreignGame>
     {
         Layout = new FromSoftGameLayout(
             SteamAppId, "EldenRingNightreign", "Game", "nightreign.exe", AntiCheatLauncher, "Nightreign",
-            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
+            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd),
         SaveNames = new FromSoftSaveNames("NR0000.sl2", "NR0000_silver.sl2", null),
+        HasOnlinePlay = true,
         CheckRules = GameFolderCheckRules.ModEngine2 with { Launcher = AntiCheatLauncher },
         Cleanup = CleanupRules.ModEngine2 with { Launcher = AntiCheatLauncher },
         Formats = new FromSoftFormatTraits(

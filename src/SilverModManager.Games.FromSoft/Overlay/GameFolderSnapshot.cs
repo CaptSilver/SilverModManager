@@ -23,10 +23,10 @@ public sealed record GameFolderSnapshot(IReadOnlyList<GameFolderSnapshot.Entry> 
 
     /// <summary>
     /// Records every file of the game folder except the archives and videos, which add up to tens of gigabytes and are
-    /// never read (the same filter the synchronizer indexes with, for the game's <paramref name="layout"/>). A link is
+    /// never read (the same filter the synchronizer indexes with, for the game's <paramref name="definition"/>). A link is
     /// recorded as its target, not followed.
     /// </summary>
-    public static async Task<GameFolderSnapshot> Take(AbsolutePath gameFolder, FromSoftGameLayout layout, CancellationToken cancellationToken = default)
+    public static async Task<GameFolderSnapshot> Take(AbsolutePath gameFolder, FromSoftGameDefinition definition, CancellationToken cancellationToken = default)
     {
         var entries = new List<Entry>();
         if (!gameFolder.DirectoryExists()) return new GameFolderSnapshot(entries);
@@ -37,7 +37,7 @@ public sealed record GameFolderSnapshot(IReadOnlyList<GameFolderSnapshot.Entry> 
             cancellationToken.ThrowIfCancellationRequested();
 
             var relative = System.IO.Path.GetRelativePath(root, file).Replace('\\', '/');
-            if (FromSoftPaths.IsArchiveOrMedia(layout, new GamePath(LocationId.Game, $"{layout.GameSubfolder}/{relative}"))) continue;
+            if (FromSoftPaths.IsArchiveOrMedia(definition, FromSoftPaths.InGameFolder(definition.Layout, relative))) continue;
 
             var info = new FileInfo(file);
             if (info.LinkTarget is { } target)

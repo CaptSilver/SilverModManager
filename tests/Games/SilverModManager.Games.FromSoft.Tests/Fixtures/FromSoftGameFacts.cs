@@ -3,6 +3,7 @@ using SilverModManager.Games.FromSoft.ArmoredCore6;
 using SilverModManager.Games.FromSoft.EldenRingNightreign;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Saves;
 
 namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
@@ -26,6 +27,8 @@ public sealed record FromSoftGameFacts(
     string Me3GameName,
     FromSoftGameLayout Layout,
     FromSoftSaveNames SaveNames,
+    bool HasOnlinePlay,
+    LooseParamsRule? LooseParams,
     BinderFormat Binder,
     DcxCompression[] ReadableCompressions,
     DcxWriteFormat PackedWrite,
@@ -57,8 +60,10 @@ public sealed record FromSoftGameFacts(
         SteamInstallFolder: "ARMORED CORE VI FIRES OF RUBICON",
         NexusModsGameId: 5679,
         Me3GameName: "armoredcore6",
-        Layout: new FromSoftGameLayout(1888160, "ArmoredCore6", "Game", "armoredcore6.exe", "start_protected_game.exe", "ArmoredCore6", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
+        Layout: new FromSoftGameLayout(1888160, "ArmoredCore6", "Game", "armoredcore6.exe", "start_protected_game.exe", "ArmoredCore6", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd),
         SaveNames: new FromSoftSaveNames("AC60000.sl2", "AC60000_silver.sl2", null),
+        HasOnlinePlay: true,
+        LooseParams: null,
         Binder: BinderFormat.Bnd4,
         ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
         PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
@@ -97,8 +102,10 @@ public sealed record FromSoftGameFacts(
         SteamInstallFolder: "ELDEN RING NIGHTREIGN",
         NexusModsGameId: 7800,
         Me3GameName: "nightreign",
-        Layout: new FromSoftGameLayout(2622380, "EldenRingNightreign", "Game", "nightreign.exe", "start_protected_game.exe", "Nightreign", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
+        Layout: new FromSoftGameLayout(2622380, "EldenRingNightreign", "Game", "nightreign.exe", "start_protected_game.exe", "Nightreign", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd),
         SaveNames: new FromSoftSaveNames("NR0000.sl2", "NR0000_silver.sl2", null),
+        HasOnlinePlay: true,
+        LooseParams: null,
         Binder: BinderFormat.Bnd4,
         ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
         PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),

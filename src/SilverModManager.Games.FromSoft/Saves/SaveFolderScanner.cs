@@ -12,6 +12,9 @@ public enum SaveKind
     /// <summary>The save a modded session without Seamless Co-op is pointed at (<see cref="FromSoftSaveNames.Modded"/>).</summary>
     Modded,
 
+    /// <summary>The save a modded session of another loader wrote (<see cref="FromSoftSaveNames.LegacyModded"/>).</summary>
+    LegacyModded,
+
     /// <summary>Anything else. Listed so the user sees it, never read, moved, backed up or restored.</summary>
     Unknown,
 }
@@ -50,6 +53,7 @@ public sealed class SaveFolderScanner
         var known = new List<(string, SaveKind)> { (names.Vanilla, SaveKind.Vanilla) };
         if (names.SeamlessCoop is { } coop) known.Add((coop, SaveKind.SeamlessCoop));
         if (names.Modded is { } modded) known.Add((modded, SaveKind.Modded));
+        if (names.LegacyModded is { } legacy) known.Add((legacy, SaveKind.LegacyModded));
         _knownNames = known.ToArray();
     }
 

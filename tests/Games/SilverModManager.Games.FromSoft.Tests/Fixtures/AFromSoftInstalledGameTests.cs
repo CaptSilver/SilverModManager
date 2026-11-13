@@ -30,8 +30,8 @@ public abstract class AFromSoftInstalledGameTests<TTest, TGame>(ITestOutputHelpe
         var layout = facts.Layout;
         SteamFile[] files =
         [
-            new($"{layout.GameSubfolder}/{layout.GameExecutable}", "the game"),
-            ..layout.Launcher is null ? Array.Empty<SteamFile>() : [new SteamFile($"{layout.GameSubfolder}/{layout.Launcher}", "anti-cheat launcher")],
+            new(FromSoftPaths.InGameFolder(layout, layout.GameExecutable).Path.Path, "the game"),
+            ..layout.Launcher is null ? Array.Empty<SteamFile>() : [new SteamFile(FromSoftPaths.InGameFolder(layout, layout.Launcher).Path.Path, "anti-cheat launcher")],
         ];
         return library.AddGame(facts.SteamAppId, facts.DisplayName, facts.SteamInstallFolder, BuildId, new SteamDepot(facts.SteamAppId + 1, 8000000000000000001, files));
     }
@@ -56,7 +56,7 @@ public abstract class AFromSoftInstalledGameTests<TTest, TGame>(ITestOutputHelpe
     {
         var primary = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation));
 
-        primary.Should().Be(Install.Folder / $"{facts.Layout.GameSubfolder}/{facts.Layout.Launcher ?? facts.Layout.GameExecutable}");
+        primary.Should().Be(Install.Folder / FromSoftPaths.InGameFolder(facts.Layout, facts.Layout.Launcher ?? facts.Layout.GameExecutable).Path.Path);
         primary.FileExists.Should().BeTrue();
     }
 
@@ -66,7 +66,7 @@ public abstract class AFromSoftInstalledGameTests<TTest, TGame>(ITestOutputHelpe
         // Any file with a version resource stands in for the game's executable; the launcher stays a stub without one.
         var standIn = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(typeof(TGame).Assembly.Location);
         var expected = standIn.FileInfo.GetFileVersionInfo().ProductVersion;
-        File.Copy(standIn.ToString(), (Install.Folder / $"{facts.Layout.GameSubfolder}/{facts.Layout.GameExecutable}").ToString(), overwrite: true);
+        File.Copy(standIn.ToString(), (Install.Folder / FromSoftPaths.InGameFolder(facts.Layout, facts.Layout.GameExecutable).Path.Path).ToString(), overwrite: true);
 
         var version = ((IGameData)Game).GetLocalVersion(GameInstallation);
 

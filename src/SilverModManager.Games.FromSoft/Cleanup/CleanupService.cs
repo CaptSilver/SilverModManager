@@ -76,7 +76,7 @@ public sealed class CleanupService(
             Baseline(loadout),
             immutable,
             LaunchOptionChange(installation, loadout),
-            installation.LocatorResult.StoreUpdatePending), game.Cleanup, game.Layout);
+            installation.LocatorResult.StoreUpdatePending), game.Cleanup, game.Definition);
     }
 
     /// <summary>
@@ -214,8 +214,8 @@ public sealed class CleanupService(
 
         return fileHashes.GetGameFiles(loadout.InstallationInstance, loadout.LocatorIds)
             .Select(f => f.Path)
-            .Where(p => FromSoftPaths.IsInGameFolder(layout, p))
-            .Select(p => p.Path.Path[(layout.GameSubfolder.Length + 1)..])
+            .Select(p => FromSoftPaths.InsideGameFolder(layout, p))
+            .OfType<string>()
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 

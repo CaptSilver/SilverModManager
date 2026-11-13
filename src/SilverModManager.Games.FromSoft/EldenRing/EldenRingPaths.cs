@@ -67,7 +67,7 @@ public static class EldenRingPaths
     public static bool IsInGameFolder(GamePath path) => FromSoftPaths.IsInGameFolder(Layout, path);
 
     /// <summary>Whether indexing skips the path; see <see cref="FromSoftPaths.IsArchiveOrMedia"/>.</summary>
-    public static bool IsArchiveOrMedia(GamePath path) => FromSoftPaths.IsArchiveOrMedia(Layout, path);
+    public static bool IsArchiveOrMedia(GamePath path) => FromSoftPaths.IsArchiveOrMedia(EldenRingGame.Definition, path);
 
     private static FromSoftGameLayout Layout => EldenRingGame.Definition.Layout;
 }

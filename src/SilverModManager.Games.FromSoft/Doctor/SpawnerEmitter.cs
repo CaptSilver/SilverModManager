@@ -8,7 +8,7 @@ namespace SilverModManager.Games.FromSoft.Doctor;
 public class SpawnerEmitter : AFromSoftCheckEmitter
 {
     protected override IEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, IFromSoftGame game)
-        => FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, loadout.InstallationInstance), game.CheckRules)
+        => FromSoftChecks.GameFolder(FromSoftPaths.GameFolder(game.Layout, loadout.InstallationInstance), game.Definition)
             .Where(r => r.Id == "spawners")
             .Select(r => FromSoftDiagnostics.CreateItemSpawnerPresent(r.Message));
 }

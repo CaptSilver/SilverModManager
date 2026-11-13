@@ -17,7 +17,8 @@ public class FromSoftGameDefinitionTests
             EldenRingPaths.AntiCheatLauncher,
             "EldenRing",
             SaveRootKind.RoamingAppData,
-            SaveAccountFolderKind.SteamId64Decimal));
+            SaveAccountFolderKind.SteamId64Decimal,
+            SoundFolderKind.Sd));
     }
 
     [Fact]

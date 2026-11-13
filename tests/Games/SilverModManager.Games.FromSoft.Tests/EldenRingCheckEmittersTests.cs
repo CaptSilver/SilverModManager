@@ -50,7 +50,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
     }
 
     [Fact]
-    public async Task ModFilesWithoutTheLauncherAreOnlyAWarning()
+    public async Task ModFilesWithoutTheLauncherAreCriticalBecauseEldenRingPlaysOnline()
     {
         var loadout = await CreateLoadout();
         File.Delete((RealGameFolder / "start_protected_game.exe").GetFullPath());
@@ -58,8 +58,21 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
 
         var diagnostic = (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Subject;
 
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         diagnostic.Actions.Should().Equal(GameCleanupActions.Fix(), GameCleanupActions.ShowSteps());
+    }
+
+    [Fact]
+    public async Task WithoutTheLauncherTheDetailsDoNotBlameTheLauncher()
+    {
+        var loadout = await CreateLoadout();
+        File.Delete((RealGameFolder / "start_protected_game.exe").GetFullPath());
+        WriteInGameFolder("dinput8.dll");
+
+        var diagnostic = (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Subject;
+        var details = diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>());
+
+        details.Should().Contain("no anti-cheat gate").And.NotContain("anti-cheat launcher");
     }
 
     [Fact]

@@ -62,7 +62,7 @@ public sealed class OverlayLaunchGate(
 
         var written = await WriteConfigurationLayer(layout, game, installation, cancellationToken);
 
-        var snapshot = await GameFolderSnapshot.Take(layout.Lower, game.Layout, cancellationToken);
+        var snapshot = await GameFolderSnapshot.Take(layout.Lower, game.Definition, cancellationToken);
         new OverlaySessionState(written, snapshot, context.SessionId == Guid.Empty ? null : context.SessionId).Save(layout);
         logger.LogInformation("Prepared the overlay of {Game} at {Root}: {Count} configuration files, {Snapshot} game files recorded", installation.Game.DisplayName, layout.Root, written.Count, snapshot.Entries.Count);
     }
@@ -81,7 +81,7 @@ public sealed class OverlayLaunchGate(
         var state = OverlaySessionState.Load(layout);
         if (state is not null && state.SessionId == context.SessionId && context.EndSeen)
         {
-            var changes = state.Snapshot.Compare(await GameFolderSnapshot.Take(layout.Lower, game.Layout));
+            var changes = state.Snapshot.Compare(await GameFolderSnapshot.Take(layout.Lower, game.Definition));
             if (changes.Count > 0)
             {
                 logger.LogError("The game folder {Folder} changed during a modded session: {Paths}", layout.Lower, string.Join(", ", changes.Select(c => $"{c.Path} ({c.Change})")));

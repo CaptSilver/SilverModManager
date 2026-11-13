@@ -30,8 +30,9 @@ public class ArmoredCore6Game : AMe3FromSoftGame<ArmoredCore6Game>, IGameData<Ar
     {
         Layout = new FromSoftGameLayout(
             SteamAppId, "ArmoredCore6", "Game", "armoredcore6.exe", AntiCheatLauncher, "ArmoredCore6",
-            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal),
+            SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sd),
         SaveNames = new FromSoftSaveNames("AC60000.sl2", "AC60000_silver.sl2", null),
+        HasOnlinePlay = true,
         CheckRules = GameFolderCheckRules.ModEngine2 with { Launcher = AntiCheatLauncher },
         Cleanup = CleanupRules.ModEngine2 with { Launcher = AntiCheatLauncher },
         Formats = new FromSoftFormatTraits(
