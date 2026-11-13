@@ -21,3 +21,15 @@ public interface ISortingPlugin
 
     bool DoAssetsOverlap(ISortingPlugin other);
 }
+
+/// <summary>
+/// What a plugin can offer so that the sorter looks only at pairs that might overlap, instead of every pair. Two
+/// plugins whose <see cref="ISortingPlugin.DoRecordsOverlap"/> answers true must share a record key, and likewise
+/// for assets; a key two plugins share without overlapping only costs a comparison.
+/// </summary>
+public interface IOverlapKeys
+{
+    IReadOnlyList<ulong> RecordKeys { get; }
+
+    IReadOnlyList<ulong> AssetKeys { get; }
+}

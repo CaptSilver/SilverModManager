@@ -14,7 +14,9 @@ internal sealed partial class PluginsGraph<T> where T : ISortingPlugin
 
     // Every pair known to be connected by a path, so that an edge is only added when it is not
     // already implied. Dropping this changes which edges exist and so the sort result.
-    private readonly Dictionary<int, HashSet<int>> _pathsCache = [];
+    private readonly List<ulong[]?> _pathsCache = [];
+
+    private readonly BfsScratch _bfsScratch = new(0);
 
     public int NodeCount => _graph.NodeCount;
 
@@ -126,13 +128,30 @@ internal sealed partial class PluginsGraph<T> where T : ISortingPlugin
         return null;
     }
 
+    // One row of bits per start node: a hash set per node was most of the time a big sort spent searching.
     public void CachePath(int from, int to)
     {
-        if (!_pathsCache.TryGetValue(from, out var targets)) _pathsCache[from] = targets = [];
-        targets.Add(to);
+        while (_pathsCache.Count <= from) _pathsCache.Add(null);
+
+        var row = _pathsCache[from];
+        var word = to >> 6;
+        if (row is null || row.Length <= word)
+        {
+            var grown = new ulong[Math.Max(word + 1, Math.Max(NodeCount, 1) + 63 >> 6)];
+            row?.CopyTo(grown, 0);
+            _pathsCache[from] = row = grown;
+        }
+
+        row[word] |= 1UL << (to & 63);
     }
 
-    public bool IsPathCached(int from, int to) => _pathsCache.TryGetValue(from, out var targets) && targets.Contains(to);
+    public bool IsPathCached(int from, int to)
+    {
+        if (from >= _pathsCache.Count || _pathsCache[from] is not { } row) return false;
+
+        var word = to >> 6;
+        return word < row.Length && (row[word] & (1UL << (to & 63))) != 0;
+    }
 
     /// <summary>The node with the plugin's name, ignoring case, or null.</summary>
     public int? NodeIndexByName(string name)
@@ -149,7 +168,7 @@ internal sealed partial class PluginsGraph<T> where T : ISortingPlugin
     {
         if (IsPathCached(from, to)) return true;
 
-        return Search.BidirectionalBfs(_graph, from, to, new PathCacher(this, from, to));
+        return Search.BidirectionalBfs(_graph, from, to, new PathCacher(this, from, to), _bfsScratch);
     }
 
     /// <summary>A shortest path from one node to another, or null if there is none.</summary>
@@ -157,7 +176,7 @@ internal sealed partial class PluginsGraph<T> where T : ISortingPlugin
     public IReadOnlyList<int>? FindPath(int from, int to)
     {
         var finder = new PathFinder(this, from, to);
-        return Search.BidirectionalBfs(_graph, from, to, finder) ? finder.Path() : null;
+        return Search.BidirectionalBfs(_graph, from, to, finder, _bfsScratch) ? finder.Path() : null;
     }
 
     private static int IndexOfName(IReadOnlyList<string> names, string name)

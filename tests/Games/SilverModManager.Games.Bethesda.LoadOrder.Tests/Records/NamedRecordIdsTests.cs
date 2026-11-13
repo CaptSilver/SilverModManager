@@ -39,4 +39,13 @@ public class NamedRecordIdsTests
         b.Overlaps(a).Should().BeTrue();
         a.Overlaps(c).Should().BeFalse();
     }
+
+    [Fact]
+    public void KeysAreEqualForTheSameRecordInTwoPlugins()
+    {
+        var a = PluginRecordIds.ResolveNamed(Ids("shared", "a"), []);
+        var b = PluginRecordIds.ResolveNamed(Ids("shared"), []);
+
+        a.Keys.Intersect(b.Keys).Should().HaveCount(1);
+    }
 }

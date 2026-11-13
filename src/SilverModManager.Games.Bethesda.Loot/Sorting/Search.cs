@@ -18,6 +18,42 @@ public interface IBidirBfsVisitor
     void VisitIntersectionNode(int node);
 }
 
+/// <summary>
+/// The visited marks and queues of <see cref="Search.BidirectionalBfs"/>, kept between searches. A mark is the
+/// number of the search that set it, so starting a search clears nothing.
+/// </summary>
+public sealed class BfsScratch(int nodeCount)
+{
+    private int _run;
+
+    internal int[] Forward { get; private set; } = new int[nodeCount];
+    internal int[] Reverse { get; private set; } = new int[nodeCount];
+    internal int[] ForwardQueue { get; private set; } = new int[nodeCount];
+    internal int[] ReverseQueue { get; private set; } = new int[nodeCount];
+
+    internal int Begin(int nodes)
+    {
+        if (Forward.Length < nodes)
+        {
+            Forward = new int[nodes];
+            Reverse = new int[nodes];
+            ForwardQueue = new int[nodes];
+            ReverseQueue = new int[nodes];
+            _run = 0;
+        }
+
+        // Marks start at zero, so the first search is number one; on wrap-around the marks are cleared.
+        if (++_run == int.MaxValue)
+        {
+            Array.Clear(Forward);
+            Array.Clear(Reverse);
+            _run = 1;
+        }
+
+        return _run;
+    }
+}
+
 /// <summary>Depth-first search state of a node. Nodes missing from the colour map are white.</summary>
 public enum Colour
 {
@@ -33,43 +69,59 @@ public static class Search
     /// level at a time until the two meet. Out- and in-edges are taken newest first, as petgraph's
     /// <c>neighbors</c> yields them, which decides the path reported when several are equally short.
     /// </summary>
+    /// <param name="scratch">Working memory to reuse across searches of the same graph; a search of a big graph is
+    /// otherwise mostly allocating.</param>
     public static bool BidirectionalBfs<TNode, TEdge>(
-        DirectedGraph<TNode, TEdge> graph, int from, int to, IBidirBfsVisitor visitor)
+        DirectedGraph<TNode, TEdge> graph, int from, int to, IBidirBfsVisitor visitor, BfsScratch? scratch = null)
     {
-        var forwardQueue = new Queue<int>([from]);
-        var reverseQueue = new Queue<int>([to]);
-        var forwardVisited = new HashSet<int> { from };
-        var reverseVisited = new HashSet<int> { to };
+        scratch ??= new BfsScratch(graph.NodeCount);
+        var run = scratch.Begin(graph.NodeCount);
+        var forward = scratch.Forward;
+        var reverse = scratch.Reverse;
+        var forwardQueue = scratch.ForwardQueue;
+        var reverseQueue = scratch.ReverseQueue;
+        int forwardHead = 0, forwardTail = 0, reverseHead = 0, reverseTail = 0;
 
-        while (forwardQueue.Count > 0 && reverseQueue.Count > 0)
+        forwardQueue[forwardTail++] = from;
+        reverseQueue[reverseTail++] = to;
+        forward[from] = run;
+        reverse[to] = run;
+
+        while (forwardHead < forwardTail && reverseHead < reverseTail)
         {
-            var forwardCurrent = forwardQueue.Dequeue();
-            var reverseCurrent = reverseQueue.Dequeue();
+            var forwardCurrent = forwardQueue[forwardHead++];
+            var reverseCurrent = reverseQueue[reverseHead++];
 
-            if (forwardCurrent == to || reverseVisited.Contains(forwardCurrent))
+            if (forwardCurrent == to || reverse[forwardCurrent] == run)
             {
                 visitor.VisitIntersectionNode(forwardCurrent);
                 return true;
             }
 
-            foreach (var edge in graph.OutEdgesNewestFirst(forwardCurrent))
+            for (int i = 0, count = graph.OutDegree(forwardCurrent); i < count; i++)
             {
-                if (!forwardVisited.Add(edge.Target)) continue;
-                visitor.VisitForwardBfsEdge(forwardCurrent, edge.Target);
-                forwardQueue.Enqueue(edge.Target);
+                var target = graph.OutTargetNewestFirst(forwardCurrent, i);
+                if (forward[target] == run) continue;
+
+                forward[target] = run;
+                visitor.VisitForwardBfsEdge(forwardCurrent, target);
+                forwardQueue[forwardTail++] = target;
             }
 
-            if (reverseCurrent == from || forwardVisited.Contains(reverseCurrent))
+            if (reverseCurrent == from || forward[reverseCurrent] == run)
             {
                 visitor.VisitIntersectionNode(reverseCurrent);
                 return true;
             }
 
-            foreach (var edge in graph.InEdgesNewestFirst(reverseCurrent))
+            for (int i = 0, count = graph.InDegree(reverseCurrent); i < count; i++)
             {
-                if (!reverseVisited.Add(edge.Source)) continue;
-                visitor.VisitReverseBfsEdge(edge.Source, reverseCurrent);
-                reverseQueue.Enqueue(edge.Source);
+                var source = graph.InSourceNewestFirst(reverseCurrent, i);
+                if (reverse[source] == run) continue;
+
+                reverse[source] = run;
+                visitor.VisitReverseBfsEdge(source, reverseCurrent);
+                reverseQueue[reverseTail++] = source;
             }
         }
 

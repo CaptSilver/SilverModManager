@@ -24,6 +24,9 @@ public sealed class ArchiveAssetSet
     /// <summary>How many distinct files the set holds.</summary>
     public int Count => _hashes.Length;
 
+    /// <summary>The hash of each file, ascending.</summary>
+    public IReadOnlyList<ulong> Hashes => _hashes;
+
     public static ArchiveAssetSet FromPaths(IEnumerable<string> paths)
     {
         var hashes = paths.Select(Hash).ToArray();

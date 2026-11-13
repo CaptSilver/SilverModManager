@@ -109,6 +109,22 @@ public class SearchTests
     }
 
     [Fact]
+    public void BidirectionalBfsShouldVisitTheSameEdgesWhenItReusesItsWorkingMemory()
+    {
+        var graph = Build(["a", "b", "c", "d"],
+            ("a", "b", EdgeType.Master), ("a", "c", EdgeType.Master), ("b", "d", EdgeType.Master), ("c", "d", EdgeType.Master));
+        var scratch = new BfsScratch(0);
+
+        // A search in between leaves marks behind that a later one must not mistake for its own.
+        Search.BidirectionalBfs(graph, 3, 0, new RecordingBfsVisitor(), scratch).Should().BeFalse();
+        Search.BidirectionalBfs(graph, 1, 2, new RecordingBfsVisitor(), scratch).Should().BeFalse();
+        var visitor = new RecordingBfsVisitor();
+        Search.BidirectionalBfs(graph, 0, 3, visitor, scratch).Should().BeTrue();
+
+        visitor.Events.Should().Equal("F 0>2", "F 0>1", "R 2>3", "R 1>3", "I 2");
+    }
+
+    [Fact]
     public void DepthFirstSearchShouldVisitEdgesOldestFirstAndClassifyThem()
     {
         var graph = Build(["a", "b", "c"],

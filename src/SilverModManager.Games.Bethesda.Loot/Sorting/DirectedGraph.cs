@@ -75,6 +75,26 @@ public sealed class DirectedGraph<TNode, TEdge>
         for (var i = 0; i < edges.Count; i++) yield return edges[i].ToEdge();
     }
 
+    /// <summary>How many edges leave the node.</summary>
+    public int OutDegree(int node) => _outEdges[node].Count;
+
+    /// <summary>How many edges enter the node.</summary>
+    public int InDegree(int node) => _inEdges[node].Count;
+
+    /// <summary>The target of the node's out-edge at <paramref name="position"/> counting from the most recently added, as <see cref="OutEdgesNewestFirst"/> orders them.</summary>
+    public int OutTargetNewestFirst(int node, int position)
+    {
+        var edges = _outEdges[node];
+        return edges[edges.Count - 1 - position].Target;
+    }
+
+    /// <summary>The source of the node's in-edge at <paramref name="position"/> counting from the most recently added.</summary>
+    public int InSourceNewestFirst(int node, int position)
+    {
+        var edges = _inEdges[node];
+        return edges[edges.Count - 1 - position].Source;
+    }
+
     public bool HasInEdges(int node) => _inEdges[node].Count > 0;
 
     private EdgeData? FindEdgeData(int source, int target)

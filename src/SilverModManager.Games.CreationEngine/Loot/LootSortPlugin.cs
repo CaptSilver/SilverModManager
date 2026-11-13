@@ -10,7 +10,7 @@ namespace SilverModManager.Games.CreationEngine.Loot;
 /// the plugin overrides and the archive files it loads; both stay null for a plugin that could not be read, and then the
 /// plugin overlaps nothing.
 /// </summary>
-internal sealed class LootSortPlugin(PluginLoadoutData data, PluginRecordIds? records = null, ArchiveAssetSet? assets = null) : ISortingPlugin
+internal sealed class LootSortPlugin(PluginLoadoutData data, PluginRecordIds? records = null, ArchiveAssetSet? assets = null) : ISortingPlugin, IOverlapKeys
 {
     public string Name => data.Name;
     public bool IsMaster => data.IsMaster;
@@ -24,6 +24,10 @@ internal sealed class LootSortPlugin(PluginLoadoutData data, PluginRecordIds? re
 
     public bool DoAssetsOverlap(ISortingPlugin other) =>
         assets is not null && other is LootSortPlugin { Assets: { } theirs } && assets.Overlaps(theirs);
+
+    public IReadOnlyList<ulong> RecordKeys => records?.Keys ?? [];
+
+    public IReadOnlyList<ulong> AssetKeys => assets?.Hashes ?? [];
 
     private PluginRecordIds? Records => records;
 

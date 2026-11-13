@@ -18,6 +18,7 @@ public sealed class PluginRecordIds
 {
     // Sorted by object index, then owner, so two plugins' ids can be intersected in one pass.
     private readonly ResolvedId[] _ids;
+    private ulong[]? _keys;
 
     private PluginRecordIds(ResolvedId[] ids, int overrideCount)
     {
@@ -154,6 +155,12 @@ public sealed class PluginRecordIds
         Array.Sort(resolved);
         return new PluginRecordIds(resolved, overrides);
     }
+
+    /// <summary>
+    /// One 64-bit key per record, equal for two records exactly when <see cref="Overlaps"/> counts them as the
+    /// same one, bar a hash collision that would only cost a wasted comparison.
+    /// </summary>
+    public IReadOnlyList<ulong> Keys => _keys ??= [.. _ids.Select(id => id.Owner ^ (id.ObjectIndex * 0x9E37_79B9_7F4A_7C15UL))];
 
     /// <summary>True when the two plugins have a record with the same owner and index, as an override or as the original.</summary>
     public bool Overlaps(PluginRecordIds other)
