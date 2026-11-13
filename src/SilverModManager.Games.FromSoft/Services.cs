@@ -157,9 +157,14 @@ public static class Services
         services.AddMergeEngine();
 
         // Read-only commands over the merges; the apply does the merging
+        services.AddSingleton<MergeChoiceStore>();
         services.AddVerb(() => MergeVerbs.List)
+            .AddVerb(() => MergeChoiceVerbs.List)
+            .AddVerb(() => MergeChoiceVerbs.Set)
+            .AddVerb(() => MergeChoiceVerbs.Clear)
             .AddModule("fromsoft", "Commands for the FromSoft games' loadouts")
-            .AddModule("fromsoft merge", "What the app merges for a loadout");
+            .AddModule("fromsoft merge", "What the app merges for a loadout")
+            .AddModule("fromsoft merge choices", "Which mod wins one contested entry of a merged file");
 
         // Planning a game update's rebase and keeping the new baseline
         services.AddVerb(() => HealVerbs.Heal);
