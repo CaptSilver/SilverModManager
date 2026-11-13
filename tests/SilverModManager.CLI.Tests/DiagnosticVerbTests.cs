@@ -189,4 +189,100 @@ public class DiagnosticVerbTests(IServiceProvider provider)
 
         state.ToOutput().Should().Be("count: 42 of http://example.test/");
     }
+
+    private async Task Dismiss(LoadoutId loadout, string subject, ushort number = 11, string? identity = null)
+    {
+        var connection = provider.GetRequiredService<IConnection>();
+        using var tx = connection.BeginTransaction();
+        _ = new DiagnosticDismissal.New(tx)
+        {
+            LoadoutId = loadout,
+            Source = "SilverModManager.Games.Generic",
+            Number = number,
+            Subject = subject,
+            Identity = identity,
+            Title = "Code No Mod Provides",
+        };
+        await tx.Commit();
+    }
+
+    private async Task<(int ExitCode, string Output, IDiagnosticManager Manager)> RunVerb(LoadoutId loadoutId, params string[] verbArgs)
+    {
+        var manager = Substitute.For<IDiagnosticManager>();
+        manager.RefreshAsync(loadoutId).Returns(Task.CompletedTask);
+
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<NexusMods.Paths.IFileSystem>(NexusMods.Paths.FileSystem.Shared)
+            .AddDefaultParsers()
+            .AddSingleton(provider.GetRequiredService<IConnection>())
+            .AddSingleton<CommandLineConfigurator>()
+            .AddCLI()
+            .AddModule("loadout", "Commands for managing a specific loadout")
+            .AddSingleton(manager)
+            .AddSingleton<IDiagnosticWriter, PlainDiagnosticWriter>()
+            .AddDiagnosticVerbs()
+            .BuildServiceProvider();
+
+        var renderer = new LoggingRenderer();
+        var args = verbArgs.Concat(["--loadout", loadoutId.Value.ToString()]).ToArray();
+        var exitCode = await services.GetRequiredService<CommandLineConfigurator>().RunAsync(args, renderer, CancellationToken.None);
+        return (exitCode, string.Concat(renderer.Logs.OfType<Text>().Select(t => string.Format(t.Template, t.Arguments ?? []))), manager);
+    }
+
+    private IEnumerable<string> SubjectsOf(LoadoutId loadout)
+        => DiagnosticDismissal.FindByLoadout(provider.GetRequiredService<IConnection>().Db, loadout).Select(d => d.Subject);
+
+    [Fact]
+    public async Task IgnoredListsTheDismissals()
+    {
+        var loadout = await SeedLoadout();
+        await Dismiss(loadout, "Game|a.dll");
+        await Dismiss(loadout, "Game|b.dll", number: 13);
+
+        var (exitCode, output, _) = await RunVerb(loadout, "loadout", "diagnostic", "ignored");
+
+        exitCode.Should().Be(0);
+        output.Should().Contain("Game|a.dll").And.Contain("Game|b.dll").And.Contain("SilverModManager.Games.Generic: 11").And.Contain("SilverModManager.Games.Generic: 13");
+        output.IndexOf("Game|a.dll", StringComparison.Ordinal).Should().BeLessThan(output.IndexOf("Game|b.dll", StringComparison.Ordinal), "oldest first");
+    }
+
+    [Fact]
+    public async Task IgnoredWithNothingIgnoredSaysSo()
+    {
+        var loadout = await SeedLoadout();
+
+        var (exitCode, output, _) = await RunVerb(loadout, "loadout", "diagnostic", "ignored");
+
+        exitCode.Should().Be(0);
+        output.Trim().Should().Be("Nothing is ignored.");
+    }
+
+    [Fact]
+    public async Task UnignoreDeletesOne()
+    {
+        var loadout = await SeedLoadout();
+        await Dismiss(loadout, "Game|a.dll");
+        await Dismiss(loadout, "Game|b.dll");
+
+        var (exitCode, _, manager) = await RunVerb(loadout, "loadout", "diagnostic", "unignore", "--index", "1");
+
+        exitCode.Should().Be(0);
+        SubjectsOf(loadout).Should().Equal("Game|a.dll");
+        await manager.Received(1).RefreshAsync(loadout);
+    }
+
+    [Fact]
+    public async Task UnignoreAnUnknownIndexIsRefused()
+    {
+        var loadout = await SeedLoadout();
+        await Dismiss(loadout, "Game|a.dll");
+
+        var (exitCode, output, manager) = await RunVerb(loadout, "loadout", "diagnostic", "unignore", "--index", "5");
+
+        exitCode.Should().Be(1);
+        output.Should().Contain("no ignored finding with index 5");
+        SubjectsOf(loadout).Should().Equal("Game|a.dll");
+        await manager.DidNotReceiveWithAnyArgs().RefreshAsync(default);
+    }
 }

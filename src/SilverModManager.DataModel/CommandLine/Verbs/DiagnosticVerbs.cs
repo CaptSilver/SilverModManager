@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Verbs;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
@@ -23,7 +24,9 @@ public static class DiagnosticVerbs
         .AddModule("loadout diagnostic", "Commands for the fixes the Health Check offers for a loadout")
         .AddVerb(() => ListDiagnostics)
         .AddVerb(() => FixDiagnostic)
-        .AddVerb(() => ClearDiagnostics);
+        .AddVerb(() => ClearDiagnostics)
+        .AddVerb(() => ListIgnored)
+        .AddVerb(() => Unignore);
 
     // Handled is false when this process has no handler for the action: a terminal run with the window closed is
     // answered by a headless process, and the handlers live with the window.
@@ -140,6 +143,56 @@ public static class DiagnosticVerbs
 
         await diagnosticManager.RefreshAsync(loadout.LoadoutId);
         return failed ? 1 : 0;
+    }
+
+    // Oldest first, the order the Health Check page lists them in; unignore takes the index printed here.
+    private static DiagnosticDismissal.ReadOnly[] IgnoredOf(IConnection connection, Loadout.ReadOnly loadout)
+        => DiagnosticDismissal.FindByLoadout(connection.Db, loadout.LoadoutId)
+            .OrderBy(row => row.GetCreatedAt()).ThenBy(row => row.Id.Value)
+            .ToArray();
+
+    [Verb("loadout diagnostic ignored", "Lists the Health Check findings this loadout ignores: index, diagnostic id, file, when")]
+    private static async Task<int> ListIgnored([Injected] IRenderer renderer,
+        [Injected] IConnection connection,
+        [Option("l", "loadout", "Loadout to list for")] Loadout.ReadOnly loadout)
+    {
+        var rows = IgnoredOf(connection, loadout);
+        if (rows.Length == 0)
+        {
+            await renderer.TextLine("Nothing is ignored.");
+            return 0;
+        }
+
+        for (var index = 0; index < rows.Length; index++)
+        {
+            var row = rows[index];
+            var id = new DiagnosticId(row.Source, row.Number);
+            await renderer.TextLine($"[{index}] {id}: {row.Title}, {row.Subject}, {row.GetCreatedAt().ToLocalTime():yyyy-MM-dd HH:mm}");
+        }
+        return 0;
+    }
+
+    [Verb("loadout diagnostic unignore", "Stops ignoring one finding, by the index 'loadout diagnostic ignored' prints")]
+    private static async Task<int> Unignore([Injected] IRenderer renderer,
+        [Injected] IConnection connection,
+        [Injected] IDiagnosticManager diagnosticManager,
+        [Option("l", "loadout", "Loadout to change")] Loadout.ReadOnly loadout,
+        [Option("i", "index", "The index 'loadout diagnostic ignored' prints")] int index)
+    {
+        var rows = IgnoredOf(connection, loadout);
+        if (index < 0 || index >= rows.Length)
+            throw new LoadoutVerbRefusedException($"There is no ignored finding with index {index}: the loadout ignores {rows.Length}. 'loadout diagnostic ignored' lists them with their indexes.");
+
+        var row = rows[index];
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Delete(row, recursive: false);
+            await tx.Commit();
+        }
+
+        await diagnosticManager.RefreshAsync(loadout.LoadoutId);
+        await renderer.TextLine($"{MarkdownText.Code(row.Subject)} is reported again.");
+        return 0;
     }
 
     private static FixRow FixRowFor(IDiagnosticActionHandler[] handlers, DiagnosticAction action)

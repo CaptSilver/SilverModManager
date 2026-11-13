@@ -36,6 +36,12 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
         scroller.Offset = keepOffset ? offset : default;
     }
 
+    private void ShowAgain_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (ViewModel is { } viewModel && (sender as Control)?.DataContext is IgnoredFinding finding)
+            viewModel.ShowAgainCommand.Execute(finding.Row).SubscribeWithErrorLogging();
+    }
+
     public DiagnosticListView()
     {
         InitializeComponent();
@@ -82,6 +88,17 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                     .DisposeWith(disposable);
 
                 this.OneWayBind(ViewModel, vm => vm.ClearMessage, view => view.ClearText.Text)
+                    .DisposeWith(disposable);
+
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(viewModel => viewModel.WhenAnyValue(vm => vm.IgnoredFindings))
+                    .Switch()
+                    .Subscribe(findings =>
+                    {
+                        IgnoredList.ItemsSource = findings;
+                        IgnoredPanel.IsVisible = findings.Count > 0;
+                    })
                     .DisposeWith(disposable);
 
                 // Every refresh replaces the entries. The same diagnostics (id, title and summary: an id only names the kind of diagnostic) keep the scroll offset; another set (a tab switch, a fix) starts at the top.

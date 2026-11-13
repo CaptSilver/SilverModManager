@@ -4,6 +4,10 @@ using System.Reactive.Linq;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using DynamicData;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls.Diagnostics;
 using SilverModManager.Platform.Proton.Support;
@@ -45,6 +49,9 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
     [Reactive] public partial string ClearMessage { get; private set; } = "";
     public ReactiveCommand<Unit, Unit> ClearCommand { get; }
 
+    [Reactive] public partial IReadOnlyList<IgnoredFinding> IgnoredFindings { get; private set; } = [];
+    public ReactiveCommand<EntityId, Unit> ShowAgainCommand { get; }
+
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
     private readonly ObservableAsPropertyHelper<bool> _isRefreshing;
@@ -64,6 +71,7 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
     public DiagnosticListViewModel(
         IServiceProvider serviceProvider,
         IWindowManager windowManager,
+        IConnection connection,
         IDiagnosticManager diagnosticManager,
         IDiagnosticWriter diagnosticWriter,
         ISettingsManager settingsManager,
@@ -83,6 +91,14 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
             RefreshCommand.Execute().SubscribeWithErrorLogging();
         });
 
+        ShowAgainCommand = ReactiveCommand.CreateFromTask<EntityId>(async row =>
+        {
+            using var tx = connection.BeginTransaction();
+            tx.Delete(DiagnosticDismissal.Load(connection.Db, row), recursive: false);
+            await tx.Commit();
+            await diagnosticManager.RefreshAsync(LoadoutId);
+        });
+
         TabIcon = IconValues.Cardiology;
         TabTitle = Language.DiagnosticListViewModel_DiagnosticListViewModel_Diagnostics;
 
@@ -95,6 +111,22 @@ internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListV
 
             var serialDisposable = new SerialDisposable();
             serialDisposable.DisposeWith(disposable);
+
+            // The ignored list follows the rows themselves: ignoring the last finding leaves the diagnostics empty, so
+            // they cannot be what announces the change.
+            this.WhenAnyValue(vm => vm.LoadoutId)
+                .Select(loadoutId => connection.ObserveDatoms(DiagnosticDismissal.Loadout, loadoutId)
+                    .AsEntityIds()
+                    .Transform(datom => DiagnosticDismissal.Load(connection.Db, datom.E))
+                    .QueryWhenChanged(rows => (IReadOnlyList<IgnoredFinding>)rows.Items
+                        .Where(row => row.IsValid())
+                        .Select(row => new IgnoredFinding(row.Title, row.Subject, row.GetCreatedAt(), row.Id))
+                        .OrderBy(finding => finding.When).ThenBy(finding => finding.Row.Value)
+                        .ToArray()))
+                .Switch()
+                .OnUI()
+                .BindToVM(this, vm => vm.IgnoredFindings)
+                .DisposeWith(disposable);
 
             // get diagnostics from the manager
             this.WhenAnyValue(vm => vm.LoadoutId)

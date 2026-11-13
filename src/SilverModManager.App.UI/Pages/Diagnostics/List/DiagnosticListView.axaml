@@ -76,6 +76,31 @@
                            TextWrapping="Wrap" />
             </StackPanel>
 
+            <!-- Outside the empty state: ignoring the last finding empties the page, and the way back is down here. -->
+            <StackPanel x:Name="IgnoredPanel" DockPanel.Dock="Bottom" Margin="0,16,0,0" Spacing="4" IsVisible="False">
+                <TextBlock Text="Ignored findings"
+                           Theme="{StaticResource BodyMDNormalTheme}"
+                           Foreground="{StaticResource NeutralSubduedBrush}" />
+                <ItemsControl x:Name="IgnoredList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:IgnoredFinding">
+                            <DockPanel Margin="0,0,0,4">
+                                <Button DockPanel.Dock="Right" Content="Show again" Click="ShowAgain_OnClick" />
+                                <TextBlock Text="{CompiledBinding Title}"
+                                           Margin="0,0,12,0"
+                                           VerticalAlignment="Center"
+                                           Theme="{StaticResource BodyMDNormalTheme}" />
+                                <TextBlock Text="{CompiledBinding Subject}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Theme="{StaticResource BodyMDNormalTheme}"
+                                           Foreground="{StaticResource NeutralSubduedBrush}" />
+                            </DockPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
             <controls:EmptyState x:Name="EmptyState"
                                  Margin="0"
                                  Padding="0"

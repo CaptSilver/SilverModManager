@@ -7,6 +7,7 @@ using FluentAssertions;
 using ReactiveUI;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.Controls.Diagnostics;
 using SilverModManager.App.UI.Pages.Diagnostics;
@@ -45,6 +46,8 @@ public class DiagnosticListVirtualizationTests(IServiceProvider provider) : AUiT
         public string SupportBundleMessage { get => _supportBundleMessage; set => this.RaiseAndSetIfChanged(ref _supportBundleMessage, value); }
         public bool CanClear => true;
         public string ClearLabel => "Clear crash reports";
+        public IReadOnlyList<IgnoredFinding> IgnoredFindings => [];
+        public ReactiveCommand<EntityId, Unit> ShowAgainCommand { get; } = ReactiveCommand.Create<EntityId>(_ => { });
         public ReactiveCommand<Unit, Unit> ClearCommand { get; } = ReactiveCommand.Create(() => { });
         private string _clearMessage = "";
         public string ClearMessage { get => _clearMessage; set => this.RaiseAndSetIfChanged(ref _clearMessage, value); }
