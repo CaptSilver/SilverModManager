@@ -45,16 +45,16 @@ internal sealed class ThunderstoreInstaller(
         return detail?.CommunityListings?.Select(listing => listing.Community).ToArray() ?? [];
     }
 
-    public async ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, CancellationToken cancellationToken)
+    public async ValueTask<IReadOnlyList<InstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, CancellationToken cancellationToken)
     {
         var game = GameOfLoadout(loadoutId);
         return await Install(root, loadoutId, game, await PolicyFor(root, game, cancellationToken), cancellationToken);
     }
 
-    public async ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, DependencyPolicy policy, CancellationToken cancellationToken)
+    public async ValueTask<IReadOnlyList<InstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, DependencyPolicy policy, CancellationToken cancellationToken)
         => await Install(root, loadoutId, GameOfLoadout(loadoutId), policy, cancellationToken);
 
-    private async ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> Install(ThunderstoreVersionRef root, LoadoutId loadoutId, IThunderstoreGame game, DependencyPolicy policy, CancellationToken cancellationToken)
+    private async ValueTask<IReadOnlyList<InstallOutcome>> Install(ThunderstoreVersionRef root, LoadoutId loadoutId, IThunderstoreGame game, DependencyPolicy policy, CancellationToken cancellationToken)
     {
         var inLibraryBefore = ThunderstoreLibraryFile.All(connection.Db).Select(file => file.Id).ToHashSet();
         var request = new ThunderstoreInstallRequest(
@@ -63,21 +63,22 @@ internal sealed class ThunderstoreInstaller(
             WithDependencies: true,
             policy,
             ExpectedSha256: null,
-            ThunderstoreLoadoutPackages.Installed(connection.Db, loadoutId));
+            LoadoutPackages.Installed(connection.Db, loadoutId));
 
         // The downloads are jobs, so the spine's download indicator shows their progress.
         var files = await provider.GetRequiredService<IThunderstoreSource>().AddAsync(request, cancellationToken);
 
-        var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
-        var outcomes = new List<ThunderstoreInstallOutcome>(files.Count);
-        foreach (var file in files)
+        // The source has fetched everything by now. A copy that was not in the library before this call is reported as
+        // downloaded; its Download only hands the item back.
+        var resolved = files.Select(file =>
         {
             var item = file.AsLibraryItem();
-            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(connection, Ownership, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
-            outcomes.Add(new ThunderstoreInstallOutcome(VersionOf(file), item, inLibraryBefore.Contains(file.Id) is false, outcome));
-        }
+            var downloaded = inLibraryBefore.Contains(file.Id) is false;
+            var version = VersionOf(file);
+            return new ResolvedInstall(version.ToString(), version != root, downloaded ? null : item, _ => Task.FromResult(item));
+        }).ToArray();
 
-        return outcomes;
+        return await provider.GetRequiredService<ILoadoutInstallCore>().Run(loadoutId, root.ToString(), resolved, cancellationToken);
     }
 
     public async ValueTask<ModUpdateOutcome> UpdateAsync(ThunderstoreVersionRef newest, LibraryItem.ReadOnly current, CancellationToken cancellationToken)
@@ -97,7 +98,7 @@ internal sealed class ThunderstoreInstaller(
             // The root is asked for even when the loadout holds this version already: it is what the old one is
             // replaced with, and a loadout that holds a newer version would otherwise leave it out of the answer.
             var installed = loadoutId is { } id
-                ? ThunderstoreLoadoutPackages.Installed(connection.Db, id)
+                ? LoadoutPackages.Installed(connection.Db, id)
                 : new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>();
             installed.Remove(newest.Package);
             var request = new ThunderstoreInstallRequest(newest, game, WithDependencies: true, policy, ExpectedSha256: null, installed);
@@ -158,7 +159,7 @@ internal sealed class ThunderstoreInstaller(
     private async Task LinkDependency(LibraryItem.ReadOnly item, LoadoutId loadoutId)
     {
         var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
-        await ThunderstoreLoadoutPackages.InstallOrEnable(connection, Ownership, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
+        await LoadoutPackages.InstallOrEnable(connection, Ownership, item, loadoutId, async () => await loadoutManager.InstallItem(item, loadoutId));
     }
 
     private ICollectionOwnership Ownership => provider.GetRequiredService<ICollectionOwnership>();

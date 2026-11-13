@@ -2,8 +2,11 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.DataModel.Undo;
 using SilverModManager.Sdk.Thunderstore;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
@@ -51,9 +54,24 @@ public class ThunderstoreInstallerTests(ITestOutputHelper helper) : AIsolatedGam
 
         var outcomes = await Installer.InstallAsync(RepoLib, loadout.LoadoutId, CancellationToken.None);
 
-        outcomes.Select(o => o.Version.ToString()).Should().Equal("BepInEx-BepInExPack-5.4.2305", "Zehs-REPOLib-4.2.0");
+        outcomes.Select(o => o.Name).Should().Equal("BepInEx-BepInExPack-5.4.2305", "Zehs-REPOLib-4.2.0");
         outcomes.Should().OnlyContain(o => o.Downloaded && o.Outcome == LoadoutPackageOutcome.Installed);
         outcomes[^1].Item.Name.Should().Be("Zehs-REPOLib-4.2.0.zip");
+    }
+
+    [Fact]
+    public async Task Install_WritesARestorePointAfterDownloads()
+    {
+        var loadout = await CreateLoadout();
+        var undo = ServiceProvider.GetRequiredService<UndoService>();
+        var before = undo.RevisionsFor(loadout.Id);
+
+        await Installer.InstallAsync(RepoLib, loadout.LoadoutId, CancellationToken.None);
+
+        var after = undo.RevisionsFor(loadout.Id);
+        after.Count.Should().Be(before.Count + 1);
+        after[^1].ModCount.Should().Be(0, "the restore point is written before the first package is linked");
+        LibraryLinkedLoadoutItem.All(Connection.Db).Count(link => link.AsLoadoutItem().LoadoutId == loadout.LoadoutId).Should().Be(2);
     }
 
     [Fact]

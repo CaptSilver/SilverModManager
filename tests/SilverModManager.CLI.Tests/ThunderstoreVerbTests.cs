@@ -21,6 +21,7 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.DataModel.Undo;
 using SilverModManager.SingleProcess;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
@@ -91,6 +92,40 @@ public class ThunderstoreVerbTests(ITestOutputHelper helper) : AIsolatedGameTest
             && $"{thunderstore.Namespace}-{thunderstore.Name}" == package).AsLoadoutItem().IsEnabled();
 
     [Fact]
+    public async Task Install_Json()
+    {
+        var loadout = await CreateLoadout();
+
+        var (code, output) = await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib", "--json");
+
+        code.Should().Be(0, output);
+        var rows = System.Text.Json.Nodes.JsonNode.Parse(output)!.AsArray();
+        rows.Select(r => (string?)r!["name"]).Should().Equal("BepInEx-BepInExPack-5.4.2305", "Zehs-REPOLib-4.2.0");
+        rows.Should().OnlyContain(r => (string?)r!["outcome"] == "installed" && (bool)r["downloaded"]!);
+        ((bool)rows[0]!["dependency"]!).Should().BeTrue();
+        ((bool)rows[1]!["dependency"]!).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Install_ThenRevert_RemovesBothPackages()
+    {
+        var loadout = await CreateLoadout();
+        var undo = ServiceProvider.GetRequiredService<UndoService>();
+        var revisionsBefore = undo.RevisionsFor(loadout.Id).Count;
+
+        var (code, output) = await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+        code.Should().Be(0, output);
+        LinkedItems(loadout).Should().HaveCount(2);
+        var restorePoint = undo.RevisionsFor(loadout.Id).Count - 1;
+        restorePoint.Should().Be(revisionsBefore, "the install writes one restore point");
+
+        var (exit, revertOutput) = await Run("loadout", "revert", "-l", loadout.LoadoutId.ToString(), "-r", restorePoint.ToString());
+
+        exit.Should().Be(0, revertOutput);
+        LinkedItems(loadout).Should().BeEmpty("the restore point was taken before either package was linked");
+    }
+
+    [Fact]
     public async Task InstallEnablesADisabledDependencyInsteadOfSkippingIt()
     {
         var loadout = await CreateLoadout();
@@ -128,8 +163,8 @@ public class ThunderstoreVerbTests(ITestOutputHelper helper) : AIsolatedGameTest
         await SetDisabled(loadout, "Zehs-REPOLib", true);
         var item = LinkedItems(loadout).Single(link => !link.AsLoadoutItem().IsEnabled()).LibraryItem;
 
-        var first = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
-        var second = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+        var first = await LoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+        var second = await LoadoutPackages.InstallOrEnable(Connection, new CollectionOwnership([]), item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
 
         first.Should().Be(LoadoutPackageOutcome.Enabled);
         second.Should().Be(LoadoutPackageOutcome.AlreadyEnabled);

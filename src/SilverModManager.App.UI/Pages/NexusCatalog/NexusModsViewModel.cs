@@ -268,7 +268,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
             }
 
             var item = FindInLibrary(game, row.Hit.ModId, fileId) ?? await DownloadAsync(game, row, fileId, cancellationToken);
-            var outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, _ownership, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
+            var outcome = await LoadoutPackages.InstallOrEnable(_connection, _ownership, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
             if (outcome == LoadoutPackageOutcome.AlreadyEnabled) ErrorText = $"{row.Name} is already in this loadout.";
         }
         catch (Exception e) when (e is not OperationCanceledException)

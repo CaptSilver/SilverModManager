@@ -201,7 +201,7 @@ public class ThunderstoreInstallerUpdateTests(ITestOutputHelper helper) : AIsola
 
         var act = async () => await Installer.UpdateAsync(Newest, old, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ThunderstorePackageInDisabledGroupException>();
+        await act.Should().ThrowAsync<LibraryItemInDisabledGroupException>();
         Linked(loadout).Should().Contain("Zehs-REPOLib-4.1.0.zip").And.NotContain("Zehs-REPOLib-4.2.0.zip");
     }
 

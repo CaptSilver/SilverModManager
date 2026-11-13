@@ -284,7 +284,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         var a = new FakeModSource("a");
         var harness = await CreateHarness(a);
         var update = new FakeModUpdate(1, Source: "a");
-        var refusal = new ThunderstorePackageInDisabledGroupException("BepInExPack", "Off");
+        var refusal = new LibraryItemInDisabledGroupException("BepInExPack", "Off");
         a.Outcome = _ => ModUpdateOutcome.Nothing with { DownloadFailures = [new ModUpdateFailure(update, "mod-3.0.zip", refusal)] };
 
         Send(harness, update, replace: true);
@@ -301,7 +301,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         var harness = await CreateHarness(a);
         var refused = new FakeModUpdate(1, Source: "a");
         var offline = new FakeModUpdate(2, Source: "a");
-        var refusal = new ThunderstorePackageInDisabledGroupException("BepInExPack", "Off");
+        var refusal = new LibraryItemInDisabledGroupException("BepInExPack", "Off");
         a.Outcome = request => request.Updates.Contains(refused)
             ? ModUpdateOutcome.Nothing with
             {

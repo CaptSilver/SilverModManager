@@ -99,14 +99,14 @@ public class Ror2mmIpcProtocolHandlerTests
 
     private void InstallSucceeds()
         => _installer.InstallAsync(Arg.Any<ThunderstoreVersionRef>(), Arg.Any<LoadoutId>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>>([
-                new ThunderstoreInstallOutcome(RepoLib, default, true, LoadoutPackageOutcome.Installed),
+            .Returns(new ValueTask<IReadOnlyList<InstallOutcome>>([
+                new InstallOutcome(RepoLib.ToString(), default, true, LoadoutPackageOutcome.Installed, false),
             ]));
 
     private Task InstallThrows(Exception e)
     {
         _installer.InstallAsync(Arg.Any<ThunderstoreVersionRef>(), Arg.Any<LoadoutId>(), Arg.Any<CancellationToken>())
-            .Returns<ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>>>(_ => throw e);
+            .Returns<ValueTask<IReadOnlyList<InstallOutcome>>>(_ => throw e);
         return Task.CompletedTask;
     }
 
@@ -249,7 +249,7 @@ public class Ror2mmIpcProtocolHandlerTests
     public async Task ADisabledGroupRefusalIsReportedWithItsMessage()
     {
         PackageIsListedUnder("repo");
-        var refusal = new ThunderstorePackageInDisabledGroupException("BepInEx-BepInExPack", "Packs");
+        var refusal = new LibraryItemInDisabledGroupException("BepInEx-BepInExPack", "Packs");
         await InstallThrows(refusal);
 
         await HandlerFor([Install("REPO", "repo")]).Handle(Link, CancellationToken.None);

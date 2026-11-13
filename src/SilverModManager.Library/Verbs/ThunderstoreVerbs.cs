@@ -106,7 +106,8 @@ internal static class ThunderstoreVerbs
         [Injected] CancellationToken token,
         [Option("l", "loadout", "The loadout to install into; its game says which Thunderstore community the package is in")] Loadout.ReadOnly loadout,
         [Option("p", "package", "Namespace-Name for the latest version, or Namespace-Name-1.2.3 for one version")] string package,
-        [Option("e", "exact", "Take the dependency versions the package lists instead of the latest ones", true)] bool exact)
+        [Option("e", "exact", "Take the dependency versions the package lists instead of the latest ones", true)] bool exact,
+        [Option("j", "json", "Print the outcomes as JSON", true)] bool json)
     {
         if (!installer.TryGetGame(loadout.LoadoutId, out var game, out var problem))
         {
@@ -121,42 +122,19 @@ internal static class ThunderstoreVerbs
             return 1;
         }
 
-        IReadOnlyList<ThunderstoreInstallOutcome> outcomes;
+        IReadOnlyList<InstallOutcome> outcomes;
         try
         {
             outcomes = await installer.InstallAsync(root, loadout.LoadoutId, exact ? DependencyPolicy.Exact : DependencyPolicy.Latest, token);
         }
-        catch (Exception e) when (e is DependencyResolutionException or ThunderstoreIntegrityException or ThunderstorePackageInDisabledGroupException)
+        catch (Exception e) when (e is DependencyResolutionException or ThunderstoreIntegrityException or LibraryItemInDisabledGroupException)
         {
             await renderer.TextLine(e.Message);
             return 1;
         }
 
-        var changed = 0;
-        foreach (var outcome in outcomes)
-        {
-            var name = outcome.Version.ToString();
-            if (outcome.Downloaded) await renderer.TextLine($"[downloaded] {name}");
-
-            switch (outcome.Outcome)
-            {
-                case LoadoutPackageOutcome.AlreadyEnabled:
-                    await renderer.TextLine($"[already in loadout] {name}");
-                    break;
-                case LoadoutPackageOutcome.Enabled:
-                    await renderer.TextLine($"[enabled] {name}");
-                    changed++;
-                    break;
-                case LoadoutPackageOutcome.Installed:
-                    await renderer.TextLine($"[installed] {name}");
-                    changed++;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(outcome.Outcome), outcome.Outcome, null);
-            }
-        }
-
-        if (changed == 0) await renderer.TextLine("Nothing new to install.");
+        if (json) await renderer.TextLine(InstallOutcomeRenderer.Json(outcomes));
+        else await InstallOutcomeRenderer.Print(renderer, outcomes);
         return 0;
     }
 

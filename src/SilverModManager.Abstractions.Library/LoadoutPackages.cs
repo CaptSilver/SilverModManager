@@ -11,9 +11,9 @@ using SilverModManager.Sdk.Thunderstore;
 namespace SilverModManager.Abstractions.Library;
 
 /// <summary>
-/// What a loadout already holds of Thunderstore, as the install request and the install loops need it.
+/// What a loadout already holds, as the install request and the install loops need it.
 /// </summary>
-public static class ThunderstoreLoadoutPackages
+public static class LoadoutPackages
 {
     /// <summary>
     /// The Thunderstore packages in the loadout, with the highest version of each. Only enabled groups count: a
@@ -46,7 +46,7 @@ public static class ThunderstoreLoadoutPackages
     /// user gets their own copy and the list's folder stays as the list left it.
     /// </param>
     /// <param name="install">Runs the install when the item has no group in the loadout.</param>
-    /// <exception cref="ThunderstorePackageInDisabledGroupException">
+    /// <exception cref="LibraryItemInDisabledGroupException">
     /// Every group of the item sits in a disabled parent, such as a disabled collection.
     /// </exception>
     public static async Task<LoadoutPackageOutcome> InstallOrEnable(IConnection connection, ICollectionOwnership ownership, LibraryItem.ReadOnly item, LoadoutId loadoutId, Func<Task> install)
@@ -67,7 +67,7 @@ public static class ThunderstoreLoadoutPackages
         // every other mod the user turned off there, so that is left to the user.
         var enableable = links.Where(link => ParentIsEnabled(connection.Db, link)).ToArray();
         if (enableable.Length == 0)
-            throw new ThunderstorePackageInDisabledGroupException(item.Name, FirstDisabledParent(connection.Db, links[0]).Name);
+            throw new LibraryItemInDisabledGroupException(item.Name, FirstDisabledParent(connection.Db, links[0]).Name);
 
         using var tx = connection.BeginTransaction();
         tx.Retract(enableable[0].Id, LoadoutItem.Disabled, Null.Instance);
@@ -92,10 +92,10 @@ public static class ThunderstoreLoadoutPackages
 }
 
 /// <summary>
-/// A Thunderstore package the install needs is in the loadout, but inside a disabled group the install will not
+/// A library item the install needs is in the loadout, but inside a disabled group the install will not
 /// enable on its own.
 /// </summary>
-public sealed class ThunderstorePackageInDisabledGroupException(string package, string group)
+public sealed class LibraryItemInDisabledGroupException(string package, string group)
     : UserFacingException($"{MarkdownText.Code(package)} is in the loadout, but {MarkdownText.Code(group)}, the group holding it, is disabled. Enable {MarkdownText.Code(group)} and install again.")
 {
     /// <inheritdoc />
@@ -103,7 +103,7 @@ public sealed class ThunderstorePackageInDisabledGroupException(string package, 
 }
 
 /// <summary>
-/// What <see cref="ThunderstoreLoadoutPackages.InstallOrEnable"/> did for one library item.
+/// What <see cref="LoadoutPackages.InstallOrEnable"/> did for one library item.
 /// </summary>
 public enum LoadoutPackageOutcome
 {

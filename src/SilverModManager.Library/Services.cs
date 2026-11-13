@@ -39,6 +39,7 @@ public static class Services
             .AddTransient<LibraryListing>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
+            .AddSingleton<ILoadoutInstallCore, LoadoutInstallCore>()
             .AddSingleton<IThunderstoreInstaller, ThunderstoreInstaller>()
             .AddSingleton<INexusUpdateDownloader, NexusUpdateDownloader>()
             .AddSingleton<IModSource, NexusModSource>()

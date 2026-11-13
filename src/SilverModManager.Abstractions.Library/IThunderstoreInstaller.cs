@@ -26,17 +26,18 @@ public interface IThunderstoreInstaller
 
     /// <summary>
     /// Downloads <paramref name="root"/> with the packages it needs and installs or enables each one in the loadout.
+    /// Each outcome is named by the package version it installed.
     /// A modpack takes the dependency versions it lists (<see cref="DependencyPolicy.Exact"/>), anything else the latest.
     /// </summary>
     /// <exception cref="InvalidOperationException">The loadout's game has no Thunderstore support; the message names the game.</exception>
-    /// <exception cref="ThunderstorePackageInDisabledGroupException">A package is only linked inside a disabled group.</exception>
-    ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, CancellationToken cancellationToken);
+    /// <exception cref="LibraryItemInDisabledGroupException">A package is only linked inside a disabled group.</exception>
+    ValueTask<IReadOnlyList<InstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, CancellationToken cancellationToken);
 
     /// <summary>
     /// As <see cref="InstallAsync(ThunderstoreVersionRef, LoadoutId, CancellationToken)"/> with the dependency policy
     /// chosen by the caller instead of the modpack rule.
     /// </summary>
-    ValueTask<IReadOnlyList<ThunderstoreInstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, DependencyPolicy policy, CancellationToken cancellationToken);
+    ValueTask<IReadOnlyList<InstallOutcome>> InstallAsync(ThunderstoreVersionRef root, LoadoutId loadoutId, DependencyPolicy policy, CancellationToken cancellationToken);
 
     /// <summary>
     /// Moves every loadout that links <paramref name="current"/> to <paramref name="newest"/>. Downloads
@@ -48,14 +49,8 @@ public interface IThunderstoreInstaller
     /// the library.
     /// </summary>
     /// <exception cref="InvalidOperationException">No game serves the community of <paramref name="current"/>.</exception>
-    /// <exception cref="ThunderstorePackageInDisabledGroupException">
+    /// <exception cref="LibraryItemInDisabledGroupException">
     /// A dependency is only linked inside a disabled group. Nothing has been replaced by then.
     /// </exception>
     ValueTask<ModUpdateOutcome> UpdateAsync(ThunderstoreVersionRef newest, LibraryItem.ReadOnly current, CancellationToken cancellationToken);
 }
-
-/// <summary>
-/// What an install did with one package: the library item it is, whether this call downloaded it, and what happened
-/// to it in the loadout.
-/// </summary>
-public readonly record struct ThunderstoreInstallOutcome(ThunderstoreVersionRef Version, LibraryItem.ReadOnly Item, bool Downloaded, LoadoutPackageOutcome Outcome);

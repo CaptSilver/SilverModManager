@@ -78,7 +78,7 @@ public class Ror2mmIpcProtocolHandler(
         {
             // The pinned version from the link: that is the one the user clicked.
             var outcomes = await installer.InstallAsync(parsed.Version, loadout.Id, token);
-            var root = outcomes.First(outcome => outcome.Version == parsed.Version);
+            var root = outcomes.First(outcome => outcome.Name == parsed.Version.ToString());
             eventBus.Send(new CliMessages.ModDownloadSucceeded(root.Item));
             eventBus.Send(new CliMessages.ModInstalled(root.Item, loadout.Name));
         }
