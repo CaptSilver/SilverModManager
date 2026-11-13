@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.References;
@@ -6,6 +7,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Conditions;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -84,6 +86,8 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         }
         var unreadableNames = unreadable.ToHashSet(PluginNameComparer.Instance);
 
+        var externalMasters = new Dictionary<string, bool>(PluginNameComparer.Instance);
+
         // For each on-disk plugin, check if it has all the required masters
         foreach (var header in pluginHeaders)
         {
@@ -108,9 +112,15 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                         ReferenceTo(disabled.Id)
                     ), group);
                 }
-                // Otherwise, emit a diagnostic that the master is missing
+                // Otherwise it is missing, unless the game loads it from a plugin directory the loadout does not
+                // deploy into (OpenMW reads the game's masters from its data= folders).
                 else
                 {
+                    if (!externalMasters.TryGetValue(master, out var external))
+                        externalMasters[master] = external = await IsInExternalPluginDirectory(installation, master);
+                    if (external)
+                        continue;
+
                     var group = GroupOf(header.Value.Node);
                     yield return Linked(Diagnostics.CreateMissingMaster(
                         ReferenceTo(group ?? default),
@@ -121,5 +131,30 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
             }
         }
 
+    }
+
+    /// <summary>
+    /// Searches the game's plugin directories from the last, and reads the header of the first file found. The folder
+    /// the loadout deploys into is skipped: what will be there is the tree's loadout side, and a file on disk there
+    /// with no loadout row is either a removed mod's file the next apply deletes or one the sync has not ingested yet.
+    /// </summary>
+    private async ValueTask<bool> IsInExternalPluginDirectory(GameInstallation installation, string master)
+    {
+        // A master name comes from a plugin's header, so it is joined to a folder only when it is a bare file name.
+        if (!ConditionPaths.IsPlainFileName(master)) return false;
+
+        var name = RelativePath.FromUnsanitizedInput(master);
+        var deployRoot = installation.Locations.ToAbsolutePath(_game.DataPath);
+        var directories = _game.PluginDirectories(installation);
+        for (var i = directories.Count - 1; i >= 0; i--)
+        {
+            if (directories[i] == deployRoot) continue;
+
+            var file = directories[i] / name;
+            if (file.FileExists)
+                return await _game.ParsePluginFile(file, name) is not null;
+        }
+
+        return false;
     }
 }

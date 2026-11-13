@@ -94,10 +94,17 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         .Select(path => path.FileName.ToString());
 
     // Read from disk: the game's files are not loadout items, and an uninstalled DLC must not be offered.
-    public IReadOnlyList<string> InstalledEarlyLoadingPlugins(GameInstallation installation) => EarlyLoadingPlugins(installation)
-        .Where(name => PluginExtensions.Contains((DataPath / name).Extension)
-                       && installation.Locations.ToAbsolutePath(DataPath / name).FileExists)
-        .ToList();
+    public IReadOnlyList<string> InstalledEarlyLoadingPlugins(GameInstallation installation)
+    {
+        var directories = PluginDirectories(installation);
+        return EarlyLoadingPlugins(installation)
+            .Where(name => PluginExtensions.Contains((DataPath / name).Extension)
+                           && directories.Any(directory => (directory / name).FileExists))
+            .ToList();
+    }
+
+    public virtual IReadOnlyList<AbsolutePath> PluginDirectories(GameInstallation installation) =>
+        [installation.Locations.ToAbsolutePath(DataPath)];
 
     public abstract PluginFormat HeaderFormat { get; }
 

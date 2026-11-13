@@ -66,9 +66,11 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     /// <summary>A loadout plugin whose bytes the file store has.</summary>
     private async Task<(GamePath Path, SyncNode Node)> StoredPlugin(string fileName, params string[] masters)
+        => await StoredPlugin(fileName, await PluginBytes(fileName, masters));
+
+    private async Task<(GamePath Path, SyncNode Node)> StoredPlugin(string fileName, byte[] bytes)
     {
         await EnsureLoadout();
-        var bytes = await PluginBytes(fileName, masters);
         var hash = bytes.xxHash3();
         var size = Size.FromLong(bytes.Length);
         await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(fileName, new MemoryStream(bytes)), FileIdentity.XxHash3(hash), size)]);
@@ -102,11 +104,11 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
     private static FrozenDictionary<GamePath, SyncNode> Tree(params (GamePath Path, SyncNode Node)[] nodes)
         => nodes.ToDictionary(n => n.Path, n => n.Node).ToFrozenDictionary();
 
-    private async Task<List<Diagnostic>> Diagnose(FrozenDictionary<GamePath, SyncNode> tree)
+    private async Task<List<Diagnostic>> Diagnose(FrozenDictionary<GamePath, SyncNode> tree, ICreationEngineGame? game = null)
     {
         // Read again so a group added after the loadout was created is seen.
         var loadout = Refresh(await EnsureLoadout());
-        var emitter = new MissingMasterEmitter(Creation);
+        var emitter = new MissingMasterEmitter(game ?? Creation);
         var result = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, tree, CancellationToken.None))
             result.Add(diagnostic);
@@ -181,6 +183,76 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
         diagnostics.Should().NotContain(d => d.Id == UnreadablePluginsId);
         diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_FindsAMasterInAPluginDirectoryTheLoadoutDoesNotDeployInto()
+    {
+        var dependant = await StoredPlugin("Dependant.esp", "Elsewhere.esm");
+        var extra = await WriteToExtraDirectory("Elsewhere.esm", await PluginBytes("Elsewhere.esm"));
+
+        var diagnostics = await Diagnose(Tree(dependant), new ExtraDirectorySkyrim(ServiceProvider, extra));
+
+        diagnostics.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_StillCallsAMasterMissingWhenItsFileIsNotAPlugin()
+    {
+        var dependant = await StoredPlugin("Dependant.esp", "Elsewhere.esm");
+        var extra = await WriteToExtraDirectory("Elsewhere.esm", "not a plugin"u8.ToArray());
+
+        var diagnostics = await Diagnose(Tree(dependant), new ExtraDirectorySkyrim(ServiceProvider, extra));
+
+        diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_StillCallsAMasterMissingWhenItIsOnlyLeftOnDiskInData()
+    {
+        // A removed mod's master stays in Data until the next apply deletes it; the tree is what will be there.
+        var dependant = await StoredPlugin("Dependant.esp", "Removed.esm");
+        var file = GameInstallation.Locations.ToAbsolutePath(DataPath("Removed.esm"));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync(await PluginBytes("Removed.esm"));
+
+        var diagnostics = await Diagnose(Tree(dependant));
+
+        diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_NeverLooksOutsideAPluginDirectoryForAMasterNamedByAPath()
+    {
+        // The plugin writer refuses a master with a folder in it, so a same-length name is patched in afterwards.
+        var bytes = await PluginBytes("Dependant.esp", "aa_Escaped.esm");
+        var at = bytes.AsSpan().IndexOf("aa_Escaped.esm"u8);
+        "../Escaped.esm"u8.CopyTo(bytes.AsSpan(at));
+        var dependant = await StoredPlugin("Dependant.esp", bytes);
+        var outside = await WriteToExtraDirectory("Escaped.esm", await PluginBytes("Escaped.esm"));
+        var nested = outside / "Nested";
+        nested.CreateDirectory();
+
+        var diagnostics = await Diagnose(Tree(dependant), new ExtraDirectorySkyrim(ServiceProvider, nested));
+
+        diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
+    }
+
+    /// <summary>Writes a file into a plugin folder outside the game's Data folder, and returns that folder.</summary>
+    private async Task<AbsolutePath> WriteToExtraDirectory(string fileName, byte[] bytes)
+    {
+        await EnsureLoadout();
+        var directory = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "Elsewhere"));
+        directory.CreateDirectory();
+        await (directory / fileName).WriteAllBytesAsync(bytes);
+        return directory;
+    }
+
+    /// <summary>A Skyrim that also loads plugins from a folder the loadout does not deploy into.</summary>
+    private sealed class ExtraDirectorySkyrim(IServiceProvider provider, AbsolutePath extra) : CreationEngine.SkyrimSE.SkyrimSE(provider)
+    {
+        public override IReadOnlyList<AbsolutePath> PluginDirectories(GameInstallation installation) =>
+            [extra, .. base.PluginDirectories(installation)];
     }
 
     /// <summary>A plugin in the game folder that no store holds and the index has never seen, under an identity nothing resolves.</summary>

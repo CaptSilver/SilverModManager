@@ -10,6 +10,39 @@ public class ConditionPathsTests : IDisposable
     public void Dispose() => _data.Dispose();
 
     [Fact]
+    public void ResolveTriesTheLastDirectoryFirst()
+    {
+        var a = _data.Write("a/x.esp");
+        var b = _data.Write("b/x.esp");
+
+        ConditionPaths.Resolve([Path.GetDirectoryName(a)!, Path.GetDirectoryName(b)!], "x.esp", tryGhost: false).Should().Be(b);
+    }
+
+    [Fact]
+    public void ResolveFallsBackToAnEarlierDirectoryWhenTheLastLacksTheFile()
+    {
+        var a = _data.Write("a/x.esp");
+        var b = _data.CreateDirectory("b");
+
+        ConditionPaths.Resolve([Path.GetDirectoryName(a)!, b], "x.esp", tryGhost: false).Should().Be(a);
+    }
+
+    [Fact]
+    public void ResolveGivesTheLastDirectorysJoinWhenNoDirectoryHasTheFile()
+    {
+        var a = _data.CreateDirectory("a");
+        var b = _data.CreateDirectory("b");
+
+        ConditionPaths.Resolve([a, b], "x.esp", tryGhost: false).Should().Be(Path.Combine(b, "x.esp"));
+    }
+
+    [Fact]
+    public void ResolveRefusesWhatASingleDirectoryRefuses()
+    {
+        ConditionPaths.Resolve([_data.Path], "/etc/passwd", tryGhost: false).Should().BeNull();
+    }
+
+    [Fact]
     public void Resolve_ReturnsTheExactJoinWhenItExists()
     {
         var file = _data.Write("Skyrim.esm");

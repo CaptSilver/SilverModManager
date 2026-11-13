@@ -45,6 +45,26 @@ public static class ConditionPaths
         return ghosted;
     }
 
+    /// <summary>
+    /// <see cref="Resolve(string, string, bool)"/> over several data directories, lowest priority first: the last
+    /// directory that has the file wins, as the last plugin directory does in the game. When none has it the result is
+    /// the last directory's answer, so callers can test it as they would any other path. Null when the path is refused.
+    /// </summary>
+    public static string? Resolve(IReadOnlyList<string> dataDirectories, string relativePath, bool tryGhost)
+    {
+        if (dataDirectories.Count == 0) throw new ArgumentException("At least one data directory is needed", nameof(dataDirectories));
+
+        string? fallback = null;
+        for (var i = dataDirectories.Count - 1; i >= 0; i--)
+        {
+            if (Resolve(dataDirectories[i], relativePath, tryGhost) is not { } resolved) return null;
+            if (Exists(resolved)) return resolved;
+            fallback ??= resolved;
+        }
+
+        return fallback;
+    }
+
     /// <summary>The game's folder, the parent of <paramref name="dataDirectory"/>, which no condition path may leave.</summary>
     public static string GameRoot(string dataDirectory) =>
         Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory))) ?? Path.GetFullPath(dataDirectory);

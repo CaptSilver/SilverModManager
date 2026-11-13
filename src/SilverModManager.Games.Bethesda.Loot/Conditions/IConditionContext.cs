@@ -14,6 +14,12 @@ public interface IConditionContext
     /// <summary>The game's Data folder on disk. Every path in a condition is relative to it.</summary>
     string DataDirectory { get; }
 
+    /// <summary>
+    /// Every folder plugins are looked up in, lowest priority first, ending with <see cref="DataDirectory"/>. A game with
+    /// one Data folder needs nothing more than the default.
+    /// </summary>
+    IReadOnlyList<string> DataDirectories => [DataDirectory];
+
     /// <summary>The active plugins' file names. They are compared lower-cased, so either case works.</summary>
     IReadOnlySet<string> ActivePlugins { get; }
 

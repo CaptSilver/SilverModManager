@@ -85,7 +85,7 @@ internal sealed class LootSortService(
             game,
             installation,
             lootGame,
-            installation.Locations.ToAbsolutePath(game.DataPath).ToString(),
+            game.PluginDirectories(installation).Select(directory => directory.ToString()).ToList(),
             activeNames.Concat(game.InstalledEarlyLoadingPlugins(installation)),
             loadoutData);
 

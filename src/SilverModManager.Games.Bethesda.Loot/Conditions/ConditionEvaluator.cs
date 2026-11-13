@@ -97,7 +97,7 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     /// <summary>The file a condition path names, or null (after a log line, once per path) when the path leaves the game folder.</summary>
     private string? Resolve(string path)
     {
-        var resolved = ConditionPaths.Resolve(_context.DataDirectory, path, ConditionPaths.ShouldTryGhost(_context.Game, path));
+        var resolved = ConditionPaths.Resolve(_context.DataDirectories, path, ConditionPaths.ShouldTryGhost(_context.Game, path));
         if (resolved is null) Refuse(path, "is rooted or leaves the game folder");
         return resolved;
     }

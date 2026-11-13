@@ -27,14 +27,14 @@ internal sealed class LootConditionContext : IConditionContext
         ICreationEngineGame game,
         GameInstallation installation,
         LootGame lootGame,
-        string dataDirectory,
+        IReadOnlyList<string> dataDirectories,
         IEnumerable<string> activePlugins,
         IEnumerable<PluginLoadoutData> loadoutPlugins)
     {
         _game = game;
         _installation = installation;
         Game = lootGame;
-        DataDirectory = dataDirectory;
+        DataDirectories = dataDirectories;
         ActivePlugins = activePlugins.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         _facts = new Dictionary<string, PluginFacts>(StringComparer.OrdinalIgnoreCase);
@@ -44,7 +44,9 @@ internal sealed class LootConditionContext : IConditionContext
 
     public LootGame Game { get; }
 
-    public string DataDirectory { get; }
+    public IReadOnlyList<string> DataDirectories { get; }
+
+    public string DataDirectory => DataDirectories[^1];
 
     public IReadOnlySet<string> ActivePlugins { get; }
 
@@ -64,7 +66,7 @@ internal sealed class LootConditionContext : IConditionContext
         // A plugin is a bare file name in the Data folder; a path, or a pipe or device in its place, is not one.
         if (!ConditionPaths.IsPlainFileName(name)) return default;
 
-        var path = ConditionPaths.Resolve(DataDirectory, name, ConditionPaths.ShouldTryGhost(Game, name));
+        var path = ConditionPaths.Resolve(DataDirectories, name, ConditionPaths.ShouldTryGhost(Game, name));
         try
         {
             if (path is null) return default;
