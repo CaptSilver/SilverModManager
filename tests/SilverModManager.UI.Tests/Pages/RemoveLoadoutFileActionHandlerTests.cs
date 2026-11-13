@@ -4,6 +4,7 @@ using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
@@ -25,7 +26,8 @@ public class RemoveLoadoutFileActionHandlerTests(IServiceProvider provider) : AU
     private static readonly GamePath Dll = new(LocationId.Game, "Data/SKSE/Plugins/old.dll");
 
     private sealed record Rig(
-        RemoveLoadoutFileActionHandler Handler,
+        IDiagnosticActionHandler Handler,
+        IDiagnosticActionHandler ListHandler,
         IErrorPresenter Presenter,
         IWindowNotificationService Toasts,
         IDiagnosticManager Diagnostics);
@@ -43,8 +45,12 @@ public class RemoveLoadoutFileActionHandlerTests(IServiceProvider provider) : AU
             .AddSingleton(Provider.GetRequiredService<ILoadoutFileRemover>())
             .AddSingleton(presenter)
             .AddSingleton(toasts)
+            .AddSingleton(Substitute.For<ISynchronizerService>())
             .BuildServiceProvider();
-        return new Rig(new RemoveLoadoutFileActionHandler(services, windows, diagnostics), presenter, toasts, diagnostics);
+        return new Rig(
+            new RemoveLoadoutFileActionHandler(services, windows, diagnostics),
+            new RemoveLoadoutFilesActionHandler(services, windows, diagnostics),
+            presenter, toasts, diagnostics);
     }
 
     private int RowsAt(Loadout.ReadOnly loadout) =>
@@ -91,5 +97,21 @@ public class RemoveLoadoutFileActionHandlerTests(IServiceProvider provider) : AU
 
         await rig.Presenter.Received(1).Report(Arg.Is<Exception>(e => e is FileRemovalRefusedException), Arg.Any<string>());
         await rig.Diagnostics.DidNotReceiveWithAnyArgs().RefreshAsync(default);
+    }
+
+    [Fact]
+    public async Task AListWithADiskOnlyPathSkipsItAndSaysSo()
+    {
+        var diskOnly = new GamePath(LocationId.Game, "Data/SKSE/Plugins/disk-only.dll");
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Remove Stray List Disk Only");
+        var strays = await SeedGroup(loadout.LoadoutId, "Overrides", files: [Dll]);
+        var rig = Build(ButtonDefinitionId.Accept);
+
+        await rig.ListHandler.ExecuteAsync(loadout.LoadoutId, DiagnosticActions.RemoveLoadoutFiles([Dll, diskOnly], strays.Value).Arguments);
+
+        RowsAt(loadout).Should().Be(0, "the path with a row is removed");
+        rig.Toasts.Received().ShowToast(Arg.Is<string>(text => text.Contains("disk-only.dll")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        await rig.Presenter.DidNotReceiveWithAnyArgs().Report(default!, default!);
+        await rig.Diagnostics.Received(1).RefreshAsync(loadout.LoadoutId);
     }
 }

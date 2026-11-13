@@ -59,11 +59,11 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
         public StandardDialogResult Answer { get; set; } = new() { ButtonId = ButtonDefinitionId.Cancel };
     }
 
-    private static Diagnostic Stray(GamePath path, LoadoutItemGroupId group, bool withAction = true) => new()
+    private static Diagnostic Stray(GamePath path, LoadoutItemGroupId group, bool withAction = true, DiagnosticSeverity severity = DiagnosticSeverity.Warning) => new()
     {
         Id = new DiagnosticId("SilverModManager.UI.Tests", 9),
         Title = "Stray",
-        Severity = DiagnosticSeverity.Warning,
+        Severity = severity,
         Summary = DiagnosticMessage.From("Summary"),
         Details = DiagnosticMessage.From("Details"),
         DataReferences = [],
@@ -127,6 +127,33 @@ public class ApplyDiffStrayFilesTests(IServiceProvider provider) : AUiTest(provi
 
         await Eventually(() => h.Page.StrayFiles.Should().ContainSingle().Which.Should().Be(new StrayFileNotice(Dll, Group)));
         h.Page.StrayFiles[0].FileName.Should().Be("old.dll");
+    }
+
+    [Fact]
+    public async Task AGameRootDllWarningIsListed()
+    {
+        var gameRootDll = new GamePath(LocationId.Game, "openvr_api.dll");
+        var h = await Open("Stray Game Root", Stray(gameRootDll, Group));
+
+        await Eventually(() => h.Page.StrayFiles.Should().ContainSingle().Which.Path.Should().Be(gameRootDll));
+    }
+
+    [Fact]
+    public async Task AListDeleteActionIsListedPerPath()
+    {
+        var list = Stray(Dll, Group) with { Actions = [DiagnosticActions.RemoveLoadoutFiles([Dll, OtherDll], Group.Value)] };
+        var h = await Open("Stray List Action", list);
+
+        await Eventually(() => h.Page.StrayFiles.Should().BeEquivalentTo([new StrayFileNotice(Dll, Group), new StrayFileNotice(OtherDll, Group)]));
+    }
+
+    [Fact]
+    public async Task ASuggestionIsNotListed()
+    {
+        var h = await Open("Stray Suggestion", Stray(Dll, Group, severity: DiagnosticSeverity.Suggestion));
+
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        h.Page.StrayFiles.Should().BeEmpty();
     }
 
     [Fact]

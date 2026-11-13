@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -37,6 +38,34 @@ public class DiagnosticActionsTests
     public void ParsingTheWrongNumberOfArgumentsIsRejected()
     {
         var act = () => DiagnosticActions.ParseRemoveLoadoutFile(["Game"]);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void RemoveLoadoutFilesRoundTrips()
+    {
+        GamePath[] paths = [new(LocationId.Game, "a.dll"), new(LocationId.From("Saves"), "b c/d.sav")];
+        var group = EntityId.From(0x99);
+
+        var action = DiagnosticActions.RemoveLoadoutFiles(paths, group);
+
+        action.Id.Should().Be(DiagnosticActions.RemoveLoadoutFilesId);
+        var (parsedPaths, parsedGroup) = DiagnosticActions.ParseRemoveLoadoutFiles(action.Arguments);
+        parsedPaths.Should().Equal(paths);
+        parsedGroup.Should().Be(LoadoutItemGroupId.From(group));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    public void ParseRemoveLoadoutFilesRejectsAnOddArgumentCount(int count)
+    {
+        var arguments = Enumerable.Repeat("1", count).ToImmutableArray();
+
+        var act = () => DiagnosticActions.ParseRemoveLoadoutFiles(arguments);
 
         act.Should().Throw<ArgumentException>();
     }

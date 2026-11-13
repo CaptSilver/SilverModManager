@@ -176,14 +176,30 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
         }
     }
 
+    // Warnings and above only: a Suggestion with a Delete button (the loader's own files, an orphan DLL) is the Health
+    // Check's to show, not a reason to interrupt an apply.
     private static IReadOnlyList<StrayFileNotice> StrayFilesOf(IEnumerable<Diagnostic> diagnostics) => diagnostics
+        .Where(d => d.Severity >= DiagnosticSeverity.Warning)
         .SelectMany(d => d.Actions)
-        .Where(a => a.Id == DiagnosticActions.RemoveLoadoutFileId)
-        .Select(a => DiagnosticActions.ParseRemoveLoadoutFile(a.Arguments))
-        .Select(parsed => new StrayFileNotice(parsed.Path, parsed.Group))
+        .SelectMany(StrayFilesOf)
         .Distinct()
         .OrderBy(notice => notice.Path.ToString(), StringComparer.Ordinal)
         .ToArray();
+
+    private static IEnumerable<StrayFileNotice> StrayFilesOf(DiagnosticAction action)
+    {
+        switch (action.Id)
+        {
+            case DiagnosticActions.RemoveLoadoutFileId:
+                var (path, group) = DiagnosticActions.ParseRemoveLoadoutFile(action.Arguments);
+                return [new StrayFileNotice(path, group)];
+            case DiagnosticActions.RemoveLoadoutFilesId:
+                var (paths, listGroup) = DiagnosticActions.ParseRemoveLoadoutFiles(action.Arguments);
+                return paths.Select(p => new StrayFileNotice(p, listGroup));
+            default:
+                return [];
+        }
+    }
 
     // One request per group, each with only that group's paths: a request names a set of paths and a set of groups and
     // removes every path from every group, so a combined one would take a file out of a group that never listed it.

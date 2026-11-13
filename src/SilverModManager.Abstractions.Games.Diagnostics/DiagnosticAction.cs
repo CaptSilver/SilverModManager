@@ -149,6 +149,8 @@ public static class DiagnosticActions
         => new(VerifyGameFilesInSteamId, "Verify the game's files in Steam", [appId],
             "Steam checks every file against its own and downloads the ones that differ.");
 
+    private const string RemoveNote = "The file comes off disk and the loadout is applied now.";
+
     /// <summary>
     /// Id of the action that takes a file's row out of one group of the loadout.
     /// </summary>
@@ -160,7 +162,7 @@ public static class DiagnosticActions
     /// group id; <see cref="ParseRemoveLoadoutFile"/> reads them back.
     /// </summary>
     public static DiagnosticAction RemoveLoadoutFile(GamePath path, EntityId group)
-        => new(RemoveLoadoutFileId, "Delete", [path.LocationId.ToString(), path.Path.ToString(), group.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        => new(RemoveLoadoutFileId, "Delete", [path.LocationId.ToString(), path.Path.ToString(), group.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)], RemoveNote);
 
     /// <summary>
     /// Reads the arguments <see cref="RemoveLoadoutFile"/> wrote.
@@ -170,6 +172,33 @@ public static class DiagnosticActions
         if (arguments.Length != 3 || !ulong.TryParse(arguments[2], System.Globalization.CultureInfo.InvariantCulture, out var group))
             throw new ArgumentException("The action names no file and group to remove", nameof(arguments));
         return (new GamePath(LocationId.From(arguments[0]), arguments[1]), LoadoutItemGroupId.From(EntityId.From(group)));
+    }
+
+    /// <summary>
+    /// Id of the action that takes several files' rows out of one group of the loadout.
+    /// </summary>
+    public const string RemoveLoadoutFilesId = "remove-loadout-files";
+
+    /// <summary>
+    /// The list form of <see cref="RemoveLoadoutFile"/>: removes the rows at <paramref name="paths"/> from the group with the
+    /// entity id <paramref name="group"/>. The arguments are the group id, then a location id and a relative path for each file;
+    /// <see cref="ParseRemoveLoadoutFiles"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction RemoveLoadoutFiles(IReadOnlyList<GamePath> paths, EntityId group)
+        => new(RemoveLoadoutFilesId, "Delete",
+            [group.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), .. paths.SelectMany(p => new[] { p.LocationId.ToString(), p.Path.ToString() })], RemoveNote);
+
+    /// <summary>
+    /// Reads the arguments <see cref="RemoveLoadoutFiles"/> wrote.
+    /// </summary>
+    public static (IReadOnlyList<GamePath> Paths, LoadoutItemGroupId Group) ParseRemoveLoadoutFiles(ImmutableArray<string> arguments)
+    {
+        if (arguments.Length < 3 || arguments.Length % 2 == 0 || !ulong.TryParse(arguments[0], System.Globalization.CultureInfo.InvariantCulture, out var group))
+            throw new ArgumentException("The action names no files and group to remove", nameof(arguments));
+        var paths = new List<GamePath>((arguments.Length - 1) / 2);
+        for (var i = 1; i < arguments.Length; i += 2)
+            paths.Add(new GamePath(LocationId.From(arguments[i]), arguments[i + 1]));
+        return (paths, LoadoutItemGroupId.From(EntityId.From(group)));
     }
 
     /// <summary>

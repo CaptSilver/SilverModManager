@@ -186,6 +186,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Skipped {0}: the loadout had no row for it yet. Once an apply adopts the file, the Health Check offers Delete for it..
+        /// </summary>
+        public static string ApplyDiff_Remove_SkippedToast {
+            get {
+                return ResourceManager.GetString("ApplyDiff_Remove_SkippedToast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refresh.
         /// </summary>
         public static string ApplyDiff_Refresh {

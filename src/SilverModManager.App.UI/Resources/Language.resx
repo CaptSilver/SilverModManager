@@ -514,6 +514,9 @@
     <data name="ApplyDiff_Remove_ApplyFailedToast" xml:space="preserve">
         <value>{0} removed; the apply did not finish, run Apply.</value>
     </data>
+    <data name="ApplyDiff_Remove_SkippedToast" xml:space="preserve">
+        <value>Skipped {0}: the loadout had no row for it yet. Once an apply adopts the file, the Health Check offers Delete for it.</value>
+    </data>
     <data name="ApplyDiff_Refresh" xml:space="preserve">
         <value>Refresh</value>
     </data>
