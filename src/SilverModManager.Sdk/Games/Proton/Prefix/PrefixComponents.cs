@@ -225,6 +225,30 @@ public static class PrefixComponents
         InstalledFolders = [new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "8.")],
     };
 
+    /// <summary>
+    /// The .NET 6 desktop runtime, which MelonLoader needs to generate the assemblies of an IL2CPP game. The
+    /// installer is the x64 one Microsoft lists for 6.0.36 in its release metadata (releases.json for 6.0); the
+    /// metadata carries a SHA-512, so the SHA-256 here was computed from the downloaded installer after that matched.
+    /// </summary>
+    public static readonly PrefixComponent DotNetDesktop6 = new()
+    {
+        Id = new PrefixComponentId("dotnetdesktop6"),
+        DisplayName = ".NET 6 desktop runtime",
+        Downloads =
+        [
+            new PrefixDownload(
+                "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe",
+                "0d20debb26fc8b2bc84f25fbd9d4596a6364af8517ebf012e8b871127b798941",
+                "windowsdesktop-runtime-6.0.36-win-x64.exe"),
+        ],
+        InstallSteps =
+        [
+            new PrefixInstallStep(PrefixInstallStepKind.RunInstaller, "windowsdesktop-runtime-6.0.36-win-x64.exe", PrefixArchitecture.X64, SilentInstall),
+        ],
+        NativeFiles = [],
+        InstalledFolders = [new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "6.")],
+    };
+
     // The entries below are only detected and named: their download URLs and hashes are not checked, so the app
     // installs none of them and the hint points at the winetricks verb instead.
 
@@ -270,7 +294,7 @@ public static class PrefixComponents
     /// </summary>
     public static ImmutableArray<PrefixComponent> Known { get; } =
     [
-        .. All, DotNetDesktop8,
+        .. All, DotNetDesktop8, DotNetDesktop6,
         VisualBasic6Runtime, VisualBasic5Runtime, VisualCpp2013, VisualCpp2012, VisualCpp2010, VisualCpp2008, VisualCpp2005, DirectX9June2010,
     ];
 

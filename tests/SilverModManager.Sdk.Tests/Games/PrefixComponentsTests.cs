@@ -200,6 +200,41 @@ public partial class PrefixComponentsTests
             .Which.Should().Be(new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "8."));
     }
 
+    [Fact]
+    public void DotNetDesktop6_IsResolvableByIdAndKnownButNotInTheSetEveryPrefixGets()
+    {
+        PrefixComponents.TryResolve("dotnetdesktop6", out var component).Should().BeTrue();
+        component!.Installable.Should().BeTrue();
+        PrefixComponents.Known.Should().Contain(component);
+        PrefixComponents.All.Should().NotContain(component);
+        PrefixComponents.Known.Select(c => c.Id).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void DotNetDesktop6_RunsTheVersionedX64InstallerSilently()
+    {
+        var component = PrefixComponents.DotNetDesktop6;
+
+        var download = component.Downloads.Should().ContainSingle().Subject;
+        download.Url.Should().StartWith("https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.").And.EndWith("-win-x64.exe");
+        download.Sha256.Should().MatchRegex("^[0-9a-f]{64}$");
+        var step = component.InstallSteps.Should().ContainSingle().Subject;
+        step.Kind.Should().Be(PrefixInstallStepKind.RunInstaller);
+        step.FileName.Should().Be(download.FileName);
+        step.Architecture.Should().Be(PrefixArchitecture.X64);
+        step.Arguments.Should().Equal("/install", "/quiet", "/norestart");
+    }
+
+    [Fact]
+    public void DotNetDesktop6_IsDetectedByItsVersionedFolderBecauseItLeavesNothingInSystem32()
+    {
+        var component = PrefixComponents.DotNetDesktop6;
+
+        component.NativeFiles.Should().BeEmpty();
+        component.InstalledFolders.Should().ContainSingle()
+            .Which.Should().Be(new PrefixInstalledFolder("Program Files/dotnet/shared/Microsoft.WindowsDesktop.App", "6."));
+    }
+
     private static IEnumerable<PrefixDownload> AllDownloads() => PrefixComponents.Known.SelectMany(c => c.Downloads);
 
     [GeneratedRegex("/[0-9a-f]{40}/")]
