@@ -21,6 +21,12 @@ public sealed class ModInstallRows : IModInstallRows, IDisposable
 
     public int Count => _rows.Count;
 
+    /// <summary>The totals as they stand now.</summary>
+    public ModInstallTotals CurrentTotals => _totals.Value;
+
+    /// <summary>The rows as they stand now, in no particular order.</summary>
+    public IReadOnlyList<ModInstallRow> Snapshot() => _rows.Items.ToArray();
+
     /// <summary>Adds <paramref name="rows"/> as one change set.</summary>
     public void Add(IEnumerable<ModInstallRow> rows) => _rows.AddOrUpdate(rows);
 
@@ -40,6 +46,8 @@ public sealed class ModInstallRows : IModInstallRows, IDisposable
     public void Dispose()
     {
         _rows.Dispose();
-        _totals.Dispose();
+        // Completed rather than disposed: a page that still holds these rows may subscribe once more before it is given
+        // the next ones, and a disposed subject throws then.
+        _totals.OnCompleted();
     }
 }

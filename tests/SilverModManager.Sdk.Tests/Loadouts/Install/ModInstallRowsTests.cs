@@ -81,4 +81,31 @@ public class ModInstallRowsTests
         found.Should().BeSameAs(row);
         rows.TryGet("Z", out _).Should().BeFalse();
     }
+
+    [Fact]
+    public void SnapshotAndCurrentTotalsReadWhatTheSetHoldsNow()
+    {
+        using var rows = new ModInstallRows();
+        rows.Add([RowOf("A", 0), RowOf("B", 1)]);
+        rows.SetTotals(new ModInstallTotals(2, 1, 0));
+
+        rows.Snapshot().Select(r => r.Key).Should().BeEquivalentTo(["A", "B"]);
+        rows.CurrentTotals.Should().Be(new ModInstallTotals(2, 1, 0));
+    }
+
+    [Fact]
+    public void ASubscriberThatArrivesAfterDisposalEndsInsteadOfThrowing()
+    {
+        var rows = new ModInstallRows();
+        rows.Add([RowOf("A")]);
+        rows.Dispose();
+
+        var late = () =>
+        {
+            rows.Totals.Subscribe(_ => { }).Dispose();
+            rows.Connect().Subscribe(_ => { }).Dispose();
+        };
+
+        late.Should().NotThrow("a page can still be wiring itself to rows the view model has just replaced");
+    }
 }
