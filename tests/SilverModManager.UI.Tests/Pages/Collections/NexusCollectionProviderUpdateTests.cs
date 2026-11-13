@@ -1,5 +1,6 @@
 using System.Reactive.Linq;
 using FluentAssertions;
+using NSubstitute;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
@@ -126,11 +127,15 @@ public class NexusCollectionProviderUpdateTests(IServiceProvider provider) : AUi
     {
         var group = await InstalledOnFirstRevision();
         await CollectionUpdater.RecordLatestPublishedRevision(Connection, group, RevisionNumber.From(3));
-        var basis = Connection.Db.BasisTxId;
+        // Tests in other classes commit to the same database meanwhile, so its basis moves on its own, and a commit that
+        // repeats the value leaves the group's datoms as they were. A write needs a transaction, so that is what is watched.
+        var watched = Substitute.For<IConnection>();
+        watched.Db.Returns(_ => Connection.Db);
+        watched.BeginTransaction().Returns(_ => Connection.BeginTransaction());
 
-        await CollectionUpdater.RecordLatestPublishedRevision(Connection, group, RevisionNumber.From(3));
+        await CollectionUpdater.RecordLatestPublishedRevision(watched, group, RevisionNumber.From(3));
 
-        Connection.Db.BasisTxId.Should().Be(basis);
+        watched.DidNotReceive().BeginTransaction();
     }
 
     /// <summary>The group moves to another revision of its collection that the library holds, as an update does.</summary>
