@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileSystemGlobbing;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Tools;
 using SilverModManager.Sdk.Games;
@@ -261,6 +262,64 @@ public class CreationEngineToolCatalogueTests(IServiceProvider provider)
         definition.Output.Should().Be(new ToolOutput.GameFolder(group));
         definition.Arguments.Words.Should().BeEmpty();
         definition.ExitCodes.Should().Be(ExitCodePolicy.AnyExitIsFine);
+    }
+
+    // Pandora writes its working set, log and crash logs into its output folder (Data by default) and Settings.json
+    // beside its exe; none of that is behaviour output.
+    [Fact]
+    public void PandoraKeepsItsWorkingSetLogsAndSettingsOutOfTheGroup()
+    {
+        Definition("pandora").IgnoredOutput.Should().Equal(
+            "Data/Pandora_Engine/**",
+            "Data/Engine.log",
+            "Data/Pandora_CriticalCrash_*.log",
+            "Data/Settings.json");
+    }
+
+    // The cache, logs and ini are written relative to the working directory, which Nemesis requires to be Data/Nemesis_Engine.
+    [Fact]
+    public void NemesisKeepsItsCacheLogsAndSettingsOutOfTheGroup()
+    {
+        Definition("nemesis").IgnoredOutput.Should().Equal(
+            "Data/Nemesis_Engine/cache/**",
+            "Data/Nemesis_Engine/temp_behaviors/**",
+            "Data/Nemesis_Engine/nemesis.ini",
+            "Data/Nemesis_Engine/CriticalLog.txt",
+            "Data/Nemesis_Engine/UpdateLog.txt",
+            "Data/Nemesis_Engine/PatchLog.txt");
+    }
+
+    // Both programs save their settings and logs beside their exe (BodySlideApp.cpp, OutfitStudio.cpp).
+    [Theory]
+    [InlineData("bodyslide")]
+    [InlineData("outfit-studio")]
+    public void BodySlideAndOutfitStudioKeepTheirSettingsAndLogsOutOfTheGroup(string id)
+    {
+        Definition(id).IgnoredOutput.Should().Equal(
+            "Data/CalienteTools/BodySlide/Config.xml",
+            "Data/CalienteTools/BodySlide/BodySlide.xml",
+            "Data/CalienteTools/BodySlide/OutfitStudio.xml",
+            "Data/CalienteTools/BodySlide/AnimationFavorites.xml",
+            "Data/CalienteTools/BodySlide/Log_BS.txt",
+            "Data/CalienteTools/BodySlide/Log_OS.txt");
+    }
+
+    // Matched the way the run's capture matches them: everything except the ignored globs, ignoring case.
+    [Theory]
+    [InlineData("pandora", "Data/meshes/actors/character/behaviors/0_master.hkx", "Data/Pandora_Engine/PreviousOutput.txt")]
+    [InlineData("pandora", "Data/meshes/actors/character/_1stperson/characters/firstperson.hkx", "Data/pandora_criticalcrash_uithread.log")]
+    [InlineData("nemesis", "Data/meshes/actors/character/behaviors/0_master.hkx", "Data/Nemesis_Engine/cache/animationdata_list")]
+    [InlineData("nemesis", "Data/Nemesis_PCEA.esp", "Data/Nemesis_Engine/CriticalLog.txt")]
+    [InlineData("bodyslide", "Data/meshes/armor/daedric/f/cuirass_1.nif", "Data/CalienteTools/BodySlide/Config.xml")]
+    [InlineData("outfit-studio", "Data/CalienteTools/BodySlide/ShapeData/MyOutfit/MyOutfit.osp", "Data/CalienteTools/BodySlide/Log_OS.txt")]
+    public void TheIgnoredGlobsDropBookkeepingButKeepWhatTheGameLoads(string id, string kept, string dropped)
+    {
+        var matcher = new Matcher(StringComparison.OrdinalIgnoreCase);
+        matcher.AddInclude("**/*");
+        foreach (var glob in Definition(id).IgnoredOutput) matcher.AddExclude(glob);
+
+        matcher.Match(kept).HasMatches.Should().BeTrue();
+        matcher.Match(dropped).HasMatches.Should().BeFalse();
     }
 
     [Fact]

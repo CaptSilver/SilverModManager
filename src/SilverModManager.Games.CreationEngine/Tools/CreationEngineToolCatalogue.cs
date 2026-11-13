@@ -11,11 +11,14 @@ namespace SilverModManager.Games.CreationEngine.Tools;
 /// The xEdit family: xEdit itself and the three LOD tools built on it. They take the same Data, ini and plugin list
 /// switches, run from the same Visual C++ runtime and want the same Wine compatibility setting, so they are rows
 /// over one set of helpers, not classes. The OpenComposite Unleashed configurator is a plain row beside them.
+/// The behaviour and body tools (Pandora, Nemesis, BodySlide, Outfit Studio) are rows too.
 /// </summary>
 /// <remarks>
 /// The switches (<c>-D:</c>, <c>-I:</c>, <c>-P:</c>, <c>-O:</c> and the game modes) are the ones xEdit's
-/// <c>wbInit.pas</c> reads. Which output each tool's second run must not see, and which of its files are logs and
-/// caches, is not settled, so no definition sets <c>DisableOwnOutputDuringRun</c> or <c>IgnoredOutput</c>.
+/// <c>wbInit.pas</c> reads. Which output each xEdit-family tool's second run must not see, and which of its files are
+/// logs and caches, is not settled, so those definitions set neither <c>DisableOwnOutputDuringRun</c> nor
+/// <c>IgnoredOutput</c>. Pandora, Nemesis, BodySlide and Outfit Studio list their config, cache and log files from
+/// their own source, because without that a run's settings file would be moved into the tool's group as mod output.
 /// </remarks>
 public static class CreationEngineToolCatalogue
 {
@@ -71,6 +74,42 @@ public static class CreationEngineToolCatalogue
         Fallout4VR.Fallout4VR.GameId,
     ];
 
+    // These are matched against the path inside the game folder, so they start at Data.
+    // Pandora writes into its output folder, which is Data unless its own Settings.json names another, and keeps
+    // Settings.json beside its exe, which the archive puts at the root of Data. It parses --output but neither
+    // 4.4.0-beta nor 5.0.0-beta reads the value, so it cannot be pointed at a run folder like the LOD tools.
+    // Pandora_Engine is its working set: the active mod list, the list of files it wrote last time, and Nemesis
+    // patches it converted for itself. Its shipped files there are not in the delta because the run does not change them.
+    private static readonly string[] PandoraIgnored =
+    [
+        "Data/Pandora_Engine/**",
+        "Data/Engine.log",
+        "Data/Pandora_CriticalCrash_*.log",
+        "Data/Settings.json",
+    ];
+
+    // Nemesis insists on running from Data/Nemesis_Engine and writes its cache, logs and ini relative to that.
+    private static readonly string[] NemesisIgnored =
+    [
+        "Data/Nemesis_Engine/cache/**",
+        "Data/Nemesis_Engine/temp_behaviors/**",
+        "Data/Nemesis_Engine/nemesis.ini",
+        "Data/Nemesis_Engine/CriticalLog.txt",
+        "Data/Nemesis_Engine/UpdateLog.txt",
+        "Data/Nemesis_Engine/PatchLog.txt",
+    ];
+
+    // BodySlide and Outfit Studio save their settings and logs beside their exe in CalienteTools/BodySlide.
+    private static readonly string[] BodySlideIgnored =
+    [
+        "Data/CalienteTools/BodySlide/Config.xml",
+        "Data/CalienteTools/BodySlide/BodySlide.xml",
+        "Data/CalienteTools/BodySlide/OutfitStudio.xml",
+        "Data/CalienteTools/BodySlide/AnimationFavorites.xml",
+        "Data/CalienteTools/BodySlide/Log_BS.txt",
+        "Data/CalienteTools/BodySlide/Log_OS.txt",
+    ];
+
     private static readonly string[] GameFolderSwitches = ["-D:{DataFolder}", "-I:{IniFile}", "-P:{PluginsFile}"];
 
     // Declared before All: static fields initialise in order, and Build reads it.
@@ -122,10 +161,10 @@ public static class CreationEngineToolCatalogue
             {
                 Components = [PrefixComponents.DotNetDesktop8.Id],
                 RegistryDefaults = [new PrefixRegistryDefault(PandoraNames[0], "Decorated", "N")],
-            }),
-            PatcherTool("nemesis", "Nemesis Unlimited Behavior Engine", "Nemesis Output", NemesisNames, NemesisGames, VisualCppOnly),
-            PatcherTool("bodyslide", "BodySlide", "BodySlide Output", BodySlideNames, BodySlideGames, VisualCppOnly),
-            PatcherTool("outfit-studio", "Outfit Studio", "Outfit Studio Output", OutfitStudioNames, BodySlideGames, VisualCppOnly),
+            }, PandoraIgnored),
+            PatcherTool("nemesis", "Nemesis Unlimited Behavior Engine", "Nemesis Output", NemesisNames, NemesisGames, VisualCppOnly, NemesisIgnored),
+            PatcherTool("bodyslide", "BodySlide", "BodySlide Output", BodySlideNames, BodySlideGames, VisualCppOnly, BodySlideIgnored),
+            PatcherTool("outfit-studio", "Outfit Studio", "Outfit Studio Output", OutfitStudioNames, BodySlideGames, VisualCppOnly, BodySlideIgnored),
             new ToolDefinition
             {
                 Id = new ToolId("oc-unleashed-configurator"),
@@ -152,7 +191,7 @@ public static class CreationEngineToolCatalogue
 
     // Tools that read and write the game's Data folder on their own, from their own settings, so they take no
     // switches; what they write is picked up from the game folder after the run.
-    private static ToolDefinition PatcherTool(string id, string name, string outputGroup, string[] exeNames, GameId[] games, ToolPrefixRequirements prefix) => new()
+    private static ToolDefinition PatcherTool(string id, string name, string outputGroup, string[] exeNames, GameId[] games, ToolPrefixRequirements prefix, string[] ignoredOutput) => new()
     {
         Id = new ToolId(id),
         DisplayName = name,
@@ -161,6 +200,7 @@ public static class CreationEngineToolCatalogue
         Arguments = ArgumentTemplate.Empty,
         Prefix = prefix,
         Output = new ToolOutput.GameFolder(outputGroup),
+        IgnoredOutput = ignoredOutput,
         ExitCodes = ExitCodePolicy.AnyExitIsFine,
     };
 
