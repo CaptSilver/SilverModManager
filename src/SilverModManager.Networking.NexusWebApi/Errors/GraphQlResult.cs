@@ -88,8 +88,9 @@ public class GraphQlResult<TData> : IGraphQlResult<TData>
             return false;
         }
 
-        if (tmp is not TError errorInstance)
-            throw new NotSupportedException($"Error with code `{TError.Code}` is of type `{tmp.GetType()}` but expected `{typeof(TError)}`");
+        // TryGetFirst hands back the key/value pair, and the error is its value.
+        if (tmp.Value is not TError errorInstance)
+            throw new NotSupportedException($"Error with code `{TError.Code}` is of type `{tmp.Value.GetType()}` but expected `{typeof(TError)}`");
 
         error = errorInstance;
         return true;

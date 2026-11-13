@@ -82,6 +82,7 @@ fragment CollectionCard on Collection {
 
 fragment ModFile on ModFile {
     name
+    category
     modId
     version
     sizeInBytes

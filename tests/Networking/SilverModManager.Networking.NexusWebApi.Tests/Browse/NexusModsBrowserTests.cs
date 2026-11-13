@@ -108,21 +108,26 @@ public class NexusModsBrowserTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
-    private static IQueryModFileCategories_ModFiles FileOf(int id, ModFileCategory category)
+    private static IModFile FileOf(uint id, ModFileCategory category)
     {
-        var file = Substitute.For<IQueryModFileCategories_ModFiles>();
-        file.FileId.Returns(id);
+        var file = Substitute.For<IModFile>();
+        file.Uid.Returns(new FileUid(FileId.From(id), Game).ToV2Api());
         file.Category.Returns(category);
         return file;
     }
 
-    [Fact]
-    public async Task FindMainFile_ReturnsTheOnlyMainFileOfTheMod()
+    private static IGraphQlClient FilesReturning(params IModFile[] files)
     {
-        var files = new[] { FileOf(1, ModFileCategory.Optional), FileOf(2, ModFileCategory.Main) };
         var client = Substitute.For<IGraphQlClient>();
-        client.QueryModFileCategories(ModId.From(9), Game, Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult(new GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>(files)));
+        client.QueryModFiles(ModId.From(9), Game, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(new GraphQlResult<IModFile[], NotFound>(files)));
+        return client;
+    }
+
+    [Fact]
+    public async Task FindMainFile_ReadsTheCategoryFromTheFilesQuery()
+    {
+        var client = FilesReturning(FileOf(1, ModFileCategory.Optional), FileOf(2, ModFileCategory.Main));
 
         (await Browser(client).FindMainFile(Game, ModId.From(9), CancellationToken.None)).Should().Be(FileId.From(2));
     }
@@ -131,9 +136,52 @@ public class NexusModsBrowserTests
     public async Task FindMainFile_IsNullWhenTheModIsUnknown()
     {
         var client = Substitute.For<IGraphQlClient>();
-        client.QueryModFileCategories(default, default, default)
-            .ReturnsForAnyArgs(ValueTask.FromResult(new GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>(new NotFound { Message = "no such mod" })));
+        client.QueryModFiles(default, default, default)
+            .ReturnsForAnyArgs(ValueTask.FromResult(new GraphQlResult<IModFile[], NotFound>(new NotFound { Message = "no such mod" })));
 
         (await Browser(client).FindMainFile(Game, ModId.From(9), CancellationToken.None)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task FindMainFile_ThrowsWhenNexusDoesNotAnswer()
+    {
+        var client = Substitute.For<IGraphQlClient>();
+        var outage = new UnknownError { Code = UnknownError.DefaultCode, Message = "bad gateway", ClientError = Substitute.For<StrawberryShake.IClientError>() };
+        client.QueryModFiles(default, default, default)
+            .ReturnsForAnyArgs(ValueTask.FromResult(new GraphQlResult<IModFile[], NotFound>([new KeyValuePair<ErrorCode, IGraphQlError>(outage.Code, outage)])));
+
+        var act = async () => await Browser(client).FindMainFile(Game, ModId.From(9), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().StartWith("Nexus Mods did not answer").And.Contain("bad gateway");
+    }
+
+    [Theory]
+    [InlineData(ModFileCategory.Main, NexusModsFileCategory.Main)]
+    [InlineData(ModFileCategory.Update, NexusModsFileCategory.Update)]
+    [InlineData(ModFileCategory.Optional, NexusModsFileCategory.Optional)]
+    [InlineData(ModFileCategory.OldVersion, NexusModsFileCategory.OldVersion)]
+    [InlineData(ModFileCategory.Miscellaneous, NexusModsFileCategory.Miscellaneous)]
+    [InlineData(ModFileCategory.Archived, NexusModsFileCategory.Archived)]
+    [InlineData(ModFileCategory.Removed, NexusModsFileCategory.Removed)]
+    public void EveryApiCategory_MapsToItsOwnName(ModFileCategory api, NexusModsFileCategory expected)
+    {
+        NexusModsFileCategories.From(api).Should().Be(expected);
+    }
+
+    [Fact]
+    public void TryGetError_ReturnsTheTypedErrorTheResultHolds()
+    {
+        var result = new GraphQlResult<IModFile[], NotFound>(new NotFound { Message = "no such mod" });
+
+        result.TryGetError(out NotFound? error).Should().BeTrue();
+        error!.Message.Should().Be("no such mod");
+    }
+
+    [Fact]
+    public void TryGetError_IsFalseForAResultWithoutThatError()
+    {
+        var result = new GraphQlResult<IModFile[], NotFound>(Array.Empty<IModFile>());
+
+        result.TryGetError(out NotFound? _).Should().BeFalse();
     }
 }

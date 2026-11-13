@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using SilverModManager.Networking.NexusWebApi.Errors;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -21,14 +22,19 @@ internal sealed class NexusModsBrowser(
 
     public async Task<FileId?> FindMainFile(NexusModsGameId game, ModId modId, CancellationToken cancellationToken)
     {
-        var result = await graphQl.QueryModFileCategories(modId, game, cancellationToken);
-        if (!result.TryGetData(out var files))
+        var result = await graphQl.QueryModFiles(modId, game, cancellationToken);
+        if (result.TryGetError(out NotFound? _))
         {
             logger.LogInformation("No files found for mod {Mod} of game {Game}", modId, game);
             return null;
         }
 
-        return NexusModsMainFile.Pick(files.Select(file => new NexusModsFileSummary(FileId.From((uint)file.FileId), file.Category)));
+        // Anything else without data is Nexus failing to answer: reading it as "no main file" would send the user to
+        // the Files tab for a mod that has one.
+        if (!result.TryGetData(out var files))
+            throw new InvalidOperationException($"Nexus Mods did not answer for the files of mod {modId}: {string.Join("; ", result.Errors.Select(e => e.Value.Message))}");
+
+        return NexusModsMainFile.Pick(files.Select(NexusModsFileRows.From));
     }
 
     public Task<IJobTask<NexusModsDownloadJob, AbsolutePath>> CreateDownloadJob(NexusModsGameId game, ModId modId, FileId fileId, AbsolutePath destination, CancellationToken cancellationToken)

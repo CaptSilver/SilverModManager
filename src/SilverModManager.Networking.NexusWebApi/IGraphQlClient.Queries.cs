@@ -99,14 +99,6 @@ public partial interface IGraphQlClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Queries the id and category of every file of a mod.
-    /// </summary>
-    ValueTask<GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>> QueryModFileCategories(
-        ModId modId,
-        NexusModsGameId nexusModsGameId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Queries the ID of a collection by slug.
     /// </summary>
     ValueTask<GraphQlResult<CollectionId, NotFound>> QueryCollectionId(
