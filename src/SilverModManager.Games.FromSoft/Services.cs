@@ -21,6 +21,7 @@ using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Overlay;
 using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Sekiro;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
@@ -34,7 +35,7 @@ public static class Services
 {
     /// <summary>Registers the FromSoft base and every FromSoft game.</summary>
     public static IServiceCollection AddFromSoftGames(this IServiceCollection services)
-        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6().AddEldenRingNightreign();
+        => services.AddFromSoftBase().AddEldenRing().AddArmoredCore6().AddEldenRingNightreign().AddSekiro();
 
     /// <summary>Registers Elden Ring: the game, its tool and its cleanup verb.</summary>
     public static IServiceCollection AddEldenRing(this IServiceCollection services)
@@ -55,6 +56,11 @@ public static class Services
     public static IServiceCollection AddEldenRingNightreign(this IServiceCollection services)
         => services.AddGame<EldenRingNightreignGame>()
             .AddSingleton<ITool, RunFromSoftGame<EldenRingNightreignGame>>();
+
+    /// <summary>Registers Sekiro and its launch tool.</summary>
+    public static IServiceCollection AddSekiro(this IServiceCollection services)
+        => services.AddGame<SekiroGame>()
+            .AddSingleton<ITool, RunFromSoftGame<SekiroGame>>();
 
     /// <summary>
     /// Registers everything the FromSoft games share. Each block takes the lines of one kind of registration, so two

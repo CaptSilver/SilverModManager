@@ -103,6 +103,9 @@ public class FromSoftGameTableTests
     public void TheRegulationRoundTripsThroughTheGamesKeyAndWrapper(FromSoftGameFacts facts)
     {
         var traits = facts.Definition().Formats;
+
+        Assert.SkipWhen(traits.RegulationWrite is null, $"{facts} has no regulation file, so no key or wrapper to round-trip.");
+
         var payload = RegulationFixture.Payload(RegulationFixture.GoldenEntries, RegulationFixture.GoldenVersion);
 
         var packed = Regulation.Pack(payload, RegulationFixture.ZeroIv, traits);

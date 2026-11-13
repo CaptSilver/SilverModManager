@@ -8,6 +8,7 @@ using SilverModManager.Games.FromSoft;
 using SilverModManager.Games.FromSoft.ArmoredCore6;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.EldenRingNightreign;
+using SilverModManager.Games.FromSoft.Sekiro;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
@@ -49,6 +50,7 @@ public class OverlayInvariantRegisteredGamesTests(ITestOutputHelper helper)
         (typeof(EldenRingGame), true),
         (typeof(ArmoredCore6Game), true),
         (typeof(EldenRingNightreignGame), true),
+        (typeof(SekiroGame), false),
         (typeof(Witcher3Game), false),
     ];
 

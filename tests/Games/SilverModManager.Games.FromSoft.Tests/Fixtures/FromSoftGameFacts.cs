@@ -5,6 +5,7 @@ using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Sekiro;
 
 namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
@@ -127,7 +128,48 @@ public sealed record FromSoftGameFacts(
         Me3Options: () => EldenRingNightreignGame.Me3Options,
         NexusModsGame: () => EldenRingNightreignGame.NexusModsGameId);
 
-    public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign]];
+    /// <summary>
+    /// Sekiro: Shadows Die Twice. Steam 814380 launches <c>sekiro.exe</c> from the install root (api.steamcmd.net
+    /// launch entries); the game has no anti-cheat launcher and no online side a mod could reach (me3
+    /// <c>Game::executable</c>); the saves are <c>%APPDATA%/Sekiro/&lt;account&gt;/S0000.sl2</c> (me3 <c>savefile_dir</c>,
+    /// Ludusavi manifest); the Nexus id and domain <c>sekiro</c> come from Nexus's games.json. The archive keys are
+    /// UXM's <c>SekiroKeys</c> (Data1 to Data5; the bonus archive is not listed). Its BHD5 is the 32-bit-hash layout.
+    /// The game has no regulation file, so none is named.
+    /// </summary>
+    public static readonly FromSoftGameFacts Sekiro = new(
+        GameId: "FromSoft.Sekiro",
+        DisplayName: "Sekiro: Shadows Die Twice",
+        SteamAppId: 814380,
+        SteamInstallFolder: "Sekiro",
+        NexusModsGameId: 2763,
+        Me3GameName: "sekiro",
+        Layout: new FromSoftGameLayout(814380, "Sekiro", "", "sekiro.exe", null, "Sekiro", SaveRootKind.RoamingAppData, SaveAccountFolderKind.SteamId64Decimal, SoundFolderKind.Sound),
+        SaveNames: new FromSoftSaveNames("S0000.sl2", "S0000_silver.sl2", null),
+        HasOnlinePlay: false,
+        LooseParams: null,
+        Binder: BinderFormat.Bnd4,
+        ReadableCompressions: [DcxCompression.Kraken, DcxCompression.Dflt],
+        PackedWrite: new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
+        RegulationFileName: null,
+        RegulationWrite: null,
+        RegulationKeyHex: "",
+        ParamdefSet: "sekiro",
+        Archives:
+        [
+            new("Data1", "f7697e01", "10ee7f4d", 0x2a48f927),
+            new("Data2", "aa18e84e", "96479353", 0xfff12991),
+            new("Data3", "c798e580", "4c91ed43", 0xea55a14f),
+            new("Data4", "abc47202", "071de981", 0x18cd8e87),
+            new("Data5", "bbbe7f51", "6d7cd5eb", 0xf9514cc7),
+        ],
+        PathHashBits: 32,
+        PathHashPrime: 37,
+        ArchiveLayout: Bhd5Layout.Hash32Salted40ByteEntries,
+        Definition: () => SekiroGame.Definition,
+        Me3Options: () => SekiroGame.Me3Options,
+        NexusModsGame: () => SekiroGame.NexusModsGameId);
+
+    public static IEnumerable<object[]> All => [[ArmoredCore6], [EldenRingNightreign], [Sekiro]];
 
     public override string ToString() => DisplayName;
 }
