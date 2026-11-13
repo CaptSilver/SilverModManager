@@ -73,7 +73,7 @@ public class AUiTest : IAsyncDisposable
         UiThreadMonitor.Shared.Operation($"Render({window.GetType().Name} \"{window.Title}\"), a layout pass, a headless render tick and the queued jobs");
         window.UpdateLayout();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-        Dispatcher.UIThread.RunJobs();
+        JobDrain.RunAlways(() => Dispatcher.UIThread.RunJobs());
     }
 
     public virtual async ValueTask DisposeAsync()
@@ -321,7 +321,7 @@ public class AUiTest : IAsyncDisposable
         {
             await OnUi(async () =>
             {
-                await AssertAfterDrain(action);
+                await PollAfterDrain(action);
             });
         }, maxTimeout, delay);
     }
@@ -334,7 +334,7 @@ public class AUiTest : IAsyncDisposable
     /// <param name="delay"></param>
     public async Task EventuallyOnUi(Action action, TimeSpan? maxTimeout = null, TimeSpan? delay = null)
     {
-        await Eventually(async () => await OnUi(() => AssertAfterDrain(action)), maxTimeout, delay);
+        await Eventually(async () => await OnUi(() => PollAfterDrain(action)), maxTimeout, delay);
     }
 
     /// <summary>
@@ -346,11 +346,13 @@ public class AUiTest : IAsyncDisposable
     /// (<see cref="Framework.DefaultPriorityScheduler"/>) posts at Default instead, which is what keeps a sustained
     /// stream of other jobs from starving the page; this covers jobs other code posts at Background. Must run on the UI thread.
     /// </summary>
-    protected static void RunBackgroundJobs() => Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
+    protected static void RunBackgroundJobs() => JobDrain.RunAlways(DrainBackground);
+
+    private static void DrainBackground() => Dispatcher.UIThread.RunJobs(DispatcherPriority.Background);
 
     /// <summary>
-    /// Drains the Background queue (see <see cref="RunBackgroundJobs"/>), then runs the assertion. Every poll goes
-    /// through this so none can read the page before the view models' queued values have been delivered.
+    /// Drains the Background queue (see <see cref="RunBackgroundJobs"/>), then runs the assertion, for a check made
+    /// once rather than polled.
     /// </summary>
     protected static void AssertAfterDrain(Action assert)
     {
@@ -362,6 +364,24 @@ public class AUiTest : IAsyncDisposable
     protected static async Task AssertAfterDrain(Func<Task> assert)
     {
         RunBackgroundJobs();
+        await assert();
+    }
+
+    /// <summary>
+    /// One attempt of a poll (<see cref="EventuallyOnUi(Action, TimeSpan?, TimeSpan?)"/>): drains the Background queue
+    /// like <see cref="AssertAfterDrain(Action)"/>, except when another drain is running this job, which delivers the
+    /// queue itself. Draining again from inside it is what chained the polls together (see <see cref="JobDrain"/>).
+    /// </summary>
+    protected static void PollAfterDrain(Action assert)
+    {
+        JobDrain.RunUnlessDraining(DrainBackground);
+        assert();
+    }
+
+    /// <summary>Async form of <see cref="PollAfterDrain(Action)"/>.</summary>
+    protected static async Task PollAfterDrain(Func<Task> assert)
+    {
+        JobDrain.RunUnlessDraining(DrainBackground);
         await assert();
     }
 

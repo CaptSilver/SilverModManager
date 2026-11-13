@@ -56,4 +56,32 @@ public class BackgroundJobsTests(IServiceProvider provider) : AUiTest(provider)
             await Task.WhenAll(busy);
         }
     }
+
+    [Fact]
+    public async Task APollRunByADrain_DoesNotDrainAgain()
+    {
+        // Every UI test polls through PollAfterDrain, and a drain runs whatever the other tests have queued, which
+        // includes their polls. Draining again inside each of those stacked the polls into one chain that none of
+        // them could leave while the others kept posting, and the tests waiting on it timed out.
+        var depth = 0;
+        var deepest = 0;
+
+        await OnUi(() =>
+        {
+            for (var i = 0; i < 5; i++)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    depth++;
+                    deepest = Math.Max(deepest, depth);
+                    PollAfterDrain(() => { });
+                    depth--;
+                }, DispatcherPriority.Background);
+            }
+
+            AssertAfterDrain(() => { });
+        });
+
+        deepest.Should().Be(1, "a job the drain runs polls without draining again");
+    }
 }
