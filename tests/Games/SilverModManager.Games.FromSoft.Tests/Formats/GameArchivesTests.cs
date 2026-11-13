@@ -195,4 +195,15 @@ public class GameArchivesTests : IDisposable
         var act = () => GameArchives.ReadFile(_game, "a/b.bin", TestSouls);
         act.Should().Throw<Bhd5Exception>().WithMessage("*/a/b.bin*-16*");
     }
+
+    [Fact]
+    public void AnUnpaddedSizeAboveTheSlotThrowsInsteadOfTruncating()
+    {
+        var ds3 = TestSouls with { PathHashBits = 32, PathHashPrime = 37, ArchiveLayout = Bhd5Layout.Hash32Salted40ByteEntries };
+        var entry = new Bhd5Fixture.Entry(Bhd5.PathHash(Bhd5.Normalise("a/b.bin"), ds3), 16, int.MaxValue + 1L, 0);
+        File.WriteAllBytes(Path.Combine(_game, "TestData0.bhd"), Bhd5Fixture.Sign(Bhd5Fixture.Build([entry], Bhd5Layout.Hash32Salted40ByteEntries), Bhd5Fixture.TestKey));
+        File.WriteAllBytes(Path.Combine(_game, "TestData0.bdt"), new byte[64]);
+        var act = () => GameArchives.ReadFile(_game, "a/b.bin", ds3);
+        act.Should().Throw<Bhd5Exception>().WithMessage("*recorded as 2147483648*");
+    }
 }

@@ -86,7 +86,8 @@ public static class GameArchives
             return blob;
         if (entry.UnpaddedSize < 0 || entry.UnpaddedSize > blob.Length)
             throw new Bhd5Exception($"{normalised} is recorded as {entry.UnpaddedSize} bytes inside a {blob.Length}-byte slot in {archive.Name}.bhd");
-        return blob[..entry.UnpaddedSize];
+        // The range check above is what makes this narrowing safe: the slot is an int-sized array.
+        return blob[..(int)entry.UnpaddedSize];
     }
 
     private static void DecryptRanges(byte[] blob, Bhd5.Entry entry)

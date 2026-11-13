@@ -99,7 +99,7 @@ public class Bhd5Tests
     public void ParseKeepsPaddedAndUnpaddedSizesApart(string game)
     {
         var entry = Bhd5.Parse(Bhd5Fixture.Build([(0x55UL, 48, 33, 0L)]), Game(game)).Entries[0x55];
-        (entry.PaddedSize, entry.UnpaddedSize).Should().Be((48, 33));
+        (entry.PaddedSize, entry.UnpaddedSize).Should().Be((48, 33L));
     }
 
     [Fact]
@@ -210,5 +210,40 @@ public class Bhd5Tests
     {
         var act = () => Bhd5.DecryptHeader([], EldenRing.Archives[0]);
         act.Should().Throw<Bhd5Exception>().WithMessage("*truncated*");
+    }
+
+    private static FromSoftFormatTraits DarkSouls3 => TestSouls with { PathHashBits = 32, PathHashPrime = 37, ArchiveLayout = Bhd5Layout.Hash32Salted40ByteEntries };
+
+    [Fact]
+    public void TheDarkSouls3LayoutReadsA32BitHashAndA64BitUnpaddedSize()
+    {
+        var key = Enumerable.Range(1, 16).Select(i => (byte)i).ToArray();
+        var plain = Bhd5Fixture.Build(
+            [
+                new Bhd5Fixture.Entry(0xDEADBEEF, 48, 5_000_000_000L, 4_000_000_000L),
+                new Bhd5Fixture.Entry(0x01020304, 64, 60, 96, key, [(0, 64)]),
+            ],
+            Bhd5Layout.Hash32Salted40ByteEntries);
+
+        var index = Bhd5.Parse(plain, DarkSouls3);
+
+        index.Entries.Keys.Should().BeEquivalentTo(new ulong[] { 0xDEADBEEF, 0x01020304 });
+        var big = index.Entries[0xDEADBEEF];
+        (big.PaddedSize, big.UnpaddedSize, big.Offset).Should().Be((48, 5_000_000_000L, 4_000_000_000L));
+        var keyed = index.Entries[0x01020304];
+        (keyed.PaddedSize, keyed.UnpaddedSize, keyed.Offset).Should().Be((64, 60L, 96L));
+        keyed.AesKey.Should().Equal(key);
+        keyed.Ranges.Should().Equal(new AesRange(0, 64));
+    }
+
+    [Fact]
+    public void TheSameBytesUnderTheEldenRingLayoutAreNotAcceptedAsAnIndex()
+    {
+        var plain = Bhd5Fixture.Build([new Bhd5Fixture.Entry(0xDEADBEEF, 48, 5_000_000_000L, 4_000_000_000L)], Bhd5Layout.Hash32Salted40ByteEntries);
+        // Refusing the bytes is fine; so is parsing them into something else. Reading them as the 32-bit layout is not.
+        Bhd5.Index? index = null;
+        try { index = Bhd5.Parse(plain, TestSouls); }
+        catch (Bhd5Exception) { }
+        index?.Entries.Keys.Should().NotContain(0xDEADBEEFUL);
     }
 }

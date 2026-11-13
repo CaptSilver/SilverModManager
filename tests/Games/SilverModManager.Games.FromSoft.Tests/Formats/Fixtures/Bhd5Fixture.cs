@@ -20,7 +20,7 @@ public static class Bhd5Fixture
     public sealed record Entry(
         ulong NameHash,
         int PaddedSize,
-        int UnpaddedSize,
+        long UnpaddedSize,
         long Offset,
         byte[]? AesKey = null,
         IReadOnlyList<(long Start, long End)>? Ranges = null);
@@ -46,10 +46,13 @@ public static class Bhd5Fixture
     /// A plaintext index the parser should accept: the fixed header, the bucket directory, then the entry records,
     /// with the key blocks of encrypted entries after them. Entries go to bucket <c>hash % bucketCount</c>.
     /// </summary>
-    public static byte[] Build(IReadOnlyList<(ulong NameHash, int PaddedSize, int UnpaddedSize, long Offset)> entries, int bucketCount = 4, string salt = "GR_test")
-        => Build(entries.Select(e => new Entry(e.NameHash, e.PaddedSize, e.UnpaddedSize, e.Offset)).ToArray(), bucketCount, salt);
+    public static byte[] Build(
+        IReadOnlyList<(ulong NameHash, int PaddedSize, int UnpaddedSize, long Offset)> entries,
+        Bhd5Layout layout = Bhd5Layout.Salted40ByteEntries, int bucketCount = 4, string salt = "GR_test")
+        => Build(entries.Select(e => new Entry(e.NameHash, e.PaddedSize, e.UnpaddedSize, e.Offset)).ToArray(), layout, bucketCount, salt);
 
-    public static byte[] Build(IReadOnlyList<Entry> entries, int bucketCount = 4, string salt = "GR_test")
+    /// <summary>The entry fields in the order <paramref name="layout"/> stores them, always 40 bytes.</summary>
+    public static byte[] Build(IReadOnlyList<Entry> entries, Bhd5Layout layout = Bhd5Layout.Salted40ByteEntries, int bucketCount = 4, string salt = "GR_test")
     {
         var saltBytes = Encoding.ASCII.GetBytes(salt);
         var headLength = 28 + saltBytes.Length;
@@ -81,12 +84,24 @@ public static class Bhd5Fixture
                         WriteLong(keys, end);
                     }
                 }
-                WriteLong(records, (long)e.NameHash);
-                WriteInt(records, e.PaddedSize);
-                WriteInt(records, e.UnpaddedSize);
-                WriteLong(records, e.Offset);
-                WriteLong(records, 0);
-                WriteLong(records, keyOffset);
+                if (layout == Bhd5Layout.Hash32Salted40ByteEntries)
+                {
+                    WriteInt(records, unchecked((int)(uint)e.NameHash));
+                    WriteInt(records, e.PaddedSize);
+                    WriteLong(records, e.Offset);
+                    WriteLong(records, 0);
+                    WriteLong(records, keyOffset);
+                    WriteLong(records, e.UnpaddedSize);
+                }
+                else
+                {
+                    WriteLong(records, (long)e.NameHash);
+                    WriteInt(records, e.PaddedSize);
+                    WriteInt(records, checked((int)e.UnpaddedSize));
+                    WriteLong(records, e.Offset);
+                    WriteLong(records, 0);
+                    WriteLong(records, keyOffset);
+                }
                 next += EntrySize;
             }
         }

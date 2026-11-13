@@ -39,6 +39,9 @@ public enum Bhd5Layout
 {
     /// <summary>A salt after the header, then 40-byte entries: path hash (8), padded size, unpadded size, offset, a digest offset, an AES key offset.</summary>
     Salted40ByteEntries,
+
+    /// <summary>Dark Souls III and Sekiro: a salt after the header, then 40-byte entries: u32 path hash, i32 padded size, i64 offset, i64 digest offset, i64 AES key offset, i64 unpadded size.</summary>
+    Hash32Salted40ByteEntries,
 }
 
 /// <summary>One packed archive: an RSA-signed index (<c>Name.bhd</c>) beside its payloads (<c>Name.bdt</c>).</summary>

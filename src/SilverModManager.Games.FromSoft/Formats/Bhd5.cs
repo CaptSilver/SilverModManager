@@ -24,7 +24,7 @@ public static class Bhd5
     private const int EntrySize = 40;
     private const int KeyLength = AesCbc.BlockSize;
 
-    public sealed record Entry(ulong NameHash, int PaddedSize, int UnpaddedSize, long Offset, byte[]? AesKey, IReadOnlyList<AesRange> Ranges);
+    public sealed record Entry(ulong NameHash, int PaddedSize, long UnpaddedSize, long Offset, byte[]? AesKey, IReadOnlyList<AesRange> Ranges);
 
     public sealed record Index(string Salt, int BucketCount, IReadOnlyDictionary<ulong, Entry> Entries);
 
@@ -91,7 +91,7 @@ public static class Bhd5
     /// <summary>Reads a decrypted index. Only the layouts this reads are accepted; any other is refused by name.</summary>
     public static Index Parse(ReadOnlySpan<byte> plain, FromSoftFormatTraits traits)
     {
-        if (traits.ArchiveLayout != Bhd5Layout.Salted40ByteEntries)
+        if (traits.ArchiveLayout is not (Bhd5Layout.Salted40ByteEntries or Bhd5Layout.Hash32Salted40ByteEntries))
             throw new Bhd5Exception($"No reader for the archive layout {traits.ArchiveLayout} ({(int)traits.ArchiveLayout})");
         if (!plain.StartsWith("BHD5"u8))
             throw new Bhd5Exception($"Not a BHD5 index (magic {Convert.ToHexString(plain[..Math.Min(4, plain.Length)])}): the RSA step produced the wrong bytes");
@@ -111,14 +111,32 @@ public static class Bhd5
             for (var i = 0; i < count; i++)
             {
                 var at = offset + (long)i * EntrySize;
-                var hash = BinaryPrimitives.ReadUInt64LittleEndian(Slice(plain, at, 8));
-                var (key, ranges) = ReadKey(plain, BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 32, 8)));
+                var entry = ReadEntry(plain, at, traits.ArchiveLayout);
                 // A later entry with the same hash replaces the earlier one, as the game's own lookup does.
-                entries[hash] = new Entry(hash, ReadInt(plain, at + 8), ReadInt(plain, at + 12),
-                    BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 16, 8)), key, ranges);
+                entries[entry.NameHash] = entry;
             }
         }
         return new Index(salt, bucketCount, entries.ToFrozenDictionary());
+    }
+
+    private static Entry ReadEntry(ReadOnlySpan<byte> plain, long at, Bhd5Layout layout)
+    {
+        // Both layouts are 40 bytes; only the order and widths differ. The 32-bit layout narrows the hash and moves the
+        // unpadded size to the end, widened to 64 bits.
+        if (layout == Bhd5Layout.Hash32Salted40ByteEntries)
+        {
+            var hash = BinaryPrimitives.ReadUInt32LittleEndian(Slice(plain, at, 4));
+            var (key, ranges) = ReadKey(plain, BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 24, 8)));
+            return new Entry(hash, ReadInt(plain, at + 4), BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 32, 8)),
+                BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 8, 8)), key, ranges);
+        }
+        else
+        {
+            var hash = BinaryPrimitives.ReadUInt64LittleEndian(Slice(plain, at, 8));
+            var (key, ranges) = ReadKey(plain, BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 32, 8)));
+            return new Entry(hash, ReadInt(plain, at + 8), ReadInt(plain, at + 12),
+                BinaryPrimitives.ReadInt64LittleEndian(Slice(plain, at + 16, 8)), key, ranges);
+        }
     }
 
     /// <summary>The per-file AES key and the ranges it covers, or none: a 16-byte key, an int32 count, then (int64 start, int64 end) pairs where (-1, -1) is unused.</summary>
