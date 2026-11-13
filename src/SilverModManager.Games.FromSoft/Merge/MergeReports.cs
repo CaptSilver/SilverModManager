@@ -93,6 +93,30 @@ public sealed class MergeReports(
     internal static string[] ReportNotes(IEnumerable<IMergeNote> notes)
         => notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
 
+    /// <summary>
+    /// The entries more than one mod changed differently, one per key however many fold steps wrote a note about it. The
+    /// winner is the mod the key's last note keeps, which a pin or the priority has already settled.
+    /// </summary>
+    /// <param name="mods">The contributors in load order, which orders each contest's candidates.</param>
+    internal static IReadOnlyList<MergeContest> ContestsOf(IEnumerable<IMergeNote> notes, IReadOnlyList<string> mods)
+        => [.. notes.OfType<IChoosableNote>()
+            .Select(n => (Key: n.ChoiceKey, Note: n))
+            .Where(n => n.Key is not null)
+            .GroupBy(n => n.Key ?? "", n => n.Note, StringComparer.Ordinal)
+            .Select(g => new MergeContest(
+                g.Key,
+                [.. g.SelectMany(n => new[] { n.Winner, n.DroppedMod }).Distinct(StringComparer.Ordinal).OrderBy(m => IndexOrLast(mods, m))],
+                g.Last().Winner,
+                g.Any(n => n.Chosen)))
+            .OrderBy(c => c.Key, StringComparer.Ordinal)];
+
+    private static int IndexOrLast(IReadOnlyList<string> mods, string mod)
+    {
+        for (var i = 0; i < mods.Count; i++)
+            if (mods[i] == mod) return i;
+        return mods.Count;
+    }
+
     private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed, string? archiveFailure)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
@@ -109,7 +133,7 @@ public sealed class MergeReports(
                     .Concat(archiveFailure is null ? [] : [archiveFailure]).ToArray()
                 : candidate.Winner is { } winner ? [$"{winner.ModName} wins by loadout priority; the other copies are ignored"]
                 : [];
-            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, candidate.VanillaSource, candidate.Outcome.Reason ?? string.Empty);
+            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, candidate.VanillaSource, candidate.Outcome.Reason ?? string.Empty, []);
         }
 
         if (plan?.Merged.FirstOrDefault(m => m.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase)) is { } merged)
@@ -118,12 +142,12 @@ public sealed class MergeReports(
             // Mods of several builds each have a source of their own; with one build the first note says it all.
             var source = SourceOf(merged.Notes) ?? merged.VanillaSource;
             var notes = ReportNotes(merged.Notes);
-            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);
+            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty, ContestsOf(merged.Notes, mods));
         }
 
         var reason = plan?.Refusal is { } r && r.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase) && refusal is { } text
             ? text
             : HeldBack;
-        return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Refused, [], string.Empty, reason);
+        return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Refused, [], string.Empty, reason, []);
     }
 }

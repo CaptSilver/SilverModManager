@@ -65,7 +65,8 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
         {
             var index = sources.Index(loadout);
             var inputs = Fetch(loadout, index, mode, traits);
-            var key = KeyOf(index, inputs);
+            var choices = MergeChoices.For(loadout.Db, loadout.LoadoutId, index);
+            var key = KeyOf(index, inputs, choices);
 
             if (_latest.TryGetValue(loadout.LoadoutId, out var known)
                 && known.Key == key
@@ -76,7 +77,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
             }
 
             var rebase = RegulationRebase.For(c => sources.VersionOf(installation, c), () => inputs.Live(), traits);
-            var plan = MergePlanner.Plan(index, sources.ContributorBytes, inputs.Vanilla, inputs.GameBase, traits, MergeStrategyBindings.For, rebase);
+            var plan = MergePlanner.Plan(index, sources.ContributorBytes, inputs.Vanilla, inputs.GameBase, traits, MergeStrategyBindings.For, rebase, choices);
             plan = inputs.WithSourceNotes(plan);
             _latest[loadout.LoadoutId] = new Entry(key, plan, inputs.Notes.Values.Any(notes => notes.OfType<BaselineWillBeKept>().Any()));
             _unmerged[loadout.LoadoutId] = UnmergedOf(plan);
@@ -197,7 +198,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
         }
     }
 
-    private static string KeyOf(MergePathIndex index, Inputs inputs)
+    private static string KeyOf(MergePathIndex index, Inputs inputs, IReadOnlyDictionary<string, PathChoices> choices)
     {
         var key = new StringBuilder();
         foreach (var candidate in index.Candidates)
@@ -210,6 +211,12 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
             if (inputs.Stamps.TryGetValue(candidate.Path, out var stamp)) key.Append("|b:").Append(stamp);
             if (inputs.VanillaOf.TryGetValue(candidate.Path, out var vanilla))
                 foreach (var fingerprint in vanilla.Fingerprints) key.Append("|v:").Append(fingerprint);
+            if (choices.TryGetValue(candidate.Path, out var pins))
+            {
+                foreach (var (pinKey, winner) in pins.All.OrderBy(p => p.Key, StringComparer.Ordinal)) key.Append("|ch:").Append(pinKey).Append('=').Append(winner);
+                // A stale pin changes no bytes, but the plan lists it, so a new or newly stale one is a new plan.
+                foreach (var (pinKey, reason) in pins.Stale.OrderBy(p => p.Key, StringComparer.Ordinal)) key.Append("|st:").Append(pinKey).Append('=').Append(reason);
+            }
             key.Append('\n');
         }
         return key.ToString();

@@ -112,11 +112,11 @@ public sealed class MergeEngine : IMergeEngine
         var contributors = result.Path.Contributors.Select(c => c.ModName).Reverse().ToArray();
         if (result.Output is not { } output)
             return new MergeReportEntry(result.Path.Rel, result.Path.Strategy?.Name ?? "", contributors, MergeReportOutcome.NotMergeable, [], "",
-                result.NotMergedReason ?? throw new InvalidOperationException($"`{result.Path.Rel}` has neither a merged output nor a reason it wasn't merged"));
+                result.NotMergedReason ?? throw new InvalidOperationException($"`{result.Path.Rel}` has neither a merged output nor a reason it wasn't merged"), []);
 
         var source = output.Notes.OfType<IVanillaSourceNote>().FirstOrDefault()?.Describe() ?? GamesOwnCopy;
         var notes = output.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
-        return new MergeReportEntry(result.Path.Rel, output.Strategy, [.. output.Contributors.Reverse()], MergeReportOutcome.Merged, notes, source, "");
+        return new MergeReportEntry(result.Path.Rel, output.Strategy, [.. output.Contributors.Reverse()], MergeReportOutcome.Merged, notes, source, "", []);
     }
 
     private IReadOnlyList<ContestedPath> Contested(Loadout.ReadOnly loadout, AMergeGame game)

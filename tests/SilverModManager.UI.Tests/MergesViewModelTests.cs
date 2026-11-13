@@ -19,7 +19,7 @@ public class MergesViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static MergeReportEntry Entry(string path, string strategy, string[] contributors, MergeReportOutcome outcome = MergeReportOutcome.Merged,
         string[]? notes = null, string vanilla = "", string reason = "")
-        => new(path, strategy, contributors, outcome, notes ?? [], vanilla, reason);
+        => new(path, strategy, contributors, outcome, notes ?? [], vanilla, reason, []);
 
     private static MergeReport Report(string? refusal = null, params MergeReportEntry[] entries)
         => new(entries, refusal, MergeReports.PriorityOrderHint);

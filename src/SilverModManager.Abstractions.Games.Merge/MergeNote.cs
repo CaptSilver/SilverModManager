@@ -43,6 +43,12 @@ public interface IWinnerNote : IMergeNote
 
     /// <summary>The same note with <paramref name="winner"/> as the mod whose change was kept.</summary>
     IMergeNote WithWinner(string winner);
+
+    /// <summary>Names the contest this note is about when a pin can settle it; null for a note nobody can pin.</summary>
+    string? ChoiceKey => null;
+
+    /// <summary>A pin, not the load order, decided this contest.</summary>
+    bool Chosen => false;
 }
 
 /// <summary>What a merge did without choosing between mods. Reports list it; Health Check raises no card for it.</summary>

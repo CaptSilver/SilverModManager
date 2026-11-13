@@ -12,13 +12,15 @@ public sealed record PathNote(string Path, IMergeNote Note);
 /// <param name="Bytes">The merged file.</param>
 /// <param name="Notes">What the merge kept, dropped or took whole.</param>
 /// <param name="VanillaSource">A sentence naming where the ancestor came from; empty for the unions, which compare nothing.</param>
+/// <param name="StaleChoices">Pins on this path that changed nothing, each with the reason; the merge ignored them.</param>
 public sealed record MergedPath(
     string Path,
     MergeStrategy Strategy,
     IReadOnlyList<ProviderFile> Contributors,
     byte[] Bytes,
     IReadOnlyList<IMergeNote> Notes,
-    string VanillaSource);
+    string VanillaSource,
+    IReadOnlyList<(string Key, string Reason)> StaleChoices);
 
 /// <summary>Why the plan has no merged files: one path could not be merged, so none was written.</summary>
 /// <param name="Missing">The builds with no vanilla regulation, when that is the reason; empty otherwise, so a caller can offer to find one.</param>

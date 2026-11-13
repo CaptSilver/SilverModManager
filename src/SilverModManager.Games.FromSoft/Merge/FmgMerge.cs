@@ -17,9 +17,10 @@ public static class FmgMerge
     /// <param name="notes">Receives a <see cref="TextKept"/> for every id both sides define with different text; null collects nothing.</param>
     /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
     /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    /// <param name="choices">The pinned winners of the archive; a text both sides define takes the other side's when the pin names <paramref name="otherName"/>.</param>
     public static byte[] Union(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null, PathChoices? choices = null)
     {
         var binder = Binders.For(traits);
         var baseRaw = Dcx.Read(@base, traits);
@@ -47,7 +48,15 @@ public static class FmgMerge
                 if (table.TryGetValue(id, out var own) && own is not null)
                 {
                     // A null on the other side is a gap as well, so base filling it loses nobody's text.
-                    if (text is not null && own != text) notes?.Add(new TextKept(entry.Id, id, kept, dropped));
+                    if (text is not null && own != text)
+                    {
+                        notes?.Add(new TextKept(entry.Id, id, kept, dropped));
+                        if (TakesOther(choices, entry.Id, id, dropped))
+                        {
+                            merged[id] = text;
+                            changed = true;
+                        }
+                    }
                     continue;
                 }
                 merged[id] = text;
@@ -65,10 +74,11 @@ public static class FmgMerge
     /// <param name="notes">Receives a <see cref="TextKept"/> for every conflict base won; null collects nothing.</param>
     /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
     /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    /// <param name="choices">The pinned winners of the archive; a conflict takes the other side's text when the pin names <paramref name="otherName"/>.</param>
     /// <exception cref="FmgMergeException">The three archives hold different tables.</exception>
     public static byte[] ThreeWay(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null, PathChoices? choices = null)
     {
         var kept = baseName ?? MergeNames.PreferredMod;
         var dropped = otherName ?? MergeNames.OtherMod;
@@ -100,7 +110,7 @@ public static class FmgMerge
                 {
                     // erm's fmg_three_way raises here. The loadout's priority decides a real conflict instead, so the
                     // accumulated side keeps its text and the loss is recorded.
-                    keep = b;
+                    keep = TakesOther(choices, entryId, id, dropped) ? o : b;
                     notes?.Add(new TextKept(entryId, id, kept, dropped));
                 }
 
@@ -111,6 +121,14 @@ public static class FmgMerge
             if (!SameTable(merged, baseTable)) replacements[entryId] = Fmg.Write(merged);
         }
         return Dcx.Write(binder.Rebuild(baseRaw, replacements), traits.PackedWrite);
+    }
+
+    private static bool TakesOther(PathChoices? choices, int entryId, int textId, string otherName)
+    {
+        var key = $"fmg:{entryId}/{textId}";
+        if (choices?.Winner(key) != otherName) return false;
+        choices.Took(key, otherName);
+        return true;
     }
 
     // An id that is not in a table at all, as opposed to one present with no text. A union cannot tell the two apart,

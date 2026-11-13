@@ -24,10 +24,10 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 {
     private const string Script = "scripts/x.ws";
 
-    private static MergeReportEntry Merged(string path = Script) => new(path, "text", ["Alpha", "Beta"], MergeReportOutcome.Merged, [], "the game's own copy", "");
+    private static MergeReportEntry Merged(string path = Script) => new(path, "text", ["Alpha", "Beta"], MergeReportOutcome.Merged, [], "the game's own copy", "", []);
 
     private static MergeReportEntry NotMergeable(string path, params string[] mods)
-        => new(path, "", mods, MergeReportOutcome.NotMergeable, [], "", "not a file the app merges; load order decides");
+        => new(path, "", mods, MergeReportOutcome.NotMergeable, [], "", "not a file the app merges; load order decides", []);
 
     private static MergedOutput Output(params IMergeNote[] notes)
         => new(new GamePath(LocationId.Game, $"Mods/merged/{Script}"), Script, [], ["Alpha", "Beta"], notes, "text");

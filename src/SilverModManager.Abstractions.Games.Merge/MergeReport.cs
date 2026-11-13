@@ -27,6 +27,13 @@ public static class MergeReportOutcomes
     };
 }
 
+/// <summary>One entry of a merged file that more than one mod changed differently.</summary>
+/// <param name="Key">Names the entry; the same spelling a pin uses.</param>
+/// <param name="Candidates">Every mod that changed the entry, in load order: the one loaded last is the winner unless a pin says otherwise.</param>
+/// <param name="Winner">The mod whose change the merged file keeps.</param>
+/// <param name="Chosen">A pin, not the load order, picked the winner.</param>
+public sealed record MergeContest(string Key, string[] Candidates, string Winner, bool Chosen);
+
 /// <summary>One path of a <see cref="MergeReport"/>.</summary>
 /// <param name="Path">The package-relative path.</param>
 /// <param name="Strategy">The strategy's name as the game's strategy names spell it; empty when the engine has none.</param>
@@ -35,6 +42,7 @@ public static class MergeReportOutcomes
 /// <param name="Notes">What the merge kept, dropped or took whole, as sentences.</param>
 /// <param name="VanillaSource">Where the ancestor of the merge comes from; empty for the unions, which compare nothing.</param>
 /// <param name="Reason">Why the path is refused or not mergeable; empty when it is merged.</param>
+/// <param name="Contests">The entries of the merged file that mods changed differently, and who won each; empty for an engine that has no per-entry merge.</param>
 public sealed record MergeReportEntry(
     string Path,
     string Strategy,
@@ -42,7 +50,8 @@ public sealed record MergeReportEntry(
     MergeReportOutcome Outcome,
     IReadOnlyList<string> Notes,
     string VanillaSource,
-    string Reason);
+    string Reason,
+    IReadOnlyList<MergeContest> Contests);
 
 /// <summary>
 /// Everything the merges of a loadout would do, as plain records, so the page and the command line print the same

@@ -36,24 +36,30 @@ public static class ParamRowMerge
     /// The installed game's regulation, when the base is a fold that started from it. It tells a row the game owns from
     /// one an earlier mod changed, whichever step this is, and lets a mod's row edit be set against the patch's.
     /// </param>
+    /// <param name="choices">
+    /// The pinned winners of the regulation. A row both mods changed differently, or both added, takes the other side's
+    /// version when the pin names <paramref name="otherName"/>; a row the game's own copy beat is not between two mods and
+    /// is left alone.
+    /// </param>
     /// <exception cref="MergeException">The three regulations cannot be reconciled without guessing.</exception>
     /// <exception cref="RemovedRowEditsException">The other side edits rows the game removed, so there is nothing to carry them onto.</exception>
     public static byte[] Merge(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName = null, string? otherName = null, GameOrigin? game = null)
-        => Merge(@base, other, vanilla, traits, notes, baseIsGame, baseName, otherName, Regulation.Unpack, game);
+        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName = null, string? otherName = null, GameOrigin? game = null,
+        PathChoices? choices = null)
+        => Merge(@base, other, vanilla, traits, notes, baseIsGame, baseName, otherName, Regulation.Unpack, game, choices);
 
     // The unpack seam exists so a test can count how often a regulation is decrypted.
     internal static byte[] Merge(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
         ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName,
-        Func<ReadOnlySpan<byte>, FromSoftFormatTraits, byte[]> unpack, GameOrigin? game = null)
+        Func<ReadOnlySpan<byte>, FromSoftFormatTraits, byte[]> unpack, GameOrigin? game = null, PathChoices? choices = null)
     {
         var basePayload = unpack(@base, traits);
         if (baseIsGame) game?.Adopt(basePayload);
         var otherPayload = unpack(other, traits);
         var vanillaPayload = unpack(vanilla, traits);
-        return Merge(basePayload, otherPayload, vanillaPayload, @base[..Regulation.IvSize].ToArray(), traits, notes, baseIsGame, baseName, otherName, game);
+        return Merge(basePayload, otherPayload, vanillaPayload, @base[..Regulation.IvSize].ToArray(), traits, notes, baseIsGame, baseName, otherName, game, choices);
     }
 
     /// <summary>
@@ -62,7 +68,7 @@ public static class ParamRowMerge
     /// </summary>
     internal static byte[] Merge(
         byte[] basePayload, byte[] otherPayload, byte[] vanillaPayload, byte[] iv, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName, GameOrigin? game = null)
+        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName, GameOrigin? game = null, PathChoices? choices = null)
     {
         var binder = Binders.For(traits);
         var baseRead = binder.Read(basePayload).ToList();
@@ -92,7 +98,7 @@ public static class ParamRowMerge
             var entryNotes = new List<IMergeNote>();
             try
             {
-                var merged = MergeParam(new ParamContext(entryId, entryNames[entryId], baseIsGame, names, game, ancestorVersion, removed), baseBlob, otherBlob, vanillaBlob, entryNotes);
+                var merged = MergeParam(new ParamContext(entryId, entryNames[entryId], baseIsGame, names, game, ancestorVersion, removed, choices), baseBlob, otherBlob, vanillaBlob, entryNotes);
                 if (merged is not null) replacements[entryId] = merged;
             }
             catch (ParamException)
@@ -115,8 +121,18 @@ public static class ParamRowMerge
 
     /// <summary>What one param's merge needs to know beyond its three blobs.</summary>
     private sealed record ParamContext(
-        int EntryId, string EntryName, bool BaseIsGame, Owners Owners, GameOrigin? Game, Lazy<string> AncestorVersion, List<RemovedRowEdit> Removed)
+        int EntryId, string EntryName, bool BaseIsGame, Owners Owners, GameOrigin? Game, Lazy<string> AncestorVersion, List<RemovedRowEdit> Removed,
+        PathChoices? Choices)
     {
+        /// <summary>The pin on this row names the other side, so its version replaces the base's; recorded so the planner can tell the pin took effect.</summary>
+        public bool TakesOther(int rowId)
+        {
+            var key = $"param:{EntryId}/{rowId}";
+            if (Choices?.Winner(key) != Owners.Dropped) return false;
+            Choices.Took(key, Owners.Dropped);
+            return true;
+        }
+
         /// <summary>The base's copy of the row is still the game's own: the base is the game, or no earlier mod touched it.</summary>
         public bool BaseRowIsGames(int rowId, byte[] baseRow)
             => BaseIsGame || (Game?.Row(EntryId, rowId) is { } gameRow && ContentEqual(gameRow, baseRow));
@@ -184,8 +200,10 @@ public static class ParamRowMerge
                     }
                     else
                     {
-                        // Fold order is priority order, so keeping the base's row is the answer the loadout already gave.
-                        notes.Add(new RivalRow(entryId, rowId));
+                        // Fold order is priority order, so keeping the base's row is the answer the loadout already gave,
+                        // unless a pin names the other mod.
+                        notes.Add(new RivalRow(entryId, rowId, context.Owners.Kept, context.Owners.Dropped));
+                        if (context.TakesOther(rowId)) overwrite[rowId] = od;
                     }
                     continue;
                 }
@@ -203,6 +221,7 @@ public static class ParamRowMerge
                     var gameKept = bd is not null && context.BaseRowIsGames(rowId, bd);
                     var keptName = gameKept && !context.BaseIsGame ? MergeNames.Game : context.Owners.Kept;
                     notes.Add(new RowConflict(entryId, rowId, keptName, context.Owners.Dropped, gameKept));
+                    if (!gameKept && od is not null && context.TakesOther(rowId)) overwrite[rowId] = od;
                     continue;
                 }
                 if (bd is not null && merged.AsSpan().SequenceEqual(bd)) continue;   // the base already had everything the other side did

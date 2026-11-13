@@ -13,9 +13,10 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <param name="accumulatedName">Who owns the accumulated side, for the notes.</param>
 /// <param name="nextName">Who owns the next file, for the notes.</param>
 /// <param name="game">The installed game's own file when the fold started from it; only the regulation merge reads it.</param>
+/// <param name="choices">The pinned winners of the path being folded; null when none apply.</param>
 public delegate byte[] MergeFold(
     ReadOnlySpan<byte> accumulated, ReadOnlySpan<byte> next, ReadOnlySpan<byte> vanilla, bool hasVanilla, bool baseIsGame,
-    string accumulatedName, string nextName, ICollection<IMergeNote>? notes, FromSoftFormatTraits traits, GameOrigin? game);
+    string accumulatedName, string nextName, ICollection<IMergeNote>? notes, FromSoftFormatTraits traits, GameOrigin? game, PathChoices? choices);
 
 /// <summary>
 /// The one place a <see cref="MergeStrategy"/> meets the code that performs it. Each merge routine has its own shape;
@@ -26,17 +27,17 @@ public static class MergeStrategyBindings
     /// <summary>The fold for a strategy.</summary>
     public static MergeFold For(MergeStrategy strategy) => strategy switch
     {
-        MergeStrategy.FmgUnion => (acc, next, _, _, _, accName, nextName, notes, traits, _)
-            => FmgMerge.Union(acc, next, traits, notes, accName, nextName),
-        MergeStrategy.FmgThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
-            => FmgMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
-        MergeStrategy.TpfUnion => (acc, next, _, _, _, accName, nextName, notes, traits, _)
-            => TpfMerge.Union(acc, next, traits, notes, accName, nextName),
-        MergeStrategy.ParamRows => (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, traits, game)
-            => ParamRowMerge.Merge(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, baseIsGame, accName, nextName, game),
-        MergeStrategy.EsdThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
+        MergeStrategy.FmgUnion => (acc, next, _, _, _, accName, nextName, notes, traits, _, choices)
+            => FmgMerge.Union(acc, next, traits, notes, accName, nextName, choices),
+        MergeStrategy.FmgThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _, choices)
+            => FmgMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName, choices),
+        MergeStrategy.TpfUnion => (acc, next, _, _, _, accName, nextName, notes, traits, _, choices)
+            => TpfMerge.Union(acc, next, traits, notes, accName, nextName, choices),
+        MergeStrategy.ParamRows => (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, traits, game, choices)
+            => ParamRowMerge.Merge(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, baseIsGame, accName, nextName, game, choices),
+        MergeStrategy.EsdThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _, _)
             => EsdArchiveMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
-        MergeStrategy.PartsbndThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
+        MergeStrategy.PartsbndThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _, _)
             => BinderMemberMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };

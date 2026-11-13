@@ -135,6 +135,61 @@ public class MergePlanCacheTests(ITestOutputHelper helper) : AVanillaDumpTest<Me
     }
 
     [Fact]
+    public async Task ChoiceChange_Replans()
+    {
+        var (loadout, _, _) = await TwoMsgbndMods();
+        var before = Plans.Current(loadout, MergeSourceMode.Report);
+        var contributors = before.Merged.Single().Contributors;
+        var lowest = contributors[^1];
+        MsgbndFixture.ReadBack(before.Merged.Single().Bytes, Formats)[1][10].Should().NotBe(TextOf(lowest), "the higher mod wins before any pin");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new LoadoutMergeChoice.New(tx)
+            {
+                LoadoutId = loadout.LoadoutId,
+                Path = Msg,
+                Key = "fmg:1/10",
+                WinnerGroupId = LoadoutItemGroupId.From(lowest.ModId!.Value.Value),
+            };
+            await tx.Commit();
+        }
+        var after = Plans.Current(Refresh(loadout), MergeSourceMode.Report);
+
+        after.Should().NotBeSameAs(before);
+        MsgbndFixture.ReadBack(after.Merged.Single().Bytes, Formats)[1][10].Should().Be(TextOf(lowest));
+        Plans.Current(Refresh(loadout), MergeSourceMode.Report).Should().BeSameAs(after, "the same choice is the same inputs");
+    }
+
+    [Fact]
+    public async Task StaleChoice_Replans()
+    {
+        var (loadout, _, _) = await TwoMsgbndMods();
+        var gamma = await InstallMod(loadout.LoadoutId, "Gamma", ("msg/engus/menu.msgbnd.dcx", Msgbnd("gamma text", 13)));
+        loadout = Refresh(loadout);
+        var before = Plans.Current(loadout, MergeSourceMode.Report);
+
+        // A pin on a mod that does not provide the path changes no bytes, but the plan has to say it is ignored.
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new LoadoutMergeChoice.New(tx)
+            {
+                LoadoutId = loadout.LoadoutId,
+                Path = Msg,
+                Key = "fmg:1/10",
+                WinnerGroupId = gamma.LoadoutItemGroupId,
+            };
+            await tx.Commit();
+        }
+        var after = Plans.Current(Refresh(loadout), MergeSourceMode.Report);
+
+        after.Should().NotBeSameAs(before);
+        after.Merged.Single().StaleChoices.Should().ContainSingle().Which.Key.Should().Be("fmg:1/10");
+    }
+
+    private static string TextOf(ProviderFile file) => file.PackageId == "Alpha" ? "alpha text" : "beta text";
+
+    [Fact]
     public async Task AReportThatWouldKeepABaselineIsNotWhatAnApplyGetsAndOnlyTheApplyKeepsIt()
     {
         var loadout = await CreateLoadout();

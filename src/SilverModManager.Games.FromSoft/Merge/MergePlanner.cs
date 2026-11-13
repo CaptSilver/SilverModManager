@@ -18,13 +18,15 @@ public static class MergePlanner
     /// <param name="bytes">A contributor's file.</param>
     /// <param name="vanilla">The file a contributor branched from, asked per contributor and only for strategies that compare against it; null when none is available. Contributors built for different game builds have different answers.</param>
     /// <param name="gameBase">The installed game's own file for a path.</param>
+    /// <param name="choices">The loadout's pinned merge winners by path; a pin decides a contested item the load order would otherwise decide.</param>
     public static MergePlan Plan(
         MergePathIndex index,
         Func<ProviderFile, byte[]> bytes,
         Func<string, ProviderFile, byte[]?> vanilla,
         Func<string, byte[]> gameBase,
-        FromSoftFormatTraits traits)
-        => Plan(index, bytes, vanilla, gameBase, traits, MergeStrategyBindings.For);
+        FromSoftFormatTraits traits,
+        IReadOnlyDictionary<string, PathChoices>? choices = null)
+        => Plan(index, bytes, vanilla, gameBase, traits, MergeStrategyBindings.For, choices: choices);
 
     // The bindings are a parameter so a test can fold with strategies that record what they were handed.
     internal static MergePlan Plan(
@@ -34,7 +36,8 @@ public static class MergePlanner
         Func<string, byte[]> gameBase,
         FromSoftFormatTraits traits,
         Func<MergeStrategy, MergeFold> bindings,
-        RegulationRebase? rebase = null)
+        RegulationRebase? rebase = null,
+        IReadOnlyDictionary<string, PathChoices>? choices = null)
     {
         var notMergeable = index.Candidates.Where(c => !c.Outcome.Merges).ToArray();
         var merged = new List<MergedPath>();
@@ -47,7 +50,7 @@ public static class MergePlanner
                            ?? throw new InvalidOperationException($"{candidate.Path} is marked as merging but has no strategy");
             try
             {
-                merged.Add(MergeInSomeOrder(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase));
+                merged.Add(MergeInSomeOrder(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase, choices?.GetValueOrDefault(candidate.Path)));
             }
             catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
             {
@@ -66,11 +69,11 @@ public static class MergePlanner
     private static MergedPath MergeInSomeOrder(
         MergeCandidate candidate, MergeStrategy strategy, Func<ProviderFile, byte[]> bytes,
         Func<string, ProviderFile, byte[]?> vanilla, Func<string, byte[]> gameBase,
-        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase)
+        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase, PathChoices? choices)
     {
         try
         {
-            return Merge(candidate, strategy, bytes, vanilla, gameBase, traits, fold, rebase);
+            return Merge(candidate, strategy, bytes, vanilla, gameBase, traits, fold, rebase, choices);
         }
         catch (Exception first) when (MergeFailures.IsInputProblem(first) && MergeStrategies.IsOrderSensitive(strategy) && candidate.Contributors.Count > 1)
         {
@@ -80,7 +83,7 @@ public static class MergePlanner
                     .Concat(candidate.Contributors.Where((_, i) => i != lead)).ToArray();
                 try
                 {
-                    var merged = Merge(candidate with { Contributors = order }, strategy, bytes, vanilla, gameBase, traits, fold, rebase);
+                    var merged = Merge(candidate with { Contributors = order }, strategy, bytes, vanilla, gameBase, traits, fold, rebase, choices);
                     return merged with
                     {
                         Contributors = candidate.Contributors,
@@ -99,9 +102,11 @@ public static class MergePlanner
     private static MergedPath Merge(
         MergeCandidate candidate, MergeStrategy strategy, Func<ProviderFile, byte[]> bytes,
         Func<string, ProviderFile, byte[]?> vanilla, Func<string, byte[]> gameBase,
-        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase)
+        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase, PathChoices? configured)
     {
         var path = candidate.Path;
+        // A retried lead folds again from the start, so each attempt records what the pins did on its own.
+        var choices = configured?.Fresh();
         var takesGameBase = MergeStrategies.TakesGameBase(strategy);
         var needsVanilla = MergeStrategies.NeedsVanilla(strategy);
 
@@ -162,7 +167,7 @@ public static class MergePlanner
                 var before = notes.Count;
                 result = fold(
                     result, blobs[step + 1], ancestor, needsVanilla, baseIsGame,
-                    baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits, game);
+                    baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits, game, choices);
                 if (!baseIsGame)
                     NameRealWinners(notes, before, leader, owners, blobs, step, takesGameBase, ancestor, needsVanilla, fold, traits, game);
             }
@@ -188,7 +193,8 @@ public static class MergePlanner
                                          + "\nNothing was written; fix the mods and apply again.");
         }
 
-        return new MergedPath(path, strategy, candidate.Contributors, result, notes, VanillaSourceOf(strategy));
+        var stale = choices is null ? [] : ApplyChoices(notes, choices);
+        return new MergedPath(path, strategy, candidate.Contributors, result, notes, VanillaSourceOf(strategy), stale);
     }
 
     /// <summary>
@@ -215,7 +221,7 @@ public static class MergePlanner
             var scratch = new List<IMergeNote>();
             try
             {
-                fold(blobs[k + offset], blobs[step + 1], ancestor, needsVanilla, false, leader, owners[step + 1], scratch, traits, game);
+                fold(blobs[k + offset], blobs[step + 1], ancestor, needsVanilla, false, leader, owners[step + 1], scratch, traits, game, null);
             }
             catch (Exception e) when (MergeFailures.IsInputProblem(e) || e is RemovedRowEditsException)
             {
@@ -237,6 +243,33 @@ public static class MergePlanner
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// Whether a pin took effect is only known once the whole fold has run (with A above B above C and C pinned, the
+    /// contest of A and B is settled before C is folded in), so the notes are relabelled here. A pin is live when its mod
+    /// took the item at its own step or already is the winner some note names; every note of that contest then names
+    /// the pinned mod. Any other pin names a mod that never contested the item and is ignored.
+    /// </summary>
+    private static List<(string Key, string Reason)> ApplyChoices(List<IMergeNote> notes, PathChoices choices)
+    {
+        var stale = new List<(string Key, string Reason)>(choices.Stale);
+        foreach (var (key, winner) in choices.All)
+        {
+            var live = choices.Owner(key) is not null
+                       || notes.OfType<IWinnerNote>().Any(n => n.ChoiceKey == key && n.Winner == winner);
+            if (!live)
+            {
+                stale.Add((key, $"{winner} does not edit {key}"));
+                continue;
+            }
+
+            for (var i = 0; i < notes.Count; i++)
+            {
+                if (notes[i] is IChoosableNote note && note.ChoiceKey == key) notes[i] = note.WithChosen(winner);
+            }
+        }
+        return stale;
     }
 
     private static string VanillaSourceOf(MergeStrategy strategy)

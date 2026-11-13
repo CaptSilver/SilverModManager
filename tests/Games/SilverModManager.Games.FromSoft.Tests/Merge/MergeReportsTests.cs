@@ -89,6 +89,23 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         => [.. (DataRoot.DirectoryExists() ? TreeSnapshot.Take(DataRoot) : []), .. (Mods.DirectoryExists() ? TreeSnapshot.Take(Mods) : [])];
 
     [Fact]
+    public async Task AMergedEntryListsItsContests()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (Msg, Msgbnd("alpha text")));
+        await InstallPackage(loadout.LoadoutId, "Beta", (Msg, Msgbnd("beta text")));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var contest = report.Entries.Single().Contests.Should().ContainSingle().Which;
+        contest.Key.Should().Be("fmg:1/10");
+        contest.Candidates.Should().BeEquivalentTo("Alpha.zip", "Beta.zip");
+        contest.Candidates.Should().Equal(report.Entries.Single().Contributors, "candidates are listed in load order like the contributors");
+        contest.Winner.Should().Be(report.Entries.Single().Contributors[^1], "the mod loaded last wins");
+        contest.Chosen.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AMergingMsgbndPairIsMergedWithTheWinnerLastAndTheTextKeptNote()
     {
         var loadout = await CreateLoadout();

@@ -40,7 +40,7 @@ public class MergePlannerTests
 
     /// <summary>A fold that concatenates its two sides and records what it was given.</summary>
     private static MergeFold Recording(List<Call> calls, Action<ICollection<IMergeNote>?>? withNotes = null) =>
-        (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, _, _) =>
+        (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, _, _, _) =>
         {
             calls.Add(new Call(S(acc), S(next), hasVanilla ? S(vanilla) : null, baseIsGame, accName, nextName, notes is not null));
             withNotes?.Invoke(notes);
@@ -66,7 +66,7 @@ public class MergePlannerTests
             File("a", "a.tpf.dcx", 2), File("b", "a.tpf.dcx", 1),
             File("a", "regulation.test", 2), File("b", "regulation.test", 1));
         var calls = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) =>
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _, _) =>
             calls++ == 0 ? B("ok") : throw new MergeException("cannot join");
 
         var plan = Plan(index, fold, gameBase: _ => B("game"));
@@ -83,7 +83,7 @@ public class MergePlannerTests
     public void A_failing_merge_of_another_file_falls_back_to_the_priority_winner_without_a_refusal()
     {
         var index = Index(null, File("a", "b.tpf.dcx", 2), File("b", "b.tpf.dcx", 1));
-        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => throw new MergeException("cannot join");
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _, _) => throw new MergeException("cannot join");
 
         var plan = Plan(index, fold);
 
@@ -104,7 +104,7 @@ public class MergePlannerTests
             File("a", "a.tpf.dcx", 2), File("b", "a.tpf.dcx", 1),
             File("a", "b.tpf.dcx", 2), File("b", "b.tpf.dcx", 1));
         var calls = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) =>
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _, _) =>
             calls++ == 0 ? B("ok") : throw new MergeException("cannot join");
 
         var plan = Plan(index, fold);
@@ -216,7 +216,7 @@ public class MergePlannerTests
         var index = Index(null, File("low", "one.tpf.dcx", 1), File("high", "one.tpf.dcx", 3), File("mid", "one.tpf.dcx", 2));
         var pairwise = 0;
         // Only the middle mod holds the disputed rows: the fold over it (alone, or inside the accumulated merge) reports them.
-        MergeFold fold = (acc, next, _, _, _, accName, _, notes, _, _) =>
+        MergeFold fold = (acc, next, _, _, _, accName, _, notes, _, _, _) =>
         {
             if (S(next) == "low" && (S(acc) is "mid" or "high")) pairwise++;
             if (S(acc) is "mid" or "high+mid")
@@ -320,7 +320,7 @@ public class MergePlannerTests
     {
         foreach (var strategy in Enum.GetValues<MergeStrategy>().Where(MergeStrategies.NeedsVanilla))
         {
-            var act = () => MergeStrategyBindings.For(strategy)([], [], [], false, false, "a", "b", null, Traits, null);
+            var act = () => MergeStrategyBindings.For(strategy)([], [], [], false, false, "a", "b", null, Traits, null, null);
             act.Should().Throw<MergeException>(strategy.ToString()).WithMessage("*needs the vanilla*");
         }
     }
@@ -727,7 +727,7 @@ public class MergePlannerTests
     {
         const string path = "msg/engus/item.msgbnd.dcx";
         var calls = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => { calls++; throw new MergeException("cannot join"); };
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _, _) => { calls++; throw new MergeException("cannot join"); };
         var index = Index(new HashSet<string> { path }, File("a", path, 2), File("b", path, 1));
 
         var plan = Plan(index, fold);
@@ -741,7 +741,7 @@ public class MergePlannerTests
     {
         const string path = "script/talk/m00.talkesdbnd.dcx";
         var seen = new List<string>();
-        MergeFold fold = (acc, next, _, _, _, _, _, _, _, _) =>
+        MergeFold fold = (acc, next, _, _, _, _, _, _, _, _, _) =>
         {
             seen.Add(S(acc) + ">" + S(next));
             if (S(acc) is "a" or "b") throw new MergeException("only c leads");
@@ -760,7 +760,7 @@ public class MergePlannerTests
     public void A_talk_merge_that_fails_with_every_base_reports_the_priority_orders_error()
     {
         const string path = "script/talk/m00.talkesdbnd.dcx";
-        MergeFold fold = (acc, _, _, _, _, _, _, _, _, _) => throw new MergeException($"{S(acc)} cannot lead");
+        MergeFold fold = (acc, _, _, _, _, _, _, _, _, _, _) => throw new MergeException($"{S(acc)} cannot lead");
         var index = MergePathIndex.Build([File("a", path, 3), File("b", path, 2), File("c", path, 1)], Traits, new HashSet<string> { path });
 
         var plan = MergePlanner.Plan(index, ByPackage, Vanilla("van"), NoBase, Traits, _ => fold);

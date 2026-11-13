@@ -274,7 +274,7 @@ public class ParamRowMergeTests
         var notes = new List<IMergeNote>();
         var merged = Run(@base, other, van, notes);
         RowsOf(merged, 1)[80020000].Should().Equal(Rep(0x11, 8));
-        notes.Should().Equal(new RivalRow(1, 80020000));
+        notes.Should().Equal(new RivalRow(1, 80020000, MergeNames.PreferredMod, MergeNames.OtherMod));
     }
 
     [Fact]
@@ -690,7 +690,7 @@ public class ParamRowMergeTests
     [Fact]
     public void ARivalRowIsDescribed()
     {
-        var text = new RivalRow(123, 80020000).Describe();
+        var text = new RivalRow(123, 80020000, "Mod A", "Mod B").Describe();
         text.Should().Contain("123").And.Contain("80020000").And.Contain("two mods").And.Contain("dropped");
     }
 

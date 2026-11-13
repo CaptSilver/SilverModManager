@@ -19,10 +19,11 @@ public static class TpfMerge
     /// <param name="notes">Receives a <see cref="TextureKept"/> for every shared name whose bytes differ; null collects nothing.</param>
     /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
     /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    /// <param name="choices">The pinned winners of the archive; a shared name whose bytes differ takes the other side's copy when the pin names <paramref name="otherName"/>.</param>
     /// <returns>The base bytes untouched when the other side adds nothing, so an unchanged file is not recompressed.</returns>
     public static byte[] Union(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null, PathChoices? choices = null)
     {
         var baseArchive = Tpf.Read(Dcx.Read(@base, traits));
         var otherArchive = Tpf.Read(Dcx.Read(other, traits));
@@ -30,19 +31,22 @@ public static class TpfMerge
         // First copy per name: an archive can carry a name twice, and a duplicate must not abort the merge.
         var have = new Dictionary<string, Texture>();
         foreach (var texture in baseArchive.Textures) have.TryAdd(texture.Name, texture);
-        if (notes is not null)
+        var kept = baseName ?? MergeNames.PreferredMod;
+        var dropped = otherName ?? MergeNames.OtherMod;
+        var taken = new Dictionary<string, Texture>();
+        foreach (var texture in otherArchive.Textures)
         {
-            foreach (var texture in otherArchive.Textures)
-            {
-                if (have.TryGetValue(texture.Name, out var own) && !own.Data.AsSpan().SequenceEqual(texture.Data))
-                    notes.Add(new TextureKept(texture.Name, baseName ?? MergeNames.PreferredMod, otherName ?? MergeNames.OtherMod));
-            }
+            if (!have.TryGetValue(texture.Name, out var own) || own.Data.AsSpan().SequenceEqual(texture.Data)) continue;
+
+            notes?.Add(new TextureKept(texture.Name, kept, dropped));
+            if (TakesOther(choices, texture.Name, dropped)) taken.TryAdd(texture.Name, texture);
         }
 
         var extra = otherArchive.Textures.Where(t => !have.ContainsKey(t.Name)).ToArray();
-        if (extra.Length == 0) return @base.ToArray();
+        if (extra.Length == 0 && taken.Count == 0) return @base.ToArray();
 
-        return Dcx.Write(Tpf.Write(baseArchive.WithTextures([.. baseArchive.Textures, .. extra])), traits.PackedWrite);
+        var result = baseArchive.Textures.Select(t => taken.GetValueOrDefault(t.Name, t));
+        return Dcx.Write(Tpf.Write(baseArchive.WithTextures([.. result, .. extra])), traits.PackedWrite);
     }
 
     /// <summary>
@@ -55,11 +59,12 @@ public static class TpfMerge
     /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
     /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
     /// <param name="keptName">Who the conflict notes credit with the kept copy when that is not base's owner; defaults to <paramref name="baseName"/>.</param>
+    /// <param name="choices">The pinned winners of the archive; a texture both sides moved takes the other side's treatment, deletion included, when the pin names <paramref name="otherName"/>.</param>
     /// <returns>The base bytes untouched when nothing is taken. Output order is base's textures, then additions in the other's order.</returns>
     /// <exception cref="TpfException">An input does not parse, repeats a texture name, or the result cannot be written.</exception>
     public static byte[] ThreeWay(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla,
-        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null, string? keptName = null)
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null, string? keptName = null, PathChoices? choices = null)
     {
         var kept = keptName ?? baseName ?? MergeNames.PreferredMod;
         var dropped = otherName ?? MergeNames.OtherMod;
@@ -85,7 +90,15 @@ public static class TpfMerge
             }
             if (o is null) notes?.Add(new TextureDeletionConflict(own.Name, kept, dropped, KeptDeleted: false));
             else notes?.Add(new TextureKept(own.Name, kept, dropped));
-            result.Add(own);
+            if (TakesOther(choices, own.Name, dropped))
+            {
+                taken = true;
+                if (o is not null) result.Add(o);       // a chosen deleter leaves it out
+            }
+            else
+            {
+                result.Add(own);
+            }
         }
 
         foreach (var added in otherArchive.Textures.Where(t => !baseTextures.ContainsKey(t.Name)))
@@ -100,10 +113,23 @@ public static class TpfMerge
             else
             {
                 notes?.Add(new TextureDeletionConflict(added.Name, kept, dropped, KeptDeleted: true));
+                if (TakesOther(choices, added.Name, dropped))
+                {
+                    taken = true;
+                    result.Add(added);
+                }
             }
         }
 
         return taken ? Tpf.Write(baseArchive.WithTextures(result)) : @base.ToArray();
+    }
+
+    private static bool TakesOther(PathChoices? choices, string name, string otherName)
+    {
+        var key = $"tpf:{name}";
+        if (choices?.Winner(key) != otherName) return false;
+        choices.Took(key, otherName);
+        return true;
     }
 
     private static Dictionary<string, Texture> ByName(TpfArchive archive, string side)

@@ -2,6 +2,19 @@ using SilverModManager.Abstractions.Games.Merge;
 
 namespace SilverModManager.Games.FromSoft.Merge;
 
+/// <summary>
+/// A winner note whose contest a pin can settle. The planner rewrites every note of a pinned contest to name the pinned
+/// mod once the whole fold has shown whether the pin took effect.
+/// </summary>
+internal interface IChoosableNote : IWinnerNote
+{
+    /// <summary>The mod whose change the merge did not use at this note's step.</summary>
+    string DroppedMod { get; }
+
+    /// <summary>The same note naming <paramref name="winner"/> as the mod the merge kept, marked as decided by a pin.</summary>
+    IMergeNote WithChosen(string winner);
+}
+
 /// <summary>The game and a mod each added a different row under one id, with no ancestor row to locate either edit against.</summary>
 public sealed record RowCollision(int EntryId, int RowId) : IMergeNote
 {
@@ -10,10 +23,22 @@ public sealed record RowCollision(int EntryId, int RowId) : IMergeNote
 }
 
 /// <summary>Two mods each added a different row under one id, with no ancestor row to locate either edit against. The leading mod's row is kept.</summary>
-public sealed record RivalRow(int EntryId, int RowId) : IMergeNote
+/// <param name="KeptMod">Whose row stayed: the higher-priority mod, or the one a pin named.</param>
+/// <param name="DroppedMod">Whose row was dropped.</param>
+public sealed record RivalRow(int EntryId, int RowId, string KeptMod, string DroppedMod, bool Chosen = false) : IChoosableNote
 {
+    string IWinnerNote.Winner => KeptMod;
+
+    IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
+
+    public IMergeNote WithChosen(string winner) => this with { KeptMod = winner, DroppedMod = ChoiceNotes.Dropped(winner, KeptMod, DroppedMod), Chosen = true };
+
+    public string? ChoiceKey => $"param:{EntryId}/{RowId}";
+
     public string Describe() =>
-        $"entry {EntryId} row {RowId}: two mods each added a different row under this id; kept the preferred mod's, dropped the other's";
+        $"entry {EntryId} row {RowId}: two mods each added a different row under this id; kept {KeptMod}'s, dropped {DroppedMod}'s{ChoiceNotes.Suffix(Chosen)}";
+
+    public MergeLoss? Loss => Chosen ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>A param entry the reader refuses where only the other side had an edit, so its whole table was taken instead of merged row by row.</summary>
@@ -27,17 +52,22 @@ public sealed record UnreadableParam(int EntryId) : IMergeNote
 /// <param name="KeptMod">Who owned the row that stayed: the higher-priority mod, or the game on the first step of a fold.</param>
 /// <param name="DroppedMod">Whose edits to the row were dropped.</param>
 /// <param name="KeptIsGame">The row that stayed is the game's own, so the conflict is a mod against the game rather than two mods.</param>
-public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod, bool KeptIsGame = false) : IWinnerNote
+public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod, bool KeptIsGame = false, bool Chosen = false) : IChoosableNote
 {
     string IWinnerNote.Winner => KeptMod;
 
     IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
 
+    public IMergeNote WithChosen(string winner) => this with { KeptMod = winner, DroppedMod = ChoiceNotes.Dropped(winner, KeptMod, DroppedMod), Chosen = true };
+
+    // A row the game's own copy beat is not between two mods, so no pin applies.
+    public string? ChoiceKey => KeptIsGame ? null : $"param:{EntryId}/{RowId}";
+
     public string Describe() => KeptIsGame
         ? $"entry {EntryId} row {RowId}: {DroppedMod} changed it differently from the game's own row; kept the game's row and dropped {DroppedMod}'s edits to it"
-        : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
+        : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it{ChoiceNotes.Suffix(Chosen)}";
 
-    public MergeLoss? Loss => KeptIsGame ? null : MergeLoss.Between(DroppedMod, KeptMod);
+    public MergeLoss? Loss => KeptIsGame || Chosen ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>
@@ -53,52 +83,67 @@ public sealed record CrossBuildRow(int EntryId, int RowId, string ModVersion, st
 /// <summary>Both mods ship a message under one id with different text; the winner's text was kept.</summary>
 /// <param name="KeptMod">Whose text stayed: the higher-priority mod.</param>
 /// <param name="DroppedMod">Whose text was dropped.</param>
-public sealed record TextKept(int EntryId, int TextId, string KeptMod, string DroppedMod) : IWinnerNote
+public sealed record TextKept(int EntryId, int TextId, string KeptMod, string DroppedMod, bool Chosen = false) : IChoosableNote
 {
     string IWinnerNote.Winner => KeptMod;
 
     IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
 
+    public IMergeNote WithChosen(string winner) => this with { KeptMod = winner, DroppedMod = ChoiceNotes.Dropped(winner, KeptMod, DroppedMod), Chosen = true };
+
+    public string? ChoiceKey => $"fmg:{EntryId}/{TextId}";
+
     public string Describe() =>
-        $"entry {EntryId} text {TextId}: both mods ship it and differ; kept {KeptMod}'s";
+        $"entry {EntryId} text {TextId}: both mods ship it and differ; kept {KeptMod}'s{ChoiceNotes.Suffix(Chosen)}";
 
     public string Summary() => $"both {KeptMod} and {DroppedMod} change the text {TextId} of entry {EntryId}; {KeptMod}'s is used.";
 
-    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+    public MergeLoss? Loss => Chosen ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>Both mods ship a texture under one name with different bytes; the winner's copy was kept.</summary>
-public sealed record TextureKept(string Name, string KeptMod, string DroppedMod) : IWinnerNote
+public sealed record TextureKept(string Name, string KeptMod, string DroppedMod, bool Chosen = false) : IChoosableNote
 {
     string IWinnerNote.Winner => KeptMod;
 
     IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
 
+    public IMergeNote WithChosen(string winner) => this with { KeptMod = winner, DroppedMod = ChoiceNotes.Dropped(winner, KeptMod, DroppedMod), Chosen = true };
+
+    public string? ChoiceKey => $"tpf:{Name}";
+
     public string Describe() =>
-        $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
+        $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s{ChoiceNotes.Suffix(Chosen)}";
 
     public string Summary() => $"both {KeptMod} and {DroppedMod} replace the texture {Name}; {KeptMod}'s is used.";
 
-    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+    public MergeLoss? Loss => Chosen ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>One mod deleted a texture from the archive and the other changed it; the accumulated side's choice stood.</summary>
 /// <param name="KeptDeleted">True when the kept mod is the one that deleted it, so the texture is absent from the result.</param>
-public sealed record TextureDeletionConflict(string Name, string KeptMod, string DroppedMod, bool KeptDeleted) : IWinnerNote
+public sealed record TextureDeletionConflict(string Name, string KeptMod, string DroppedMod, bool KeptDeleted, bool Chosen = false) : IChoosableNote
 {
     string IWinnerNote.Winner => KeptMod;
 
     IMergeNote IWinnerNote.WithWinner(string winner) => this with { KeptMod = winner };
 
-    public string Describe() => KeptDeleted
-        ? $"texture {Name}: {KeptMod} deleted it and {DroppedMod} changed it; left out"
-        : $"texture {Name}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";
+    public IMergeNote WithChosen(string winner) => this with { KeptMod = winner, DroppedMod = ChoiceNotes.Dropped(winner, KeptMod, DroppedMod), Chosen = true };
+
+    public string? ChoiceKey => $"tpf:{Name}";
+
+    // Which mod deleted it is not known once a pin has moved the winner, so a chosen contest says only what was picked.
+    public string Describe() => Chosen
+        ? $"texture {Name}: one mod deleted it and another changed it; kept {KeptMod}'s{ChoiceNotes.Suffix(Chosen)}"
+        : KeptDeleted
+            ? $"texture {Name}: {KeptMod} deleted it and {DroppedMod} changed it; left out"
+            : $"texture {Name}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";
 
     public string Summary() => KeptDeleted
         ? $"{KeptMod} deletes the texture {Name} and {DroppedMod} changes it; the texture stays deleted."
         : $"{DroppedMod} deletes the texture {Name} and {KeptMod} changes it; {KeptMod}'s copy is kept.";
 
-    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+    public MergeLoss? Loss => Chosen ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>A binder member both mods changed; the winner's copy was kept whole.</summary>
@@ -215,4 +260,16 @@ public sealed record VanillaAlternateChosen(string Version, string FileName, int
 {
     public string Describe() =>
         $"{Of} vanilla regulations are kept for version {Version}; compared the mods against {FileName}, the one nearest to their rows";
+}
+
+/// <summary>The wording the notes of a pinned contest share.</summary>
+internal static class ChoiceNotes
+{
+    public static string Suffix(bool chosen) => chosen ? " (chosen)" : "";
+
+    /// <summary>
+    /// The mod a pinned note reports as dropped: unchanged, except that a note whose step is the pinned mod's own
+    /// would otherwise name that mod as both the winner and the loser, so it names the mod it beat.
+    /// </summary>
+    public static string Dropped(string winner, string keptBefore, string dropped) => dropped == winner ? keptBefore : dropped;
 }

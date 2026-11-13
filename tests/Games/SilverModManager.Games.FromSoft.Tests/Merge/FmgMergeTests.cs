@@ -179,7 +179,7 @@ public class FmgMergeTests
     {
         IMergeNote[] notes =
         [
-            new RowCollision(1, 2), new RivalRow(1, 2), new UnreadableParam(1), new RowConflict(1, 2, "A", "B"),
+            new RowCollision(1, 2), new RivalRow(1, 2, "A", "B"), new UnreadableParam(1), new RowConflict(1, 2, "A", "B"),
             new TextKept(1, 2, "A", "B"), new TextureKept("tex", "A", "B"),
             new TextureDeletionConflict("tex", "A", "B", KeptDeleted: true),
             new TextureDeletionConflict("tex", "A", "B", KeptDeleted: false),

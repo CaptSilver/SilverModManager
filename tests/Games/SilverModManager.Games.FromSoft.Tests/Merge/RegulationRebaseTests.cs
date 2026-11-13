@@ -133,7 +133,7 @@ public class RegulationRebaseTests
         var game = Regulation(Installed, 12, (1, 0), (2, 0), (3, 0));
         var counted = new Counted();
         var folded = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => { folded++; return []; };
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _, _) => { folded++; return []; };
 
         var plan = Plan(counted, game, ancestor, Regulation(Older, (1, 0xaa), (2, 0), (3, 0)), Regulation(Older, (1, 0), (2, 0xcc), (3, 0)), _ => fold);
 
@@ -154,7 +154,7 @@ public class RegulationRebaseTests
         var game = Regulation(Installed, (1, 0), (2, 0), (3, 0));
         var counted = new Counted();
         // Keeps the game's file as it was handed in, so every row a mod authored is lost.
-        MergeFold dropsEverything = (acc, _, _, _, _, _, _, _, _, _) => acc.ToArray();
+        MergeFold dropsEverything = (acc, _, _, _, _, _, _, _, _, _, _) => acc.ToArray();
 
         var plan = Plan(counted, game, ancestor, Regulation(Older, (1, 0xaa), (2, 0), (3, 0)), Regulation(Older, (1, 0), (2, 0xcc), (3, 0)), _ => dropsEverything);
 

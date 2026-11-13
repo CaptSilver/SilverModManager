@@ -240,7 +240,7 @@ public class EsdArchiveMergeTests
         var other = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothOther });
         var notes = new List<IMergeNote>();
 
-        MergeStrategyBindings.For(MergeStrategy.EsdThreeWay)(@base, other, vanilla, true, false, "Mod A", "Mod B", notes, t, null);
+        MergeStrategyBindings.For(MergeStrategy.EsdThreeWay)(@base, other, vanilla, true, false, "Mod A", "Mod B", notes, t, null, null);
 
         notes.Should().NotBeEmpty();
         notes.Should().AllBeOfType<EsdNote>().Which.Should().OnlyContain(n => n.PreferredMod == "Mod A" && n.OtherMod == "Mod B");
