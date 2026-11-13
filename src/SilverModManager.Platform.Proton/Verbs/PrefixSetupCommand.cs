@@ -40,7 +40,7 @@ public sealed class PrefixSetupCommand(LoadoutResolver resolver, IPrefixSetupRun
         var actual = plan.Prefix.Path.ToString();
         if (!write)
         {
-            await renderer.TextLine($"Nothing was changed. To apply this with the game closed, run: silvermod prefix setup --loadout {ShellText.Quote(loadout)} --write --prefix {ShellText.Quote(actual)}");
+            await renderer.TextLine($"Nothing was changed. To apply this with the game closed, run: silvermodmanager prefix setup --loadout {ShellText.Quote(loadout)} --write --prefix {ShellText.Quote(actual)}");
             return 0;
         }
 

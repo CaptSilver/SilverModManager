@@ -92,7 +92,7 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         await renderer.TextLine("Replacing them would set:");
         await renderer.TextLine(replacement.NewLine);
 
-        var command = $"silvermod steam-launch-option --loadout {ShellText.Quote(loadout.Name)}";
+        var command = $"silvermodmanager steam-launch-option --loadout {ShellText.Quote(loadout.Name)}";
         // The game is named by app id: a display name could match more than one installation.
         if (installation.LocatorResult.StoreIdentifier is { Length: > 0 } appId) command += $" --game {ShellText.Quote(appId)}";
         command += $" --write --replace-other-manager {ShellText.Quote(replacement.OldLine)}";

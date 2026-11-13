@@ -44,7 +44,7 @@ public enum DeploymentOutcome
 public sealed record DeploymentRootResult(string Root, string Before, string After, DeploymentOutcome Outcome, string? Reason);
 
 /// <summary>
-/// What <c>silvermod deployment</c> did to a game, and the plan afterwards.
+/// What <c>silvermodmanager deployment</c> did to a game, and the plan afterwards.
 /// </summary>
 public sealed record DeploymentResult(string Game, IReadOnlyList<DeploymentRootResult> Roots, IReadOnlyList<DoctorDeploymentRoot> Deployment);
 

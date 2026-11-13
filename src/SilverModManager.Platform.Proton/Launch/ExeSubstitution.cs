@@ -4,7 +4,7 @@ using NexusMods.Paths;
 namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
-/// Rewrites the command Steam hands to <c>silvermod run -- %command%</c> so it starts the exe the loadout's
+/// Rewrites the command Steam hands to <c>silvermodmanager run -- %command%</c> so it starts the exe the loadout's
 /// run tool resolved.
 /// </summary>
 public static class ExeSubstitution

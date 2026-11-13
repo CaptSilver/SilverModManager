@@ -17,7 +17,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod loadout install</c>: the file it adds to the library is recorded for the loadout's game.
+/// <c>silvermodmanager loadout install</c>: the file it adds to the library is recorded for the loadout's game.
 /// </summary>
 [Collection("ConsoleOutput")]
 public class LoadoutInstallVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<LoadoutInstallVerbTests, EldenRingGame>(helper)

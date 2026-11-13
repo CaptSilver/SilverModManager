@@ -202,11 +202,11 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
     }
 
     [Theory]
-    [InlineData(BackupOverflowOperation.Manage, "Files were not backed up", "loadout create --game", "--large-files adopt", "keep them where they are")]
-    [InlineData(BackupOverflowOperation.Apply, "Files were not backed up", "loadout synchronize", "--large-files adopt", "leave them where they are")]
-    [InlineData(BackupOverflowOperation.Launch, "The game was not started", "loadout synchronize", "launch again", "then launch again")]
-    [InlineData(BackupOverflowOperation.Switch, "Files were not backed up", "backup-game-files", "try again", "try again")]
-    [InlineData(BackupOverflowOperation.Reset, "Files were not backed up", "backup-game-files", "try again", "try again")]
+    [InlineData(BackupOverflowOperation.Manage, "Files were not backed up", "silvermodmanager loadout create --game", "--large-files adopt", "keep them where they are")]
+    [InlineData(BackupOverflowOperation.Apply, "Files were not backed up", "silvermodmanager loadout synchronize", "--large-files adopt", "leave them where they are")]
+    [InlineData(BackupOverflowOperation.Launch, "The game was not started", "silvermodmanager loadout synchronize", "launch again", "then launch again")]
+    [InlineData(BackupOverflowOperation.Switch, "Files were not backed up", "silvermodmanager loadout backup-game-files", "try again", "try again")]
+    [InlineData(BackupOverflowOperation.Reset, "Files were not backed up", "silvermodmanager loadout backup-game-files", "try again", "try again")]
     public void RefusalWording_FollowsTheOperation(BackupOverflowOperation operation, string title, string cliHint, string tail, string tailPhrase)
     {
         var overflow = new BackupOverflow(Size.KB * 16, 4, Size.Zero, 0, Size.KB * 8, operation);

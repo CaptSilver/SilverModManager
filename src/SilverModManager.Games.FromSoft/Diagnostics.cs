@@ -305,7 +305,7 @@ merges them onto the new one when the loadout is applied:
 
 {Steps}
 
-`silvermod fromsoft heal` keeps the new regulation as the baseline and checks the mods' param layouts now; add
+`silvermodmanager fromsoft heal` keeps the new regulation as the baseline and checks the mods' param layouts now; add
 `--dry-run` to only print the steps. A mod whose layout no longer fits needs an update from its author.
 """)
         .WithMessageData(messageBuilder => messageBuilder

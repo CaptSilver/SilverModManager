@@ -20,7 +20,7 @@ internal static class DeploymentVerbs
         [Injected] IRenderer renderer,
         [Injected] DeploymentCommand command,
         [Option("g", "game", "Steam app id or game name")] string game,
-        [Option("r", "root", "The root to move, as shown by `silvermod doctor`; every root when left out", true)] string? root,
+        [Option("r", "root", "The root to move, as shown by `silvermodmanager doctor`; every root when left out", true)] string? root,
         [Option("u", "use", "Deploy with this backend and keep it, whatever the chain picks later", true)] string? use,
         [Option("c", "recommended", "Move roots the chain picked a backend for to the chain's pick now; roots chosen with --use stay", true)] bool recommended,
         [Option("j", "json", "Print the result as JSON", true)] bool json,

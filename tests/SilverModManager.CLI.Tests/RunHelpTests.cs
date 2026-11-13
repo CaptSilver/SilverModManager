@@ -53,7 +53,7 @@ public class RunHelpTests(IServiceProvider provider)
             .RunAsync(["run", "--help"], renderer, CancellationToken.None);
 
         var help = string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template));
-        help.Should().Contain(LaunchArgs.Synopsis["usage: silvermod ".Length..]);
+        help.Should().Contain(LaunchArgs.Synopsis["usage: silvermodmanager ".Length..]);
     }
 
     [Fact]

@@ -8,7 +8,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod version</c>, run through the command line configurator with only the status verbs registered.
+/// <c>silvermodmanager version</c>, run through the command line configurator with only the status verbs registered.
 /// </summary>
 public class VersionVerbTests
 {

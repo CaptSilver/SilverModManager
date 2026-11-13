@@ -97,7 +97,7 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
         if (locatorResultMetadata.Store == GameStore.Steam)
         {
             sb.AppendLine($"""
-Open the loadout card's "Use this loadout from Steam" and write the line while Steam is closed, or run `silvermod steam-launch-option --loadout <name> --write`. The line it writes sets `{variable}` to `{dllOverridesString}`.
+Open the loadout card's "Use this loadout from Steam" and write the line while Steam is closed, or run `silvermodmanager steam-launch-option --loadout <name> --write`. The line it writes sets `{variable}` to `{dllOverridesString}`.
 
 To do it by hand instead:
 

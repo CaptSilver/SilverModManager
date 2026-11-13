@@ -11,7 +11,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod add-game</c> against made-up game folders. The host records into the in-memory store, so no
+/// <c>silvermodmanager add-game</c> against made-up game folders. The host records into the in-memory store, so no
 /// installs.yaml is read or written.
 /// </summary>
 [Collection("ConsoleOutput")]

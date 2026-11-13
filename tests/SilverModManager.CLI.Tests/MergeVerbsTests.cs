@@ -24,7 +24,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod fromsoft merge list</c> over loadouts whose mods overlap on a message archive or a regulation. The
+/// <c>silvermodmanager fromsoft merge list</c> over loadouts whose mods overlap on a message archive or a regulation. The
 /// report only reads, so the data root must look the same after every run.
 /// </summary>
 [Collection("ConsoleOutput")]

@@ -11,7 +11,7 @@ using Table = SilverModManager.Sdk.ProxyConsole.Table;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod textures census</c> over archives built in the test: it reads each .dds header and prints a count per
+/// <c>silvermodmanager textures census</c> over archives built in the test: it reads each .dds header and prints a count per
 /// layout, plus the headers it could not read.
 /// </summary>
 public class TexturesCensusVerbTests(IServiceProvider provider, TemporaryFileManager temporaryFileManager)

@@ -3,12 +3,12 @@ using SilverModManager.Platform.Proton.Launch;
 namespace SilverModManager.Platform.Proton.Verbs;
 
 /// <summary>
-/// <c>silvermod status [--json]</c>: shows which launches hold or have left a lock. It reads the lock and state
+/// <c>silvermodmanager status [--json]</c>: shows which launches hold or have left a lock. It reads the lock and state
 /// files and nothing else, so it needs no host and works while a game runs.
 /// </summary>
 public static class StatusCommand
 {
-    public const string Synopsis = "usage: silvermod status [--json]";
+    public const string Synopsis = "usage: silvermodmanager status [--json]";
 
     /// <summary>
     /// Writes the report to <paramref name="output"/> and returns 0, or writes why it could not to

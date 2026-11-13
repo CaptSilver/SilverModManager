@@ -12,7 +12,7 @@ using SilverModManager.UI.Sdk.Settings;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod settings list|get|set</c> against a real settings manager holding a few made-up settings next to the
+/// <c>silvermodmanager settings list|get|set</c> against a real settings manager holding a few made-up settings next to the
 /// proxy setting.
 /// </summary>
 public class SettingsVerbTests

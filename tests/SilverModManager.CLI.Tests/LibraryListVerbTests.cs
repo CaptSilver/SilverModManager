@@ -23,7 +23,7 @@ using SilverModManager.Wabbajack.Models;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod library list</c> and the dangling-item handling of <c>library export-lock</c>, against library rows
+/// <c>silvermodmanager library list</c> and the dangling-item handling of <c>library export-lock</c>, against library rows
 /// seeded in the test database. Every test lists through its own loadout (or its own game), so rows other tests left
 /// in the shared database do not show up.
 /// </summary>

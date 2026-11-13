@@ -85,7 +85,7 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
                 var listing = string.Join('\n', matches.Select(m => $"  {m.Installation.Game.DisplayName}: {m.Loadout.Name}"));
                 return LoadoutResolution.Failed(
                     $"More than one game has a loadout named '{wanted}':\n{listing}\n" +
-                    "Pick one with --game <appid|name>, for example: silvermod run '" + wanted + "' --game <appid|name> -- <command>");
+                    "Pick one with --game <appid|name>, for example: silvermodmanager run '" + wanted + "' --game <appid|name> -- <command>");
         }
     }
 

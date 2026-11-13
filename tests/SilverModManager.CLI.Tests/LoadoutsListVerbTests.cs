@@ -14,7 +14,7 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod loadouts list</c> against a loadout that has items.
+/// <c>silvermodmanager loadouts list</c> against a loadout that has items.
 /// </summary>
 public class LoadoutsListVerbTests(IServiceProvider provider)
 {

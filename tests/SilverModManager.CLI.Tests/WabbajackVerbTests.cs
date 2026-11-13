@@ -26,7 +26,7 @@ using Table = SilverModManager.Sdk.ProxyConsole.Table;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod wabbajack inspect</c> over the checked-in real modlist. The verb only reads the file, so the
+/// <c>silvermodmanager wabbajack inspect</c> over the checked-in real modlist. The verb only reads the file, so the
 /// library is never involved.
 /// </summary>
 public class WabbajackVerbTests(IServiceProvider provider, TemporaryFileManager temporaryFileManager)
@@ -124,7 +124,7 @@ public class WabbajackVerbTests(IServiceProvider provider, TemporaryFileManager 
 }
 
 /// <summary>
-/// <c>silvermod wabbajack updates</c> against an installed modlist and a doubled gallery client: what it lists, and what it
+/// <c>silvermodmanager wabbajack updates</c> against an installed modlist and a doubled gallery client: what it lists, and what it
 /// says when the listing is an offline copy or unavailable.
 /// </summary>
 [Collection("ConsoleOutput")]
@@ -243,7 +243,7 @@ public abstract class WabbajackUpdaterVerbTestBase<TSelf>(ITestOutputHelper help
 }
 
 /// <summary>
-/// <c>silvermod wabbajack update</c> against an installed list and a doubled <see cref="ModlistUpdater"/>: what it prints,
+/// <c>silvermodmanager wabbajack update</c> against an installed list and a doubled <see cref="ModlistUpdater"/>: what it prints,
 /// refuses and hands to the updater.
 /// </summary>
 [Collection("ConsoleOutput")]

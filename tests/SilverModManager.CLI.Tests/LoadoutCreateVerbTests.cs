@@ -13,7 +13,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod loadout create</c> over a stubbed game the locator finds but nobody has managed yet.
+/// <c>silvermodmanager loadout create</c> over a stubbed game the locator finds but nobody has managed yet.
 /// </summary>
 [Collection("ConsoleOutput")]
 public class LoadoutCreateVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<LoadoutCreateVerbTests, EldenRingGame>(helper)

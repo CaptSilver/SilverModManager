@@ -13,7 +13,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod games list</c> against a registry that returns made-up installations.
+/// <c>silvermodmanager games list</c> against a registry that returns made-up installations.
 /// </summary>
 public class GamesListVerbTests
 {

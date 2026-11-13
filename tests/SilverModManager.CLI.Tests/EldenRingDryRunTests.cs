@@ -20,7 +20,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod run &lt;loadout&gt; --dry-run</c> for an Elden Ring loadout with mods: prints the command that would
+/// <c>silvermodmanager run &lt;loadout&gt; --dry-run</c> for an Elden Ring loadout with mods: prints the command that would
 /// start, and starts nothing. The Steam command it is given is discarded except for the app id.
 /// </summary>
 [Collection("ConsoleOutput")]

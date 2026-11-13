@@ -138,5 +138,5 @@ public sealed class MassRemovalException : UserFacingException
 
     /// <inheritdoc />
     public override string? CommandLineHint
-        => "Run `silvermod loadout synchronize --loadout <loadout> --confirm-removal` to apply anyway, or switch the items back on first.";
+        => "Run `silvermodmanager loadout synchronize --loadout <loadout> --confirm-removal` to apply anyway, or switch the items back on first.";
 }

@@ -22,7 +22,7 @@ public sealed class FromSoftCleanupGuide(CleanupService service) : IGameCleanupG
         {
             lines.Add("");
             lines.Add("Nothing is changed from this window; the Fix button on the Health Check entry runs these steps after you confirm them. To list the folder and run them from a terminal, use:");
-            lines.Add($"silvermod {verb} --apply --loadout {ShellText.Quote(loadout.Name)}");
+            lines.Add($"silvermodmanager {verb} --apply --loadout {ShellText.Quote(loadout.Name)}");
             lines.Add("It prints everything first and applies it once you run it again with --yes.");
             if (plan.Steps.Any(s => s.Kind == CleanupStepKind.ReplaceLaunchOption))
                 lines.Add("Steam's launch options are written with \"Use this loadout from Steam\", which can close Steam for you.");

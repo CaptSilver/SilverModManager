@@ -4,7 +4,7 @@ using NexusMods.Paths;
 namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
-/// The arguments of <c>silvermod run &lt;loadout&gt; [--game &lt;appid|name&gt;] [--secrets-file &lt;path&gt;] [--dry-run] -- &lt;command&gt;</c>.
+/// The arguments of <c>silvermodmanager run &lt;loadout&gt; [--game &lt;appid|name&gt;] [--secrets-file &lt;path&gt;] [--dry-run] -- &lt;command&gt;</c>.
 /// </summary>
 /// <param name="LoadoutName">The loadout to run, as typed.</param>
 /// <param name="Game">The <c>--game</c> value (a Steam app id or a game name), or null.</param>
@@ -16,7 +16,7 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
     /// <summary>
     /// The one-line usage text shown with every usage error and in <c>--help</c>.
     /// </summary>
-    public const string Synopsis = "usage: silvermod run <loadout> [--game <appid|name>] [--secrets-file <path>] [--dry-run] -- <command> [args...]";
+    public const string Synopsis = "usage: silvermodmanager run <loadout> [--game <appid|name>] [--secrets-file <path>] [--dry-run] -- <command> [args...]";
 
     /// <summary>
     /// The text <c>run --help</c> prints: the synopsis and one line per argument.

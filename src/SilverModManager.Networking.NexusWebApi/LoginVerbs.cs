@@ -100,7 +100,7 @@ internal static class LoginVerbs
         if (string.IsNullOrEmpty(key))
         {
             // With the app open the verb runs in the app's process, which never sees this terminal's stdin.
-            await renderer.TextLine("No API key on stdin. Pipe it in, e.g. `silvermod nexus-api-key < key.txt`, with the app closed.");
+            await renderer.TextLine("No API key on stdin. Pipe it in, e.g. `silvermodmanager nexus-api-key < key.txt`, with the app closed.");
             return 1;
         }
 

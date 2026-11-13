@@ -31,7 +31,7 @@ internal static class CoopPasswordVerb
             if (string.IsNullOrEmpty(password))
             {
                 // With the app open the verb runs in the app's process, which never sees this terminal's stdin.
-                await renderer.TextLine("No password on stdin. Pipe it in, e.g. `silvermod fromsoft-coop-password < password.txt`, with the app closed.");
+                await renderer.TextLine("No password on stdin. Pipe it in, e.g. `silvermodmanager fromsoft-coop-password < password.txt`, with the app closed.");
                 return 1;
             }
 

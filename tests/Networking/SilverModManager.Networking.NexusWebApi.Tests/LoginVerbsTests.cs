@@ -81,7 +81,7 @@ public class LoginVerbsTests : IDisposable
 
         exit.Should().Be(1);
         (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
-        _renderer.Lines.Should().ContainSingle().Which.Should().Contain("stdin");
+        _renderer.Lines.Should().ContainSingle().Which.Should().Contain("stdin").And.Contain("`silvermodmanager nexus-api-key < key.txt`");
     }
 
     [Fact]

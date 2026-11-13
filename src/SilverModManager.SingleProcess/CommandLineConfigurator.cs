@@ -157,7 +157,7 @@ public class CommandLineConfigurator
         command.TreatUnmatchedTokensAsErrors = false;
         command.SetHandler(context =>
         {
-            context.Console.Error.Write($"The run command is not handled by this process. usage: silvermod {RunSynopsis}");
+            context.Console.Error.Write($"The run command is not handled by this process. usage: silvermodmanager {RunSynopsis}");
             context.ExitCode = LaunchFailureExitCode;
         });
         return command;
@@ -175,7 +175,7 @@ public class CommandLineConfigurator
         };
         command.SetHandler(context =>
         {
-            context.Console.Error.Write("The status command is not handled by this process. usage: silvermod status [--json]");
+            context.Console.Error.Write("The status command is not handled by this process. usage: silvermodmanager status [--json]");
             context.ExitCode = 1;
         });
         return command;

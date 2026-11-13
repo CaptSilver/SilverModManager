@@ -12,7 +12,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod games build-covered</c> against a registry that returns made-up installations and a file hashes
+/// <c>silvermodmanager games build-covered</c> against a registry that returns made-up installations and a file hashes
 /// service that says which locator ids it covers.
 /// </summary>
 public class GamesBuildCoveredVerbTests

@@ -21,7 +21,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod library verify</c>, <c>export-lock</c> and <c>import-lock</c> against library rows seeded in the
+/// <c>silvermodmanager library verify</c>, <c>export-lock</c> and <c>import-lock</c> against library rows seeded in the
 /// test database. Lock files live in a folder of each test's own, not under the app's temporary folder: the isolated
 /// game hosts in this assembly share that folder's root, and one of them shutting down can remove a lock between
 /// writing it and running the verb.

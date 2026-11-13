@@ -19,7 +19,7 @@ using NSubstitute;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod elden-ring cleanup</c> against a made-up game folder shaped like an install another mod manager left
+/// <c>silvermodmanager elden-ring cleanup</c> against a made-up game folder shaped like an install another mod manager left
 /// behind. The probe never reports the launcher as immutable, and Steam's files are never read.
 /// </summary>
 [Collection("ConsoleOutput")]

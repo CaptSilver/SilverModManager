@@ -22,7 +22,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod fromsoft vanilla import</c> against a made-up Steam install whose manifests are in memory. The verb may
+/// <c>silvermodmanager fromsoft vanilla import</c> against a made-up Steam install whose manifests are in memory. The verb may
 /// write only under the data root, so every test compares the game folder before and after.
 /// </summary>
 [Collection("ConsoleOutput")]

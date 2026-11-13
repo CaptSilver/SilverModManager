@@ -32,7 +32,7 @@ public sealed record AddGamePrompt(string Title, string Markdown, IReadOnlyList<
 
                 Add it from a terminal and name the prefix:
 
-                `silvermod add-game "{folder}" --prefix <prefix>`
+                `silvermodmanager add-game "{folder}" --prefix <prefix>`
                 """
             ),
             AddGameResult.Ambiguous ambiguous => new AddGamePrompt(

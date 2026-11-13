@@ -19,7 +19,7 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod loadout launch</c> with a stubbed tool manager: the verb must come back once the launch is under way,
+/// <c>silvermodmanager loadout launch</c> with a stubbed tool manager: the verb must come back once the launch is under way,
 /// never when the game exits.
 /// </summary>
 public class LoadoutLaunchVerbTests(IServiceProvider provider)

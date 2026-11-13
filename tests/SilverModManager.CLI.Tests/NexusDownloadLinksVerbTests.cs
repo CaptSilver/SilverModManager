@@ -7,7 +7,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod nexus download-links</c> takes a mod id and a file id; both need an option parser or the verb
+/// <c>silvermodmanager nexus download-links</c> takes a mod id and a file id; both need an option parser or the verb
 /// can never be run.
 /// </summary>
 public class NexusDownloadLinksVerbTests(IServiceProvider provider)

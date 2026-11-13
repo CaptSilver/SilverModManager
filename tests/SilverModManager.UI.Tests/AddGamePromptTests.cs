@@ -47,7 +47,7 @@ public class AddGamePromptTests
         prompt.Candidates.Should().BeEmpty();
         prompt.Markdown.Should().Contain("Fallout 76");
         prompt.Markdown.Should().Contain("Wine prefix");
-        prompt.Markdown.Should().Contain("silvermod add-game");
+        prompt.Markdown.Should().Contain("silvermodmanager add-game");
         prompt.Markdown.Should().Contain("--prefix");
         prompt.Markdown.Should().Contain(Folder.ToString());
     }

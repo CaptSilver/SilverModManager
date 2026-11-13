@@ -316,7 +316,7 @@ public sealed record BackupLimit(Size Maximum)
 [PublicAPI]
 public sealed class BackupOverflowException : UserFacingException
 {
-    private const string BackupVerb = "`silvermod loadout backup-game-files` backs them up at any time.";
+    private const string BackupVerb = "`silvermodmanager loadout backup-game-files` backs them up at any time.";
 
     private readonly GameInstallation _installation;
     private readonly string? _hint;
@@ -361,11 +361,11 @@ public sealed class BackupOverflowException : UserFacingException
             return Overflow.Operation switch
             {
                 BackupOverflowOperation.Manage =>
-                    $"Run `silvermod loadout create --game \"{gameId}\" --large-files backup` to back them all up, or `--large-files adopt` to keep them where they are. {BackupVerb}",
+                    $"Run `silvermodmanager loadout create --game \"{gameId}\" --large-files backup` to back them all up, or `--large-files adopt` to keep them where they are. {BackupVerb}",
                 BackupOverflowOperation.Apply =>
-                    $"Run `silvermod loadout synchronize --loadout <loadout> --large-files backup` to back them all up, or `--large-files adopt` to leave them where they are. {BackupVerb}",
+                    $"Run `silvermodmanager loadout synchronize --loadout <loadout> --large-files backup` to back them all up, or `--large-files adopt` to leave them where they are. {BackupVerb}",
                 BackupOverflowOperation.Launch =>
-                    $"Apply the loadout first with `silvermod loadout synchronize --loadout <loadout> --large-files backup` (or `--large-files adopt`), then launch again. {BackupVerb}",
+                    $"Apply the loadout first with `silvermodmanager loadout synchronize --loadout <loadout> --large-files backup` (or `--large-files adopt`), then launch again. {BackupVerb}",
                 _ => $"Back them up first, then try again. {BackupVerb}",
             };
         }

@@ -19,7 +19,7 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod loadout diagnostics</c> against a loadout in the test database and a diagnostic manager that returns
+/// <c>silvermodmanager loadout diagnostics</c> against a loadout in the test database and a diagnostic manager that returns
 /// made-up diagnostics.
 /// </summary>
 public class DiagnosticVerbTests(IServiceProvider provider)

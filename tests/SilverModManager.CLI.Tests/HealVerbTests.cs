@@ -22,7 +22,7 @@ using SilverModManager.StandardGameLocators.TestHelpers;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// <c>silvermod fromsoft heal</c> against a made-up Steam install. The verb may write only under the data root, so
+/// <c>silvermodmanager fromsoft heal</c> against a made-up Steam install. The verb may write only under the data root, so
 /// every test compares the data root and the game folder before and after.
 /// </summary>
 [Collection("ConsoleOutput")]

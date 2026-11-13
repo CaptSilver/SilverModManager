@@ -199,7 +199,7 @@ public class MassRemovalTests(ITestOutputHelper helper) : AStubbedGameTest<MassR
 
         var refusal = (await act.Should().ThrowAsync<MassRemovalException>()).Which;
         refusal.Declined.Should().BeFalse("nobody answered; the GUI has no reason to stay quiet");
-        refusal.CommandLineHint.Should().Contain("--confirm-removal");
+        refusal.CommandLineHint.Should().Contain("silvermodmanager loadout synchronize").And.Contain("--confirm-removal");
         _prompt.Asked.Should().BeEmpty("a command forwarded to the open window must not open a dialog");
         DeployedModFiles.Should().Be(8);
     }

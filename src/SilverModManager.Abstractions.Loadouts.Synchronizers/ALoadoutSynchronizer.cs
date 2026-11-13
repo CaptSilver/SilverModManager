@@ -1393,7 +1393,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             throw new SynchronizerPreflightException(
                 $"{installation.Game.DisplayName} is set to deploy '{root.Root}' with {root.Backend}, which does not work there any more: {preflight.Reason}. " +
-                $"Nothing was changed. Run 'silvermod deployment --game \"{installation.Game.DisplayName}\" --recommended' to move it to a backend that works, then apply again."
+                $"Nothing was changed. Run 'silvermodmanager deployment --game \"{installation.Game.DisplayName}\" --recommended' to move it to a backend that works, then apply again."
             );
         }
 
