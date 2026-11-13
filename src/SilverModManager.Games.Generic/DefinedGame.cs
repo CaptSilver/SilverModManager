@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -23,6 +24,18 @@ public abstract class DefinedGame<TDefinition>(IServiceProvider provider, TDefin
 
     public override bool HasNativeLinuxBuild => Definition.NativeLinuxExecutable is not null;
     public override RelativePath? NativeLinuxPrimaryFile => Definition.NativeLinuxExecutable;
+
+    /// <summary>
+    /// The native executable on a Linux install, the Windows one under Proton. A game with no native build never reads
+    /// <paramref name="installation"/>, so a caller that has none keeps working.
+    /// </summary>
+    public override GamePath GetPrimaryFile(GameInstallation installation)
+    {
+        if (Definition.NativeLinuxExecutable is not { } native || installation.LocatorResult.Platform != OSPlatform.Linux)
+            return base.GetPrimaryFile(installation);
+        return new GamePath(LocationId.Game, native);
+    }
+
     public override IReadOnlyDictionary<string, string> LocationNames => Definition.LocationNames;
     public override IReadOnlyDictionary<string, string> LocationSentenceNames => Definition.LocationSentenceNames;
 

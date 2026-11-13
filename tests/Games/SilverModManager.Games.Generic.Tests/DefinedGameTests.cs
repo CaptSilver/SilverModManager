@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,6 +121,36 @@ public class DefinedGameTests
 
         game.GetPrimaryFile(null!).Should().Be(new GamePath(LocationId.Game, "bin/defined.exe"));
     }
+
+    [Fact]
+    public void GetPrimaryFile_IsTheNativeExecutableForANativeInstall()
+    {
+        var (game, _) = Create(Definition("bin/game-linux"));
+
+        game.GetPrimaryFile(InstallationOn(OSPlatform.Linux)).Should().Be(new GamePath(LocationId.Game, "bin/game-linux"));
+    }
+
+    [Fact]
+    public void GetPrimaryFile_IsTheWindowsExecutableForAProtonInstall()
+    {
+        var (game, _) = Create(Definition("bin/game-linux"));
+
+        game.GetPrimaryFile(InstallationOn(OSPlatform.Windows)).Should().Be(new GamePath(LocationId.Game, "bin/defined.exe"));
+    }
+
+    [Fact]
+    public void GetPrimaryFile_IsTheWindowsExecutableWhenTheGameHasNoNativeBuild()
+    {
+        var (game, _) = Create(Definition());
+
+        game.GetPrimaryFile(InstallationOn(OSPlatform.Linux)).Should().Be(new GamePath(LocationId.Game, "bin/defined.exe"));
+    }
+
+    private static GameInstallation InstallationOn(OSPlatform platform) => new(new GameLocatorResult
+    {
+        Game = null!, Path = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/game"), Store = GameStore.Steam, StoreIdentifier = "1",
+        LocatorIds = [], Locator = null!, Platform = platform,
+    }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty));
 
     [Fact]
     public void GetLocations_AreTheDefinitions()
