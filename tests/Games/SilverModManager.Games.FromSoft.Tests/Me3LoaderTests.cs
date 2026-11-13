@@ -3,7 +3,9 @@ using FluentAssertions;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using NSubstitute;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
@@ -51,5 +53,44 @@ public class Me3LoaderTests(ITestOutputHelper helper) : AEldenRingTest<Me3Loader
         locations.Keys.Should().BeEquivalentTo([LocationId.Me3Mods, LocationId.Me3Host]);
         locations[LocationId.Me3Mods].Should().Be(Me3Loader.ModsFolder(TestSoulsDefinition.Layout, DefaultSettings, HostFileSystem, "424242"));
         locations[LocationId.Me3Host].Should().Be(Me3Loader.HostFolder(TestSoulsDefinition.Layout, DefaultSettings, HostFileSystem, "424242"));
+    }
+
+    [Theory]
+    [InlineData("me3 0.7.0")]
+    [InlineData("me3 v0.7.9")]
+    public void AnMe3BelowTheFloorIsRefusedNamingTheFloor(string output)
+    {
+        var veto = Me3Loader.VersionVeto(output, "Elden Ring", "Main", Substitute.For<ILogger>());
+
+        veto!.Message.Should().Contain("0.8.1").And.Contain("Update me3").And.Contain("'Main'");
+    }
+
+    [Theory]
+    [InlineData("me3 0.8.1")]
+    [InlineData("me3 v0.8.1")]
+    [InlineData("me3 0.13.0")] // printed by the me3 0.13.0 release deployed in a library
+    [InlineData("me3-cli 0.9.0-rc.1")]
+    public void AnMe3AtOrAboveTheFloorPasses(string output)
+    {
+        Me3Loader.VersionVeto(output, "Elden Ring", "Main", Substitute.For<ILogger>()).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  \n")]
+    public void NoOutputIsNotAVeto(string? output)
+    {
+        Me3Loader.VersionVeto(output, "Elden Ring", "Main", Substitute.For<ILogger>()).Should().BeNull();
+    }
+
+    [Fact]
+    public void UnparseableOutputIsLoggedAndLetThrough()
+    {
+        var logger = Substitute.For<ILogger>();
+
+        Me3Loader.VersionVeto("garbage", "Elden Ring", "Main", logger).Should().BeNull();
+
+        logger.ReceivedCalls().Should().Contain(call => call.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning);
     }
 }

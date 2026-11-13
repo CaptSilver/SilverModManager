@@ -31,6 +31,7 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
     protected FakeExecutableLocator Executables => Fakes.Executables;
     protected FakeSandboxProbe Probe => Fakes.Probe;
     protected RecordingProcessFactory Processes => Fakes.Processes;
+    protected FakeVersionRunner Me3Version => Fakes.Me3Version;
     protected IOSInterop OsInterop => Fakes.OsInterop;
     protected string RuntimeDir => Fakes.RuntimeDir;
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
@@ -21,6 +22,8 @@ public sealed class ModdedLaunchFakes : IDisposable
     public FakeExecutableLocator Executables { get; } = new();
     public FakeSandboxProbe Probe { get; } = new();
     public RecordingProcessFactory Processes { get; } = new();
+    /// <summary>Answers <c>me3 --version</c>: the me3 the fixtures deploy is not a program the machine can run.</summary>
+    public FakeVersionRunner Me3Version { get; } = new();
     public IOSInterop OsInterop { get; } = Substitute.For<IOSInterop>();
     public string RuntimeDir { get; } = Directory.CreateTempSubdirectory("silvermod-fromsoft-lock-").FullName;
 
@@ -31,6 +34,7 @@ public sealed class ModdedLaunchFakes : IDisposable
         services.Replace(ServiceDescriptor.Singleton<IUserIds>(new FixedUserIds(1000, 1001)));
         services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(Processes));
         services.Replace(ServiceDescriptor.Singleton<IOSInterop>(OsInterop));
+        services.Replace(ServiceDescriptor.Singleton(new Me3VersionProbe(Me3Version)));
         services.Replace(ServiceDescriptor.Singleton<IInstallationLockFactory>(new TempLockFactory(RuntimeDir)));
         services.Replace(ServiceDescriptor.Singleton<ILaunchSynchronizer, NoSynchronizer>());
         services.Replace(ServiceDescriptor.Singleton<IGameLaunchSession>(provider => provider.GetRequiredService<ActiveLaunchSessions>()));

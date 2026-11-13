@@ -76,6 +76,35 @@ public class OverlayLaunchGateTests(ITestOutputHelper helper) : AModdedEldenRing
     }
 
     [Fact]
+    public async Task AnMe3OlderThanTheFloorVetoesNamingTheFloor()
+    {
+        var loadout = await CreateModdedLoadout();
+        Me3Version.Output = "me3 0.7.0";
+
+        Gate.Check(ContextOf(loadout))!.Message.Should().Contain("0.7.0").And.Contain("0.8.1").And.Contain("Update me3");
+    }
+
+    [Fact]
+    public async Task AnMe3DeployedWithoutItsExecutableBitIsStillHeldToTheFloor()
+    {
+        var loadout = await CreateModdedLoadout();
+        var binary = (GameInstallation.Locations[LocationId.Me3Host].Path / Me3HostFiles.Binary).GetFullPath();
+        File.SetUnixFileMode(binary, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        Me3Version.Output = "me3 0.7.0";
+
+        Gate.Check(ContextOf(loadout))!.Message.Should().Contain("0.7.0").And.Contain("0.8.1");
+    }
+
+    [Fact]
+    public async Task AnMe3AtTheFloorPassesTheCheck()
+    {
+        var loadout = await CreateModdedLoadout();
+        Me3Version.Output = "me3 0.8.1";
+
+        Gate.Check(ContextOf(loadout)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task AnUnresolvedFindingOfThePreviousSessionVetoesUntilItIsDiscarded()
     {
         var loadout = await CreateModdedLoadout();

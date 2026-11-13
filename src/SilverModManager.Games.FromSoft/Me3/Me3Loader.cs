@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library.Installers;
@@ -90,12 +91,43 @@ public sealed class Me3Loader(IServiceProvider provider, Me3LoaderOptions option
     public string MissingHostMessage(string loadoutName)
         => $"Loadout '{loadoutName}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.";
 
+    /// <summary>The oldest me3 this app's profile works with: the <c>savefile</c> key and Dark Souls III support both arrived in 0.8.1.</summary>
+    public static readonly Version MinimumVersion = new(0, 8, 1);
+
+    private static readonly Regex VersionNumber = new(@"\d+\.\d+\.\d+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public Veto? CheckHost(GameInstallation installation, string loadoutName)
     {
         var me3 = BinaryOf(installation);
-        return me3.FileExists
-            ? null
-            : new Veto($"Cannot start {installation.Game.DisplayName} with mods: me3 is not deployed ({me3} is missing). Install the me3 Linux release into loadout '{loadoutName}' and apply it.");
+        if (!me3.FileExists)
+            return new Veto($"Cannot start {installation.Game.DisplayName} with mods: me3 is not deployed ({me3} is missing). Install the me3 Linux release into loadout '{loadoutName}' and apply it.");
+
+        // A deployed binary arrives without its executable bit, and a probe that cannot start it reports no version,
+        // which would let an old me3 through on the first launch after an apply.
+        Me3HostFiles.EnsureExecutable(me3);
+        var probeOutput = provider.GetRequiredService<Me3VersionProbe>().Read(me3);
+        return VersionVeto(probeOutput, installation.Game.DisplayName, loadoutName, provider.GetRequiredService<ILogger<Me3Loader>>());
+    }
+
+    /// <summary>
+    /// A veto when <c>me3 --version</c> printed a version older than <see cref="MinimumVersion"/>. The first
+    /// <c>major.minor.patch</c> in the output counts, so a <c>v</c> prefix or a prerelease suffix does not matter.
+    /// Output that names no version is logged and let through: it says nothing against the binary.
+    /// </summary>
+    public static Veto? VersionVeto(string? probeOutput, string gameName, string loadoutName, ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(probeOutput)) return null;
+
+        var match = VersionNumber.Match(probeOutput);
+        if (!match.Success || !Version.TryParse(match.Value, out var found))
+        {
+            logger.LogWarning("me3 --version printed {Output}, which names no version, so the version floor was not checked", probeOutput.Trim());
+            return null;
+        }
+
+        return found < MinimumVersion
+            ? new Veto($"Cannot start {gameName} with mods: me3 {found} in loadout '{loadoutName}' is older than {MinimumVersion}, which this app's profile needs (per-loadout saves, Dark Souls III). Update me3 in this loadout.")
+            : null;
     }
 
     public void PrepareHost(GameInstallation installation)
