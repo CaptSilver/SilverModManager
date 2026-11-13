@@ -21,6 +21,14 @@ public class Mo2LayoutTests
     private static Mo2Target Classify(string to, Mo2Context? context = null) =>
         Mo2Layout.Classify(RelativePath.FromUnsanitizedInput(to), context ?? Context);
 
+    [Theory]
+    [InlineData("mods/X/a/b", "X")]
+    [InlineData("overwrite/a", Mo2Layout.OverwriteGroup)]
+    [InlineData("profiles/P/a", Mo2Layout.ProfileSettingsGroup)]
+    [InlineData("ModOrganizer.ini", null)]
+    public void ModFolderOfReadsTheSecondSegmentUnderMods(string to, string? folder)
+        => Mo2Layout.ModFolderOf(RelativePath.FromUnsanitizedInput(to)).Should().Be(folder);
+
     [Fact]
     public void ModOrganizerIni_IsASeed_AndNotDropped()
     {

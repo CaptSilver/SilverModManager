@@ -91,6 +91,22 @@ public static class Mo2Layout
     }
 
     /// <summary>
+    /// The mod folder a file of the list lands in, as the install names its group: the folder under <c>mods/</c>, the
+    /// overwrite group, or the profile settings group. Null for a path no mod folder holds. Read back from a stored
+    /// destination, so a skipped file can be matched to the folder it belonged to.
+    /// </summary>
+    public static string? ModFolderOf(RelativePath to) => ModFolderOf(to.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries));
+
+    private static string? ModFolderOf(string[] parts)
+    {
+        if (parts.Length == 0) return null;
+        if (parts[0].Equals("mods", StringComparison.OrdinalIgnoreCase)) return parts.Length >= 3 ? parts[1] : null;
+        if (parts[0].Equals("overwrite", StringComparison.OrdinalIgnoreCase)) return parts.Length >= 2 ? OverwriteGroup : null;
+        if (parts[0].Equals("profiles", StringComparison.OrdinalIgnoreCase)) return parts.Length >= 3 ? ProfileSettingsGroup : null;
+        return null;
+    }
+
+    /// <summary>
     /// <paramref name="to"/> is a directive's destination with its path casing already unified
     /// (<see cref="PathCasing.Unify"/>); the rows are tried in order and the first match wins.
     /// </summary>
@@ -109,10 +125,10 @@ public static class Mo2Layout
         var folder = parts[0];
         if (folder.Equals("mods", StringComparison.OrdinalIgnoreCase))
         {
-            if (parts.Length < 3) return new Mo2Target.Dropped("Mod Organizer file");
+            if (ModFolderOf(parts) is not { } modFolder) return new Mo2Target.Dropped("Mod Organizer file");
             if (parts.Length == 3 && parts[2].Equals("meta.ini", StringComparison.OrdinalIgnoreCase))
                 return new Mo2Target.Dropped("mod metadata");
-            return ModFile(parts[1], parts, 2, context);
+            return ModFile(modFolder, parts, 2, context);
         }
 
         if (folder.Equals("overwrite", StringComparison.OrdinalIgnoreCase))
