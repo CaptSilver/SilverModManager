@@ -26,11 +26,12 @@ public static class SimpleInstallers
             var marker = rule.MarkerFile;
             installers.Add(new PredicateBasedInstaller(provider)
             {
-                Root = node => node.HasDirectChild(marker),
+                Root = node => node.HasDirectChildAtPath(marker),
                 Destination = modRoot.ToGamePath(rule.Destination),
                 InFolderNamedAfterMod = rule.InFolderNamedAfterMod,
                 MarkerFile = marker,
                 FolderNameFromMarker = rule.FolderNameFromMarker,
+                RefuseSeveralRoots = rule.RefuseWhenSeveral,
                 IgnoreFiles = rule.IgnoredExtensions.Cast<object>().ToArray(),
             });
         }

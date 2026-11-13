@@ -11,4 +11,13 @@ public interface IModFolderNameFromMarker
     /// a name that is no folder name), which leaves the folder named after the archive.
     /// </summary>
     string? FolderName(byte[] markerFile);
+
+    /// <summary>
+    /// True when the game cannot list a mod that gives no name, so the archive is refused instead of falling back to
+    /// the archive's folder name.
+    /// </summary>
+    bool RequireName => false;
+
+    /// <summary>What the player is told when <see cref="RequireName"/> refuses an archive.</summary>
+    string RefusalReason => "";
 }

@@ -95,9 +95,16 @@ public sealed record SimpleInstallTarget
 /// <summary>An archive with a file named <see cref="MarkerFile"/> in its mod folder is installed to <see cref="Destination"/>.</summary>
 public sealed record SimpleMarkerRule
 {
+    /// <summary>The marker's path inside the mod's folder; it may hold folders (<c>About/About.xml</c>).</summary>
     public required string MarkerFile { get; init; }
 
     public required RelativePath Destination { get; init; }
+
+    /// <summary>
+    /// An archive with more than one folder holding the marker is refused, naming how many. Without it the first is
+    /// installed and the rest make the archive look like a different layout.
+    /// </summary>
+    public bool RefuseWhenSeveral { get; init; }
 
     /// <summary>
     /// The mod goes in a folder of its own below <see cref="Destination"/>, for games that load every folder there as

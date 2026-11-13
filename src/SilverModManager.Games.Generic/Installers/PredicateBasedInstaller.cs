@@ -54,6 +54,12 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     public IModFolderNameFromMarker? FolderNameFromMarker { get; init; }
 
     /// <summary>
+    /// Refuses an archive in which more than one folder matches <see cref="Root"/>, instead of installing the first
+    /// and failing on the rest.
+    /// </summary>
+    public bool RefuseSeveralRoots { get; init; }
+
+    /// <summary>
     /// Files in this array will not be installed, and will not cause the installer to fail if they exist.
     /// </summary>
     public object[] IgnoreFiles { get; init; } = [];
@@ -116,6 +122,26 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         public bool HasDirectChild(string name) => _node.Value.Item.Children.Any(c => c.Key.ToString().Equals(name, StringComparison.InvariantCultureIgnoreCase));
         
         /// <summary>
+        /// Returns true if this node has a direct child folder for each segment of <paramref name="path"/> but the
+        /// last, and an entry named by the last below them. Names are compared ignoring case.
+        /// </summary>
+        public bool HasDirectChildAtPath(string path)
+        {
+            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var current = _node.Value.Item;
+            for (var i = 0; i < segments.Length; i++)
+            {
+                var next = current.Children.FirstOrDefault(c => c.Key.ToString().Equals(segments[i], StringComparison.InvariantCultureIgnoreCase));
+                if (next.Value is null) return false;
+                if (i == segments.Length - 1) return true;
+                if (next.Value.Item.IsFile) return false;
+                current = next.Value.Item;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Returns true if any of the direct children of this node are files with the given extensions.
         /// </summary>
         public bool IsRootWith(params ReadOnlySpan<Extension> extensions)
@@ -160,6 +186,9 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
     {
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
 
+        if (RefuseSeveralRoots && CountRoots(tree) is var roots and > 1)
+            return new NotSupported(Reason: $"The archive holds {roots} mods ({MarkerFile} appears {roots} times); install each on its own");
+
         LibraryArchiveTree found;
         if (Root(new Node(new KeyValuePair<RelativePath, KeyedBox<RelativePath, LibraryArchiveTree>>("", tree))))
         {
@@ -185,6 +214,9 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         else if (InFolderNamedAfterMod)
         {
             var named = await FolderNamedByMarker(found, cancellationToken);
+            if (named is null && FolderNameFromMarker is { RequireName: true } namer)
+                return new NotSupported(Reason: namer.RefusalReason);
+
             var modFolder = RelativePath.Empty;
             if (named is null && TryGetModFolder(libraryArchive, found, out modFolder) is false)
                 return new NotSupported(Reason: "The mod's name does not make a valid folder name");
@@ -233,16 +265,38 @@ public class PredicateBasedInstaller : ALibraryArchiveInstaller
         return new Success();
     }
 
+    private int CountRoots(KeyedBox<RelativePath, LibraryArchiveTree> tree)
+    {
+        var count = Root(new Node(new KeyValuePair<RelativePath, KeyedBox<RelativePath, LibraryArchiveTree>>("", tree))) ? 1 : 0;
+        return count + tree.EnumerateChildrenBfs().Count(x => Root(new Node(x)));
+    }
+
     private async ValueTask<RelativePath?> FolderNamedByMarker(LibraryArchiveTree root, CancellationToken cancellationToken)
     {
         if (FolderNameFromMarker is null || MarkerFile is null) return null;
 
-        foreach (var (name, child) in root.Children)
+        var markerFile = FindMarker(root, MarkerFile);
+        if (markerFile is { } child)
         {
-            if (!child.Item.IsFile || !name.ToString().Equals(MarkerFile, StringComparison.OrdinalIgnoreCase)) continue;
-
             var content = await _serviceProvider.GetRequiredService<IFileStore>().Load(FileIdentity.XxHash3(child.Item.LibraryFile.Value.Hash), cancellationToken);
             return FolderNameFromMarker.FolderName(content) is { } folderName ? RelativePath.FromUnsanitizedInput(folderName) : (RelativePath?)null;
+        }
+
+        return null;
+    }
+
+    /// <summary>The file <paramref name="marker"/> names below <paramref name="root"/>, one folder per segment, compared ignoring case.</summary>
+    private static KeyedBox<RelativePath, LibraryArchiveTree>? FindMarker(LibraryArchiveTree root, string marker)
+    {
+        var current = root;
+        var segments = marker.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < segments.Length; i++)
+        {
+            var next = current.Children.FirstOrDefault(c => c.Key.ToString().Equals(segments[i], StringComparison.OrdinalIgnoreCase));
+            if (next.Value is null) return null;
+            if (i == segments.Length - 1) return next.Value.Item.IsFile ? next.Value : null;
+            if (next.Value.Item.IsFile) return null;
+            current = next.Value.Item;
         }
 
         return null;

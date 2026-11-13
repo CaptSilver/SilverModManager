@@ -20,8 +20,9 @@ public static class SimpleInstallPresets
 
     // Vortex puts a mod with the marker file in a folder of its own and drops what lies outside the marker's folder, so
     // a readme beside the mod folder does not make the archive unusable.
-    // A game that lists mods by an id inside the marker passes the namer that reads it.
-    public static SimpleInstallRules InOwnFolderByMarker(string markerFile, IModFolderNameFromMarker? folderNameFromMarker = null) => new()
+    // A game that lists mods by an id inside the marker passes the namer that reads it; one that cannot take several
+    // mods in one archive says so with refuseWhenSeveral.
+    public static SimpleInstallRules InOwnFolderByMarker(string markerFile, IModFolderNameFromMarker? folderNameFromMarker = null, bool refuseWhenSeveral = false) => new()
     {
         MarkerRules =
         [
@@ -31,6 +32,7 @@ public static class SimpleInstallPresets
                 Destination = RelativePath.Empty,
                 InFolderNamedAfterMod = true,
                 FolderNameFromMarker = folderNameFromMarker,
+                RefuseWhenSeveral = refuseWhenSeveral,
                 IgnoredExtensions = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Png, KnownExtensions.Jpg],
             },
         ],
