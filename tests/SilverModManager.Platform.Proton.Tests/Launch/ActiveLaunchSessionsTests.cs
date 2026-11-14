@@ -12,6 +12,8 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Abstractions.Loadouts;
 using NSubstitute;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 namespace SilverModManager.Platform.Proton.Tests.Launch;
 
@@ -188,6 +190,11 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton(Substitute.For<IFileSystem>());
         services.AddSingleton(Substitute.For<IToolManager>());
         services.AddSingleton(Substitute.For<IJobMonitor>());
+        // What the app's deployment services provide to the launch gate that mounts a plan's roots.
+        services.AddSingleton(Substitute.For<IDeploymentMountScopeFactory>());
+        services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
+        services.AddSingleton(Substitute.For<IDeploymentBackendSelector>());
+        services.AddSingleton<DeploymentLaunchRoots>();
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

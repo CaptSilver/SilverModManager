@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 namespace SilverModManager.Platform.Proton.Launch;
 
@@ -26,6 +27,14 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
                 logger.Log(LogLevel.Warning, refused, "The removal question for {Loadout} after the game exited was refused", context.LoadoutName);
                 failure ??= new LaunchFailure($"{context.Installation.Game.DisplayName} has exited. Nothing was removed from the game folder; apply '{context.LoadoutName}' when you want the files it no longer holds taken out.",
                     Refused: true, Cause: e, LoadoutStillApplied: true);
+                return;
+            }
+
+            // The mount outlived the game; the message already says what happens next, so it is not wrapped in a failure.
+            if (e is MountStillInUseException)
+            {
+                logger.Log(LogLevel.Warning, e, "A mount of {Loadout} was still in use when the game exited", context.LoadoutName);
+                failure ??= new LaunchFailure(e.Message, Cause: e, LoadoutStillApplied: true);
                 return;
             }
 

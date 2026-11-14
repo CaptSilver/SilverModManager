@@ -21,10 +21,10 @@ public class WrapperPassThroughTests : IDisposable
 
     private string LockPath(string appId = "1091500") => InstallationLock.PathFor(_runtimeDir, "steam", appId);
 
-    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "", RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
+    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "", RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null, string? filesystemRoots = null)
     {
         var holder = TestHost.StartHolder(LockPath(appId), seconds: 30);
-        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides, recordedLaunch, launchEnvironment);
+        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides, recordedLaunch, launchEnvironment, filesystemRoots);
         return holder;
     }
 
@@ -306,6 +306,38 @@ public class WrapperPassThroughTests : IDisposable
 
             exitCode.Should().Be(0);
             (await File.ReadAllTextAsync(File_("overrides"))).Should().Be("dxgi=n,b;winmm=n,b;version=n,b");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_ShareTheFilesystemRootsTheWindowRecordedWithTheContainer()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, filesystemRoots: "/games/Skyrim/Data:/var/staging");
+        try
+        {
+            var environment = new Dictionary<string, string>(BasicEnvironment) { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/mnt/extra" };
+
+            var exitCode = await WrapperPassThrough.TryRunAsync(
+                ["sh", "-c", "printf '%s' \"$PRESSURE_VESSEL_FILESYSTEMS_RW\" > \"$0\"", File_("roots")],
+                SteamEnvironment(), GuiPid, NullLogger.Instance, environment);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("roots"))).Should().Be("/mnt/extra:/games/Skyrim/Data:/var/staging");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_LeavesTheContainerFilesystemsAloneWhenNoRootsWereRecorded()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running);
+        try
+        {
+            var exitCode = await TryRun(["sh", "-c", "printf '%s' \"${PRESSURE_VESSEL_FILESYSTEMS_RW-unset}\" > \"$0\"", File_("roots")]);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("roots"))).Should().Be("unset");
         }
         finally { holder.Kill(); }
     }

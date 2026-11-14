@@ -26,6 +26,9 @@ public sealed partial class InstallationLock : IDisposable
     /// <summary>The state file key holding the variables the loadout adds to the launch, as space-separated <c>KEY=value</c> words.</summary>
     public const string LaunchEnvironmentKey = "LaunchEnvironment";
 
+    /// <summary>The state file key holding the host folders the game's process must see, colon-joined.</summary>
+    public const string FilesystemRootsKey = "FilesystemRoots";
+
     private static readonly TimeSpan DefaultRetryPause = TimeSpan.FromMilliseconds(100);
     private const int MaxRenameAttempts = 5;
 
@@ -113,8 +116,13 @@ public sealed partial class InstallationLock : IDisposable
     /// Variables the loadout adds to the launch unless it already has them, or null for none. Written on every call too;
     /// the key is left out when there are none, so a launch without any writes the file it always did.
     /// </param>
+    /// <param name="filesystemRoots">
+    /// Host folders the game's process must be able to see, colon-joined like <c>PRESSURE_VESSEL_FILESYSTEMS_RW</c>, or null
+    /// for none. A Steam wrapper has no database, so the folders a mounted root needs inside the container come from here.
+    /// Written on every call, the key is left out when there are none.
+    /// </param>
     /// <exception cref="ArgumentException">A key or value would not read back as the same word.</exception>
-    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides, RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
+    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides, RecordedLaunch? recordedLaunch = null, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null, string? filesystemRoots = null)
     {
         var environment = SerialiseEnvironment(launchEnvironment);
         Rewrite(values =>
@@ -138,6 +146,9 @@ public sealed partial class InstallationLock : IDisposable
 
             if (environment.Length == 0) values.Remove(LaunchEnvironmentKey);
             else values[LaunchEnvironmentKey] = environment;
+
+            if (string.IsNullOrEmpty(filesystemRoots)) values.Remove(FilesystemRootsKey);
+            else values[FilesystemRootsKey] = SingleLine(filesystemRoots);
         });
     }
 

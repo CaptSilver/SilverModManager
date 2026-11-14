@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk;
@@ -77,6 +78,7 @@ public sealed class LaunchSession
     private readonly object _releaseLock = new();
     private readonly StopHandler? _stop;
     private readonly INexusCredentialSummary? _credentials;
+    private readonly ILaunchMounts? _mounts;
 
     // Guards the phase, the stop flag and the process handle together: a signal must never see a phase that
     // disagrees with whether there is a child to terminate.
@@ -109,7 +111,8 @@ public sealed class LaunchSession
         ILogger<LaunchSession> logger,
         TextWriter? error = null,
         StopHandler? stop = null,
-        INexusCredentialSummary? credentials = null)
+        INexusCredentialSummary? credentials = null,
+        ILaunchMounts? mounts = null)
     {
         _lockFactory = lockFactory;
         _activeSessions = activeSessions;
@@ -126,6 +129,7 @@ public sealed class LaunchSession
         _error = error ?? Console.Error;
         _stop = stop;
         _credentials = credentials;
+        _mounts = mounts;
     }
 
     /// <summary>
@@ -204,6 +208,9 @@ public sealed class LaunchSession
         else
             output.WriteLine("Run tool: none, the command is started as given");
 
+        foreach (var mounted in _mounts?.For(context).Mounted ?? [])
+            output.WriteLine($"Mounted while the game runs: {DeploymentRootNames.Describe(mounted.Root)} ({mounted.Backend.Value}) at {mounted.Folder}");
+
         output.WriteLine(plan.Substitution is { } substitution ? $"App id: {substitution.AppId ?? "none"}" : "App id: none");
         output.WriteLine($"Command: {string.Join(' ', plan.Process.Argv)}");
         output.WriteLine(plan.Process.WineDllOverrides is { Count: > 0 } overrides ? $"Wine DLL overrides: {string.Join(';', overrides)}" : "Wine DLL overrides: none");
@@ -218,6 +225,9 @@ public sealed class LaunchSession
         => report.Message ?? throw new InvalidOperationException($"The pending-finish report for {report.Outcome} carries no message");
 
     internal static string WineOverridesOf(LaunchContext context) => string.Join(';', context.WineDllOverrides);
+
+    private string? FilesystemRootsOf(LaunchContext context) =>
+        _mounts?.For(context).FilesystemRoots is { Count: > 0 } roots ? string.Join(':', roots) : null;
 
     internal static RecordedLaunch? RecordedLaunchOf(LaunchContext context)
     {
@@ -345,9 +355,12 @@ public sealed class LaunchSession
         }
 
         var prepared = new List<ILaunchGate>();
+        string? filesystemRoots = null;
         try
         {
-            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
+            // The wrapper reads these from the state file, so they are in it from the first write.
+            filesystemRoots = FilesystemRootsOf(context);
+            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment, filesystemRoots);
             using (SyncOrigin.Begin(SyncTrigger.Launch)) await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
@@ -360,17 +373,20 @@ public sealed class LaunchSession
         {
             // The player answered the backup question a moment ago with "don't start"; nothing was written.
             LogCause(declined, "{Game} was not started: the backup question for {Loadout} was declined", game, context.LoadoutName);
+            await UndoPrepared(context, prepared);
             return new LaunchFailure($"{game} was not started; nothing was changed.", Refused: true, Cause: declined);
         }
         catch (MassRemovalException refused)
         {
             // The apply would have removed most of the loadout's files and the player said no (or nobody could be asked); nothing was written.
             _logger.Log(LogLevel.Warning, refused, "{Game} was not started: the removal question for {Loadout} was refused", game, context.LoadoutName);
+            await UndoPrepared(context, prepared);
             return new LaunchFailure(refused.Declined ? $"{game} was not started; nothing was changed." : refused.Message, Refused: true, Cause: refused);
         }
         catch (Exception e)
         {
             LogCause(e, "Preparing {Loadout} for {Game} failed", context.LoadoutName, game);
+            await UndoPrepared(context, prepared);
             return new LaunchFailure($"Could not prepare loadout '{context.LoadoutName}' for {game}: {e.Message}", Cause: e);
         }
 
@@ -387,7 +403,7 @@ public sealed class LaunchSession
                     if (BeginRunning())
                     {
                         await WriteMarker(context, prepared);
-                        heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
+                        heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment, filesystemRoots);
                         using var process = _processFactory.Start(plan.Process, context.Installation, context.ProtectedPids);
                         AttachProcess(process);
                         try
@@ -404,7 +420,7 @@ public sealed class LaunchSession
                 else if (BeginRunning())
                 {
                     await WriteMarker(context, prepared);
-                    heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
+                    heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment, filesystemRoots);
                     var waitWhileRunning = whileRunning
                         ?? throw new InvalidOperationException("LaunchSession.RunCore was given neither a plan nor a wait");
                     try
@@ -453,6 +469,25 @@ public sealed class LaunchSession
         if (stopped) return new LaunchResult(StoppedExitCode, null);
         if (exit is null) throw new InvalidOperationException($"LaunchSession for {game} finished without a game exit or a stop request");
         return new LaunchResult(exit.ExitCode, null);
+    }
+
+    // A prepare that fails leaves the gates before it holding what they set up (a mounted folder, say) with no game to
+    // end it, and no marker was written to owe their finish. Each is finished here, last prepared first. A finish that
+    // throws is logged and the rest still run, so the failure the caller sees stays the one that stopped the launch.
+    private async Task UndoPrepared(LaunchContext context, IReadOnlyList<ILaunchGate> prepared)
+    {
+        var undo = context with { EndSeen = false };
+        for (var i = prepared.Count - 1; i >= 0; i--)
+        {
+            try
+            {
+                await prepared[i].Finish(undo);
+            }
+            catch (Exception e)
+            {
+                LogCause(e, "Undoing {Gate} after a failed launch of {Game} failed", prepared[i].GetType().Name, context.Installation.Game.DisplayName);
+            }
+        }
     }
 
     // Written before the game exists so a crash at any later point leaves the finish owed. Gate names are type

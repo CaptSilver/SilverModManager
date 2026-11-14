@@ -10,6 +10,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 
 namespace SilverModManager.Platform.Proton.Tests.Launch;
 
@@ -25,11 +26,13 @@ public class DryRunTests : IDisposable
     private readonly StringWriter _output = new();
     private readonly StringWriter _error = new();
     private readonly INexusCredentialSummary _credentials = Substitute.For<INexusCredentialSummary>();
+    private readonly ILaunchMounts _mounts = Substitute.For<ILaunchMounts>();
     private readonly LaunchSession _session;
     private readonly LaunchContext _context;
 
     public DryRunTests()
     {
+        _mounts.For(Arg.Any<LaunchContext>()).Returns(LaunchMounts.None);
         var game = Substitute.For<IGameData>();
         game.DisplayName.Returns("Skyrim Special Edition");
         var folder = Path_(GameRoot);
@@ -47,7 +50,7 @@ public class DryRunTests : IDisposable
         _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout", []);
         var markers = new FakeLaunchFinishMarkers { ReadWith = () => null };
         var active = new ActiveLaunchSessions();
-        _session = new LaunchSession(_lockFactory, active, _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), TestFinishers.For(_lockFactory, active, [], new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
+        _session = new LaunchSession(_lockFactory, active, _synchronizer, new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), TestFinishers.For(_lockFactory, active, [], new LaunchFinish(_synchronizer, markers, NullLogger<LaunchFinish>.Instance), markers), markers, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials, mounts: _mounts);
     }
 
     public void Dispose() => Directory.Delete(_runtimeDir, recursive: true);
@@ -88,6 +91,30 @@ public class DryRunTests : IDisposable
         text.Should().Contain($"Run tool: {GameRoot}/skse64_loader.exe");
         text.Should().Contain("App id: 489830");
         text.Should().Contain("synchronize");
+    }
+
+    [Fact]
+    public void ARootServedThroughAMountIsListedAfterTheRunTool()
+    {
+        var plan = Compose(SteamCommand($"{GameRoot}/SkyrimSELauncher.exe"), $"{GameRoot}/skse64_loader.exe");
+        _mounts.For(_context).Returns(new LaunchMounts([], [new MountedRoot(new GamePath(LocationId.Game, "Data"), new DeploymentBackendId("fuse"), Path_($"{GameRoot}/Data"))]));
+
+        _session.DryRun(_context, () => plan, _output);
+
+        var lines = _output.ToString().ReplaceLineEndings("\n").Split('\n').ToList();
+        lines.Should().Contain($"Mounted while the game runs: Game/Data (fuse) at {GameRoot}/Data");
+        lines.IndexOf($"Mounted while the game runs: Game/Data (fuse) at {GameRoot}/Data").Should().Be(lines.IndexOf($"Run tool: {GameRoot}/skse64_loader.exe") + 1);
+    }
+
+    [Fact]
+    public void ThePlanSaysNothingAboutMountsWhenNoRootIsServedThroughOne()
+    {
+        var plan = Compose(SteamCommand($"{GameRoot}/SkyrimSELauncher.exe"), $"{GameRoot}/skse64_loader.exe");
+        _mounts.For(_context).Returns(new LaunchMounts([], []));
+
+        _session.DryRun(_context, () => plan, _output);
+
+        _output.ToString().Should().NotContain("Mounted while the game runs");
     }
 
     [Fact]

@@ -56,6 +56,8 @@ public static class LaunchServices
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<LaunchFinish>();
         services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ILaunchGate, MountLaunchGate>());
+        services.TryAddSingleton<ILaunchMounts, DeploymentLaunchMounts>();
         services.TryAddSingleton<PendingLaunchFinisher>();
         services.TryAddSingleton<IPendingLaunchFinisher>(s => s.GetRequiredService<PendingLaunchFinisher>());
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();

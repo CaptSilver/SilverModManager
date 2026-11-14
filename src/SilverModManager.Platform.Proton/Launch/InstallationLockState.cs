@@ -38,6 +38,13 @@ public sealed record InstallationLockState(
             .ToArray();
 
     /// <summary>
+    /// The host folders the game's process must be able to see, which the window recorded for the mounts it holds. None
+    /// for a file written without the key, as a launch without mounts and older builds do.
+    /// </summary>
+    public IReadOnlyList<string> FilesystemRoots =>
+        Values.GetValueOrDefault(InstallationLock.FilesystemRootsKey, "").Split(':', StringSplitOptions.RemoveEmptyEntries);
+
+    /// <summary>
     /// The exe and arguments the window wants the game started with. Null for a file written without them,
     /// as older builds did.
     /// </summary>

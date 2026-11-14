@@ -272,6 +272,35 @@ public class InstallationLockTests : IDisposable
     }
 
     [Fact]
+    public void WriteState_RecordsTheFilesystemRootsAndReadStateSplitsThem()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "", filesystemRoots: "/games/Skyrim/Data:/var/staging");
+
+        var state = holder.ReadState()!;
+        state.Values["FilesystemRoots"].Should().Be("/games/Skyrim/Data:/var/staging");
+        state.FilesystemRoots.Should().Equal("/games/Skyrim/Data", "/var/staging");
+    }
+
+    [Fact]
+    public void WriteState_DropsTheFilesystemRootsOfAnEarlierLaunchWhenGivenNone()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "", filesystemRoots: "/games/Skyrim/Data");
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "");
+
+        var state = holder.ReadState()!;
+        state.Values.Should().NotContainKey("FilesystemRoots");
+        state.FilesystemRoots.Should().BeEmpty();
+    }
+
+    [Fact]
     public void WriteState_ClearsTheLaunchEnvironmentOfAnEarlierLaunch()
     {
         var path = PathFor();

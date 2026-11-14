@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
@@ -30,11 +31,13 @@ public class LaunchSessionTests : IDisposable
     private readonly IDesktopNotifier _notifier = Substitute.For<IDesktopNotifier>();
     private readonly IInstallationLockFactory _lockFactory = Substitute.For<IInstallationLockFactory>();
     private readonly List<ILaunchGate> _gates = [];
+    private readonly ILaunchMounts _mounts = Substitute.For<ILaunchMounts>();
     private readonly GameInstallation _installation;
     private readonly LaunchContext _context;
 
     public LaunchSessionTests()
     {
+        _mounts.For(Arg.Any<LaunchContext>()).Returns(LaunchMounts.None);
         _installation = Installation();
         _context = new LaunchContext(_installation, LoadoutId.From(1), "My Loadout", [new WineDllOverride("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])]);
         _log = new RecordingLogger();
@@ -73,7 +76,7 @@ public class LaunchSessionTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), TestFinishers.For(_lockFactory, _active, _gates, new LaunchFinish(_synchronizer, _markers, _log), _markers, _tracker), _markers, _processes, _gates, _notifier, _log, _error);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, new LaunchFinish(_synchronizer, _markers, _log), TestFinishers.For(_lockFactory, _active, _gates, new LaunchFinish(_synchronizer, _markers, _log), _markers, _tracker), _markers, _processes, _gates, _notifier, _log, _error, mounts: _mounts);
         _sessions.Add(session);
         return session;
     }
@@ -504,7 +507,7 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
-    public async Task AGatePrepareFailure_Is125_NoGameIsStarted_AndFinishNeverRuns()
+    public async Task AGatePrepareFailure_Is125_NoGameIsStarted_AndNoMarkerIsWritten()
     {
         var first = AddGate("a");
         var second = AddGate("b");
@@ -515,9 +518,90 @@ public class LaunchSessionTests : IDisposable
         result.ExitCode.Should().Be(125);
         result.Message.Should().Contain("gate broke");
         _processes.Started.Should().BeFalse();
-        first.Finished.Should().BeFalse();
-        second.Finished.Should().BeFalse();
+        second.Finished.Should().BeFalse("a gate whose prepare threw tidies up after itself");
+        _markers.Written.Should().BeNull("nothing ran that a later start would owe a finish for");
         _events.Count(e => e == "sync").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task APrepareThatThrowsFinishesTheGatesAlreadyPrepared()
+    {
+        var first = AddGate("a");
+        AddGate("b").PrepareFailure = new InvalidOperationException("gate broke");
+
+        var result = await Run(NewSession());
+
+        result.ExitCode.Should().Be(125);
+        result.Message.Should().Contain("gate broke").And.Contain("My Loadout");
+        _events.Where(e => e != "sync").Should().Equal("check:a", "check:b", "prepare:a", "prepare:b", "finish:a");
+        first.Finished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task APrepareThatThrowsFinishesThePreparedGatesInReverse()
+    {
+        AddGate("a");
+        AddGate("b");
+        AddGate("c").PrepareFailure = new InvalidOperationException("gate broke");
+
+        await Run(NewSession());
+
+        _events.Where(e => e.StartsWith("finish:")).Should().Equal("finish:b", "finish:a");
+    }
+
+    [Fact]
+    public async Task AFinishThatThrowsDuringUndoIsLoggedNotRethrown()
+    {
+        AddGate("a").FinishFailure = new InvalidOperationException("undo broke");
+        AddGate("b").PrepareFailure = new InvalidOperationException("gate broke");
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Contain("gate broke").And.NotContain("undo broke");
+    }
+
+    [Fact]
+    public async Task AMountStillInUse_LeavesTheLoadoutAppliedWithTheExceptionsOwnMessage()
+    {
+        AddGate("a").FinishFailure = new MountStillInUseException("Test Game still has files open under Game/Data; its changes are promoted the next time the app applies or launches");
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Be("Test Game still has files open under Game/Data; its changes are promoted the next time the app applies or launches");
+        result.LoadoutStillApplied.Should().BeTrue();
+        result.Refused.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheStateFileCarriesTheFilesystemRootsOfTheMountsFromTheStartOfThePreparation()
+    {
+        _mounts.For(Arg.Any<LaunchContext>()).Returns(new LaunchMounts(["/games/Test/Data", "/var/staging"], []));
+        IReadOnlyList<string>? seen = null;
+        AddGate("a").OnPrepare = () =>
+        {
+            using var reader = new InstallationLock(LockPath);
+            seen = reader.ReadState()!.FilesystemRoots;
+        };
+
+        await Run(NewSession());
+
+        seen.Should().Equal("/games/Test/Data", "/var/staging");
+    }
+
+    [Fact]
+    public async Task TheStateFileHasNoFilesystemRootsWhenThePlanHasNoMounts()
+    {
+        _mounts.For(_context).Returns(new LaunchMounts([], []));
+        IReadOnlyList<string>? seen = null;
+        AddGate("a").OnPrepare = () =>
+        {
+            using var reader = new InstallationLock(LockPath);
+            seen = reader.ReadState()!.FilesystemRoots;
+        };
+
+        await Run(NewSession());
+
+        seen.Should().BeEmpty();
     }
 
     [Fact]

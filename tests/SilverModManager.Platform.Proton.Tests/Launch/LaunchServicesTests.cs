@@ -10,6 +10,8 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 namespace SilverModManager.Platform.Proton.Tests.Launch;
 
@@ -52,6 +54,15 @@ public class LaunchServicesTests
         services.AddHeadlessLaunch();
 
         services.Count(d => d.ServiceType == typeof(ILaunchGate) && d.ImplementationType == typeof(RunningGameGate)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddHeadlessLaunch_RegistersTheMountGate()
+    {
+        var services = new ServiceCollection();
+        services.AddHeadlessLaunch();
+
+        services.Should().Contain(d => d.ServiceType == typeof(ILaunchGate) && d.ImplementationType == typeof(MountLaunchGate));
     }
 
     [Fact]
@@ -185,5 +196,10 @@ public class LaunchServicesTests
         // The tool manager and job monitor `loadout launch` starts the game with, as the Play button does.
         services.AddSingleton(Substitute.For<IToolManager>());
         services.AddSingleton(Substitute.For<IJobMonitor>());
+        // What the app's deployment services provide to the launch gate that mounts a plan's roots.
+        services.AddSingleton(Substitute.For<IDeploymentMountScopeFactory>());
+        services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
+        services.AddSingleton(Substitute.For<IDeploymentBackendSelector>());
+        services.AddSingleton<DeploymentLaunchRoots>();
     }
 }

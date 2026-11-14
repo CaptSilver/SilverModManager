@@ -57,7 +57,7 @@ public static class WrapperPassThrough
 
         // The wrapper has no database to ask which overrides and variables the loadout needs; the window recorded them
         // in the state file. The window waits on Steam for as long as the key is there, so it is only written once the game is up.
-        using var process = GameProcess.PassThrough(new GameProcessSpec(argv, WineDllOverrides: state.WineDllOverrides, DefaultEnvironment: state.LaunchEnvironment), baseEnvironment);
+        using var process = GameProcess.PassThrough(new GameProcessSpec(argv, FilesystemRoots: state.FilesystemRoots, WineDllOverrides: state.WineDllOverrides, DefaultEnvironment: state.LaunchEnvironment), baseEnvironment);
         try
         {
             launch.WriteWrapperKey(LaunchSession.WrapperKey, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
