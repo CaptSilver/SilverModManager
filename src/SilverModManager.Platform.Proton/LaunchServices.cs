@@ -42,6 +42,7 @@ public static class LaunchServices
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.AddGameLaunchCore();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ILaunchGate, RunningGameGate>());
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
         services.TryAddSingleton<ISteamUriLauncher>(s => new SteamBinaryUriLauncher(
             s.GetRequiredService<IProcessRunner>(),

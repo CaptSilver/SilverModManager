@@ -110,6 +110,20 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task TheRunningGameGateRunsBeforeEveryOtherGate()
+    {
+        AddGate("a");
+        _gates.Add(new RunningGameGate(TestDetectors.Over(_tracker)));
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(777, "Game.exe")]);
+
+        var result = await Run(NewSession());
+
+        result.Message.Should().Contain("Test Game is running (Game.exe, pid 777)");
+        _events.Should().NotContain("check:a", "the gate added after it must still be asked first");
+        _processes.Started.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task EveryGateSeesTheSameFreshSessionId_AndEndSeen()
     {
         var gate = AddGate("a");

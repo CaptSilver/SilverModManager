@@ -118,7 +118,9 @@ public sealed class LaunchSession
         _finisher = finisher;
         _markers = markers;
         _processFactory = processFactory;
-        _gates = gates.ToList();
+        // The running-game check goes first: a launch the game blocks must not reach a gate that records state.
+        var all = gates.ToList();
+        _gates = [..all.OfType<RunningGameGate>(), ..all.Where(g => g is not RunningGameGate)];
         _notifier = notifier;
         _logger = logger;
         _error = error ?? Console.Error;

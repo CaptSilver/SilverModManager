@@ -45,6 +45,16 @@ public class LaunchServicesTests
     }
 
     [Fact]
+    public void AddHeadlessLaunch_RegistersTheRunningGameGateOnceHoweverOftenItIsCalled()
+    {
+        var services = new ServiceCollection();
+        services.AddHeadlessLaunch();
+        services.AddHeadlessLaunch();
+
+        services.Count(d => d.ServiceType == typeof(ILaunchGate) && d.ImplementationType == typeof(RunningGameGate)).Should().Be(1);
+    }
+
+    [Fact]
     public void Create_Throws_WhenThereIsNoRuntimeDir()
     {
         var env = Substitute.For<IEnvironmentReader>();
