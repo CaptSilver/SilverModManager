@@ -5,7 +5,13 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="GameFinder.StoreHandlers.Steam" />
         <PackageReference Include="SteamKit2" />
+        <PackageReference Include="System.IO.Hashing" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Steam\Art\*.png" LogicalName="Steam.Art.%(Filename)%(Extension)" />
     </ItemGroup>
 
     <ItemGroup>

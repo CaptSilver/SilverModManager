@@ -1,11 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Starters;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Launch.Starters;
 using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Steam.BinaryKeyValues;
+using SilverModManager.Platform.Proton.Steam.Shortcuts;
 using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
@@ -71,6 +76,42 @@ public static class LaunchServices
         services.TryAddSingleton<SteamConfigFileEditor>();
         services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
         services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
-        return services.AddLaunchVerbs();
+        return services.AddSteamShortcuts().AddLaunchVerbs();
+    }
+
+    /// <summary>
+    /// The services that add the app to Steam's library and remove it again.
+    /// </summary>
+    private static IServiceCollection AddSteamShortcuts(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IBinaryKeyValues, HandWrittenBinaryKeyValues>();
+        services.TryAddSingleton<SteamConfigFileEditor>();
+        services.TryAddSingleton<ShortcutsVdfWriter>();
+        services.TryAddSingleton(s => new LauncherShim(LauncherShim.ResolveDataHome(s.GetRequiredService<IEnvironmentReader>(), s.GetRequiredService<IFileSystem>())));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ISteamShortcutRoute, ShortcutsFileRoute>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ISteamShortcutRoute, SteamUrlShortcutAdder>(s =>
+        {
+            var writer = s.GetRequiredService<ShortcutsVdfWriter>();
+            var fileSystem = s.GetRequiredService<IFileSystem>();
+            return new SteamUrlShortcutAdder(s.GetRequiredService<ISteamUriLauncher>(), path => AppIdsIn(writer, fileSystem, path), fileSystem.FromUnsanitizedFullPath("/tmp/addnonsteamgamefile"));
+        }));
+        services.TryAddSingleton<ISteamShortcutService>(s =>
+        {
+            var fileSystem = s.GetRequiredService<IFileSystem>();
+            var interop = s.GetRequiredService<IOSInterop>();
+            return new SteamShortcutService(
+                s.GetRequiredService<IProcessTracker>(), s.GetRequiredService<IGameModeDetector>(), s.GetServices<ISteamShortcutRoute>(),
+                s.GetRequiredService<ShortcutsVdfWriter>(), s.GetRequiredService<LauncherShim>(), fileSystem, s.GetRequiredService<IEnvironmentReader>(),
+                () => SteamLocationFinder.TryFindSteam(fileSystem, registry: null, NullLogger.Instance, out var steam) ? steam : null,
+                () => interop.GetRunningExecutablePath(out _),
+                fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".steam/registry.vdf"));
+        });
+        return services;
+    }
+
+    private static IReadOnlySet<uint> AppIdsIn(ShortcutsVdfWriter writer, IFileSystem fileSystem, string path)
+    {
+        try { return writer.Read(fileSystem.FromUnsanitizedFullPath(path)).Select(e => e.AppId).ToHashSet(); }
+        catch (InvalidDataException) { return new HashSet<uint>(); }
     }
 }

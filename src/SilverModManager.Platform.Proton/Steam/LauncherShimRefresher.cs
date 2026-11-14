@@ -17,6 +17,14 @@ internal sealed class LauncherShimRefresher(IOSInterop interop, IEnvironmentRead
         {
             // Resolves $APPIMAGE first, so an AppImage's shim survives the mount point changing per run.
             var target = interop.GetRunningExecutablePath(out _);
+
+            // With the app in Steam's library the shim is what Steam starts, so a dev build must not become it.
+            if (IsDevBuildPath(target.ToString()))
+            {
+                logger.LogWarning("Not pointing the launcher shim at {Target}: it is a build output folder, and the shim is what Steam would start", target);
+                return Task.CompletedTask;
+            }
+
             var shim = new LauncherShim(LauncherShim.ResolveDataHome(environment, fileSystem));
             if (shim.Write(target)) logger.LogInformation("Wrote launcher shim {Shim} for {Target}", shim.ShimPath, target);
         }
@@ -27,6 +35,12 @@ internal sealed class LauncherShimRefresher(IOSInterop interop, IEnvironmentRead
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Whether the path has a <c>bin/Debug</c> or <c>bin/Release</c> segment.
+    /// </summary>
+    internal static bool IsDevBuildPath(string path)
+        => path.Contains("/bin/Debug/", StringComparison.Ordinal) || path.Contains("/bin/Release/", StringComparison.Ordinal);
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

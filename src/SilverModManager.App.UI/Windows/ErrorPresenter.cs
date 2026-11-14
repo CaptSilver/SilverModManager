@@ -56,6 +56,11 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
     /// </summary>
     internal static readonly ButtonDefinitionId OpenHealthCheckButton = ButtonDefinitionId.From("openHealthCheck");
 
+    /// <summary>
+    /// The second button beside OK on a refusal that carries <see cref="CloseSteamAndRetry"/>.
+    /// </summary>
+    internal static readonly ButtonDefinitionId CloseSteamAndRetryButton = ButtonDefinitionId.From("closeSteamAndRetry");
+
     internal static readonly ButtonDefinitionId OpenLogFolderButton = ButtonDefinitionId.From("openLogFolder");
 
     private const string CrashTitle = "Something went wrong";
@@ -127,6 +132,9 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
             case OpenHealthCheck:
                 buttons.Add(new DialogButtonDefinition("Open Health Check", OpenHealthCheckButton, ButtonAction.Accept, ButtonStyling.Primary));
                 break;
+            case CloseSteamAndRetry:
+                buttons.Add(new DialogButtonDefinition("Close Steam and retry", CloseSteamAndRetryButton, ButtonAction.Accept, ButtonStyling.Primary));
+                break;
             default:
                 throw new NotSupportedException($"No button is defined for the refusal action {refusal.Action.GetType().Name}.");
         }
@@ -135,6 +143,13 @@ public sealed class ErrorPresenter(IServiceProvider serviceProvider, ILogger<Err
         var windowManager = serviceProvider.GetRequiredService<IWindowManager>();
         var result = await windowManager.ShowDialog(dialog, DialogWindowType.Modal);
         if (result.ButtonId == OpenHealthCheckButton && refusal.Action is OpenHealthCheck open) NavigateToHealthCheck(windowManager, open.LoadoutId);
+        if (result.ButtonId == CloseSteamAndRetryButton && refusal.Action is CloseSteamAndRetry retry) await Retry(retry);
+    }
+
+    private async Task Retry(CloseSteamAndRetry action)
+    {
+        try { await action.Retry(); }
+        catch (Exception e) { await Report(e, "closing Steam and trying again"); }
     }
 
     private async Task ShowCrash(Exception? exception, string headline)

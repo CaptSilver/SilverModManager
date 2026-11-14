@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Pages.SteamShortcut;
 using SilverModManager.Platform.Gamepad;
 using SilverModManager.Sdk.Settings;
 
@@ -22,6 +24,9 @@ public record GameModeSettings : ISettings
 
     /// <summary>Whether a pad can be used for navigation. Needs a restart to take effect: the source is made once at start.</summary>
     public bool Controller { get; [JetBrains.Annotations.UsedImplicitly] set; } = true;
+
+    /// <summary>The row's value is never changed; it is the anchor for the Show in Steam status line and button.</summary>
+    public string ShowInSteam { get; [JetBrains.Annotations.UsedImplicitly] set; } = "";
 
     public static string SettingsId => "SilverModManager.App.UI.Settings.GameModeSettings";
 
@@ -76,6 +81,16 @@ public record GameModeSettings : ISettings
                     DisabledReason = ControllerDisabledReason,
                 },
                 new BooleanContainerOptions()
+            )
+            .ConfigureProperty(
+                x => x.ShowInSteam,
+                new PropertyOptions<GameModeSettings, string>
+                {
+                    Section = Sections.General,
+                    DisplayName = "Show in Steam library",
+                    DescriptionFactory = _ => "Puts SilverModManager in Steam's library as a shortcut with art, so it starts from Game Mode and the Steam overlay. Steam must be closed to write it, or it can be asked to add it while it runs.",
+                },
+                new ActionButtonContainerOptions { CreateSource = sp => sp.GetRequiredService<SteamShortcutActionSource>() }
             );
     }
 }

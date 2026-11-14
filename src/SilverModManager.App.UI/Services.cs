@@ -76,6 +76,8 @@ using SilverModManager.App.UI.Pages.ObservableInfo;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Pages.Sorting;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.App.UI.Pages.SteamShortcut;
+using SilverModManager.Platform.Proton.Steam.Shortcuts;
 using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Pages.Catalog;
 using SilverModManager.App.UI.Pages.Wabbajack;
@@ -191,6 +193,8 @@ public static class Services
             .AddView<SpineDownloadButtonView, ISpineDownloadButtonViewModel>()
             .AddView<MessageBoxOkView, IMessageBoxOkViewModel>()
             .AddView<SteamLaunchOptionView, ISteamLaunchOptionViewModel>()
+            .AddView<SteamShortcutView, ISteamShortcutViewModel>()
+            .AddSingleton(sp => new SteamShortcutActionSource(sp.GetRequiredService<ISteamShortcutService>(), _ => SteamShortcutDialog.ShowAsync(sp)))
             .AddView<MessageBoxOkCancelView, IMessageBoxOkCancelViewModel>()
             .AddView<AppMenuOverlayView, IAppMenuOverlayViewModel>()
             .AddView<UpdaterView, IUpdaterViewModel>()

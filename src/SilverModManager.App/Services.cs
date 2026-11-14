@@ -219,6 +219,7 @@ public static class Services
             .AddCleanupVerbs()
             .AddStatusVerbs()
             .AddSettingsVerbs()
+            .AddSteamShortcutVerbs()
             .AddSteamCli()
             .AddGOG()
             .AddFileHashes()

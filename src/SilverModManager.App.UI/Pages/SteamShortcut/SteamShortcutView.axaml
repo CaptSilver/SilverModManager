@@ -1,0 +1,63 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:ISteamShortcutViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.SteamShortcut"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="400"
+    x:Class="SilverModManager.App.UI.Pages.SteamShortcut.SteamShortcutView">
+
+    <base:MessageBoxBackground MinWidth="576" MaxWidth="640">
+        <base:MessageBoxBackground.TopContent>
+            <Border Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock x:Name="TitleText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource HeadingXSSemiTheme}" />
+                    <StackPanel x:Name="AccountPanel" Spacing="8" IsVisible="False">
+                        <TextBlock Text="More than one Steam account could own the shortcut. Pick the one whose library should show it."
+                                   TextWrapping="Wrap"
+                                   Theme="{StaticResource BodyMDNormalTheme}" />
+                        <ComboBox x:Name="AccountBox" HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding PersonaName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <TextBlock x:Name="NoteText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="AskSteamNoteText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="MessageText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                </StackPanel>
+            </Border>
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+            <StackPanel Orientation="Horizontal"
+                        Margin="24"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Spacing="{StaticResource Spacing-2.5}">
+                <controls:StandardButton x:Name="ButtonClose" Text="Close" />
+                <controls:StandardButton x:Name="ButtonCancelWait" Text="Cancel" Type="Secondary" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonAskSteam" Text="Ask Steam to add it now" Type="Secondary" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonCloseAndAdd" Text="Close Steam and add" Type="Primary" Fill="Strong" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonAdd" Text="Add to Steam" Type="Primary" Fill="Strong" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonCloseAndRemove" Text="Close Steam and remove" Type="Primary" Fill="Strong" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonRemove" Text="Remove from Steam" Type="Primary" Fill="Strong" IsVisible="False" />
+            </StackPanel>
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+
+</reactive:ReactiveUserControl>

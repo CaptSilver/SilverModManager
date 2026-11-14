@@ -15,3 +15,11 @@ public abstract record UserFacingAction;
 /// <param name="LoadoutId">The loadout whose Health Check to open.</param>
 [PublicAPI]
 public sealed record OpenHealthCheck(LoadoutId LoadoutId) : UserFacingAction;
+
+/// <summary>
+/// Close Steam, then run <paramref name="Retry"/>: the refusal is that Steam is running, and the step that was refused
+/// can go ahead once it is not.
+/// </summary>
+/// <param name="Retry">Closes Steam, redoes what was refused and starts Steam again.</param>
+[PublicAPI]
+public sealed record CloseSteamAndRetry(Func<Task> Retry) : UserFacingAction;

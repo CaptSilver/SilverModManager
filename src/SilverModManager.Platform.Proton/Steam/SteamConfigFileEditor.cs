@@ -57,9 +57,10 @@ public sealed class SteamConfigFileEditor(IProcessTracker tracker)
     /// <param name="verify">Gets the bytes read back after the write; false restores the previous file.</param>
     /// <param name="missingFileRefusal">The refusal for a missing file, when the caller has a better sentence.</param>
     /// <param name="mismatchRefusal">The refusal for a read-back that fails <paramref name="verify"/>, when the caller can say what was written.</param>
-    public SteamConfigEdit Edit(AbsolutePath file, Func<byte[], (byte[]? Bytes, string? Refusal)> edit, Func<byte[], bool> verify, bool createIfMissing = false, string? missingFileRefusal = null, string? mismatchRefusal = null)
+    /// <param name="steamRunningRefusal">The refusal while Steam runs, when the file holds something other than launch options.</param>
+    public SteamConfigEdit Edit(AbsolutePath file, Func<byte[], (byte[]? Bytes, string? Refusal)> edit, Func<byte[], bool> verify, bool createIfMissing = false, string? missingFileRefusal = null, string? mismatchRefusal = null, string? steamRunningRefusal = null)
     {
-        if (tracker.IsSteamRunning()) return Refuse(SteamRunningRefusal);
+        if (tracker.IsSteamRunning()) return Refuse(steamRunningRefusal ?? SteamRunningRefusal);
 
         var path = file.ToString();
         var exists = file.FileExists;
