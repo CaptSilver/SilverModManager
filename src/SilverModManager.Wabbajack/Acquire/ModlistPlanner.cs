@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Library.Pickup;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Errors;
@@ -124,6 +125,7 @@ public sealed class ModlistPlanner(IServiceProvider provider) : IModlistPlanner
     private void StartWatchingForDownloads()
     {
         provider.GetRequiredService<ArchiveInbox>().WatchOnceArchivesAreWaiting();
+        provider.GetRequiredService<WabbajackExpectedDownloads>().Follow();
         provider.GetRequiredService<DownloadsPickup>().Follow();
     }
 

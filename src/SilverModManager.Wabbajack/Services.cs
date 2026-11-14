@@ -18,6 +18,7 @@ using SilverModManager.Sdk.Diagnostics;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Library.Pickup;
 using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Cli;
 using SilverModManager.Wabbajack.Diagnostics;
@@ -95,6 +96,9 @@ public static class Services
                 provider.GetService<IHostApplicationLifetime>()))
             .AddSingleton<ModlistDownloads>()
             .AddSingleton<ArchiveInbox>()
+            .AddSingleton<IPickupSettings, WabbajackPickupSettings>()
+            .AddSingleton<WabbajackExpectedDownloads>()
+            // The pickup reads the opt-in from WabbajackSettings, so it lives where its settings adapter does.
             .AddSingleton<DownloadsPickup>()
             .AddSingleton<IModlistDownloadJobs, ModlistDownloadJobs>()
             .AddSingleton(provider => new WabbajackGalleryDownloader(

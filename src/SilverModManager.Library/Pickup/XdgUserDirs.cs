@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace SilverModManager.Wabbajack.Acquire;
+namespace SilverModManager.Library.Pickup;
 
 /// <summary>Finds the user's download folder the way <c>xdg-user-dir DOWNLOAD</c> does, without running it.</summary>
 public static class XdgUserDirs

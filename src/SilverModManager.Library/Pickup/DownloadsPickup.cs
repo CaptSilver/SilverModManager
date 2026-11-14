@@ -4,34 +4,30 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Native;
-using SilverModManager.Sdk.Settings;
-using SilverModManager.Wabbajack.Library;
 
-namespace SilverModManager.Wabbajack.Acquire;
+namespace SilverModManager.Library.Pickup;
 
 /// <summary>
-/// Notices a browser download the plan is waiting for in the user's Downloads folder and hands it to the inbox. It is
-/// strictly opt-in (<see cref="WabbajackSettings.PickUpFromDownloads"/>) and looks only at file names the current plan
-/// expects: nothing else in the folder is stated, opened or hashed, and nothing in it is ever deleted, renamed or
-/// written. The user's file stays where the browser put it.
+/// Notices a browser download that some source is waiting for in the user's Downloads folder and hands it to that
+/// source. It is strictly opt-in (<see cref="IPickupSettings.PickUpFromDownloads"/>) and looks only at file names
+/// <see cref="IExpectedDownloads"/> lists: nothing else in the folder is stated, opened or hashed, and nothing in it is
+/// ever deleted, renamed or written. The user's file stays where the browser put it.
 /// </summary>
 public sealed class DownloadsPickup(
-    ISettingsManager settings,
-    WabbajackPaths paths,
-    IArchiveAcquirer acquirer,
-    ArchiveInbox inbox,
+    IPickupSettings settings,
+    IExpectedDownloads expected,
     IFileSystem fileSystem,
     ILogger<DownloadsPickup> logger) : IDisposable
 {
     private readonly SemaphoreSlim _scanning = new(1);
     private readonly Dictionary<string, (long Size, DateTime Modified)> _mismatches = new(StringComparer.Ordinal);
     private long _mismatchEpoch;
-    private readonly Lock _watchLock = new();
+    private readonly System.Threading.Lock _watchLock = new();
     private Timer? _rescan;
     private bool _missingFolderLogged;
     private FileSystemWatcher? _watcher;
     private AbsolutePath? _watchedFolder;
-    private IDisposable? _settingsSubscription;
+    private readonly CompositeDisposable _subscriptions = new();
     private HashSet<string> _watchedNames = [];
     private bool _following;
     private bool _disposed;
@@ -61,18 +57,14 @@ public sealed class DownloadsPickup(
     internal Func<string, string, int> Link { get; set; } = LibcLinks.TryLink;
 
     /// <summary>The plain-file check (a link or an in-progress name is not one); tests wrap it to see which paths it is asked about.</summary>
-    internal Func<AbsolutePath, bool> IsPlainFile { get; set; } = ArchiveInbox.IsPlainFile;
-
-    /// <summary>How a matched file reaches the inbox; tests swap it to make staging fail.</summary>
-    internal Func<AbsolutePath, Func<string, string, int>, CancellationToken, Task> Stage { get; set; }
-        = (source, link, token) => inbox.StageCopy(source, link, token);
+    internal Func<AbsolutePath, bool> IsPlainFile { get; set; } = PlainFiles.IsPlainFile;
 
     /// <summary>The folder a scan reads: the configured one, or the XDG download folder when none is set.</summary>
     public AbsolutePath Folder
     {
         get
         {
-            var configured = settings.Get<WabbajackSettings>().DownloadsFolder;
+            var configured = settings.DownloadsFolder;
             return string.IsNullOrWhiteSpace(configured)
                 ? XdgUserDirs.Download(fileSystem).WithFileSystem(fileSystem)
                 : fileSystem.FromUnsanitizedFullPath(configured).WithFileSystem(fileSystem);
@@ -89,22 +81,21 @@ public sealed class DownloadsPickup(
         await _scanning.WaitAsync(cancellationToken);
         try
         {
-            if (!settings.Get<WabbajackSettings>().PickUpFromDownloads) return;
+            if (!settings.PickUpFromDownloads) return;
 
-            var expected = ExpectedFiles();
-            if (expected.Count == 0) return;
+            var wanted = ExpectedFiles();
+            if (wanted.Count == 0) return;
 
             var folder = Folder;
             if (!FolderExists(folder)) return;
 
             var epoch = MismatchEpoch();
-            var staged = false;
             var waiting = false;
             foreach (var entry in folder.EnumerateFiles(recursive: false).ToArray())
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var file = entry.WithFileSystem(fileSystem);
-                if (!expected.TryGetValue(file.FileName, out var candidates)) continue;
+                if (!wanted.TryGetValue(file.FileName, out var candidates)) continue;
 
                 Verdict verdict;
                 try
@@ -121,11 +112,10 @@ public sealed class DownloadsPickup(
 
                 switch (verdict.Outcome)
                 {
-                    case Outcome.Match:
+                    case Outcome.Match when verdict.Sink is { } sink:
                         try
                         {
-                            await Stage(file, Link, cancellationToken);
-                            staged = true;
+                            await sink.Accept(file, Link, cancellationToken);
                         }
                         catch (Exception e) when (e is IOException or UnauthorizedAccessException or UserFacingException)
                         {
@@ -140,7 +130,6 @@ public sealed class DownloadsPickup(
                 }
             }
 
-            if (staged) await inbox.Scan(cancellationToken);
             if (waiting) ScheduleRescan();
         }
         finally
@@ -150,8 +139,8 @@ public sealed class DownloadsPickup(
     }
 
     /// <summary>
-    /// Starts watching the Downloads folder for as long as the pickup is on and a row waits for the user. Idempotent.
-    /// Without a modlist page or run the acquirer holds no rows, so the watch ends with the last page.
+    /// Starts watching the Downloads folder for as long as the pickup is on and a download is expected. Idempotent. The
+    /// watch ends when nothing is expected any more.
     /// </summary>
     public void Follow()
     {
@@ -159,14 +148,11 @@ public sealed class DownloadsPickup(
         {
             if (_following || _disposed) return;
             _following = true;
-            acquirer.PlanChanged += OnPlanChanged;
-            acquirer.PlanForgotten += Reevaluate;
-            _settingsSubscription = settings.GetChanges<WabbajackSettings>().Subscribe(_ => Reevaluate());
+            expected.Changed.Subscribe(_ => Reevaluate()).AddTo(_subscriptions);
+            settings.Changes.Subscribe(_ => Reevaluate()).AddTo(_subscriptions);
         }
         Reevaluate();
     }
-
-    private void OnPlanChanged(ArchivePlan _) => Reevaluate();
 
     private void Reevaluate()
     {
@@ -175,8 +161,8 @@ public sealed class DownloadsPickup(
         {
             if (_disposed) return;
 
-            var pending = settings.Get<WabbajackSettings>().PickUpFromDownloads
-                ? acquirer.Plan.Rows.Where(row => row.State.WaitsForUser()).Select(row => row.Archive.Name).ToHashSet(StringComparer.Ordinal)
+            var pending = settings.PickUpFromDownloads
+                ? expected.Current.Select(download => download.FileName).ToHashSet(StringComparer.Ordinal)
                 : [];
             if (pending.Count == 0)
             {
@@ -185,7 +171,7 @@ public sealed class DownloadsPickup(
             }
 
             var folder = Folder;
-            // A plan changes after every finished archive; the watcher only moves when the chosen folder did.
+            // The expectations change after every finished download; the watcher only moves when the chosen folder did.
             if (_watcher is not null)
             {
                 if (_watchedFolder == folder)
@@ -234,9 +220,9 @@ public sealed class DownloadsPickup(
     private void OnFileEvent(string? name)
     {
         if (name is null) return;
-        bool expected;
-        lock (_watchLock) expected = _watcher is not null && _watchedNames.Contains(name);
-        if (expected) ScheduleRescan();
+        bool isExpected;
+        lock (_watchLock) isExpected = _watcher is not null && _watchedNames.Contains(name);
+        if (isExpected) ScheduleRescan();
     }
 
     private void StopWatching()
@@ -277,7 +263,7 @@ public sealed class DownloadsPickup(
 
     private enum Outcome { Skip, Unsettled, Match }
 
-    private readonly record struct Verdict(Outcome Outcome, long Size = 0, DateTime Modified = default);
+    private readonly record struct Verdict(Outcome Outcome, long Size = 0, DateTime Modified = default, IPickupSink? Sink = null);
 
     private long MismatchEpoch()
     {
@@ -294,7 +280,7 @@ public sealed class DownloadsPickup(
         }
     }
 
-    private async Task<Verdict> Check(AbsolutePath file, List<(long Size, FileIdentity Hash)> candidates, long epoch, CancellationToken cancellationToken)
+    private async Task<Verdict> Check(AbsolutePath file, List<(long Size, FileIdentity? Hash, IPickupSink Sink)> candidates, long epoch, CancellationToken cancellationToken)
     {
         if (!IsPlainFile(file)) return new Verdict(Outcome.Skip);
 
@@ -311,6 +297,9 @@ public sealed class DownloadsPickup(
             if (_mismatches.TryGetValue(file.FileName, out var seen) && seen == (size, modified)) return new Verdict(Outcome.Skip);
         }
 
+        // A source with no hash of its own checks the bytes itself, so name and size are all this can go on.
+        if (sized.FirstOrDefault(c => c.Hash is null) is { Sink: not null } named) return new Verdict(Outcome.Match, size, modified, named.Sink);
+
         FileIdentity hash;
         try
         {
@@ -324,23 +313,22 @@ public sealed class DownloadsPickup(
             return new Verdict(Outcome.Skip);
         }
 
-        if (sized.Any(c => c.Hash.Equals(hash))) return new Verdict(Outcome.Match, size, modified);
+        if (sized.FirstOrDefault(c => hash.Equals(c.Hash)) is { Sink: not null } matched) return new Verdict(Outcome.Match, size, modified, matched.Sink);
 
         logger.LogDebug("'{File}' in the Downloads folder has the expected name and size but other contents", file.FileName);
         Remember(file.FileName, size, modified, epoch);
         return new Verdict(Outcome.Skip);
     }
 
-    private Dictionary<string, List<(long Size, FileIdentity Hash)>> ExpectedFiles()
+    private Dictionary<string, List<(long Size, FileIdentity? Hash, IPickupSink Sink)>> ExpectedFiles()
     {
-        var expected = new Dictionary<string, List<(long Size, FileIdentity Hash)>>(StringComparer.Ordinal);
-        foreach (var row in acquirer.Plan.Rows)
+        var wanted = new Dictionary<string, List<(long Size, FileIdentity? Hash, IPickupSink Sink)>>(StringComparer.Ordinal);
+        foreach (var download in expected.Current)
         {
-            if (!row.State.WaitsForUser()) continue;
-            if (!expected.TryGetValue(row.Archive.Name, out var list)) expected[row.Archive.Name] = list = [];
-            list.Add((row.Archive.Size, row.Archive.XxHash64));
+            if (!wanted.TryGetValue(download.FileName, out var list)) wanted[download.FileName] = list = [];
+            list.Add((download.Size, download.XxHash64, download.Sink));
         }
-        return expected;
+        return wanted;
     }
 
     private void ScheduleRescan()
@@ -371,9 +359,7 @@ public sealed class DownloadsPickup(
         {
             if (_disposed) return;
             _disposed = true;
-            acquirer.PlanChanged -= OnPlanChanged;
-            acquirer.PlanForgotten -= Reevaluate;
-            _settingsSubscription?.Dispose();
+            _subscriptions.Dispose();
             StopWatching();
         }
         _rescan?.Dispose();

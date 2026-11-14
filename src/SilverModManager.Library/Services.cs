@@ -8,6 +8,7 @@ using SilverModManager.Library.Inference;
 using SilverModManager.Library.Listing;
 using SilverModManager.Library.Lock;
 using SilverModManager.Library.Migrations;
+using SilverModManager.Library.Pickup;
 using SilverModManager.Library.Verbs;
 using SilverModManager.Sdk.Library;
 
@@ -46,6 +47,8 @@ public static class Services
             .AddSingleton<IModSource, NexusModSource>()
             .AddSingleton<IModSource, ThunderstoreModSource>()
             .AddSingleton<ModSourceResolver>()
+            .AddSingleton<ExpectedDownloads>()
+            .AddSingleton<IExpectedDownloads>(provider => provider.GetRequiredService<ExpectedDownloads>())
             .AddLockVerbs()
             .AddThunderstoreVerbs()
             .AddNexusModsVerbs();

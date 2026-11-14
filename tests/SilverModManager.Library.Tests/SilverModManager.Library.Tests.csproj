@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="..\Networking\SilverModManager.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
     <Compile Include="..\Networking\SilverModManager.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
+    <Compile Include="..\SilverModManager.Wabbajack.Tests\Acquire\RecordingFileSystem.cs" Link="Fixtures\RecordingFileSystem.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Resources\**" CopyToOutputDirectory="PreserveNewest" />

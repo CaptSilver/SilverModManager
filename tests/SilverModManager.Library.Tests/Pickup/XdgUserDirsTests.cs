@@ -1,8 +1,9 @@
+using Xunit;
 using FluentAssertions;
 using NexusMods.Paths;
-using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Library.Pickup;
 
-namespace SilverModManager.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Library.Tests.Pickup;
 
 public class XdgUserDirsTests : IDisposable
 {

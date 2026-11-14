@@ -3,6 +3,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Library.Pickup;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Modlists;

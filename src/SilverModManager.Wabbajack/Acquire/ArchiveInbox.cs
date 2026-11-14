@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Library.Pickup;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -28,9 +29,6 @@ public sealed class ArchiveInbox(
     IArchiveAcquirer acquirer,
     ILogger<ArchiveInbox> logger) : IDisposable
 {
-    // What browsers leave behind while a download is still running.
-    private static readonly HashSet<string> InProgressExtensions = new(StringComparer.OrdinalIgnoreCase) { ".part", ".crdownload", ".download", ".tmp" };
-
     private readonly SemaphoreSlim _scanning = new(1);
     // Only touched inside Scan, which _scanning serialises.
     private readonly Dictionary<string, ((long Length, DateTime WrittenUtc) Stamp, FileIdentity Hash)> _hashed = new();
@@ -62,7 +60,7 @@ public sealed class ArchiveInbox(
             foreach (var file in paths.Inbox.EnumerateFiles(recursive: false).ToArray())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!IsPlainFile(file)) continue;
+                if (!PlainFiles.IsPlainFile(file)) continue;
 
                 try
                 {
@@ -294,10 +292,6 @@ public sealed class ArchiveInbox(
             if (partial.FileExists) partial.Delete();
         }
     }
-
-    /// <summary>A link could point anywhere, so only real files that are not mid-download count.</summary>
-    internal static bool IsPlainFile(AbsolutePath file)
-        => !InProgressExtensions.Contains(file.Extension.ToString()) && !IsLink(file);
 
     private static bool IsLink(AbsolutePath file)
     {
