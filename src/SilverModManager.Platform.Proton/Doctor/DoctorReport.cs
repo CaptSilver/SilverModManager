@@ -21,6 +21,12 @@ public sealed record DoctorReport(IReadOnlyList<DoctorInstallation> Installation
     public IReadOnlyList<string> Problems { get; init; } = [];
 
     /// <summary>
+    /// One line per check FUSE needs on this machine, each starting <c>ok:</c>, <c>failed:</c> or <c>skipped:</c>.
+    /// Empty when the build has no FUSE probe, so the JSON gains an array and no existing field changes.
+    /// </summary>
+    public IReadOnlyList<string> Fuse { get; init; } = [];
+
+    /// <summary>
     /// The options the <c>--json</c> form is written and read with.
     /// </summary>
     public static JsonSerializerOptions JsonOptions { get; } = new(CliJson.Options)
@@ -76,6 +82,12 @@ public sealed record DoctorInstallation(
     /// never in doubt, so the JSON gains a field only elsewhere.
     /// </summary>
     public X86_64Support? HostX86_64 { get; init; }
+
+    /// <summary>
+    /// What the stale-mount sweep did for this installation, or <c>no stale mount</c> when it had nothing to clean up.
+    /// Null when the report was built without running the sweep.
+    /// </summary>
+    public string? MountSweep { get; init; }
 }
 
 /// <summary>One prefix component the game needs and what the prefix shows for it.</summary>

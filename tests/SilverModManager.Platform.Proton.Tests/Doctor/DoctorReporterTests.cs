@@ -3,7 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using FluentAssertions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Deployment.Fuse.Availability;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
@@ -639,6 +641,80 @@ public class DoctorReporterTests : IDisposable
         var text = string.Join('\n', DoctorTextFormatter.Format(Reporter().Build([Managed(SteamGame())])));
 
         text.Should().NotContain("Prefix components");
+    }
+
+    [Fact]
+    public void TheReportCarriesTheFuseLines()
+    {
+        WriteLocalConfig(null);
+        var reporter = new DoctorReporter(
+            new FakePrefixResolver(PrefixResolution.Native("native")), new FakeProtonResolver([], ProtonResolution.Failed("none")), new FakeToolRunner(),
+            new InstallationLockFactory(new FakeEnvironment(_runtimeDir)), fuseProbe: new MissingDeviceProbe());
+
+        var report = reporter.Build([Managed(SteamGame())]);
+
+        report.Fuse.Should().BeEquivalentTo(FuseAvailability.Evaluate(new MissingDeviceProbe()).Lines);
+        report.Fuse.Should().Contain("failed: /dev/fuse does not exist");
+    }
+
+    [Fact]
+    public void WithoutAProbeTheReportHasNoFuseLines()
+    {
+        WriteLocalConfig(null);
+
+        Reporter().Build([Managed(SteamGame())]).Fuse.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EachInstallationCarriesItsSweepLine()
+    {
+        WriteLocalConfig(null);
+        var swept = SteamGame("Swept Game", id: "7");
+        var quiet = SteamGame("Quiet Game", id: "8");
+        var sweep = new[]
+        {
+            new LaunchFinishReport(LaunchFinishOutcome.Finished, swept, "Detached the stale mount at Game/Data and promoted 2 files"),
+            new LaunchFinishReport(LaunchFinishOutcome.NothingPending, quiet),
+        };
+
+        var report = Reporter().Build([Managed(swept), Managed(quiet)], sweep);
+
+        report.Installations.Single(i => i.Game == "Swept Game").MountSweep.Should().Be("Detached the stale mount at Game/Data and promoted 2 files");
+        report.Installations.Single(i => i.Game == "Quiet Game").MountSweep.Should().Be("no stale mount");
+    }
+
+    [Fact]
+    public void WithoutASweepTheInstallationsSayNothingAboutOne()
+    {
+        WriteLocalConfig(null);
+
+        Reporter().Build([Managed(SteamGame())]).Installations[0].MountSweep.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheTextFormatterPrintsTheFuseBlockAndSweepLines()
+    {
+        WriteLocalConfig(null);
+        var game = SteamGame();
+        var report = Reporter().Build([Managed(game)], [new LaunchFinishReport(LaunchFinishOutcome.NothingPending, game)]) with
+        {
+            Fuse = ["ok: this process is x86-64", "failed: /dev/fuse does not exist"],
+        };
+
+        var lines = DoctorTextFormatter.Format(report);
+
+        lines.Should().Contain("  Mount sweep: no stale mount");
+        var block = lines.SkipWhile(l => l != "FUSE:").ToArray();
+        block.Should().Equal("FUSE:", "  ok: this process is x86-64", "  failed: /dev/fuse does not exist");
+    }
+
+    private sealed class MissingDeviceProbe : IFuseEnvironmentProbe
+    {
+        public Architecture ProcessArchitecture() => Architecture.X64;
+        public bool DeviceExists() => false;
+        public bool CanOpenDevice() => false;
+        public string? FusermountPath() => "/usr/bin/fusermount3";
+        public (bool loaded, string? soname, int? version, string? error) LoadLibrary() => (true, "libfuse3.so.3", 312, null);
     }
 
     [Fact]

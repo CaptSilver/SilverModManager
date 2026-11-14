@@ -25,11 +25,19 @@ public static class DoctorTextFormatter
             if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
             lines.AddRange(PrefixComponents(install));
             lines.Add($"  Launch: {Lock(install.Lock)}");
+            if (install.MountSweep is { } sweep) lines.Add($"  Mount sweep: {sweep}");
             if (install.Checks.Count > 0)
             {
                 lines.Add("  Checks:");
                 lines.AddRange(install.Checks.Select(c => $"    {c.Level.ToString().ToLowerInvariant()} {c.Id}: {c.Message}"));
             }
+        }
+
+        if (report.Fuse.Count > 0)
+        {
+            if (lines.Count > 0) lines.Add("");
+            lines.Add("FUSE:");
+            lines.AddRange(report.Fuse.Select(line => $"  {line}"));
         }
 
         if (report.Problems.Count > 0 && lines.Count > 0) lines.Add("");

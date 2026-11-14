@@ -1,3 +1,5 @@
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Deployment.Fuse.Availability;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
@@ -26,7 +28,8 @@ public sealed class DoctorReporter(
     IEnumerable<IInstallationCheck>? checks = null,
     IPrefixInspector? prefixInspector = null,
     IEnumerable<IPrefixComponentRequirements>? componentRequirements = null,
-    HostExecution? hostExecution = null)
+    HostExecution? hostExecution = null,
+    IFuseEnvironmentProbe? fuseProbe = null)
 {
     private readonly IInstallationCheck[] _checks = checks?.ToArray() ?? [];
     private readonly IPrefixComponentRequirements[] _componentRequirements = componentRequirements?.ToArray() ?? [];
@@ -34,18 +37,31 @@ public sealed class DoctorReporter(
     /// <summary>The program the runner is asked to plan, so the report shows a real command line.</summary>
     public const string PlaceholderExe = "/doctor/placeholder.exe";
 
-    public DoctorReport Build(IEnumerable<ManagedInstallation> installations)
+    /// <param name="installations">The managed installations to describe.</param>
+    /// <param name="mountSweep">
+    /// What the stale-mount sweep found for each installation, or null when it was not run, in which case the
+    /// installations carry no sweep line.
+    /// </param>
+    public DoctorReport Build(IEnumerable<ManagedInstallation> installations, IReadOnlyList<LaunchFinishReport>? mountSweep = null)
     {
         var entries = installations
-            .Select(Describe)
+            .Select(managed => Describe(managed, mountSweep))
             .OrderBy(i => i.Game, StringComparer.Ordinal)
             .ThenBy(i => i.Store, StringComparer.Ordinal)
             .ThenBy(i => i.StoreId, StringComparer.Ordinal)
             .ToArray();
-        return new DoctorReport(entries);
+        return new DoctorReport(entries) { Fuse = fuseProbe is null ? [] : FuseAvailability.Evaluate(fuseProbe).Lines };
     }
 
-    private DoctorInstallation Describe(ManagedInstallation managed)
+    private const string NoStaleMount = "no stale mount";
+
+    private static string? DescribeMountSweep(GameInstallation installation, IReadOnlyList<LaunchFinishReport>? sweep)
+    {
+        if (sweep is null) return null;
+        return sweep.FirstOrDefault(r => r.Installation.Equals(installation))?.Message ?? NoStaleMount;
+    }
+
+    private DoctorInstallation Describe(ManagedInstallation managed, IReadOnlyList<LaunchFinishReport>? mountSweep)
     {
         var installation = managed.Installation;
         var result = installation.LocatorResult;
@@ -68,6 +84,7 @@ public sealed class DoctorReporter(
             Checks = _checks.SelectMany(check => check.Check(installation)).ToArray(),
             PrefixComponents = DescribeComponents(installation, prefix),
             HostX86_64 = DescribeHostX86_64(prefix),
+            MountSweep = DescribeMountSweep(installation, mountSweep),
         };
     }
 

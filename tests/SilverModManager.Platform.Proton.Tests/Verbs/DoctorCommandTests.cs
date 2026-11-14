@@ -52,6 +52,11 @@ public class DoctorCommandTests : IDisposable
     {
         var installations = Substitute.For<IManagedInstallations>();
         installations.List().Returns([]);
+        return Command(installations, sweep, problems);
+    }
+
+    private DoctorCommand Command(IManagedInstallations installations, StaleMountSweep sweep, params GameLocatorProblem[] problems)
+    {
         // Like the real registry, problems exist only once something has located the games.
         var registry = Substitute.For<IGameRegistry>();
         var located = false;
@@ -62,7 +67,9 @@ public class DoctorCommandTests : IDisposable
         });
         registry.Problems.Returns(_ => located ? [..problems] : ImmutableArray<GameLocatorProblem>.Empty);
 
-        var reporter = new DoctorReporter(Substitute.For<IPrefixResolver>(), Substitute.For<IProtonResolver>(), Substitute.For<IToolRunner>(), new InstallationLockFactory(Environment()));
+        var prefixes = Substitute.For<IPrefixResolver>();
+        prefixes.Resolve(Arg.Any<GameInstallation>()).Returns(PrefixResolution.Native("native"));
+        var reporter = new DoctorReporter(prefixes, Substitute.For<IProtonResolver>(), Substitute.For<IToolRunner>(), new InstallationLockFactory(Environment()));
         return new DoctorCommand(installations, reporter, registry, sweep);
     }
 
@@ -85,6 +92,22 @@ public class DoctorCommandTests : IDisposable
 
         order.Should().Equal("sweep before the report");
         renderer.Lines.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task PrintsWhatTheSweepDidForEachInstallation()
+    {
+        var game = StaleMountSweepTests.Game("Test Game");
+        var listed = Substitute.For<IManagedInstallations>();
+        listed.List().Returns([new ManagedInstallation(game, ["Main"])]);
+        var finisher = Substitute.For<IPendingLaunchFinisher>();
+        finisher.FinishIfPending(game, Arg.Any<CancellationToken>())
+            .Returns(new LaunchFinishReport(LaunchFinishOutcome.Finished, game, "Detached the stale mount at Game/Data"));
+        var renderer = new RecordingRenderer();
+
+        await Command(listed, new StaleMountSweep(listed, finisher)).RunAsync(renderer, json: false);
+
+        renderer.Lines.Should().Contain("  Mount sweep: Detached the stale mount at Game/Data");
     }
 
     [Fact]

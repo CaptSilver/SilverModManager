@@ -88,4 +88,17 @@ public class DoctorDeploymentRootTests
         roots.Single(r => r.Root == "AppData").Available.Should().BeNull("an unrecorded root is not a choice either");
         asked.Should().BeEquivalentTo([game, prefs], "the chain probes the disk, so it is asked only about chosen rows");
     }
+
+    [Fact]
+    public void AFuseRootShowsTheChainsPickAsAvailableWhenFuseIsUnusable()
+    {
+        var data = new GamePath(LocationId.Game, "Data");
+        var recorded = new DeploymentPlan([new DeploymentPlanRoot(data, DeploymentBackendId.Fuse, Chosen: true, Reason: null)]);
+        var registered = new HashSet<DeploymentBackendId> { DeploymentBackendId.Copy, DeploymentBackendId.Fuse };
+
+        var roots = DoctorDeploymentRoot.From(recorded, Locations(LocationId.Game), registered, available: _ => DeploymentBackendId.Hardlink);
+
+        roots.Single(r => r.Root == "Game/Data").Available.Should().Be("hardlink");
+        DoctorTextFormatter.DeploymentRoot(roots.Single(r => r.Root == "Game/Data")).Should().Contain("hardlink available");
+    }
 }

@@ -17,8 +17,8 @@ internal sealed class DoctorCommand(IManagedInstallations installations, DoctorR
         // a game the locators dropped has no loadout, and its problem would go unreported.
         registry.LocateGameInstallations();
         // First, so the report describes the folders as they are after a dead session's mount is released.
-        await staleMounts.Run(CancellationToken.None);
-        var report = reporter.Build(installations.List()) with
+        var sweep = await staleMounts.Run(CancellationToken.None);
+        var report = reporter.Build(installations.List(), sweep) with
         {
             Problems = registry.Problems.Select(problem => $"{problem.Locator}: {problem.Message}").ToArray(),
         };
