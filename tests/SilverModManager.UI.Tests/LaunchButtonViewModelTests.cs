@@ -82,7 +82,6 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             connection ?? Connection,
             monitor,
             presenter?.Services ?? Provider,
-            Provider.GetRequiredService<GameRunningTracker>(),
             rig.Sessions,
             clock)
         {

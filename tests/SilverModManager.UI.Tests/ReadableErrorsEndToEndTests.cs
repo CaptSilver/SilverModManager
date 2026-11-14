@@ -140,7 +140,6 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
             Connection,
             wiring.Jobs,
             wiring.With((typeof(ISynchronizerService), synchronizer)),
-            Provider.GetRequiredService<GameRunningTracker>(),
             new ActiveLaunchSessions(null))
         {
             LoadoutId = loadout.LoadoutId,

@@ -59,7 +59,9 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
         var windowManager = serviceProvider.GetRequiredService<IWindowManager>();
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
-        _gameMetadataId = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId).InstallationId;
+        var loadout = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId);
+        _gameMetadataId = loadout.InstallationId;
+        var installation = loadout.InstallationInstance;
 
         LaunchButtonViewModel = serviceProvider.GetRequiredService<ILaunchButtonViewModel>();
         LaunchButtonViewModel.LoadoutId = loadoutId;
@@ -115,7 +117,7 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
                 //     - This is done in 'Synchronize' method.
                 // - They're running a tool from within the App.
                 //     - Check running jobs.
-                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.GetWithCurrentStateAsStarting(), hasUnmanagingJob, isInstalling)
+                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.WhenRunning(installation), hasUnmanagingJob, isInstalling)
                     .OnUI()
                     .Subscribe(status =>
                     {

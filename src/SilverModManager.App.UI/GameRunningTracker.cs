@@ -1,39 +1,19 @@
-using System.Reactive.Linq;
-using DynamicData;
-using SilverModManager.Abstractions.Games;
-using SilverModManager.Sdk.Jobs;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.App.UI;
 
 /// <summary>
-/// This class helps us efficiently identify whether a game is currently running.
+/// Answers whether a game is running, per installation, from the launch registrations of this process.
 /// </summary>
 /// <remarks>
-///     There are multiple places in the App where it's necessary to determine if
-///     there is already a game running; however the necessary calculation for this
-///     can be prohibitively expensive. Therefore we re-use the logic inside this class.
+/// The registrations cover every way the app starts a game, including a launch Steam forwards to us, which is no
+/// run-game job. A consumer that needs "any game running" merges the observables of the installations it cares about.
 /// </remarks>
-public class GameRunningTracker
+public class GameRunningTracker(ActiveLaunchSessions sessions)
 {
-    private readonly IObservable<bool> _observable;
-    
     /// <summary>
-    /// Retrieves the current state of the game running tracker,
-    /// with the current state being immediately emitted as the first item.
+    /// Whether <paramref name="installation"/> has a launch registered: the current value on subscribe, then each change.
     /// </summary>
-    public IObservable<bool> GetWithCurrentStateAsStarting() => _observable;
-
-    public GameRunningTracker(IJobMonitor monitor)
-    {
-        // Note(sewer): Yes, this technically can lead to a race condition;
-        // however it's not possible to start a game before activating GameRunningTracker 
-        // singleton for an end user.
-        var numRunning = monitor.Jobs.Count(x => x is { Definition: IRunGameTool } && x.Status.IsActive());
-        _observable = monitor.GetObservableChangeSet<IRunGameTool>()
-            .TransformOnObservable(job => job.ObservableStatus)
-            .QueryWhenChanged(query => query.Items.Any(x => x.IsActive()))
-            .StartWith(numRunning > 0)
-            .Replay(1)
-            .RefCount();
-    }
+    public IObservable<bool> WhenRunning(GameInstallation installation) => sessions.WhenRunning(installation);
 }

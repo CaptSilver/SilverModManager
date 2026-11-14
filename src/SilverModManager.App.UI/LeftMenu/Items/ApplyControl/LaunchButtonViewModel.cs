@@ -29,8 +29,8 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     // instead of each running its own database read.
     public IObservable<bool> IsRunningObservable { get; }
 
-    // A launch Steam started through the app's wrapper is a session of this process but no run-game job, so the
-    // job tracker alone never shows it as running.
+    // Every launch of this installation registers here, including one Steam started through the app's wrapper,
+    // which is a session of this process but no run-game job.
     private IObservable<bool> SessionRunning() => this.WhenAnyValue(vm => vm.LoadoutId)
             // WhenAnyValue emits on the subscribing (UI) thread, and the installation lookup reads the database.
             .ObserveOn(RxApp.TaskpoolScheduler)
@@ -98,7 +98,6 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private readonly IConnection _conn;
     private readonly IJobMonitor _monitor;
     private readonly IServiceProvider _serviceProvider;
-    private readonly GameRunningTracker _gameRunningTracker;
     private readonly TimeProvider _timeProvider;
     private readonly ActiveLaunchSessions _activeSessions;
 
@@ -115,7 +114,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
     private bool _installStep;
     private ITimer? _slowStartTimer;
 
-    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, GameRunningTracker gameRunningTracker, ActiveLaunchSessions activeSessions, TimeProvider? timeProvider = null)
+    public LaunchButtonViewModel(ILogger<ILaunchButtonViewModel> logger, IToolManager toolManager, IConnection conn, IJobMonitor monitor, IServiceProvider serviceProvider, ActiveLaunchSessions activeSessions, TimeProvider? timeProvider = null)
     {
         _activeSessions = activeSessions;
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -124,9 +123,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         _conn = conn;
         _monitor = monitor;
         _serviceProvider = serviceProvider;
-        _gameRunningTracker = gameRunningTracker;
-        IsRunningObservable = _gameRunningTracker.GetWithCurrentStateAsStarting()
-            .CombineLatest(SessionRunning(), (jobRunning, sessionRunning) => jobRunning || sessionRunning)
+        IsRunningObservable = SessionRunning()
             .DistinctUntilChanged()
             .Replay(1)
             .RefCount();
