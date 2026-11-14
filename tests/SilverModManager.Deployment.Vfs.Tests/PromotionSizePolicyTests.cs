@@ -37,7 +37,7 @@ public class PromotionSizePolicyTests : IDisposable
 
     public void Dispose() => _directory.DeleteDirectory(recursive: true);
 
-    private StagingPromoter NewPromoter() => new(_staging, _sink, _hasher, NullLogger<StagingPromoter>.Instance, Cap);
+    private StagingPromoter NewPromoter() => new(_staging, new GamePath(LocationId.Game, RelativePath.Empty), _sink, _hasher, NullLogger<StagingPromoter>.Instance, Cap);
 
     private AbsolutePath StageSparse(string path, long length)
     {
@@ -226,7 +226,7 @@ public class PromotionSizePolicyTests : IDisposable
             return Task.CompletedTask;
         }
 
-        public Task Record(LoadoutId loadout, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
+        public Task Record(LoadoutId loadout, GamePath root, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
         {
             Calls.Add("record");
             return Task.CompletedTask;

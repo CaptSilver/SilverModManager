@@ -35,8 +35,10 @@ public class PromotionTests : IDisposable
 
     public void Dispose() => _directory.DeleteDirectory(recursive: true);
 
-    private StagingPromoter NewPromoter(IFileHasher? hasher = null, IPromotionSink? sink = null)
-        => new(_staging, sink ?? _sink, hasher ?? new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
+    private static readonly GamePath GameRoot = new(LocationId.Game, RelativePath.Empty);
+
+    private StagingPromoter NewPromoter(IFileHasher? hasher = null, IPromotionSink? sink = null, GamePath? root = null)
+        => new(_staging, root ?? GameRoot, sink ?? _sink, hasher ?? new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
 
     private AbsolutePath Stage(string path, string text)
     {
@@ -84,11 +86,12 @@ public class PromotionTests : IDisposable
         string? journalText = null;
         _sink.OnBackup = () => journalText = File.ReadAllText(_staging.JournalFile.ToString());
 
-        await NewPromoter().Promote(Target);
+        await NewPromoter(root: new GamePath(LocationId.Game, "Data")).Promote(Target);
 
         var journal = JsonNode.Parse(journalText!)!;
-        ((int)journal["version"]!).Should().Be(1);
+        ((int)journal["version"]!).Should().Be(2);
         ((string)journal["installation"]!).Should().Be("abc");
+        ((string)journal["rootPath"]!).Should().Be("Data");
         var entries = journal["entries"]!.AsArray();
         var file = entries.Single(e => (string)e!["kind"]! == "file")!;
         ((string)file["path"]!).Should().Be("Data/a.txt");
@@ -165,7 +168,7 @@ public class PromotionTests : IDisposable
     public void TheJournalRejectsAFileEntryNamedByAnotherKindThanXxHash3()
     {
         var sha1 = FileIdentity.Sha1(Sha1Value.From(new byte[20]));
-        var journal = new PromotionJournal(Installation, Target, [
+        var journal = new PromotionJournal(Installation, Target, GameRoot, [
             new JournalEntry(RelativePath.FromUnsanitizedInput("Data/a.txt"), JournalEntryKind.File, Size.From(1), sha1, 0x1a4),
         ]);
 
@@ -181,7 +184,7 @@ public class PromotionTests : IDisposable
         // a journal marked as recorded, one file already deleted and one still there.
         Stage("Data/left.txt", "left behind");
         _staging.WriteWhiteouts([RelativePath.FromUnsanitizedInput("Data/gone.txt")]);
-        new PromotionJournal(Installation, Target, [
+        new PromotionJournal(Installation, Target, GameRoot, [
             new JournalEntry(RelativePath.FromUnsanitizedInput("Data/deleted-already.txt"), JournalEntryKind.File, Size.From(3), IdentityOf("abc"), 0x1a4),
             new JournalEntry(RelativePath.FromUnsanitizedInput("Data/left.txt"), JournalEntryKind.File, Size.From(11), IdentityOf("left behind"), 0x1a4),
             new JournalEntry(RelativePath.FromUnsanitizedInput("Data/gone.txt"), JournalEntryKind.Whiteout, Size.Zero, default, 0),
@@ -305,7 +308,7 @@ public class PromotionTests : IDisposable
         }
     }
 
-    private sealed record RecordCall(LoadoutId Loadout, IReadOnlyList<PromotedFile> Files, IReadOnlyList<RelativePath> Deleted);
+    private sealed record RecordCall(LoadoutId Loadout, GamePath Root, IReadOnlyList<PromotedFile> Files, IReadOnlyList<RelativePath> Deleted);
 
     private sealed class FaultingSink(StagingDirectory staging) : IPromotionSink
     {
@@ -338,11 +341,11 @@ public class PromotionTests : IDisposable
             return Task.CompletedTask;
         }
 
-        public Task Record(LoadoutId loadout, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
+        public Task Record(LoadoutId loadout, GamePath root, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
         {
             Calls.Add("record");
             OnRecord?.Invoke();
-            Records.Add(new RecordCall(loadout, files, deleted));
+            Records.Add(new RecordCall(loadout, root, files, deleted));
             if (FailAfterRecord) throw new InvalidOperationException("injected fault after record");
             return Task.CompletedTask;
         }

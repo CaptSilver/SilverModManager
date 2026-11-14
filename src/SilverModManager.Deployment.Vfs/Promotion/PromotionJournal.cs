@@ -20,9 +20,13 @@ public readonly record struct JournalEntry(RelativePath Path, JournalEntryKind K
 /// emptying the staging directory must not delete the only record of what was in it.
 /// </summary>
 /// <param name="Recorded">Set once the loadout has the changes; from then on only the cleanup is left.</param>
-public sealed record PromotionJournal(GameInstallMetadataId Installation, LoadoutId Target, IReadOnlyList<JournalEntry> Entries, bool Recorded = false)
+/// <param name="Root">The mounted folder the entries' paths are relative to.</param>
+public sealed record PromotionJournal(GameInstallMetadataId Installation, LoadoutId Target, GamePath Root, IReadOnlyList<JournalEntry> Entries, bool Recorded = false)
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
+
+    // Version 1 predates mounts over a folder other than the game root and carried no root.
+    private const int RootlessVersion = 1;
 
     public PromotionJournal With(bool recorded) => this with { Recorded = recorded };
 
@@ -44,6 +48,8 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
             Version = CurrentVersion,
             Installation = Installation.Value.Value.ToString("x", CultureInfo.InvariantCulture),
             Target = Target.Value.Value.ToString("x", CultureInfo.InvariantCulture),
+            RootLocation = Root.LocationId.ToString(),
+            RootPath = Root.Path.ToString(),
             Recorded = Recorded,
             Entries = Entries.Select(e => (EntryDto?)new EntryDto
             {
@@ -79,7 +85,7 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
         }
 
         if (dto is null) throw new InvalidDataException($"Promotion journal {file} is empty");
-        if (dto.Version != CurrentVersion) throw new InvalidDataException($"Promotion journal {file} has version {dto.Version}, this build reads version {CurrentVersion}");
+        if (dto.Version is not (CurrentVersion or RootlessVersion)) throw new InvalidDataException($"Promotion journal {file} has version {dto.Version}, this build reads versions {RootlessVersion} and {CurrentVersion}");
 
         try
         {
@@ -108,9 +114,14 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
                 };
             }).ToArray();
 
+            var root = dto.Version == RootlessVersion
+                ? new GamePath(LocationId.Game, RelativePath.Empty)
+                : new GamePath(LocationId.From(dto.RootLocation ?? throw new InvalidDataException($"Promotion journal {file} has no root location")), RelativePath.FromUnsanitizedInput(dto.RootPath ?? ""));
+
             return new PromotionJournal(
                 installation,
                 LoadoutId.From(ulong.Parse(dto.Target ?? "", NumberStyles.HexNumber, CultureInfo.InvariantCulture)),
+                root,
                 entries,
                 dto.Recorded);
         }
@@ -125,6 +136,8 @@ public sealed record PromotionJournal(GameInstallMetadataId Installation, Loadou
         public int Version { get; set; }
         public string? Installation { get; set; }
         public string? Target { get; set; }
+        public string? RootLocation { get; set; }
+        public string? RootPath { get; set; }
         public bool Recorded { get; set; }
         public List<EntryDto?>? Entries { get; set; }
     }

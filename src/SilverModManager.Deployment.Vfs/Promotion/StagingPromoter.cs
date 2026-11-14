@@ -2,6 +2,7 @@ using SilverModManager.Sdk.Hashes;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 
@@ -22,6 +23,7 @@ namespace SilverModManager.Deployment.Vfs;
 public sealed class StagingPromoter
 {
     private readonly StagingDirectory _staging;
+    private readonly GamePath _root;
     private readonly IPromotionSink _sink;
     private readonly IFileHasher _hasher;
     private readonly ILogger<StagingPromoter> _logger;
@@ -29,11 +31,13 @@ public sealed class StagingPromoter
 
     internal IFileHasher Hasher => _hasher;
 
+    /// <param name="root">The folder the staged paths are relative to: the one that was mounted.</param>
     /// <param name="sizeCap">The most staged data <see cref="Promote"/> accepts; see <see cref="VfsSettings.PromotionSizeCapBytes"/>.</param>
-    public StagingPromoter(StagingDirectory staging, IPromotionSink sink, IFileHasher hasher, ILogger<StagingPromoter> logger, Size sizeCap)
+    public StagingPromoter(StagingDirectory staging, GamePath root, IPromotionSink sink, IFileHasher hasher, ILogger<StagingPromoter> logger, Size sizeCap)
     {
         _sizeCap = sizeCap;
         _staging = staging;
+        _root = root;
         _sink = sink;
         _hasher = hasher;
         _logger = logger;
@@ -70,7 +74,7 @@ public sealed class StagingPromoter
         }
         entries.AddRange(whiteouts.Select(w => new JournalEntry(w, JournalEntryKind.Whiteout, Size.Zero, default, 0)));
 
-        var journal = new PromotionJournal(_staging.Installation, target, entries);
+        var journal = new PromotionJournal(_staging.Installation, target, _root, entries);
         journal.Write(_staging.JournalFile);
 
         return await Run(journal, PromotionStatus.Promoted, token);
@@ -137,6 +141,7 @@ public sealed class StagingPromoter
             await _sink.Backup(files.Select(f => (f.Identity, f.Size, (IStreamFactory)new NativeFileStreamFactory(_staging.PathFor(f.Path)))).ToList(), token);
             await _sink.Record(
                 journal.Target,
+                journal.Root,
                 files.Select(f => new PromotedFile(f.Path, f.Identity, f.Size)).ToList(),
                 journal.Entries.Where(e => e.Kind == JournalEntryKind.Whiteout).Select(e => e.Path).ToList(),
                 token);

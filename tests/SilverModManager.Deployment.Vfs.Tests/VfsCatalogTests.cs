@@ -181,7 +181,7 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
     {
         var installation = await Installation();
 
-        var promoter = ServiceProvider.GetRequiredService<StagingPromoterFactory>().For(installation);
+        var promoter = ServiceProvider.GetRequiredService<StagingPromoterFactory>().For(installation, new GamePath(LocationId.Game, RelativePath.Empty));
 
         promoter.Hasher.Should().BeOfType<CatalogBackedHasher>();
     }

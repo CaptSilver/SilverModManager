@@ -30,12 +30,12 @@ public class LoadoutPromotionSinkTests(ITestOutputHelper helper) : AStubbedGameI
         await file.WriteAllTextAsync("vanilla image");
     }
 
-    private StagingPromoter NewPromoter(LoadoutId loadoutId, out StagingDirectory staging)
+    private StagingPromoter NewPromoter(LoadoutId loadoutId, out StagingDirectory staging, GamePath? root = null)
     {
         var installation = Loadout.Load(Connection.Db, loadoutId).InstallationId;
         staging = new StagingDirectory(_directory, installation);
         var sink = new LoadoutPromotionSink(FileStore, Connection);
-        return new StagingPromoter(staging, sink, new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
+        return new StagingPromoter(staging, root ?? new GamePath(LocationId.Game, RelativePath.Empty), sink, new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
     }
 
     private static void Stage(StagingDirectory staging, string path, string text)
@@ -89,6 +89,35 @@ public class LoadoutPromotionSinkTests(ITestOutputHelper helper) : AStubbedGameI
         children.Single(c => c.TargetPath == Vanilla).TryGetAsDeletedFile(out _).Should().BeTrue();
         (await FileStore.HaveFile(FileIdentity.XxHash3(HashOf("new bytes")))).Should().BeTrue();
         (await FileStore.Load(FileIdentity.XxHash3(HashOf("new bytes")))).Should().Equal(Encoding.UTF8.GetBytes("new bytes"));
+    }
+
+    [Fact]
+    public async Task StagedFilesAreRecordedUnderTheMountRoot()
+    {
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await CreateLoadout();
+        var promoter = NewPromoter(loadout.LoadoutId, out var staging, new GamePath(LocationId.Game, "Data"));
+        Stage(staging, "textures/x.dds", "texture bytes");
+
+        (await promoter.Promote(loadout.LoadoutId)).Status.Should().Be(PromotionStatus.Promoted);
+
+        ((GamePath)OverridesChildren(loadout.LoadoutId).Should().ContainSingle().Which.TargetPath)
+            .Should().Be(new GamePath(LocationId.Game, "Data/textures/x.dds"));
+    }
+
+    [Fact]
+    public async Task AWhiteoutIsRecordedUnderTheMountRoot()
+    {
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await CreateLoadout();
+        var promoter = NewPromoter(loadout.LoadoutId, out var staging, new GamePath(LocationId.Game, "Data"));
+        staging.WriteWhiteouts([RelativePath.FromUnsanitizedInput("image.dds")]);
+
+        (await promoter.Promote(loadout.LoadoutId)).Status.Should().Be(PromotionStatus.Promoted);
+
+        var row = OverridesChildren(loadout.LoadoutId).Should().ContainSingle().Subject;
+        ((GamePath)row.TargetPath).Should().Be(Vanilla);
+        row.TryGetAsDeletedFile(out _).Should().BeTrue();
     }
 
     [Fact]

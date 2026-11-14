@@ -12,6 +12,7 @@ public class PromotionJournalTests : IDisposable
 {
     private static readonly LoadoutId Target = LoadoutId.From(0x77);
     private static readonly GameInstallMetadataId Installation = GameInstallMetadataId.From(0xABC);
+    private static readonly GamePath GameRoot = new(LocationId.Game, RelativePath.Empty);
 
     private readonly AbsolutePath _directory = FileSystem.Shared
         .GetKnownPath(KnownPath.TempDirectory)
@@ -22,7 +23,7 @@ public class PromotionJournalTests : IDisposable
     private AbsolutePath WriteWithoutField(JournalEntry entry, string field)
     {
         var file = _directory.Combine("journal.json");
-        new PromotionJournal(Installation, Target, [entry]).Write(file);
+        new PromotionJournal(Installation, Target, GameRoot, [entry]).Write(file);
         var json = JsonNode.Parse(File.ReadAllText(file.ToString()))!.AsObject();
         json["entries"]!.AsArray()[0]!.AsObject().Remove(field);
         File.WriteAllText(file.ToString(), json.ToJsonString());
@@ -52,7 +53,7 @@ public class PromotionJournalTests : IDisposable
     public void ANullEntryNamesTheJournalAndTheEntry()
     {
         var file = _directory.Combine("journal.json");
-        new PromotionJournal(Installation, Target, [FileEntry()]).Write(file);
+        new PromotionJournal(Installation, Target, GameRoot, [FileEntry()]).Write(file);
         var json = JsonNode.Parse(File.ReadAllText(file.ToString()))!.AsObject();
         json["entries"]!.AsArray()[0] = null;
         File.WriteAllText(file.ToString(), json.ToJsonString());
@@ -79,10 +80,52 @@ public class PromotionJournalTests : IDisposable
     {
         var file = _directory.Combine("journal.json");
         var entry = FileEntry();
-        new PromotionJournal(Installation, Target, [entry]).Write(file);
+        new PromotionJournal(Installation, Target, GameRoot, [entry]).Write(file);
 
         var read = PromotionJournal.Read(file, Installation);
 
         read.Entries.Should().ContainSingle().Which.Should().Be(entry);
+    }
+
+    [Fact]
+    public void TheJournalRoundTripsItsRoot()
+    {
+        var file = _directory.Combine("journal.json");
+        var root = new GamePath(LocationId.Game, "Data");
+        new PromotionJournal(Installation, Target, root, [FileEntry()]).Write(file);
+
+        PromotionJournal.Read(file, Installation).Root.Should().Be(root);
+    }
+
+    [Fact]
+    public void AVersionOneJournalReadsAsTheGameRoot()
+    {
+        var file = _directory.Combine("journal.json");
+        new PromotionJournal(Installation, Target, new GamePath(LocationId.Game, "Data"), [FileEntry()]).Write(file);
+        // What the build before mounts over a sub-folder wrote: version 1, no root.
+        var json = JsonNode.Parse(File.ReadAllText(file.ToString()))!.AsObject();
+        json["version"] = 1;
+        json.Remove("rootLocation");
+        json.Remove("rootPath");
+        File.WriteAllText(file.ToString(), json.ToJsonString());
+
+        var read = PromotionJournal.Read(file, Installation);
+
+        read.Root.Should().Be(GameRoot);
+        read.Entries.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AJournalOfALaterVersionIsRefused()
+    {
+        var file = _directory.Combine("journal.json");
+        new PromotionJournal(Installation, Target, GameRoot, [FileEntry()]).Write(file);
+        var json = JsonNode.Parse(File.ReadAllText(file.ToString()))!.AsObject();
+        json["version"] = 99;
+        File.WriteAllText(file.ToString(), json.ToJsonString());
+
+        var act = () => PromotionJournal.Read(file, Installation);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*version 99*");
     }
 }

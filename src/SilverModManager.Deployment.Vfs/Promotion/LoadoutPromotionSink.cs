@@ -19,8 +19,8 @@ namespace SilverModManager.Deployment.Vfs;
 /// loadout's Overrides group with the same rules the copy backend uses for changes it finds on disk.
 /// </summary>
 /// <remarks>
-/// The mounted folder is the game's root location, so a mount-relative path becomes a path under
-/// <see cref="LocationId.Game"/>.
+/// A path relative to the mounted folder becomes a path under that folder's game path: a mount over <c>Game/Data</c>
+/// promotes <c>textures/x.dds</c> to <c>Game/Data/textures/x.dds</c>.
 /// </remarks>
 public sealed class LoadoutPromotionSink : IPromotionSink
 {
@@ -48,7 +48,7 @@ public sealed class LoadoutPromotionSink : IPromotionSink
         await _fileStore.BackupFiles(missing, deduplicate: false, token);
     }
 
-    public async Task Record(LoadoutId loadoutId, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
+    public async Task Record(LoadoutId loadoutId, GamePath root, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
     {
         var loadout = Loadout.Load(_connection.Db, loadoutId);
         if (!loadout.IsValid()) throw new InvalidOperationException($"Loadout {loadoutId} does not exist, so staged files cannot be recorded in it");
@@ -59,7 +59,7 @@ public sealed class LoadoutPromotionSink : IPromotionSink
         var overrides = synchronizer.GetOrCreateOverridesGroup(tx, loadout);
         foreach (var file in files)
         {
-            var path = new GamePath(LocationId.Game, file.Path);
+            var path = root / file.Path;
 
             // The game recreated a name it had deleted. Writing a hash onto the DeletedFile row, as
             // UpsertFile would, leaves a row that is still a delete, so the file would never deploy.
@@ -74,7 +74,7 @@ public sealed class LoadoutPromotionSink : IPromotionSink
             OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Identity, file.Size);
         }
         foreach (var path in deleted)
-            OverridesGroupItems.AddReifiedDelete(tx, loadout, overrides, new GamePath(LocationId.Game, path));
+            OverridesGroupItems.AddReifiedDelete(tx, loadout, overrides, root / path);
         await tx.Commit();
     }
 }

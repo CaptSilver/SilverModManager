@@ -7,7 +7,7 @@ using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.Deployment.Vfs;
 
-/// <summary>A file the game wrote, at its mount-relative path.</summary>
+/// <summary>A file the game wrote, at its path relative to the mounted folder.</summary>
 public readonly record struct PromotedFile(RelativePath Path, FileIdentity Identity, Size Size);
 
 /// <summary>
@@ -24,7 +24,7 @@ public interface IPromotionSink
 
     /// <summary>
     /// Makes the loadout say that <paramref name="files"/> exist and <paramref name="deleted"/> do not,
-    /// in one transaction.
+    /// in one transaction. Both are relative to <paramref name="root"/>, the folder that was mounted.
     /// </summary>
-    Task Record(LoadoutId loadout, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default);
+    Task Record(LoadoutId loadout, GamePath root, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default);
 }

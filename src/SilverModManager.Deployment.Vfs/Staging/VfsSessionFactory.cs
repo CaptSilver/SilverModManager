@@ -18,10 +18,11 @@ public sealed class VfsSessionFactory(StagingPromoterFactory promoters, ISetting
 {
     /// <param name="installation">The installation whose game will write through the tree.</param>
     /// <param name="target">The loadout that receives what the game wrote when the session ends.</param>
+    /// <param name="root">The folder that is mounted. Staged paths are relative to it, and promotion records them under it.</param>
     /// <param name="tree">The tree built with the staging directory for <paramref name="installation"/>.</param>
-    public VfsSession Create(GameInstallMetadataId installation, LoadoutId target, VfsTree tree)
+    public VfsSession Create(GameInstallMetadataId installation, LoadoutId target, GamePath root, VfsTree tree)
     {
         var staging = new StagingDirectory(settings.Get<VfsSettings>().StagingLocation.ToPath(fileSystem), installation);
-        return new VfsSession(tree, staging, promoters.For(installation), target);
+        return new VfsSession(tree, staging, promoters.For(installation, root), target);
     }
 }

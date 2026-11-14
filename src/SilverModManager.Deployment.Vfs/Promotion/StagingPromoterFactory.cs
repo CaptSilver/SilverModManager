@@ -11,10 +11,11 @@ namespace SilverModManager.Deployment.Vfs;
 /// </summary>
 public sealed class StagingPromoterFactory(IPromotionSink sink, IFileHasher hasher, ISettingsManager settings, ILoggerFactory loggerFactory, IFileSystem fileSystem)
 {
-    public StagingPromoter For(GameInstallMetadataId installation)
+    /// <param name="root">The mounted folder; what the game wrote is recorded under it.</param>
+    public StagingPromoter For(GameInstallMetadataId installation, GamePath root)
     {
         var vfsSettings = settings.Get<VfsSettings>();
         var staging = new StagingDirectory(vfsSettings.StagingLocation.ToPath(fileSystem), installation);
-        return new StagingPromoter(staging, sink, hasher, loggerFactory.CreateLogger<StagingPromoter>(), Size.From(vfsSettings.PromotionSizeCapBytes));
+        return new StagingPromoter(staging, root, sink, hasher, loggerFactory.CreateLogger<StagingPromoter>(), Size.From(vfsSettings.PromotionSizeCapBytes));
     }
 }

@@ -22,6 +22,7 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
     private const long MiB = 1024 * 1024;
     private static readonly LoadoutId Target = LoadoutId.From(0x77);
     private static readonly GameInstallMetadataId Installation = GameInstallMetadataId.From(0xABC);
+    private static readonly GamePath GameRoot = new(LocationId.Game, RelativePath.Empty);
 
     private static readonly string Name = $"vfs-session-factory-tests-{Guid.NewGuid():N}";
 
@@ -53,7 +54,7 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
         var factory = NewFactory(sink);
         var tree = VfsTree.Build(_directory.Combine("game"), [], [], VfsCachePolicy.Default);
 
-        var session = factory.Create(Installation, Target, tree);
+        var session = factory.Create(Installation, Target, GameRoot, tree);
 
         session.Tree.Should().BeSameAs(tree);
         session.Staging.Installation.Should().Be(Installation);
@@ -74,7 +75,7 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
     public async Task CreatePromotesIntoTheLoadoutItWasGiven()
     {
         var sink = new RecordingSink();
-        var session = NewFactory(sink).Create(Installation, Target, VfsTree.Build(_directory.Combine("game"), [], [], VfsCachePolicy.Default));
+        var session = NewFactory(sink).Create(Installation, Target, GameRoot, VfsTree.Build(_directory.Combine("game"), [], [], VfsCachePolicy.Default));
         var file = session.Staging.PathFor(RelativePath.FromUnsanitizedInput("Data/small.txt"));
         file.Parent.CreateDirectory();
         File.WriteAllText(file.ToString(), "small");
@@ -83,6 +84,21 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
 
         result.Status.Should().Be(PromotionStatus.Promoted);
         sink.Loadouts.Should().Equal(Target);
+    }
+
+    [Fact]
+    public async Task CreateRecordsWhatTheGameWroteUnderTheMountedFolder()
+    {
+        var sink = new RecordingSink();
+        var root = new GamePath(LocationId.Game, "Data");
+        var session = NewFactory(sink).Create(Installation, Target, root, VfsTree.Build(_directory.Combine("game"), [], [], VfsCachePolicy.Default));
+        var file = session.Staging.PathFor(RelativePath.FromUnsanitizedInput("textures/x.dds"));
+        file.Parent.CreateDirectory();
+        File.WriteAllText(file.ToString(), "small");
+
+        await session.FinishSession();
+
+        sink.Roots.Should().Equal(root);
     }
 
     [Fact]
@@ -103,6 +119,7 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
     {
         public List<string> Calls { get; } = [];
         public List<LoadoutId> Loadouts { get; } = [];
+        public List<GamePath> Roots { get; } = [];
 
         public Task Backup(IReadOnlyList<(FileIdentity Identity, Size Size, IStreamFactory Stream)> files, CancellationToken token = default)
         {
@@ -110,10 +127,11 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
             return Task.CompletedTask;
         }
 
-        public Task Record(LoadoutId loadout, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
+        public Task Record(LoadoutId loadout, GamePath root, IReadOnlyList<PromotedFile> files, IReadOnlyList<RelativePath> deleted, CancellationToken token = default)
         {
             Calls.Add("record");
             Loadouts.Add(loadout);
+            Roots.Add(root);
             return Task.CompletedTask;
         }
     }
