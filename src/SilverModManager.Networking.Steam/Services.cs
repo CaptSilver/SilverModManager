@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Steam;
 using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.Networking.Steam.CLI;
 using SilverModManager.Networking.Steam.Migration;
+using SilverModManager.Networking.Steam.Workshop;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Settings;
 
@@ -22,6 +23,15 @@ public static class Services
         return services;
     }
     
+    /// <summary>
+    /// Adds the keyless Steam Workshop client, which asks Steam's Web API what an item is called and when it was updated.
+    /// </summary>
+    public static IServiceCollection AddSteamWorkshop(this IServiceCollection services)
+    {
+        services.TryAddSingleton<ISteamWorkshopApi>(provider => new SteamWorkshopApi(provider.GetRequiredService<HttpClient>()));
+        return services;
+    }
+
     /// <summary>
     /// Adds a logging authentication handler to the DI container
     /// </summary>

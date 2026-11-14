@@ -222,6 +222,7 @@ public static class Services
             .AddSettingsVerbs()
             .AddSteamShortcutVerbs()
             .AddSteamCli()
+            .AddSteamWorkshop()
             .AddGOG()
             .AddFileHashes()
             .AddTextMergeEngine()

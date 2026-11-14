@@ -14,4 +14,8 @@
       <ProjectReference Include="..\..\..\src\SilverModManager.Networking.Steam\SilverModManager.Networking.Steam.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Update="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>
