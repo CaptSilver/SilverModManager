@@ -30,6 +30,7 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, OpenWabbajackModlistActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DiscardOverlayFindingActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, CleanGameFileBackupsActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, StopGameAndFinishActionHandler>());
         services.TryAddSingleton<IPrefixSetupLauncher, PrefixSetupLauncher>();
         services.AddView<PrefixSetupView, IPrefixSetupViewModel>();
 
