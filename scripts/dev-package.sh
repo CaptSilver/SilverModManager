@@ -36,25 +36,63 @@ esac
 # for or a RID-neutral one (unix, any, linux). Bare OS names such as win or osx count as foreign, like
 # the pattern in Directory.Build.targets. The image can't be run when it targets the other CPU, so
 # list its squashfs, found by its "hsqs" magic.
+# Prints the byte offset of the squashfs the AppImage's runtime is followed by. The runtime can
+# contain the "hsqs" magic by chance, so this takes the first offset unsquashfs accepts.
+squashfs_offset() {
+    local image="$1" offset
+    for offset in $(grep -abo hsqs "$image" | cut -d: -f1); do
+        if unsquashfs -l -o "$offset" "$image" >/dev/null 2>&1; then
+            echo "$offset"
+            return
+        fi
+    done
+    echo "$image has no readable squashfs section" >&2
+    exit 1
+}
+
 check_runtimes() {
-    local image="$1" want offset listing foreign found=0
+    local image="$1" want offset listing foreign
     case "$2" in
         x86_64) want=linux-x64 ;;
         aarch64) want=linux-arm64 ;;
     esac
-    # The runtime in front of the squashfs can contain the magic by chance, so take the first
-    # offset unsquashfs accepts.
-    for offset in $(grep -abo hsqs "$image" | cut -d: -f1); do
-        if listing="$(unsquashfs -l -o "$offset" "$image" 2>/dev/null)"; then
-            found=1
-            break
-        fi
-    done
-    (( found )) || { echo "$image has no readable squashfs section" >&2; exit 1; }
+    offset="$(squashfs_offset "$image")"
+    listing="$(unsquashfs -l -o "$offset" "$image")"
     foreign="$(sed -n 's|^.*/usr/bin/runtimes/\([^/]*\)/.*$|\1|p' <<<"$listing" | sort -u | grep -vxE -- "$want|unix|any|linux" || true)"
     if [[ -n "$foreign" ]]; then
         echo "$image ships runtimes for other platforms than $want:" >&2
         sed 's|^|  runtimes/|; s|$|/|' <<<"$foreign" >&2
+        exit 1
+    fi
+}
+
+# The runtime PupNet's appimagetool puts in front of the image dlopens libfuse.so.2, which SteamOS
+# (the Steam Frame) and other current systems no longer ship, so the image would not start there.
+# AppImage's static type2 runtime links FUSE in and needs only the fusermount3 helper. It is pinned
+# to a dated release and checked against that release's published digest.
+runtime_release=20251108
+declare -A runtime_sha256=(
+    [x86_64]=2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
+    [aarch64]=00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444
+)
+
+# Puts the static runtime in front of the image's squashfs, in place of the one it has.
+swap_runtime() {
+    local image="$1" arch="$2" cache runtime offset
+    cache="${XDG_CACHE_HOME:-$HOME/.cache}/silvermodmanager-build/type2-runtime-$runtime_release"
+    runtime="$cache/runtime-$arch"
+    if [[ ! -f "$runtime" ]] || ! sha256sum -c <<<"${runtime_sha256[$arch]}  $runtime" >/dev/null 2>&1; then
+        mkdir -p "$cache"
+        curl -fsSL -o "$runtime.part" "https://github.com/AppImage/type2-runtime/releases/download/$runtime_release/runtime-$arch"
+        sha256sum -c <<<"${runtime_sha256[$arch]}  $runtime.part" >/dev/null || { echo "runtime-$arch does not match its pinned digest" >&2; rm -f "$runtime.part"; exit 1; }
+        mv "$runtime.part" "$runtime"
+    fi
+    offset="$(squashfs_offset "$image")"
+    { cat "$runtime"; tail -c +"$((offset + 1))" "$image"; } > "$image.new"
+    chmod +x "$image.new"
+    mv "$image.new" "$image"
+    if grep -q 'libfuse\.so\.2' <(head -c "$(stat -c %s "$runtime")" "$image"); then
+        echo "$image still carries a runtime that loads libfuse.so.2" >&2
         exit 1
     fi
 }
@@ -95,5 +133,7 @@ version="$(app_version "$root")"
 cd "$root/src/SilverModManager.App"
 pupnet -y -v "$version" -k AppImage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE "${pupnet_runtime[@]}" "$@"
 image="$(ls -1 Deploy/OUT/*."$arch".AppImage)"
+check_runtimes "$image" "$arch"
+swap_runtime "$image" "$arch"
 check_runtimes "$image" "$arch"
 echo "$image"
