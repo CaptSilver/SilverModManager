@@ -24,7 +24,8 @@ public class FakeToolRunner : IToolRunner
         bool LogOutput,
         string? ExeContents,
         ToolRunVia Via = ToolRunVia.Auto,
-        AbsolutePath? WorkingDirectory = null);
+        AbsolutePath? WorkingDirectory = null,
+        ToolRunPurpose Purpose = ToolRunPurpose.Tool);
 
     private readonly List<Call> _calls = [];
 
@@ -72,6 +73,7 @@ public class FakeToolRunner : IToolRunner
         bool logOutput,
         CancellationToken cancellationToken,
         ToolRunVia via = ToolRunVia.Auto,
+        ToolRunPurpose purpose = ToolRunPurpose.Tool,
         AbsolutePath? workingDirectory = null)
     {
         if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
@@ -80,7 +82,7 @@ public class FakeToolRunner : IToolRunner
         // The real runner interrupts the program and throws once the token is cancelled.
         cancellationToken.ThrowIfCancellationRequested();
         var contents = exe.FileExists ? await exe.ReadAllTextAsync(cancellationToken) : null;
-        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via, workingDirectory));
+        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via, workingDirectory, purpose));
         return new ToolRunResult(ExitCode);
     }
 

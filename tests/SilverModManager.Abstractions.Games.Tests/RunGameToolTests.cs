@@ -579,6 +579,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         var call = ToolRunner.Calls.Should().ContainSingle().Subject;
         call.Exe.Should().Be(launcher);
         call.Args.Should().Equal("-caller", "-extra");
+        call.Purpose.Should().Be(ToolRunPurpose.Game);
         LauncherStartedByProcessRunner().Should().BeFalse();
         eventsAtStart.Should().Equal("lock", "running");
         Session.Events.Should().Equal("lock", "running", "finish", "release");

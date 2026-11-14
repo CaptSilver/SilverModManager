@@ -109,6 +109,7 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
         call.Args.Should().Equal(new[] { "-caller" }.Concat(spec.ExtraArgs));
         call.Args[2].Should().StartWith("_MODULES_*").And.EndWith("*_MODULES_");
         call.LogOutput.Should().BeTrue();
+        call.Purpose.Should().Be(ToolRunPurpose.Game, "the program started is the game, so it is not registered as a tool");
     }
 
     [Fact]

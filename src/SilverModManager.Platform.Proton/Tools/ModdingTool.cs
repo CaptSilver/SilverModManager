@@ -195,7 +195,7 @@ public sealed class ModdingTool(
         await prefixSetup.Ensure(installation, Name, definition.Prefix, cancellationToken);
 
         onStart();
-        return await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via, installed.WorkingDirectory);
+        return await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via, workingDirectory: installed.WorkingDirectory);
     }
 
     private async Task<ToolRunResult> RunNative(IReadOnlyList<string> args, CancellationToken cancellationToken)

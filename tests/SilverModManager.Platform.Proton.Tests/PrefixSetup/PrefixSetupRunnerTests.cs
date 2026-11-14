@@ -790,7 +790,7 @@ public class PrefixSetupRunnerTests : IDisposable
         public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
             => throw new NotSupportedException("The setup runner goes through RunInPrefix.");
 
-        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
+        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, ToolRunPurpose purpose = ToolRunPurpose.Tool, AbsolutePath? workingDirectory = null)
             => throw new NotSupportedException("The setup runner goes through RunInPrefix.");
     }
 }

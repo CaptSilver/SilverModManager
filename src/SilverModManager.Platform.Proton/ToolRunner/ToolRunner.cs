@@ -22,6 +22,7 @@ public sealed class ToolRunner(
     DeploymentLaunchRoots launchRoots,
     HostExecution hostExecution,
     ISettingsManager settingsManager,
+    IStartedTools startedTools,
     ILogger<ToolRunner>? logger = null) : IToolRunner
 {
     private readonly IToolRunStrategy[] _strategies = DistinctByKind(strategies.Where(s => s is not ILastResortToolRunStrategy));
@@ -107,6 +108,7 @@ public sealed class ToolRunner(
         bool logOutput,
         CancellationToken cancellationToken,
         ToolRunVia via = ToolRunVia.Auto,
+        ToolRunPurpose purpose = ToolRunPurpose.Tool,
         AbsolutePath? workingDirectory = null)
     {
         var plan = Plan(installation, exe, args, env, via, workingDirectory);
@@ -120,7 +122,21 @@ public sealed class ToolRunner(
             .WithStandardOutputPipe(stdout)
             .WithStandardErrorPipe(stderr);
 
-        var result = await processRunner.RunAsync(command, logOutput, cancellationToken);
+        // The registration is what lets the running-game detector tell a tool left open from the game. A game is
+        // not registered: it is the thing the detector looks for.
+        IDisposable? registration = null;
+        Action<int>? started = purpose == ToolRunPurpose.Tool
+            ? pid => registration = startedTools.Register(pid, exe.FileName)
+            : null;
+        CommandResult result;
+        try
+        {
+            result = await processRunner.RunAsync(command, logOutput, cancellationToken, started);
+        }
+        finally
+        {
+            registration?.Dispose();
+        }
         return new ToolRunResult(result.ExitCode, result.RunTime, plan.Strategy, plan.FallbackReason, stdout.Text, stderr.Text);
     }
 

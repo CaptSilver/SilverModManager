@@ -39,7 +39,7 @@ public class ProtontricksStrategyTests
         _fs.WriteAllText(_prefix.Combine("system.reg"), "");
 
         _processRunner
-            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
             .Returns(call =>
             {
                 var command = call.Arg<Command>();
@@ -59,7 +59,8 @@ public class ProtontricksStrategyTests
         UnmanagedGames.Registry(),
         UnmanagedGames.LaunchRoots(),
         host ?? UnmanagedGames.X64Host(),
-        UnmanagedGames.Settings());
+        UnmanagedGames.Settings(),
+        new StartedTools());
 
     private AggregateProtontricksDependency Protontricks() => new(_processRunner);
 

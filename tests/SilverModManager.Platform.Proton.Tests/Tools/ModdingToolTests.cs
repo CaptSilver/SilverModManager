@@ -113,7 +113,7 @@ public class ModdingToolTests(ITestOutputHelper helper)
         await Tool(Editor(), new InstalledTool(Exe, WorkingDirectory: startIn)).Execute(loadout, CancellationToken.None);
 
         await _toolRunner.Received(1).RunWindowsTool(
-            Arg.Any<GameInstallation>(), Exe, Arg.Any<IReadOnlyList<string>>(), null, true, Arg.Any<CancellationToken>(), ToolRunVia.Auto, startIn);
+            Arg.Any<GameInstallation>(), Exe, Arg.Any<IReadOnlyList<string>>(), null, true, Arg.Any<CancellationToken>(), ToolRunVia.Auto, ToolRunPurpose.Tool, startIn);
     }
 
     [Fact]

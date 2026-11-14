@@ -862,7 +862,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
                 ? ToolRunPlan.Runnable(Strategy, [exe.ToString()], exe.Parent, new Dictionary<string, string>(), FallbackReason)
                 : ToolRunPlan.Failed(Diagnostic);
 
-        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
+        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, ToolRunPurpose purpose = ToolRunPurpose.Tool, AbsolutePath? workingDirectory = null)
         {
             if (Diagnostic is not null) throw new InvalidOperationException(Diagnostic);
             Calls.Add(new Call(installation, exe));

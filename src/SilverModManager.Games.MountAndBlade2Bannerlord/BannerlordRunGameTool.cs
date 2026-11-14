@@ -59,7 +59,7 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
 
         // External arguments specified by outside entities are preserved, ahead of the ones the tool adds.
         // The runner starts the exe in its own folder.
-        var result = await _runner.RunWindowsTool(loadout.InstallationInstance, spec.Exe, [..commandLineArgs ?? [], ..spec.ExtraArgs], null, true, cancellationToken);
+        var result = await _runner.RunWindowsTool(loadout.InstallationInstance, spec.Exe, [..commandLineArgs ?? [], ..spec.ExtraArgs], null, true, cancellationToken, purpose: ToolRunPurpose.Game);
 
         // The runner hands back the exit code rather than throwing on it; a game closing badly is not a failed launch.
         if (result.ExitCode != 0)

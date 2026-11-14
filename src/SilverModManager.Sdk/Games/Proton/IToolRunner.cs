@@ -26,7 +26,8 @@ public interface IToolRunner
         AbsolutePath? workingDirectory = null);
 
     /// <summary>
-    /// Runs the plan from <see cref="Plan"/> and waits for the program to exit.
+    /// Runs the plan from <see cref="Plan"/> and waits for the program to exit. A <see cref="ToolRunPurpose.Tool"/>
+    /// is registered as started by this app while it runs.
     /// </summary>
     /// <exception cref="InvalidOperationException">No strategy can run the program; the message is the plan's diagnostic.</exception>
     /// <exception cref="X86_64HostRequiredException">The strategy needs an x86-64 machine and this one cannot run x86-64 programs.</exception>
@@ -39,6 +40,7 @@ public interface IToolRunner
         bool logOutput,
         CancellationToken cancellationToken,
         ToolRunVia via = ToolRunVia.Auto,
+        ToolRunPurpose purpose = ToolRunPurpose.Tool,
         AbsolutePath? workingDirectory = null);
 
     /// <summary>

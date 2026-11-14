@@ -39,11 +39,11 @@ public class ToolRunnerTests : IDisposable
         _fs.WriteAllText(_prefix.Combine("system.reg"), "");
 
         _processRunner
-            .RunAsync(Arg.Do<Command>(c => _commands.Add(c)), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .RunAsync(Arg.Do<Command>(c => _commands.Add(c)), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
             .Returns(_ => new CommandResult(7, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
     }
 
-    private ToolRunner.ToolRunner Runner(IReadOnlyList<string>? filesystemRoots = null, HostExecution? host = null, ISettingsManager? settings = null, bool withPlainWine = false)
+    private ToolRunner.ToolRunner Runner(IReadOnlyList<string>? filesystemRoots = null, HostExecution? host = null, ISettingsManager? settings = null, bool withPlainWine = false, IStartedTools? startedTools = null)
     {
         var protonResolver = new ProtonResolver(new EmptyEnvironment());
         IToolRunStrategy[] strategies = withPlainWine
@@ -57,6 +57,7 @@ public class ToolRunnerTests : IDisposable
             LaunchRoots(filesystemRoots ?? []),
             host ?? UnmanagedGames.X64Host(),
             settings ?? UnmanagedGames.Settings(),
+            startedTools ?? new StartedTools(),
             _logger);
     }
 
@@ -350,14 +351,74 @@ public class ToolRunnerTests : IDisposable
         command.WorkingDirPath.Should().Be(Exe.Parent.ToString());
         command.EnvironmentVariables["FOO"].Should().Be("bar");
         command.EnvironmentVariables["STEAM_COMPAT_DATA_PATH"].Should().Be(_prefix.Parent.ToString());
-        await _processRunner.Received(1).RunAsync(Arg.Any<Command>(), true, Arg.Any<CancellationToken>());
+        await _processRunner.Received(1).RunAsync(Arg.Any<Command>(), true, Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>());
+    }
+
+    [Fact]
+    public async Task RunWindowsTool_RegistersTheToolsPidWhileItRunsAndForgetsItAfter()
+    {
+        var tools = new StartedTools();
+        string? nameWhileRunning = null;
+        _processRunner
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
+            .Returns(call =>
+            {
+                call.Arg<Action<int>?>()!.Invoke(4242);
+                nameWhileRunning = tools.NameOf(4242);
+                return new CommandResult(0, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
+            });
+
+        await Runner(startedTools: tools).RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None);
+
+        nameWhileRunning.Should().Be(Exe.FileName);
+        tools.NameOf(4242).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RunWindowsTool_ForAGameRegistersNothing()
+    {
+        var tools = new StartedTools();
+        Action<int>? passed = null;
+        var invoked = false;
+        _processRunner
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
+            .Returns(call =>
+            {
+                passed = call.Arg<Action<int>?>();
+                passed?.Invoke(4242);
+                invoked = passed is not null;
+                return new CommandResult(0, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
+            });
+
+        await Runner(startedTools: tools).RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None, purpose: ToolRunPurpose.Game);
+
+        tools.NameOf(4242).Should().BeNull();
+        invoked.Should().BeFalse("a game's pid is found by the detector, not registered as a tool");
+    }
+
+    [Fact]
+    public async Task RunWindowsTool_ForgetsTheToolsPidWhenTheRunIsCancelled()
+    {
+        var tools = new StartedTools();
+        _processRunner
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
+            .Returns<Task<CommandResult>>(call =>
+            {
+                call.Arg<Action<int>?>()!.Invoke(4242);
+                throw new OperationCanceledException();
+            });
+
+        var act = () => Runner(startedTools: tools).RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        tools.NameOf(4242).Should().BeNull("a pid left registered would mark whatever process reuses it as a tool");
     }
 
     [Fact]
     public async Task RunWindowsToolReturnsBothTailsTheDurationAndTheRunsPlan()
     {
         _processRunner
-            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
             .Returns(async call =>
             {
                 var c = call.Arg<Command>();
@@ -435,7 +496,7 @@ public class ToolRunnerTests : IDisposable
     public void PlainWineIsNotGatedOnX86_64()
     {
         _processRunner
-            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<Action<int>?>())
             .Returns(_ => new CommandResult(0, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
 
         var runner = Runner(host: NoX86_64Interpreter(), withPlainWine: true);
@@ -464,7 +525,7 @@ public class ToolRunnerTests : IDisposable
     private ToolRunner.ToolRunner RunnerOf(HostExecution host, params IToolRunStrategy[] strategies) => RunnerOf(host, [], strategies);
 
     private ToolRunner.ToolRunner RunnerOf(HostExecution host, IReadOnlyList<string> filesystemRoots, params IToolRunStrategy[] strategies) => new(
-        new PrefixResolver(), strategies, _processRunner, RegistryWithMetadata(), LaunchRoots(filesystemRoots), host, UnmanagedGames.Settings(), _logger);
+        new PrefixResolver(), strategies, _processRunner, RegistryWithMetadata(), LaunchRoots(filesystemRoots), host, UnmanagedGames.Settings(), new StartedTools(), _logger);
 
     private string[] WarningLogs() => _logger.ReceivedCalls()
         .Where(call => call.GetMethodInfo().Name == nameof(ILogger.Log) && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning)
@@ -629,7 +690,8 @@ public class ToolRunnerTests : IDisposable
             UnmanagedGames.Registry(),
             UnmanagedGames.LaunchRoots(),
             UnmanagedGames.X64Host(),
-            UnmanagedGames.Settings());
+            UnmanagedGames.Settings(),
+            new StartedTools());
 
         act.Should().Throw<ArgumentException>().WithMessage("*SteamProton*");
     }

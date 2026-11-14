@@ -193,7 +193,7 @@ public class RunGameTool : IRunGameTool
         {
             // The shell would hand a Windows program to the host, which cannot open it, so this wins over UseShell.
             _logger.LogInformation("Running {Program} through the tool runner", program);
-            var result = await _toolRunner.RunWindowsTool(installation, program, commandLineArgs, null, logOutput: true, cancellationToken);
+            var result = await _toolRunner.RunWindowsTool(installation, program, commandLineArgs, null, logOutput: true, cancellationToken, purpose: ToolRunPurpose.Game);
             if (result.ExitCode != 0)
                 _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", result.ExitCode, program);
         }
