@@ -74,6 +74,18 @@ public class HeadlessHostProfileTests
     }
 
     [Fact]
+    public void TheSlimClientCanBuildItsGameModeDetector()
+    {
+        // LinuxInterop asks for the detector, which reads the environment and /proc. The slim client is what a command
+        // runs as when no window is open, and it crashed building the detector before it could print anything.
+        using var provider = Describe(Mode("status")).BuildServiceProvider();
+
+        var build = () => provider.GetRequiredService<IGameModeDetector>();
+
+        build.Should().NotThrow();
+    }
+
+    [Fact]
     public void DesignerModeWinsOverTheOtherFlags()
     {
         var mode = new StartupMode { RunAsMain = true, ShowUI = false, IsAvaloniaDesigner = true };

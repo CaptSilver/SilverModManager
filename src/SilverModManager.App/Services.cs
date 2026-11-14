@@ -38,6 +38,8 @@ using SilverModManager.Networking.Steam;
 using SilverModManager.Networking.Thunderstore;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.ProxyConsole;
 using SilverModManager.Sdk.Library;
@@ -91,6 +93,10 @@ public static class Services
         var profile = ProfileOf(startupMode);
         if (profile == HostProfile.Slim)
         {
+            // AddOSInterop's Game Mode detector reads the environment and /proc; the full profiles get these from the
+            // launch services, which the slim client does not load.
+            services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
+            services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
             services
                 .AddSingleton<TimeProvider>(_ => TimeProvider.System)
                 .AddFileSystem()
