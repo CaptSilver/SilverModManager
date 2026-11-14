@@ -9,6 +9,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
@@ -42,7 +43,7 @@ public class ToolRunOutputTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     private bool IsDisabled(Loadout.ReadOnly loadout) =>
         LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemGroup().Single(g => g.AsLoadoutItem().Name == GroupName).AsLoadoutItem().IsDisabled;
 
-    private ToolManager Manager(ITool tool) => new(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+    private ToolManager Manager(ITool tool) => new(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture, ServiceProvider.GetRequiredService<IDeploymentMountScopeFactory>());
 
     private Task Run(OutputTool tool, Loadout.ReadOnly loadout) =>
         Manager(tool).RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());

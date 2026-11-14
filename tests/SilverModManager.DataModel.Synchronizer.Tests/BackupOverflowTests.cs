@@ -18,6 +18,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
@@ -891,7 +892,7 @@ public class BackupOverflowTests(ITestOutputHelper helper) : AStubbedGameTest<Ba
         var prompt = new RecordingPrompt(BackupOverflowChoice.AdoptInPlace);
         _prompt.Inner = prompt;
         var tool = new SyncingRunTool(loadout.Game.GameId, SynchronizerService, loadout.LoadoutId);
-        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, ServiceProvider.GetRequiredService<ToolOutputCapture>());
+        var toolManager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, ServiceProvider.GetRequiredService<ToolOutputCapture>(), ServiceProvider.GetRequiredService<IDeploymentMountScopeFactory>());
 
         await toolManager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
 

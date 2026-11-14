@@ -11,6 +11,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using Xunit;
 
 namespace SilverModManager.DataModel.Synchronizer.Tests;
@@ -39,14 +40,14 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
     private Task Run(Loadout.ReadOnly loadout, ToolOutput output, string[]? ignored, Action<Loadout.ReadOnly> body)
     {
         var tool = new WritingTool(loadout.Game.GameId, output, ignored ?? [], body);
-        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture, ServiceProvider.GetRequiredService<IDeploymentMountScopeFactory>());
         return manager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
     }
 
     private Task<ToolRunOutcome> RunForOutcome(Loadout.ReadOnly loadout, ToolOutput output, Action<Loadout.ReadOnly> body, ToolRunSummary? reported = null)
     {
         var tool = new WritingTool(loadout.Game.GameId, output, [], body) { LastRun = reported };
-        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture, ServiceProvider.GetRequiredService<IDeploymentMountScopeFactory>());
         return manager.RunToolWithOutcome(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
     }
 
@@ -132,7 +133,7 @@ public class ToolGameFolderOutputTests(ITestOutputHelper helper) : ACyberpunkIso
         var log = new GamePath(LocationId.Game, "Data/foo.log");
 
         var tool = new WritingTool(loadout.Game.GameId, definition.Output, definition.IgnoredOutput, l => { Write(l, B, "mesh"); Write(l, log, "log"); });
-        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture);
+        var manager = new ToolManager(NullLogger<ToolManager>.Instance, [tool], [], SynchronizerService, Capture, ServiceProvider.GetRequiredService<IDeploymentMountScopeFactory>());
         await manager.RunTool(tool, loadout, ServiceProvider.GetRequiredService<IJobMonitor>());
 
         loadout = Refresh(loadout);
