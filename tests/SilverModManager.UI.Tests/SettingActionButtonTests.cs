@@ -48,6 +48,25 @@ public class SettingActionButtonTests(IServiceProvider provider) : AUiTest(provi
         => new(new ActionButtonContainer("", "", Config()), source, errors ?? Substitute.For<IErrorPresenter>());
 
     [Fact]
+    public void ARowCanSitOnASettingOfAnyType()
+    {
+        // A source with nothing of its own to store hangs its account row on a setting it has, such as a refresh age.
+        var age = TimeSpan.FromHours(1);
+        var config = new PropertyConfig(
+            Name: "RefreshAge",
+            PropertyType: typeof(TimeSpan),
+            Options: new PropertyOptionsWrapper { Section = Sections.Accounts, DisplayName = "mod.io", DescriptionFactory = _ => "" },
+            ContainerOptions: new ActionButtonContainerOptions { CreateSource = _ => new FakeSource() },
+            GetValue: _ => age,
+            GetDefaultValue: _ => age,
+            Update: (_, _) => { });
+
+        var control = new SettingActionButtonFactory().Create(Provider, Substitute.For<ISettingsManager>(), (ActionButtonContainerOptions)config.ContainerOptions!, config);
+
+        control.Should().BeOfType<SettingActionButtonViewModel>().Which.Text.Should().Be("Not signed in");
+    }
+
+    [Fact]
     public void ARowShowsTheSourcesTextAndItsButton()
     {
         var viewModel = Create(new FakeSource());

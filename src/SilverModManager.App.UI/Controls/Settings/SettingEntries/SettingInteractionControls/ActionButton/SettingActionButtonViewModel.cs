@@ -76,8 +76,8 @@ public class SettingActionButtonFactory : IInteractionControlFactory<ActionButto
     {
         return new SettingActionButtonViewModel(
             new ActionButtonContainer(
-                value: propertyConfig.GetValueCasted<string>(settingsManager),
-                defaultValue: propertyConfig.GetDefaultValueCasted<string>(settingsManager),
+                value: propertyConfig.GetValue(settingsManager),
+                defaultValue: propertyConfig.GetDefaultValue(settingsManager),
                 config: propertyConfig),
             containerOptions.CreateSource(serviceProvider),
             serviceProvider.GetRequiredService<IErrorPresenter>());
