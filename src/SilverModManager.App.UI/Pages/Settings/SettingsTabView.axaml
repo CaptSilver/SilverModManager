@@ -17,8 +17,9 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MaxWidth="1024" />
             </Grid.ColumnDefinitions>
+            <!-- The top margin keeps the first card off the tab strip's underline. -->
             <ItemsControl x:Name="SettingEntriesItemsControl"
-                          Margin="0,0,0,24">
+                          Margin="0,12,0,24">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="{StaticResource Spacing-2}" Margin="0 0 12 0" />
