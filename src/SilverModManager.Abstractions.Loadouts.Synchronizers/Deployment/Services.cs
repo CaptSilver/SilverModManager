@@ -16,6 +16,8 @@ public static class Services
         s.TryAddSingleton<IDeploymentPlanStore, DeploymentPlanStore>();
         s.TryAddSingleton<IDeploymentBackendSelector, DeploymentBackendChain>();
         s.TryAddSingleton<DeploymentLaunchRoots>();
+        s.TryAddSingleton<HeldMounts>();
+        s.TryAddSingleton<IDeploymentMountScopeFactory, DeploymentMountScopeFactory>();
         s.TryAddSingleton<CopyDeploymentBackend>();
         // Two type arguments: with only IDeploymentBackend the implementation type is inferred as the
         // interface and TryAddEnumerable refuses the descriptor.

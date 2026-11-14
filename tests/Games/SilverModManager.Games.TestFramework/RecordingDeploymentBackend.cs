@@ -132,9 +132,22 @@ public sealed class RecordingMountingDeploymentBackend(CopyDeploymentBackend inn
 
     public bool Mounted { get; set; }
 
+    /// <summary>Roots whose <see cref="Mount"/> throws, to test what a scope does with the mounts already up.</summary>
+    public HashSet<GamePath> FailingMounts { get; } = [];
+
+    /// <summary>Runs inside a mount's <c>Finish</c>, where a real mount promotes what the game wrote.</summary>
+    public Func<GamePath, Task>? OnFinish { get; set; }
+
+    /// <summary>What a mount's <c>Finish</c> returns by root. A root with no entry finishes with nothing to do.</summary>
+    public Dictionary<GamePath, MountFinishResult> FinishResults { get; } = [];
+
     public List<(string Phase, GamePath Path)> Calls { get; } = [];
 
-    public DeploymentPreflight Preflight(GameInstallation installation, GamePath root) => DeploymentPreflight.Accept("records the call");
+    /// <summary>When set, <see cref="Preflight"/> refuses every root with this reason.</summary>
+    public string? Refusal { get; set; }
+
+    public DeploymentPreflight Preflight(GameInstallation installation, GamePath root) =>
+        Refusal is null ? DeploymentPreflight.Accept("records the call") : DeploymentPreflight.Refuse(Refusal);
 
     public IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root) => [];
 
@@ -146,7 +159,8 @@ public sealed class RecordingMountingDeploymentBackend(CopyDeploymentBackend inn
     public Task<IDeploymentMount> Mount(GameInstallation installation, Loadout.ReadOnly loadout, GamePath root, CancellationToken token)
     {
         Calls.Add((nameof(Mount), root));
-        return Task.FromResult<IDeploymentMount>(new RecordedMount(root, installation.Locations.ToAbsolutePath(root)));
+        if (FailingMounts.Contains(root)) throw new InvalidOperationException($"mounting {root} failed");
+        return Task.FromResult<IDeploymentMount>(new RecordedMount(this, root, installation.Locations.ToAbsolutePath(root)));
     }
 
     public Task<MountRecoveryReport> Recover(GameInstallation installation, GamePath root, LoadoutId? target, CancellationToken token)
@@ -197,13 +211,18 @@ public sealed class RecordingMountingDeploymentBackend(CopyDeploymentBackend inn
     {
     }
 
-    private sealed class RecordedMount(GamePath root, AbsolutePath mountPoint) : IDeploymentMount
+    private sealed class RecordedMount(RecordingMountingDeploymentBackend backend, GamePath root, AbsolutePath mountPoint) : IDeploymentMount
     {
         public GamePath Root => root;
 
         public AbsolutePath MountPoint => mountPoint;
 
-        public Task<MountFinishResult> Finish(CancellationToken token) => Task.FromResult(new MountFinishResult(MountFinishStatus.NothingToDo, []));
+        public async Task<MountFinishResult> Finish(CancellationToken token)
+        {
+            backend.Calls.Add((nameof(Finish), root));
+            if (backend.OnFinish is { } onFinish) await onFinish(root);
+            return backend.FinishResults.TryGetValue(root, out var result) ? result : new MountFinishResult(MountFinishStatus.NothingToDo, []);
+        }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
