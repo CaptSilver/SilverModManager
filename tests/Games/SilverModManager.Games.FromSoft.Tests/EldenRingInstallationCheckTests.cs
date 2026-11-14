@@ -175,7 +175,7 @@ public class EldenRingInstallationCheckTests(ITestOutputHelper helper) : AModded
         public void Run(Command command, bool logOutput = false) => throw new NotSupportedException();
         public Task RunAsync(System.Diagnostics.Process process, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default)
+        public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default, Action<int>? started = null)
         {
             Ran.Add(command.TargetFilePath);
             if (StartFailure is { } failure) throw failure;

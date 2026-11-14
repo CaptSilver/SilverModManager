@@ -17,7 +17,7 @@ internal sealed class FakeProcessRunner : IProcessRunner
 
     public void Run(Command command, bool logOutput = false) => throw new NotSupportedException("The cleanup waits for its commands.");
 
-    public Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default)
+    public Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default, Action<int>? started = null)
     {
         Commands.Add(command);
         if (Throws is not null) throw Throws;

@@ -56,6 +56,19 @@ public sealed class ProcessRunnerTests : IDisposable
         thrown.Should().NotBeOfType<ProgramNotRunnableException>();
     }
 
+    [Fact]
+    public async Task RunAsync_ReportsTheChildsPidBeforeItExits()
+    {
+        var reported = new List<(int Pid, bool Alive)>();
+
+        await CreateRunner().RunAsync(Cli.Wrap("sleep").WithArguments("0.2"), logOutput: false, CancellationToken.None, started: pid =>
+            reported.Add((pid, File.Exists($"/proc/{pid}/stat"))));
+
+        var report = reported.Should().ContainSingle().Subject;
+        report.Pid.Should().BePositive();
+        report.Alive.Should().BeTrue("the callback runs while the child still exists");
+    }
+
     // An ELF header whose machine field (bytes 18-19) is 0xffff, which no binfmt entry matches, so the
     // kernel answers ENOEXEC.
     private async Task<string> WriteUnrunnableProgram()

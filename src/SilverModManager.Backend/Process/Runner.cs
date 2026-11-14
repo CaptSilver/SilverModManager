@@ -62,19 +62,19 @@ internal class ProcessRunner : IProcessRunner
         task.FireAndForget(_logger, cancellationToken: CancellationToken.None);
     }
 
-    public Task<CommandResult> RunAsync(Command command, bool logOutput, CancellationToken cancellationToken = default)
+    public Task<CommandResult> RunAsync(Command command, bool logOutput, CancellationToken cancellationToken = default, Action<int>? started = null)
     {
         command = SetupLogging(command, logOutput);
-        return ExecuteCommand(command, logOutput, cancellationToken);
+        return ExecuteCommand(command, logOutput, cancellationToken, started);
     }
 
     // Every Command start (Run, RunAsync(Command)) goes through here, so a program the kernel cannot execute is
     // reported the same way for tools, game launches and probes. RunAsync(Process) maps the same failure itself.
-    private async Task<CommandResult> ExecuteCommand(Command command, bool logOutput, CancellationToken cancellationToken)
+    private async Task<CommandResult> ExecuteCommand(Command command, bool logOutput, CancellationToken cancellationToken, Action<int>? started = null)
     {
         try
         {
-            return await ExecuteCommandCore(command, logOutput, cancellationToken);
+            return await ExecuteCommandCore(command, logOutput, cancellationToken, started);
         }
         catch (Exception e) when (IsExecFormatError(e))
         {
@@ -97,7 +97,7 @@ internal class ProcessRunner : IProcessRunner
         return false;
     }
 
-    private async Task<CommandResult> ExecuteCommandCore(Command command, bool logOutput, CancellationToken cancellationToken)
+    private async Task<CommandResult> ExecuteCommandCore(Command command, bool logOutput, CancellationToken cancellationToken, Action<int>? started)
     {
         if (logOutput) _logger.LogDebug("Starting command `{Command}`", command.ToString());
 
@@ -107,6 +107,7 @@ internal class ProcessRunner : IProcessRunner
         // the process tree. The interrupt for the rest of the tree is sent here.
         using var forceful = new CancellationTokenSource();
         var execution = command.ExecuteAsync(forcefulCancellationToken: forceful.Token, gracefulCancellationToken: cancellationToken);
+        started?.Invoke(execution.ProcessId);
         await using var interrupt = cancellationToken.Register(() => InterruptProcessTree(command, execution.ProcessId, sw.Elapsed, forceful));
         await using var kill = forceful.Token.Register(() => _logger.LogWarning("Killing `{Command}`: still running {GracePeriod} after the interrupt", command.ToString(), KillGracePeriod));
         var result = await execution;

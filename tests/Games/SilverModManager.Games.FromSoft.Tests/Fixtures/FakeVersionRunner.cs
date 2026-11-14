@@ -15,7 +15,7 @@ public sealed class FakeVersionRunner : IProcessRunner
     public void Run(Command command, bool logOutput = false) => throw new NotSupportedException();
     public Task RunAsync(System.Diagnostics.Process process, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default)
+    public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default, Action<int>? started = null)
     {
         if (!File.GetUnixFileMode(command.TargetFilePath).HasFlag(UnixFileMode.UserExecute))
             throw new Win32Exception(13, $"An error occurred trying to start process '{command.TargetFilePath}'. Permission denied");

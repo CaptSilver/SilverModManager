@@ -62,7 +62,7 @@ public class ExecutableRuntimeDependencyTimeoutTests
         public int Calls;
         public bool WasCancelled;
 
-        public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default)
+        public async Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default, Action<int>? started = null)
         {
             Interlocked.Increment(ref Calls);
             try

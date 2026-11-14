@@ -20,8 +20,12 @@ public interface IProcessRunner
     /// <summary>
     /// Runs a command.
     /// </summary>
-    /// <returns>A task that completes when the spawned process exists.</returns>
-    Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default);
+    /// <param name="command">The command to run.</param>
+    /// <param name="logOutput">Whether the command's output is written to the log.</param>
+    /// <param name="cancellationToken">Interrupts the process tree, then kills it.</param>
+    /// <param name="started">Called with the child's pid right after it starts, so a caller can tell this process from the ones it did not start.</param>
+    /// <returns>A task that completes when the spawned process exits.</returns>
+    Task<CommandResult> RunAsync(Command command, bool logOutput = false, CancellationToken cancellationToken = default, Action<int>? started = null);
 
     /// <summary>
     /// Runs a process.
