@@ -53,7 +53,8 @@ public sealed class GitHubAccount : StoredCredentialAccount
     {
         var token = await _prompt.PromptAsync(
             Name,
-            "Paste a personal access token from github.com/settings/tokens. It needs no scopes: it only lifts the limit on anonymous requests.",
+            "Paste a personal access token from the page below. It needs no scopes: it only lifts the limit on anonymous requests.",
+            new Uri("https://github.com/settings/tokens"),
             ValidateAsync,
             cancellationToken);
         if (token is null) return;

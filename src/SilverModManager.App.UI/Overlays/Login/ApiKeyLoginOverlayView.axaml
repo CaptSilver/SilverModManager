@@ -11,7 +11,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:login="clr-namespace:SilverModManager.App.UI.Overlays.Login"
     xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls">
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
 
     <Design.DataContext>
         <login:ApiKeyLoginOverlayDesignerViewModel />
@@ -27,9 +28,12 @@
                     <TextBlock x:Name="DescriptionText"
                                TextWrapping="Wrap"
                                Theme="{StaticResource BodyMDNormalTheme}" />
-                    <SelectableTextBlock x:Name="KeyPageUrlText"
-                                         TextWrapping="Wrap"
-                                         Theme="{StaticResource BodyMDNormalTheme}" />
+                    <controls:StandardButton x:Name="ButtonOpenPage"
+                                             HorizontalAlignment="Left"
+                                             Type="Tertiary"
+                                             Fill="None"
+                                             LeftIcon="{x:Static icons:IconValues.OpenInNew}"
+                                             ShowIcon="Left" />
                     <TextBox x:Name="ApiKeyTextBox" PasswordChar="•" />
                     <TextBlock x:Name="ErrorText"
                                TextWrapping="Wrap"

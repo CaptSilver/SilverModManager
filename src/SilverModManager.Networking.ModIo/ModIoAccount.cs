@@ -55,7 +55,8 @@ public sealed class ModIoAccount : StoredCredentialAccount
     {
         var token = await _prompt.PromptAsync(
             Name,
-            "Paste an access token from mod.io/me/access. Create it with both the read and the write scope: without write the app cannot subscribe you to mods. It is personal: keep it to yourself.",
+            "Paste an access token from the page below. Create it with both the read and the write scope: without write the app cannot subscribe you to mods. It is personal: keep it to yourself.",
+            new Uri("https://mod.io/me/access"),
             ValidateAsync,
             cancellationToken);
         if (token is null) return;

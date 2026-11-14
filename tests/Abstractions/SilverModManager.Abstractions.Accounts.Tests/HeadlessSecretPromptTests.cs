@@ -10,7 +10,7 @@ public class HeadlessSecretPromptTests
         var prompt = new HeadlessSecretPrompt();
 
         var thrown = await prompt
-            .Invoking(p => p.PromptAsync("GitHub", "Paste a token.", (_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None).AsTask())
+            .Invoking(p => p.PromptAsync("GitHub", "Paste a token.", page: null, (_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None).AsTask())
             .Should().ThrowAsync<SecretPromptUnavailableException>();
 
         thrown.Which.Message.Should().Contain("Settings → Accounts → GitHub");

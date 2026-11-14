@@ -88,7 +88,7 @@ public class ApiKeyLoginOverlayTests
         var controller = Substitute.For<IOverlayController>();
         controller.EnqueueAndWait(Arg.Any<IOverlayViewModel<string>>()).Returns("typed-key");
 
-        var key = await new ApiKeyPrompt(controller).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
+        var key = await new ApiKeyPrompt(controller, Substitute.For<SilverModManager.Sdk.IOSInterop>()).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
 
         key.Should().Be("typed-key");
     }
@@ -99,7 +99,7 @@ public class ApiKeyLoginOverlayTests
         var controller = Substitute.For<IOverlayController>();
         controller.EnqueueAndWait(Arg.Any<IOverlayViewModel<string>>()).Returns((string?)null);
 
-        var key = await new ApiKeyPrompt(controller).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
+        var key = await new ApiKeyPrompt(controller, Substitute.For<SilverModManager.Sdk.IOSInterop>()).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
 
         key.Should().BeNull();
     }

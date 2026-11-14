@@ -31,4 +31,7 @@ public interface IApiKeyLoginOverlayViewModel : IOverlayViewModel<string>
     ReactiveCommand<Unit> CommandSave { get; }
 
     ReactiveCommand<Unit> CommandCancel { get; }
+
+    /// <summary>Opens <see cref="PageUrl"/> in the browser; disabled when there is no page.</summary>
+    ReactiveCommand<Unit> CommandOpenPage { get; }
 }

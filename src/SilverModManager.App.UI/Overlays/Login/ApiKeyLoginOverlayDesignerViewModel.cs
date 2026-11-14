@@ -12,4 +12,5 @@ public class ApiKeyLoginOverlayDesignerViewModel : AOverlayViewModel<IApiKeyLogi
     public BindableReactiveProperty<string> ErrorMessage { get; } = new(value: "Nexus Mods did not accept this key.");
     public ReactiveCommand<Unit> CommandSave { get; } = new();
     public ReactiveCommand<Unit> CommandCancel { get; } = new();
+    public ReactiveCommand<Unit> CommandOpenPage { get; } = new();
 }

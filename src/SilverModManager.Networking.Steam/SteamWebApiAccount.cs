@@ -56,7 +56,8 @@ public sealed class SteamWebApiAccount : StoredCredentialAccount
     {
         var key = await _prompt.PromptAsync(
             Name,
-            "Paste your own Steam Web API key from steamcommunity.com/dev/apikey. It is personal: keep it to yourself. It only lets the app search a game's Workshop.",
+            "Paste your own Steam Web API key from the page below. It is personal: keep it to yourself. It only lets the app search a game's Workshop.",
+            new Uri("https://steamcommunity.com/dev/apikey"),
             ValidateAsync,
             cancellationToken);
         if (key is null) return;

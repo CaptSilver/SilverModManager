@@ -18,7 +18,7 @@ public class WelcomeOverlayLoginTests
         var loginManager = Substitute.For<ILoginManager>();
         loginManager.IsLoggedInObservable.Returns(System.Reactive.Linq.Observable.Return(false));
 
-        var prompt = new ApiKeyPrompt(controller);
+        var prompt = new ApiKeyPrompt(controller, Substitute.For<SilverModManager.Sdk.IOSInterop>());
         loginManager.LoginAsync(Arg.Any<CancellationToken>()).Returns(_ => prompt.PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None).AsTask());
 
         var welcome = new WelcomeOverlayViewModel(Substitute.For<IOSInterop>(), loginManager, Substitute.For<IWindowNotificationService>());

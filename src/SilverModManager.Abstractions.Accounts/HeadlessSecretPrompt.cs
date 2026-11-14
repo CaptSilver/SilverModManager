@@ -8,7 +8,7 @@ namespace SilverModManager.Abstractions.Accounts;
 /// </summary>
 public sealed class HeadlessSecretPrompt : ISecretPrompt
 {
-    public ValueTask<string?> PromptAsync(string title, string instructions, Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
+    public ValueTask<string?> PromptAsync(string title, string instructions, Uri? page, Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
         => throw new SecretPromptUnavailableException(title);
 }
 

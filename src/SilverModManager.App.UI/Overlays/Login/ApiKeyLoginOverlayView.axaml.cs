@@ -22,10 +22,10 @@ public partial class ApiKeyLoginOverlayView : ReactiveUserControl<IApiKeyLoginOv
             this.OneWayBind(ViewModel, vm => vm.Instructions.Value, view => view.DescriptionText.Text)
                 .AddTo(disposables);
 
-            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.KeyPageUrlText.Text)
+            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.ButtonOpenPage.Text)
                 .AddTo(disposables);
 
-            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.KeyPageUrlText.IsVisible, url => !string.IsNullOrEmpty(url))
+            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.ButtonOpenPage.IsVisible, url => !string.IsNullOrEmpty(url))
                 .AddTo(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.Watermark.Value, view => view.ApiKeyTextBox.Watermark)
@@ -44,6 +44,9 @@ public partial class ApiKeyLoginOverlayView : ReactiveUserControl<IApiKeyLoginOv
                 .AddTo(disposables);
 
             this.BindCommand(ViewModel, vm => vm.CommandCancel, view => view.ButtonCancel)
+                .AddTo(disposables);
+
+            this.BindCommand(ViewModel, vm => vm.CommandOpenPage, view => view.ButtonOpenPage)
                 .AddTo(disposables);
         });
     }

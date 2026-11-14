@@ -28,10 +28,12 @@ public class SteamWebApiAccountTests
     {
         public string? Title { get; private set; }
         public string? RefusedWith { get; private set; }
+        public Uri? Page { get; private set; }
 
-        public async ValueTask<string?> PromptAsync(string title, string instructions, Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
+        public async ValueTask<string?> PromptAsync(string title, string instructions, Uri? page, Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
         {
             Title = title;
+            Page = page;
             if (pasted is null) return null;
             RefusedWith = await validate(pasted, cancellationToken);
             return RefusedWith is null ? pasted : null;
@@ -75,6 +77,7 @@ public class SteamWebApiAccountTests
         await account.Action!.Run(CancellationToken.None);
 
         prompt.Title.Should().Be("Steam (Workshop browse)");
+        prompt.Page.Should().Be(new Uri("https://steamcommunity.com/dev/apikey"), "the prompt links the page the key is made on");
         (await store.GetAsync(SteamSecretKeys.WebApiKey, CancellationToken.None)).Should().BeOfType<SecretResult.Found>().Which.Value.Should().Be("good");
         account.Status.State.Should().Be(AccountState.SignedIn);
     }
