@@ -22,7 +22,9 @@ public class ACyberpunkIsolatedGameTest<TTest>(ITestOutputHelper helper) : AIsol
             .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
-            .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))
+            // AppData is part of every loadout's first sync; on the real XDG data folder, a file one fixture writes
+            // there shows up in the Overrides group of every other fixture running beside it.
+            .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), locationsFileSystem: IsolatedKnownFolders.Create)
             .AddRedEngineGames();
     }
 }
