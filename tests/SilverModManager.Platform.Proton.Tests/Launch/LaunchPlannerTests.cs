@@ -33,6 +33,19 @@ public class LaunchPlannerTests
     }
 
     [Fact]
+    public void TheSpecsOwnFilesystemRootsJoinTheBackendsOnceEach_InBothPlanShapes()
+    {
+        var exe = $"{SkyrimRoot}/SkyrimSE.exe";
+        var spec = new LaunchSpec(Path_(exe), []) { FilesystemRoots = ["/run/media/store", "/spec/only"] };
+
+        var substituted = LaunchPlanner.Compose(SteamCommand(exe), Path_(SkyrimRoot), Path_(exe), spec, ["/run/media/store"], []);
+        var replaced = LaunchPlanner.Compose([], Path_(SkyrimRoot), Path_(exe), spec with { ReplacesCommand = true }, ["/run/media/store"], []);
+
+        substituted.Process.FilesystemRoots.Should().Equal("/run/media/store", "/spec/only");
+        replaced.Process.FilesystemRoots.Should().Equal("/run/media/store", "/spec/only");
+    }
+
+    [Fact]
     public void TheLaunchEnvironmentIsDefaultsOnTheProcessInBothPlanShapes()
     {
         KeyValuePair<string, string>[] hdr = [new("PROTON_ENABLE_HDR", "1")];

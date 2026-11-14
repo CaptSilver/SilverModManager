@@ -19,11 +19,14 @@ public static class LaunchPlanner
     /// <param name="gameRoot">The installation's game folder.</param>
     /// <param name="primaryExe">The game's own executable.</param>
     /// <param name="spec">What the run tool wants started.</param>
-    /// <param name="filesystemRoots">Host folders the deployment backends need visible inside the Steam container.</param>
+    /// <param name="filesystemRoots">Host folders the deployment backends need visible inside the Steam container; the spec's own <see cref="LaunchSpec.FilesystemRoots"/> are added to them.</param>
     /// <param name="wineDllOverrides">The overrides the game needs, set in the environment the command starts with.</param>
     /// <param name="launchEnvironment">Variables the loadout asks for, set unless the launch already has them.</param>
     public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots, IReadOnlyList<WineDllOverride> wineDllOverrides, IReadOnlyList<KeyValuePair<string, string>>? launchEnvironment = null)
     {
+        // The spec's own folders ride along with the backends' wherever the command ends up running.
+        if (spec.FilesystemRoots is { Count: > 0 } specRoots) filesystemRoots = [..filesystemRoots, ..specRoots.Except(filesystemRoots)];
+
         if (spec.ReplacesCommand)
         {
             // The run tool owns the whole command (a launcher that builds its own Proton chain), so Steam's chain is

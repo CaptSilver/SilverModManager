@@ -26,4 +26,10 @@ public record LaunchSpec(AbsolutePath Exe, string[] ExtraArgs)
     /// Variables the started process gets on top of what it inherits. Null leaves the environment as it came.
     /// </summary>
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
+
+    /// <summary>
+    /// Host folders a <see cref="ReplacesCommand"/> spec's command must be able to write, on top of the ones the
+    /// deployment backends need. Null for a command that runs unconfined.
+    /// </summary>
+    public IReadOnlyList<string>? FilesystemRoots { get; init; }
 }
