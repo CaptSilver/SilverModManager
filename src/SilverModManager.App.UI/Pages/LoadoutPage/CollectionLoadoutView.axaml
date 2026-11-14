@@ -230,9 +230,6 @@
                         <TextBlock x:Name="InstallProgressText" />
                         <ProgressBar x:Name="InstallProgressBar" Minimum="0" Maximum="1" />
                     </StackPanel>
-
-                    <!-- the mods of that install; hides itself while there are none -->
-                    <collections:ModInstallRowsSection x:Name="ModsSection" Margin="0,12,0,0" />
                 </StackPanel>
             </Border>
 

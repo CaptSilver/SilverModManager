@@ -79,5 +79,4 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
         []);
     public bool IsReadOnly { get; init; } = true;
     public CollectionInstallStatus? InstallProgress { get; init; }
-    public IModInstallRows? InstallRows { get; init; }
 }

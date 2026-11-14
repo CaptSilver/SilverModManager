@@ -170,15 +170,6 @@ public sealed class NexusCollectionSource : CollectionSource
         return _downloads;
     }
 
-    // The rows come from the install job the Downloads tab's model follows. Without that tab (no library file for the
-    // collection) no install of it can run from here, so there is nothing to show.
-    public override IObservable<IModInstallRows?> InstallRows => Observable.Defer(() =>
-    {
-        if (_downloads is { } downloads) return downloads.InstallRows.AsSystemObservable();
-        if (HasCollectionLibraryFile() is false) return Observable.Return<IModInstallRows?>(null);
-        throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
-    });
-
     public override CollectionLink? Link => _link.Value;
 
     public override IReadOnlyList<IContextMenuItem> MenuItems(ICollectionPageHost host, IContextMenuItem? viewDownloads)

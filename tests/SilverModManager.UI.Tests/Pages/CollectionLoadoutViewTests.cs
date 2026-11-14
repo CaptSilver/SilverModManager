@@ -43,6 +43,25 @@ public class CollectionLoadoutViewTests(IServiceProvider provider) : AUiTest(pro
         new(Percent.CreateClamped(0.75), 1234UL, 99_000UL, Size.From(5_000_000UL), null);
 
     [Fact]
+    public async Task OnlyTheDownloadsTabListsThePerModInstallRows()
+    {
+        // The design Downloads model carries finished rows, so a section anywhere on the page would have something to show.
+        var (window, view) = await Show(new CollectionLoadoutDesignViewModel { SelectedTab = CollectionPageTab.Downloads });
+
+        await EventuallyOnUi(() =>
+        {
+            Render(window);
+            var downloads = Named<Control>(view, "DownloadsHost");
+            var sections = view.GetVisualDescendants().OfType<ModInstallRowsSection>().ToArray();
+            sections.Should().ContainSingle("a list of every mod in the header would squeeze the tabs below it");
+            sections[0].GetVisualAncestors().Should().Contain(downloads);
+            sections[0].Rows.Should().NotBeNull();
+            sections[0].IsEffectivelyVisible.Should().BeTrue();
+        });
+        await OnUi(window.Close);
+    }
+
+    [Fact]
     public async Task TheSearchBoxFiltersTheInstalledTreeThroughItsAdapter()
     {
         var viewModel = new CollectionLoadoutDesignViewModel();

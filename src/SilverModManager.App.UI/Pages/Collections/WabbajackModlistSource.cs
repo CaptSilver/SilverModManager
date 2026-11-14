@@ -207,14 +207,6 @@ public sealed class WabbajackModlistSource : CollectionSource
             status => status.Text is { Length: > 0 } text ? new CollectionInstallStatus(text, status.Fraction ?? 0, status.IsIndeterminate) : null);
     });
 
-    // The same model as the status above: it follows the run, then reads what the run stored.
-    public override IObservable<IModInstallRows?> InstallRows => Observable.Defer(() =>
-    {
-        var downloads = _downloads
-            ?? throw new InvalidOperationException("The install is followed by the Downloads tab's model, which CreateDownloads builds first");
-        return downloads.WhenAnyValue(model => model.Mods).Select(static rows => (IModInstallRows?)rows);
-    });
-
     public override IPageViewModelInterface? CreateDownloads()
     {
         // Kept for the picker and the more menu. The model loads and plans when its tab is first shown, so opening an

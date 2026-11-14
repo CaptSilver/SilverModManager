@@ -175,22 +175,6 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public async Task InstallRowsFromTheSourceReachThePage()
-    {
-        var (_, group, source) = await TestSource();
-        source.GroupSubject.OnNext(Optional<CollectionGroupId>.Create(group.CollectionGroupId));
-        var (page, activation) = await ActivePage(source);
-        using var _ = activation;
-        using var rows = new ModInstallRows();
-
-        source.InstallRowsSubject.OnNext(rows);
-        await EventuallyOnUi(() => page.InstallRows.Should().BeSameAs(rows));
-
-        source.InstallRowsSubject.OnNext(null);
-        await EventuallyOnUi(() => page.InstallRows.Should().BeNull());
-    }
-
-    [Fact]
     public async Task APageWhoseSourceHasNoDownloadsHasNoViewDownloadsItem()
     {
         var (_, group, source) = await TestSource();

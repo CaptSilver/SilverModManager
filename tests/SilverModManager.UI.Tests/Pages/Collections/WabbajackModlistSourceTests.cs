@@ -232,17 +232,6 @@ public class WabbajackModlistSourceTests(IServiceProvider provider) : AUiTest(pr
     }
 
     [Fact]
-    public async Task TheHeadersModRowsAreTheDownloadsModelsRows()
-    {
-        var f = await Open();
-        var model = (IWabbajackModlistViewModel)f.Source.CreateDownloads()!;
-
-        var rows = await f.Source.InstallRows.FirstAsync().ToTask();
-
-        rows.Should().NotBeNull().And.BeSameAs(model.Mods);
-    }
-
-    [Fact]
     public async Task TheInstalledAndPendingPagesAreTheCardsInstallPage()
     {
         var f = await Open();
