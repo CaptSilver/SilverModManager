@@ -51,8 +51,8 @@ public sealed class VfsCatalog(IConnection connection) : IVfsCatalog
 
     private static VfsCatalogEntry.ReadOnly Find(IDb db, GameInstallMetadataId installation, AbsolutePath path)
     {
-        var key = path.ToString();
-        return VfsCatalogEntry.FindByInstallation(db, installation).FirstOrDefault(e => e.Path == key);
+        // Another installation can hold a row at the same path, so the index hit is filtered to this one.
+        return VfsCatalogEntry.FindByPath(db, path.ToString()).FirstOrDefault(e => e.InstallationId == installation);
     }
 
     private static FileFingerprint FingerprintOf(VfsCatalogEntry.ReadOnly e) => new(e.Device, e.Inode, e.Size, e.MTime, e.CTime);

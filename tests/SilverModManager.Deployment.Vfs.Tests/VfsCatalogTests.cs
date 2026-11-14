@@ -121,11 +121,18 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
     private sealed class CountingHasher : IFileHasher
     {
         public int Calls;
+        public int DescriptorCalls;
 
         public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
         {
             Calls++;
             return await new XxHash3FileHasher().Hash(installation, file, token);
+        }
+
+        public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, DirectoryHandle directory, RelativePath file, CancellationToken token = default)
+        {
+            DescriptorCalls++;
+            return await new XxHash3FileHasher().Hash(installation, directory, file, token);
         }
     }
 
@@ -172,6 +179,72 @@ public class VfsCatalogTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         var hasher = new CatalogBackedHasher(ServiceProvider.GetRequiredService<IVfsCatalog>(), ServiceProvider.GetRequiredService<IBackingScanner>(), Connection, new CountingHasher());
 
         var act = async () => await hasher.Hash(installation, _directory.Combine("missing.bin"));
+
+        await act.Should().ThrowAsync<FileNotFoundException>();
+    }
+
+    [Fact]
+    public async Task FindReturnsOnlyTheInstallationsRowAtThePath()
+    {
+        var installation = await Installation();
+        var other = GameInstallMetadataId.From(EntityId.From(installation.Value.Value + 1));
+        var catalog = ServiceProvider.GetRequiredService<IVfsCatalog>();
+        await Record(catalog, installation, SomeFile, Fingerprint, TheHash);
+        await Record(catalog, other, SomeFile, Fingerprint, Hash.From(7));
+
+        // Both rows share the path, so a lookup by path alone cannot tell them apart.
+        VfsCatalogEntry.FindByPath(Connection.Db, SomeFile.ToString()).Should().HaveCount(2);
+        catalog.TryGetHash(installation, SomeFile, Fingerprint, out var mine).Should().BeTrue();
+        catalog.TryGetHash(other, SomeFile, Fingerprint, out var theirs).Should().BeTrue();
+        mine.Should().Be(FileIdentity.XxHash3(TheHash));
+        theirs.Should().Be(FileIdentity.XxHash3(Hash.From(7)));
+    }
+
+    [Fact]
+    public async Task HashingThroughTheDescriptorMatchesHashingByPath()
+    {
+        var installation = await Installation();
+        var file = _directory.Combine("data/sub/c.bin");
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("bytes read through a descriptor");
+        var byPath = await new XxHash3FileHasher().Hash(installation, file);
+
+        using var backing = DirectoryHandle.Open(_directory.Combine("data"));
+        var byDescriptor = await new XxHash3FileHasher().Hash(installation, backing, RelativePath.FromUnsanitizedInput("sub/c.bin"));
+
+        byDescriptor.Should().Be(byPath);
+    }
+
+    [Fact]
+    public async Task TheCatalogBackedHasherHashesThroughTheDescriptorOnceAndThenAnswersFromTheCatalog()
+    {
+        var installation = await Installation();
+        var inner = new CountingHasher();
+        var hasher = new CatalogBackedHasher(ServiceProvider.GetRequiredService<IVfsCatalog>(), ServiceProvider.GetRequiredService<IBackingScanner>(), Connection, inner);
+        var file = _directory.Combine("data/d.bin");
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync("some bytes");
+        using var backing = DirectoryHandle.Open(file.Parent);
+        var relative = RelativePath.FromUnsanitizedInput("d.bin");
+
+        var first = await hasher.Hash(installation, backing, relative);
+        var second = await hasher.Hash(installation, backing, relative);
+
+        second.Should().Be(first);
+        inner.DescriptorCalls.Should().Be(1);
+        (await hasher.Hash(installation, file)).Should().Be(first, "the path and the descriptor name the same catalog row");
+        inner.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AFileTheDescriptorCannotReachFailsLoudly()
+    {
+        var installation = await Installation();
+        var hasher = new CatalogBackedHasher(ServiceProvider.GetRequiredService<IVfsCatalog>(), ServiceProvider.GetRequiredService<IBackingScanner>(), Connection, new CountingHasher());
+        _directory.Combine("data").CreateDirectory();
+        using var backing = DirectoryHandle.Open(_directory.Combine("data"));
+
+        var act = async () => await hasher.Hash(installation, backing, RelativePath.FromUnsanitizedInput("missing.bin"));
 
         await act.Should().ThrowAsync<FileNotFoundException>();
     }

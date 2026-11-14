@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.Win32.SafeHandles;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
@@ -14,6 +15,16 @@ public static class FileHashing
     /// <summary>The file's xxHash3, the identity the file store and the game index use.</summary>
     public static ValueTask<Hash> XxHash3(AbsolutePath file, CancellationToken cancellationToken = default)
         => Digest<Hash, System.IO.Hashing.XxHash3, Xx3Hasher>(file, cancellationToken);
+
+    /// <summary>
+    /// The xxHash3 of a file the caller opened, for one that cannot be reached by path again (read through a directory
+    /// descriptor while a mount covers its folder). Takes ownership of <paramref name="file"/> and closes it.
+    /// </summary>
+    public static async ValueTask<Hash> XxHash3(SafeFileHandle file, CancellationToken cancellationToken = default)
+    {
+        await using var stream = SequentialFileRead.Open(file);
+        return await Xx3Hasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>The file's xxHash64.</summary>
     public static ValueTask<Hash> XxHash64(AbsolutePath file, CancellationToken cancellationToken = default)

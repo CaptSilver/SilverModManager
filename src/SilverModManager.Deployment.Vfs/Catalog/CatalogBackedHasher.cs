@@ -31,18 +31,31 @@ public sealed class CatalogBackedHasher : IFileHasher
     }
 
     /// <exception cref="FileNotFoundException">The file is not there to take a fingerprint of.</exception>
-    public async ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
+    public ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, AbsolutePath file, CancellationToken token = default)
     {
         var entry = _scanner.Stat(file) ?? throw new FileNotFoundException($"Cannot fingerprint `{file}`: it does not exist", file.ToString());
-        var fingerprint = FileFingerprint.From(entry);
-        if (_catalog.TryGetHash(installation, file, fingerprint, out var cached)) return cached;
+        return HashUnlessCatalogued(installation, file, entry, () => _inner.Hash(installation, file, token));
+    }
 
-        var hash = await _inner.Hash(installation, file, token);
+    /// <exception cref="FileNotFoundException">The file is not there to take a fingerprint of.</exception>
+    public ValueTask<FileIdentity> Hash(GameInstallMetadataId installation, DirectoryHandle directory, RelativePath file, CancellationToken token = default)
+    {
+        var entry = _scanner.Stat(directory, file) ?? throw new FileNotFoundException($"Cannot fingerprint `{file}` below `{directory.Root}`: it does not exist", file.ToString());
+        // Keyed by the file's path, which is the same whether or not a mount covers the folder.
+        return HashUnlessCatalogued(installation, directory.Root.Combine(file), entry, () => _inner.Hash(installation, directory, file, token));
+    }
+
+    private async ValueTask<FileIdentity> HashUnlessCatalogued(GameInstallMetadataId installation, AbsolutePath path, BackingEntry entry, Func<ValueTask<FileIdentity>> read)
+    {
+        var fingerprint = FileFingerprint.From(entry);
+        if (_catalog.TryGetHash(installation, path, fingerprint, out var cached)) return cached;
+
+        var hash = await read();
 
         // The file may have changed while it was being read. The fingerprint taken first then no
         // longer matches the file, so the row it produces is never served.
         using var tx = _connection.BeginTransaction();
-        _catalog.Record(tx, installation, file, fingerprint, hash);
+        _catalog.Record(tx, installation, path, fingerprint, hash);
         await tx.Commit();
         return hash;
     }

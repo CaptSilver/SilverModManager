@@ -18,8 +18,11 @@ public partial class VfsCatalogEntry : IModelDefinition
     /// <summary>The installation the file belongs to.</summary>
     public static readonly ReferenceAttribute<GameInstallMetadata> Installation = new(Namespace, nameof(Installation)) { IsIndexed = true };
 
-    /// <summary>The real file's absolute path.</summary>
-    public static readonly StringAttribute Path = new(Namespace, nameof(Path));
+    /// <summary>
+    /// The real file's absolute path. Indexed so a lookup reads the rows at one path instead of every row of the
+    /// installation, which for a game folder is every file in it.
+    /// </summary>
+    public static readonly StringAttribute Path = new(Namespace, nameof(Path)) { IsIndexed = true };
 
     /// <summary>The device the file lived on.</summary>
     public static readonly UInt64Attribute Device = new(Namespace, nameof(Device));

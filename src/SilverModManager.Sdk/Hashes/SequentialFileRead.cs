@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using NexusMods.Paths;
 
 namespace SilverModManager.Sdk.Hashes;
@@ -23,6 +24,17 @@ public static class SequentialFileRead
         var stream = new FileStream(file.GetFullPath(), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
             bufferSize: 0, FileOptions.SequentialScan);
         if (!stream.SafeFileHandle.IsInvalid) AdviseSequential(stream);
+        return stream;
+    }
+
+    /// <summary>
+    /// <see cref="Open(AbsolutePath)"/> for a file the caller already opened, such as one reached through a directory
+    /// descriptor that has no path to open again. The stream owns the handle and closes it.
+    /// </summary>
+    public static Stream Open(SafeFileHandle file)
+    {
+        var stream = new FileStream(file, FileAccess.Read, bufferSize: 0);
+        AdviseSequential(stream);
         return stream;
     }
 

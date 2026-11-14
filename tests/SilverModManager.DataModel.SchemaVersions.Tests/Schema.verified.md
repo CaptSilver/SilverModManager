@@ -3,7 +3,7 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x0DD1C719CB459E32
+   - Fingerprint: 0x23297125EDCCF287
    - Total attributes: 457
    - Total namespaces: 118
    
@@ -104,7 +104,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Deployment.VfsCatalogEntry/Inode                                         | UInt64                  | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Installation                                  | Reference               | True    | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/MTime                                         | Int64                   | False   | False | False     | 
-| SilverModManager.Deployment.VfsCatalogEntry/Path                                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Path                                          | Utf8                    | True    | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Size                                          | UInt64                  | False   | False | False     | 
 | SilverModManager.FromSoft.BuildStamp/Exe                                                  | Utf8                    | False   | False | False     | 
 | SilverModManager.FromSoft.BuildStamp/Installation                                         | Reference               | True    | False | False     | 
