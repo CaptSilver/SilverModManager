@@ -77,7 +77,7 @@ using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Pages.Sorting;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Pages.NexusCatalog;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.App.UI.Pages.Catalog;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.Networking.Forums;
 using SilverModManager.App.UI.Pages.WabbajackGallery;
@@ -242,8 +242,8 @@ public static class Services
             .AddView<NexusModsView, INexusModsViewModel>()
             .AddViewModel<NexusModsViewModel, INexusModsViewModel>()
             .AddTransient<NexusCollectionsViewModel>()
-            .AddView<ThunderstoreView, IThunderstoreViewModel>()
-            .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
+            .AddView<CatalogView, ICatalogViewModel>()
+            .AddViewModel<CatalogViewModel, ICatalogViewModel>()
             .AddSingleton<IThumbnailLoader>(serviceProvider => new ThumbnailLoader(
                 ImagePipelines.GetThumbnailPipeline(serviceProvider),
                 ImagePipelines.ModPageThumbnailFallback,
@@ -361,7 +361,7 @@ public static class Services
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, IniPageFactory>()
             .AddSingleton<IStoreSortMemory, SettingsStoreSortMemory>()
-            .AddSingleton<IPageFactory, ThunderstorePageFactory>()
+            .AddSingleton<IPageFactory, CatalogPageFactory>()
             .AddSingleton<IPageFactory, NexusModsPageFactory>()
             .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()
             .AddSingleton<IPageFactory, WabbajackGalleryPageFactory>()

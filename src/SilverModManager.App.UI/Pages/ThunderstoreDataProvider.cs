@@ -21,7 +21,6 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Thunderstore;
-using SilverModManager.App.UI.Pages.Thunderstore;
 
 namespace SilverModManager.App.UI.Pages;
 

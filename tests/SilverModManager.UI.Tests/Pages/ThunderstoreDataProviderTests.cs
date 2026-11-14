@@ -3,7 +3,7 @@ using SilverModManager.App.UI.Controls.Cards;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using SilverModManager.App.UI;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.Networking.Thunderstore;
 using Avalonia.Media.Imaging;
 using SilverModManager.Sdk.Resources;
 using System.Security.Cryptography;

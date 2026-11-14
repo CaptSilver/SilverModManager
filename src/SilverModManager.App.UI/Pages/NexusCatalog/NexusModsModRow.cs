@@ -1,5 +1,5 @@
 using System.Globalization;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.Networking.NexusWebApi;
 
 namespace SilverModManager.App.UI.Pages.NexusCatalog;
@@ -15,7 +15,7 @@ public sealed record NexusModsModRow(NexusModsSearchHit Hit)
 
     /// <summary>"1.0  ·  1.2K endorsements  ·  1.5M downloads  ·  updated 2 Jan 2026", the small print under the title.</summary>
     public string Details => string.Create(CultureInfo.InvariantCulture,
-        $"{Hit.Version}  ·  {ThunderstoreRowText.CompactCount(Hit.Endorsements)} endorsements  ·  {ThunderstoreRowText.CompactCount(Hit.Downloads)} downloads  ·  updated {Hit.UpdatedAt:d MMM yyyy}");
+        $"{Hit.Version}  ·  {CardText.CompactCount(Hit.Endorsements)} endorsements  ·  {CardText.CompactCount(Hit.Downloads)} downloads  ·  updated {Hit.UpdatedAt:d MMM yyyy}");
 
     /// <summary>The small image for a card; the full picture stands in for a mod without a thumbnail.</summary>
     public Uri? ThumbnailUrl => Hit.ThumbnailUrl ?? Hit.PictureUrl;

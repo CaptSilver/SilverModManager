@@ -1,7 +1,8 @@
+using Xunit;
 using FluentAssertions;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.Networking.Thunderstore;
 
-namespace SilverModManager.UI.Tests.Pages;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 public class ThunderstoreRowTextTests
 {
@@ -37,22 +38,5 @@ public class ThunderstoreRowTextTests
     public void DisplayName_TurnsUnderscoresIntoSpacesAndDropsARepeatedOwner(string name, string? owner, string expected)
     {
         ThunderstoreRowText.DisplayName(name, owner).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData(-5, "0")]
-    [InlineData(0, "0")]
-    [InlineData(999, "999")]
-    [InlineData(1_000, "1K")]
-    [InlineData(1_250, "1.2K")]
-    [InlineData(12_345, "12K")]
-    [InlineData(999_999, "999K")]
-    [InlineData(1_000_000, "1M")]
-    [InlineData(1_234_567, "1.2M")]
-    [InlineData(45_600_000, "45M")]
-    [InlineData(2_100_000_000, "2.1B")]
-    public void CompactCount_AbbreviatesLargeNumbers(long count, string expected)
-    {
-        ThunderstoreRowText.CompactCount(count).Should().Be(expected);
     }
 }

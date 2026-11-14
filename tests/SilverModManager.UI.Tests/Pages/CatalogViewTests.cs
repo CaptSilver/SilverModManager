@@ -8,30 +8,43 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAssertions;
 using ReactiveUI;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.Abstractions.Library.Catalog;
+using SilverModManager.App.UI.Pages.Catalog;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Networking.Thunderstore;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.UI.Tests.Pages;
 
-public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider)
+public class CatalogViewTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private sealed class StubViewModel(IReadOnlyList<ThunderstorePackageRow> packages, IThumbnailLoader icons)
-        : APageViewModel<IThunderstoreViewModel>(new DesignWindowManager()), IThunderstoreViewModel
+    private sealed record StubHandle : ICatalogHandle
     {
-        public LoadoutId LoadoutId { get; set; }
+        public string Catalog => "Thunderstore";
+    }
+
+    private sealed class StubViewModel(IReadOnlyList<CatalogCardRow> rows, IThumbnailLoader icons)
+        : APageViewModel<ICatalogViewModel>(new DesignWindowManager()), ICatalogViewModel
+    {
+        public void Initialize(string catalog, LoadoutId loadoutId) { }
+        public string CatalogName => "Thunderstore";
         public string SearchText { get; set; } = "";
-        public bool ShowDeprecated { get; set; }
-        public ThunderstoreSort Sort { get; set; }
-        public IReadOnlyList<ThunderstorePackageRow> Packages { get; } = packages;
-        public IThumbnailLoader Icons { get; } = icons;
+        public string SortKey { get; set; } = "TopRated";
+
+        public IReadOnlyList<StoreSortOption> SortOptions { get; } =
+            [new("TopRated", "Top rated"), new("Downloads", "Most downloaded"), new("Updated", "Recently updated"), new("Newest", "Newest"), new("Name", "Name")];
+
+        public IReadOnlyList<CatalogCardRow> Rows { get; } = rows;
+        public bool HasMore => false;
+        public bool IsLoading => false;
         public string ErrorText => "";
-        public bool IsRefreshing => false;
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
-        public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
-        public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommandOverride { get; set; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
-        public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand => InstallCommandOverride;
+        public string StatusText => "";
+        public IThumbnailLoader Icons { get; } = icons;
+        public ReactiveCommand<Unit, Unit> LoadMoreCommand { get; } = ReactiveCommand.Create(() => { });
+        public ReactiveCommand<CatalogCardRow, Unit> OpenCommand { get; } = ReactiveCommand.Create<CatalogCardRow>(_ => { });
+        public ReactiveCommand<CatalogCardRow, Unit> InstallCommandOverride { get; set; } = ReactiveCommand.Create<CatalogCardRow>(_ => { });
+        public ReactiveCommand<CatalogCardRow, Unit> InstallCommand => InstallCommandOverride;
     }
 
     private sealed class FakeIcons : IThumbnailLoader
@@ -49,15 +62,15 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         }
     }
 
-    private static ThunderstorePackageRow Row(string owner, string name, string? icon = "https://example.com/icon.png")
-        => new($"{owner}-{name}", "4.0.2", 112, false, "Lifts the cap", new Uri("https://thunderstore.io/c/peak/p/x/y/"),
-            Owner: owner, DisplayName: ThunderstoreRowText.DisplayName(name, owner), IconUrl: icon is null ? null : new Uri(icon), Downloads: 1_234_567);
+    private static CatalogCardRow Row(string owner, string name, string? icon = "https://example.com/icon.png", string summary = "Lifts the cap")
+        => new(new CatalogCard($"{owner}-{name}", ThunderstoreRowText.DisplayName(name, owner), owner, summary, icon is null ? null : new Uri(icon),
+            new Uri("https://thunderstore.io/c/peak/p/x/y/"), "4.0.2", 1_234_567, 112, false, null, new StubHandle()), "Install");
 
-    private async Task<(Window Window, ThunderstoreView View)> Show(StubViewModel viewModel)
+    private async Task<(Window Window, CatalogView View)> Show(StubViewModel viewModel)
     {
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var view = new ThunderstoreView { ViewModel = viewModel };
+            var view = new CatalogView { ViewModel = viewModel };
             var window = Track(new Window { Width = 900, Height = 700, Content = view });
             window.Show();
             return (window, view);
@@ -123,7 +136,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await OnUi(window.Close);
     }
 
-    private async Task<(Window Window, ThunderstoreView View)> Show(StubViewModel viewModel, double width)
+    private async Task<(Window Window, CatalogView View)> Show(StubViewModel viewModel, double width)
     {
         var (window, view) = await Show(viewModel);
         await OnUi(() => window.Width = width);
@@ -182,8 +195,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task ACard_ShowsTitleOwnerStatsAndBothButtons()
     {
-        var latest = new SilverModManager.Sdk.Thunderstore.ThunderstoreVersionRef(new("glarmer", "PEAK_Unlimited"), new(4, 0, 2));
-        var row = Row("glarmer", "PEAK_Unlimited") with { Latest = latest };
+        var row = Row("glarmer", "PEAK_Unlimited");
         var (window, view) = await Show(new StubViewModel([row], new FakeIcons()));
 
         await EventuallyOnUi(() =>
@@ -194,7 +206,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
             texts.Should().Contain("PEAK Unlimited");
             texts.Should().Contain("by glarmer");
             texts.Should().Contain(t => t.Contains("4.0.2") && t.Contains("1.2M"));
-            card.GetVisualDescendants().OfType<Button>().Select(b => b.Content).Should().Equal("Install", "Open on thunderstore.io");
+            card.GetVisualDescendants().OfType<Button>().Select(b => b.Content).Should().Equal("Install", "Open website");
         });
 
         await OnUi(window.Close);
@@ -203,10 +215,8 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task AFullCard_KeepsEverythingInsideItsBorder()
     {
-        var latest = new SilverModManager.Sdk.Thunderstore.ThunderstoreVersionRef(new("SomeVeryLongOwnerName", "X"), new(4, 0, 2));
         var longText = string.Join(' ', Enumerable.Repeat("Lifts the cap on the number of players in a lobby", 6));
-        var row = Row("SomeVeryLongOwnerName", "An_Extremely_Long_Package_Name_That_Wraps_Onto_Several_Lines_Of_Text")
-            with { Latest = latest, IsDeprecated = true, Description = longText };
+        var row = Row("SomeVeryLongOwnerName", "An_Extremely_Long_Package_Name_That_Wraps_Onto_Several_Lines_Of_Text", summary: longText);
         var (window, view) = await Show(new StubViewModel([row], new FakeIcons()));
 
         await EventuallyOnUi(() =>
@@ -234,12 +244,11 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task Install_GoesThroughTheCommandsCanExecute()
     {
-        var latest = new SilverModManager.Sdk.Thunderstore.ThunderstoreVersionRef(new("glarmer", "PEAK_Unlimited"), new(4, 0, 2));
-        var row = Row("glarmer", "PEAK_Unlimited") with { Latest = latest };
+        var row = Row("glarmer", "PEAK_Unlimited");
         var executions = 0;
         var gate = new TaskCompletionSource();
         var vm = new StubViewModel([row], new FakeIcons());
-        var install = ReactiveCommand.CreateFromTask<ThunderstorePackageRow>(async _ =>
+        var install = ReactiveCommand.CreateFromTask<CatalogCardRow>(async _ =>
         {
             Interlocked.Increment(ref executions);
             await gate.Task;
@@ -302,7 +311,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task TheSortBox_ListsTheSharedWordingAndShowsTheViewModelsSort()
     {
-        var (window, view) = await Show(new StubViewModel([Row("a", "B")], new FakeIcons()) { Sort = ThunderstoreSort.Newest });
+        var (window, view) = await Show(new StubViewModel([Row("a", "B")], new FakeIcons()) { SortKey = "Newest" });
 
         await EventuallyOnUi(() =>
         {
@@ -327,7 +336,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
             Dispatcher.UIThread.RunJobs();
             var box = view.GetVisualDescendants().OfType<StoreSortBox>().Should().ContainSingle().Subject;
             box.SelectedItem = box.Items.OfType<StoreSortOption>().Single(o => o.Label == "Name");
-            viewModel.Sort.Should().Be(ThunderstoreSort.Name);
+            viewModel.SortKey.Should().Be("Name");
         });
 
         await OnUi(window.Close);

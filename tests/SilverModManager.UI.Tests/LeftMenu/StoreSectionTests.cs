@@ -12,7 +12,9 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.LeftMenu.Loadout;
 using SilverModManager.App.UI.Pages.NexusCatalog;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.Abstractions.Library.Catalog;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Pages.Catalog;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -45,7 +47,7 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     private IReadOnlyList<ILeftMenuItemViewModel> StoresOf(IGameData game, IWorkspaceController controller)
-        => StoreLeftMenuItems.For(game, SomeLoadout, controller, WorkspaceId.From(Guid.NewGuid()));
+        => StoreLeftMenuItems.For(Provider.GetRequiredService<ModCatalogs>(), game, SomeLoadout, controller, WorkspaceId.From(Guid.NewGuid()));
 
     private static string[] Names(IEnumerable<ILeftMenuItemViewModel> items) => items.Select(item => item.Text.Value.Value).ToArray();
 
@@ -79,7 +81,7 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
     {
         var workspaceId = WorkspaceId.From(Guid.NewGuid());
         var controller = Controller(workspaceId);
-        var stores = await OnUi(() => Task.FromResult(StoreLeftMenuItems.For(new NexusAndThunderstoreGame(Provider), SomeLoadout, controller, workspaceId)));
+        var stores = await OnUi(() => Task.FromResult(StoreLeftMenuItems.For(Provider.GetRequiredService<ModCatalogs>(), new NexusAndThunderstoreGame(Provider), SomeLoadout, controller, workspaceId)));
 
         await OnUi(async () =>
         {
@@ -91,7 +93,7 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
             Arg.Is<Optional<PageData>>(page => page.Value.FactoryId == NexusModsPageFactory.StaticId),
             Arg.Any<OpenPageBehavior>(), Arg.Any<bool>(), Arg.Any<bool>());
         controller.Received(1).OpenPage(workspaceId,
-            Arg.Is<Optional<PageData>>(page => page.Value.FactoryId == ThunderstorePageFactory.StaticId),
+            Arg.Is<Optional<PageData>>(page => page.Value.FactoryId == CatalogPageFactory.StaticId && ((CatalogPageContext)page.Value.Context).Catalog == "Thunderstore"),
             Arg.Any<OpenPageBehavior>(), Arg.Any<bool>(), Arg.Any<bool>());
     }
 

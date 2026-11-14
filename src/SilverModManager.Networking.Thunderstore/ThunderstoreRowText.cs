@@ -1,6 +1,4 @@
-using System.Globalization;
-
-namespace SilverModManager.App.UI.Pages.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// The text a Thunderstore row shows in place of the raw package data.
@@ -46,24 +44,6 @@ public static class ThunderstoreRowText
 
         var readable = DisplayName(name, @namespace);
         return readable == "" ? downloaded : readable;
-    }
-
-    /// <summary>1,234,567 as "1.2M"; one decimal below ten of a unit, none above.</summary>
-    public static string CompactCount(long count)
-    {
-        if (count <= 0) return "0";
-        if (count < 1_000) return count.ToString(CultureInfo.InvariantCulture);
-
-        var (divisor, suffix) = count switch
-        {
-            < 1_000_000 => (1_000d, "K"),
-            < 1_000_000_000 => (1_000_000d, "M"),
-            _ => (1_000_000_000d, "B"),
-        };
-
-        // Truncate rather than round, so 999,999 reads 999K and never "1000K".
-        var scaled = Math.Floor(count / divisor * 10) / 10;
-        return (scaled >= 10 ? Math.Floor(scaled).ToString(CultureInfo.InvariantCulture) : scaled.ToString("0.#", CultureInfo.InvariantCulture)) + suffix;
     }
 
     private static string Collapse(string text) => string.Join(' ', text.Split(['_', ' '], StringSplitOptions.RemoveEmptyEntries));

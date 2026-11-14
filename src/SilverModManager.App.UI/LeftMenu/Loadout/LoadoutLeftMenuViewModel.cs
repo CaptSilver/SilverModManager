@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Library.Catalog;
 using SilverModManager.App.UI.Helpers;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -127,7 +128,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         };
 
         LeftMenuStoreItems = new ReadOnlyObservableCollection<ILeftMenuItemViewModel>(
-            new ObservableCollection<ILeftMenuItemViewModel>(StoreLeftMenuItems.For(game, loadoutContext.LoadoutId, workspaceController, WorkspaceId)));
+            new ObservableCollection<ILeftMenuItemViewModel>(StoreLeftMenuItems.For(serviceProvider.GetRequiredService<ModCatalogs>(), game, loadoutContext.LoadoutId, workspaceController, WorkspaceId)));
 
         LeftMenuItemNewCollection = new NewCollectionViewModel(serviceProvider, loadout, workspaceController, workspaceId);
 

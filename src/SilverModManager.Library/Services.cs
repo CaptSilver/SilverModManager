@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Library.Catalog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Library.Inference;
@@ -46,11 +47,15 @@ public static class Services
             .AddSingleton<INexusUpdateDownloader, NexusUpdateDownloader>()
             .AddSingleton<IModSource, NexusModSource>()
             .AddSingleton<IModSource, ThunderstoreModSource>()
+            .AddSingleton<IModCatalog, NexusModCatalog>()
+            .AddSingleton<IModCatalog, ThunderstoreModCatalog>()
+            .AddSingleton<ModCatalogs>()
             .AddSingleton<ModSourceResolver>()
             .AddSingleton<ExpectedDownloads>()
             .AddSingleton<IExpectedDownloads>(provider => provider.GetRequiredService<ExpectedDownloads>())
             .AddLockVerbs()
             .AddThunderstoreVerbs()
+            .AddCatalogVerbs()
             .AddNexusModsVerbs();
     }
 }

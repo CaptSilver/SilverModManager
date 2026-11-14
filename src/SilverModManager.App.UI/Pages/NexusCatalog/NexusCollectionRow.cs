@@ -3,7 +3,7 @@ using NexusMods.Paths;
 using ReactiveUI;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.App.UI.Controls;
-using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.Networking.NexusWebApi;
 
 namespace SilverModManager.App.UI.Pages.NexusCatalog;
@@ -28,7 +28,7 @@ public sealed class NexusCollectionRow(NexusCollectionSearchHit hit, CollectionR
 
     /// <summary>"45 mods  ·  118 MB  ·  1.2K endorsements  ·  1.5M downloads", the small print under the title.</summary>
     public string Details => string.Create(CultureInfo.InvariantCulture,
-        $"{Hit.ModCount} mods  ·  {SizeComponent._FormatValue(Size.From(Hit.TotalSizeBytes))}  ·  {ThunderstoreRowText.CompactCount(Hit.Endorsements)} endorsements  ·  {ThunderstoreRowText.CompactCount(Hit.Downloads)} downloads");
+        $"{Hit.ModCount} mods  ·  {SizeComponent._FormatValue(Size.From(Hit.TotalSizeBytes))}  ·  {CardText.CompactCount(Hit.Endorsements)} endorsements  ·  {CardText.CompactCount(Hit.Downloads)} downloads");
 
     /// <summary>The revision of this collection the library holds, if it holds one; the newest when it holds several.</summary>
     public CollectionRevisionMetadataId? LibraryRevision

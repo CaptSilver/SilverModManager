@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Library.Catalog;
 using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.Wabbajack.Gallery;
 
@@ -20,11 +21,11 @@ public static class WabbajackGallerySorting
 {
     public static IReadOnlyList<StoreSortOption> Choices { get; } =
     [
-        new(nameof(WabbajackGallerySort.Updated), StoreSortLabels.RecentlyUpdated),
-        new(nameof(WabbajackGallerySort.Newest), StoreSortLabels.Newest),
-        new(nameof(WabbajackGallerySort.Name), StoreSortLabels.Name),
-        new(nameof(WabbajackGallerySort.LargestDownload), StoreSortLabels.LargestDownload),
-        new(nameof(WabbajackGallerySort.SmallestDownload), StoreSortLabels.SmallestDownload),
+        new(nameof(WabbajackGallerySort.Updated), CatalogSortLabels.RecentlyUpdated),
+        new(nameof(WabbajackGallerySort.Newest), CatalogSortLabels.Newest),
+        new(nameof(WabbajackGallerySort.Name), CatalogSortLabels.Name),
+        new(nameof(WabbajackGallerySort.LargestDownload), CatalogSortLabels.LargestDownload),
+        new(nameof(WabbajackGallerySort.SmallestDownload), CatalogSortLabels.SmallestDownload),
     ];
 
     /// <summary>
