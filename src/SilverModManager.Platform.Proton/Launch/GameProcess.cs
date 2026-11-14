@@ -66,7 +66,7 @@ public sealed partial class GameProcess : IGameProcess
     private const int SigTerm = 15;
 
     private readonly Process _process;
-    private readonly IProcessTracker? _tracker;
+    private readonly IRunningGameDetector? _detector;
     private readonly GameInstallation? _installation;
     private readonly TimeSpan _grace;
     private readonly bool _forwardTermination;
@@ -74,14 +74,14 @@ public sealed partial class GameProcess : IGameProcess
     private readonly IReadOnlySet<int> _excludedPids;
     private readonly ILogger? _logger;
 
-    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids, ILogger? logger)
+    private GameProcess(Process process, IRunningGameDetector? detector, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids, ILogger? logger)
     {
         _logger = logger;
         _excludedPids = excludedPids ?? new HashSet<int>();
         _forwardTermination = forwardTermination;
         _leaveSignalsAlone = leaveSignalsAlone;
         _process = process;
-        _tracker = tracker;
+        _detector = detector;
         _installation = installation;
         _grace = grace;
     }
@@ -105,7 +105,7 @@ public sealed partial class GameProcess : IGameProcess
     /// </param>
     public static GameProcess Start(
         GameProcessSpec spec,
-        IProcessTracker tracker,
+        IRunningGameDetector detector,
         GameInstallation installation,
         IReadOnlyDictionary<string, string>? baseEnvironment = null,
         TimeSpan? grace = null,
@@ -114,7 +114,7 @@ public sealed partial class GameProcess : IGameProcess
         ILogger? logger = null,
         Func<string, bool>? isInstalledSteamAppId = null)
     {
-        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger, isInstalledSteamAppId);
+        return Spawn(spec, detector, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger, isInstalledSteamAppId);
     }
 
     /// <summary>
@@ -124,12 +124,12 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null, isInstalledSteamAppId: null);
+        return Spawn(spec, detector: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null, isInstalledSteamAppId: null);
     }
 
     private static GameProcess Spawn(
         GameProcessSpec spec,
-        IProcessTracker? tracker,
+        IRunningGameDetector? detector,
         GameInstallation? installation,
         IReadOnlyDictionary<string, string>? baseEnvironment,
         TimeSpan? grace,
@@ -149,7 +149,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids, logger);
+        return new GameProcess(process, detector, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids, logger);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -275,8 +275,8 @@ public sealed partial class GameProcess : IGameProcess
         await _process.WaitForExitAsync(cancellationToken);
         var exitCode = _process.ExitCode;
 
-        var survivor = _tracker is { } tracker && _installation is { } installation
-            ? await ShutDownStragglersAsync(tracker, installation, cancellationToken)
+        var survivor = _detector is { } detector && _installation is { } installation
+            ? await ShutDownStragglersAsync(detector, installation, cancellationToken)
             : null;
         return new GameProcessResult(exitCode, survivor);
     }
@@ -311,8 +311,8 @@ public sealed partial class GameProcess : IGameProcess
     /// The child is gone but Wine servers, the reaper or the game itself can outlive it. They get the grace
     /// to leave on their own, then SIGTERM, then SIGKILL.
     /// </summary>
-    private Task<TrackedProcess?> ShutDownStragglersAsync(IProcessTracker tracker, GameInstallation installation, CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(tracker, installation, _grace, cancellationToken, _excludedPids, logger: _logger);
+    private Task<TrackedProcess?> ShutDownStragglersAsync(IRunningGameDetector detector, GameInstallation installation, CancellationToken cancellationToken)
+        => StragglerShutdown.RunAsync(detector, installation, _grace, cancellationToken, _excludedPids, logger: _logger);
 
     /// <inheritdoc />
     public void Dispose() => _process.Dispose();

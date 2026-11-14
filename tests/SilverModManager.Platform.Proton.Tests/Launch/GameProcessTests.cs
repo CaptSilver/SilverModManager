@@ -80,8 +80,10 @@ public class GameProcessTests : IDisposable
     [DllImport("libc", EntryPoint = "kill")]
     private static extern int Kill(int pid, int signal);
 
+    private static readonly RunningGameDetector NoDetector = TestDetectors.Over(Substitute.For<IProcessTracker>());
+
     private GameProcess Start(GameProcessSpec spec, IProcessTracker? tracker = null) =>
-        GameProcess.Start(spec, tracker ?? Substitute.For<IProcessTracker>(), Installation(), BasicEnvironment, Grace);
+        GameProcess.Start(spec, tracker is null ? NoDetector : TestDetectors.Over(tracker), Installation(), BasicEnvironment, Grace);
 
     [Theory]
     [InlineData(0)]
@@ -164,7 +166,7 @@ public class GameProcessTests : IDisposable
             """;
         // Stands in for the owner that stops the child itself. Without a handler the signal would end the test host.
         using var owner = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => context.Cancel = true);
-        using var process = GameProcess.Start(Sh(script), Substitute.For<IProcessTracker>(), Installation(), BasicEnvironment, Grace, forwardTermination: false);
+        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), BasicEnvironment, Grace, forwardTermination: false);
         await WaitForFile(File_("ready"));
 
         var wait = process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
@@ -182,8 +184,8 @@ public class GameProcessTests : IDisposable
         var tracker = Substitute.For<IProcessTracker>();
         using var stop = new StopHandler(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
 
-        new GameProcessFactory(tracker).ForwardTermination.Should().BeTrue();
-        new GameProcessFactory(tracker, stop).ForwardTermination.Should().BeFalse();
+        new GameProcessFactory(TestDetectors.Over(tracker)).ForwardTermination.Should().BeTrue();
+        new GameProcessFactory(TestDetectors.Over(tracker), stop).ForwardTermination.Should().BeFalse();
     }
 
     // No APPIMAGE and no readable exe links: only the pid rules apply, whatever the test host runs.
@@ -278,7 +280,7 @@ public class GameProcessTests : IDisposable
             ["SteamGameId"] = "1091500",
         };
         var script = $"env > '{File_("env")}'";
-        using var process = GameProcess.Start(Sh(script), Substitute.For<IProcessTracker>(), Installation(), env, Grace, isInstalledSteamAppId: id => id == "1091500");
+        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), env, Grace, isInstalledSteamAppId: id => id == "1091500");
         await process.WaitAsync();
 
         var lines = await File.ReadAllLinesAsync(File_("env"));
@@ -292,7 +294,7 @@ public class GameProcessTests : IDisposable
     public async Task PressureVesselIsUntouchedForAnEmptyRootList()
     {
         var env = new Dictionary<string, string>(BasicEnvironment) { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/a" };
-        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: []), Substitute.For<IProcessTracker>(), Installation(), env, Grace);
+        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: []), NoDetector, Installation(), env, Grace);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("PRESSURE_VESSEL_FILESYSTEMS_RW=/a");
@@ -311,7 +313,7 @@ public class GameProcessTests : IDisposable
     public async Task PressureVesselMergesRootsKeepingExistingEntriesAndDroppingDuplicates()
     {
         var env = new Dictionary<string, string>(BasicEnvironment) { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/a:/b" };
-        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: ["/b", "/c", "/c"]), Substitute.For<IProcessTracker>(), Installation(), env, Grace);
+        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: ["/b", "/c", "/c"]), NoDetector, Installation(), env, Grace);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("PRESSURE_VESSEL_FILESYSTEMS_RW=/a:/b:/c");
@@ -352,7 +354,7 @@ public class GameProcessTests : IDisposable
             };
             var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = forwarded };
 
-            using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), grace: Grace);
+            using var process = GameProcess.Start(spec, NoDetector, Installation(), grace: Grace);
             await process.WaitAsync();
 
             var lines = await File.ReadAllLinesAsync(File_("env"));
@@ -372,7 +374,7 @@ public class GameProcessTests : IDisposable
         var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "spec" } };
         var argument = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "argument" };
 
-        using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), argument, Grace);
+        using var process = GameProcess.Start(spec, NoDetector, Installation(), argument, Grace);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WHO=argument");
@@ -382,7 +384,7 @@ public class GameProcessTests : IDisposable
 
     private async Task<string[]> EnvironmentOf(GameProcessSpec spec, IReadOnlyDictionary<string, string> inherited)
     {
-        using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), inherited, Grace);
+        using var process = GameProcess.Start(spec, NoDetector, Installation(), inherited, Grace);
         await process.WaitAsync();
         return await File.ReadAllLinesAsync(File_("env"));
     }

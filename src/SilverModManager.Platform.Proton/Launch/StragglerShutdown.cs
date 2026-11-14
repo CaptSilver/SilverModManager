@@ -16,22 +16,20 @@ internal static partial class StragglerShutdown
 
     /// <summary>
     /// Gives the processes the grace to leave on their own, then SIGTERM, then SIGKILL, each with the grace.
-    /// Returns a process that survived SIGKILL, or null when the game is gone.
+    /// Returns a process that survived SIGKILL, or null when the game is gone. Tools the app started are neither
+    /// signalled nor waited on.
     /// </summary>
-    /// <param name="excludedPids">
+    /// <param name="protectedPids">
     /// Processes to leave alone, with all their ancestors. A forwarded launch's <c>run</c> process shares the game's
     /// prefix in its environment, so the tracker lists it, yet it is still waiting for the game's exit to be reported.
     /// </param>
     /// <param name="signal">Sends a signal to a pid and returns the call's result. Defaults to <c>kill(2)</c>.</param>
-    /// <param name="parentOf">Gives a pid's parent, or null. Defaults to reading <c>/proc</c>.</param>
-    /// <param name="family">Which processes are ours and so never stragglers. Defaults to <see cref="OwnProcessFamily.Current"/>.</param>
     /// <param name="logger">Receives each signal sent at Trace and each wait at Debug.</param>
     public static async Task<TrackedProcess?> RunAsync(
-        IProcessTracker tracker, GameInstallation installation, TimeSpan grace, CancellationToken cancellationToken,
-        IReadOnlySet<int>? excludedPids = null, Func<int, int, int>? signal = null, Func<int, int?>? parentOf = null,
-        OwnProcessFamily? family = null, ILogger? logger = null)
+        IRunningGameDetector detector, GameInstallation installation, TimeSpan grace, CancellationToken cancellationToken,
+        IReadOnlySet<int>? protectedPids = null, Func<int, int, int>? signal = null, ILogger? logger = null)
     {
-        var sweep = new Sweep(tracker, installation, grace, signal ?? kill, ProtectedPids(excludedPids, parentOf ?? ParentOf), family ?? OwnProcessFamily.Current, logger);
+        var sweep = new Sweep(detector, installation, grace, signal ?? kill, protectedPids, logger);
         var remaining = await sweep.WaitUntilGoneAsync(number: null, cancellationToken);
         if (remaining.Count > 0) remaining = await sweep.WaitUntilGoneAsync(SigTerm, cancellationToken);
         if (remaining.Count > 0) remaining = await sweep.WaitUntilGoneAsync(SigKill, cancellationToken);
@@ -40,7 +38,7 @@ internal static partial class StragglerShutdown
 
     private static string SignalName(int number) => number switch { SigTerm => "SIGTERM", SigKill => "SIGKILL", _ => $"signal {number}" };
 
-    private sealed class Sweep(IProcessTracker tracker, GameInstallation installation, TimeSpan grace, Func<int, int, int> signal, HashSet<int> protectedPids, OwnProcessFamily family, ILogger? logger)
+    private sealed class Sweep(IRunningGameDetector detector, GameInstallation installation, TimeSpan grace, Func<int, int, int> signal, IReadOnlySet<int>? protectedPids, ILogger? logger)
     {
         public async Task<IReadOnlyList<TrackedProcess>> WaitUntilGoneAsync(int? number, CancellationToken cancellationToken)
         {
@@ -70,19 +68,7 @@ internal static partial class StragglerShutdown
         }
 
         private IReadOnlyList<TrackedProcess> FindStragglers()
-            => family.Foreign(tracker.FindGameProcesses(installation)).Where(process => !protectedPids.Contains(process.Pid)).ToList();
-    }
-
-    // The excluded processes and everything above them. Their parents (a shell, the AppImage runtime, Steam's
-    // reaper) share the environment that makes the tracker list them, and end by themselves once the child does.
-    private static HashSet<int> ProtectedPids(IReadOnlySet<int>? excluded, Func<int, int?> parentOf)
-    {
-        var result = new HashSet<int>();
-        foreach (var start in excluded ?? new HashSet<int>())
-        {
-            for (int? pid = start; pid is > 1 && result.Add(pid.Value); pid = parentOf(pid.Value)) { }
-        }
-        return result;
+            => detector.Running(installation, protectedPids).Game;
     }
 
     /// <summary>The parent of <paramref name="pid"/> as <c>/proc/&lt;pid&gt;/stat</c> reports it, or null when it cannot be read.</summary>

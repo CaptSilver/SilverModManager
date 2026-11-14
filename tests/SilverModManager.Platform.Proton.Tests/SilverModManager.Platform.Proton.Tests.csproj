@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
     <!-- An in-memory MnemonicDB for the loadout resolver tests. -->
     <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />

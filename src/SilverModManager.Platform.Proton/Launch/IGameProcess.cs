@@ -37,17 +37,17 @@ public interface IGameProcessFactory
     Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken);
 }
 
-internal sealed class GameProcessFactory(IProcessTracker tracker, StopHandler? stop = null, bool leaveSignalsAlone = false, ILogger<GameProcessFactory>? logger = null, IGameRegistry? registry = null) : IGameProcessFactory
+internal sealed class GameProcessFactory(IRunningGameDetector detector, StopHandler? stop = null, bool leaveSignalsAlone = false, ILogger<GameProcessFactory>? logger = null, IGameRegistry? registry = null) : IGameProcessFactory
 {
     // A stop handler already terminates the game on SIGTERM and SIGHUP, in the phase-aware way.
     internal bool ForwardTermination => stop is null;
 
     public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
-        => GameProcess.Start(spec, tracker, installation, forwardTermination: ForwardTermination, leaveSignalsAlone: leaveSignalsAlone, logger: logger, isInstalledSteamAppId: registry is { } known ? appId => IsInstalledSteamApp(known, appId) : null);
+        => GameProcess.Start(spec, detector, installation, forwardTermination: ForwardTermination, leaveSignalsAlone: leaveSignalsAlone, logger: logger, isInstalledSteamAppId: registry is { } known ? appId => IsInstalledSteamApp(known, appId) : null);
 
     private static bool IsInstalledSteamApp(IGameRegistry registry, string appId) => registry.LocateGameInstallations()
         .Any(i => i.LocatorResult.Store == GameStore.Steam && i.LocatorResult.StoreIdentifier == appId);
 
     public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(tracker, installation, GameProcess.DefaultGrace, cancellationToken, logger: logger);
+        => StragglerShutdown.RunAsync(detector, installation, GameProcess.DefaultGrace, cancellationToken, logger: logger);
 }

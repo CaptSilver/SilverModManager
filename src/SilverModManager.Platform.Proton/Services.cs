@@ -47,7 +47,7 @@ public static class Services
         services.AddSettings<HostExecutionSettings>();
         services.TryAddSingleton(_ => HostExecution.ForThisProcess());
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
-        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddGameLaunchCore();
         services.AddSingleton<IPrefixInspector, PrefixInspector>();
         services.AddSingleton<IPrefixFileFetcher>(s => new HttpPrefixFileFetcher(s.GetRequiredService<HttpClient>()));
         services.AddSingleton<PrefixSetupRunner>();

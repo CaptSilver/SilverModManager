@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.Tests.Launch;
@@ -63,7 +64,7 @@ public class StragglerShutdownTests
     {
         var rig = new Rig(Game);
 
-        var survivor = await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None, signal: rig.Signal);
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig), Installation(), Grace, CancellationToken.None, signal: rig.Signal);
 
         survivor.Should().BeNull();
         rig.Signals.Should().Equal((Game, SigTerm), (Game, SigKill));
@@ -77,8 +78,8 @@ public class StragglerShutdownTests
         var rig = new Rig(Forwarder, ForwarderShell, Game);
         IReadOnlySet<int> excluded = new HashSet<int> { Forwarder };
 
-        var survivor = await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            excluded, rig.Signal, parentOf: pid => pid == Forwarder ? ForwarderShell : null);
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig, parentOf: pid => pid == Forwarder ? ForwarderShell : null), Installation(), Grace, CancellationToken.None,
+            excluded, rig.Signal);
 
         rig.Signals.Should().NotContain(s => s.Pid == Forwarder || s.Pid == ForwarderShell);
         rig.Signals.Should().Equal((Game, SigTerm), (Game, SigKill));
@@ -91,6 +92,9 @@ public class StragglerShutdownTests
     // but the kernel reports the resolved path in /proc/<pid>/exe.
     private const string AppImage = "/proc/self/root/opt/SilverModManager.AppImage";
     private static readonly string AppImageExe = ProcProcessTracker.RealPath(AppImage);
+
+    private static RunningGameDetector Detector(Rig rig, OwnProcessFamily? family = null, Func<int, int?>? parentOf = null, IStartedTools? tools = null)
+        => TestDetectors.Over(rig.Tracker, family, tools, parentOf, OwnPid);
 
     private static OwnProcessFamily Family(string? appImage, string? helperExe = null)
         => new(name => name == "APPIMAGE" ? appImage : null, pid => pid == Helper ? helperExe ?? AppImageExe : null, OwnPid);
@@ -105,11 +109,25 @@ public class StragglerShutdownTests
         // so the tracker lists it next to the game. It is the mount we run from.
         var rig = new Rig(Helper, Game);
 
-        var survivor = await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            signal: rig.Signal, family: Family(AppImage, helperExe));
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig, Family(AppImage, helperExe)), Installation(), Grace, CancellationToken.None,
+            signal: rig.Signal);
 
         rig.Signals.Should().Equal((Game, SigTerm), (Game, SigKill));
         survivor.Should().BeNull("the helper is not the game's, so it is not a survivor");
+    }
+
+    [Fact]
+    public async Task AStartedToolInThePrefixIsNeverSignalledAndDoesNotKeepTheSweepWaiting()
+    {
+        const int Tool = 650;
+        var tools = new StartedTools();
+        using var registration = tools.Register(Tool, "xEdit");
+        var rig = new Rig(Tool, Game);
+
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig, tools: tools), Installation(), Grace, CancellationToken.None, signal: rig.Signal);
+
+        survivor.Should().BeNull();
+        rig.Signals.Should().Equal((Game, SigTerm), (Game, SigKill));
     }
 
     [Fact]
@@ -118,8 +136,8 @@ public class StragglerShutdownTests
         var rig = new Rig(Helper);
         var watch = System.Diagnostics.Stopwatch.StartNew();
 
-        var survivor = await StragglerShutdown.RunAsync(rig.Tracker, Installation(), TimeSpan.FromSeconds(30), CancellationToken.None,
-            signal: rig.Signal, family: Family(AppImage));
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig, Family(AppImage)), Installation(), TimeSpan.FromSeconds(30), CancellationToken.None,
+            signal: rig.Signal);
 
         survivor.Should().BeNull();
         rig.Signals.Should().BeEmpty();
@@ -131,8 +149,8 @@ public class StragglerShutdownTests
     {
         var rig = new Rig(Helper);
 
-        var survivor = await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            signal: rig.Signal, family: Family(appImage: null));
+        var survivor = await StragglerShutdown.RunAsync(Detector(rig, Family(appImage: null)), Installation(), Grace, CancellationToken.None,
+            signal: rig.Signal);
 
         survivor.Should().BeNull();
         rig.Signals.Should().Equal((Helper, SigTerm), (Helper, SigKill));
@@ -143,8 +161,8 @@ public class StragglerShutdownTests
     {
         var rig = new Rig(OwnPid, Game);
 
-        await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            signal: rig.Signal, family: Family(appImage: null));
+        await StragglerShutdown.RunAsync(Detector(rig, Family(appImage: null)), Installation(), Grace, CancellationToken.None,
+            signal: rig.Signal);
 
         rig.Signals.Should().Equal((Game, SigTerm), (Game, SigKill));
     }
@@ -155,8 +173,8 @@ public class StragglerShutdownTests
         var rig = new Rig(Game);
         var log = new RecordingLogger();
 
-        await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            signal: rig.Signal, family: Family(appImage: null), logger: log);
+        await StragglerShutdown.RunAsync(Detector(rig, Family(appImage: null)), Installation(), Grace, CancellationToken.None,
+            signal: rig.Signal, logger: log);
 
         var trace = log.Entries.Where(e => e.Level == LogLevel.Trace).Select(e => e.Message).ToList();
         trace.Should().HaveCount(2);
@@ -170,8 +188,8 @@ public class StragglerShutdownTests
         var rig = new Rig(Game);
         var log = new RecordingLogger();
 
-        await StragglerShutdown.RunAsync(rig.Tracker, Installation(), Grace, CancellationToken.None,
-            signal: rig.Signal, family: Family(appImage: null), logger: log);
+        await StragglerShutdown.RunAsync(Detector(rig, Family(appImage: null)), Installation(), Grace, CancellationToken.None,
+            signal: rig.Signal, logger: log);
 
         var debug = log.Entries.Where(e => e.Level == LogLevel.Debug).Select(e => e.Message).ToList();
         debug.Should().HaveCount(3, "one wait before any signal and one after each signal");
@@ -183,7 +201,7 @@ public class StragglerShutdownTests
     {
         var log = new RecordingLogger();
 
-        await StragglerShutdown.RunAsync(new Rig().Tracker, Installation(), Grace, CancellationToken.None, family: Family(AppImage), logger: log);
+        await StragglerShutdown.RunAsync(Detector(new Rig(), Family(AppImage)), Installation(), Grace, CancellationToken.None, logger: log);
 
         log.Entries.Should().BeEmpty();
     }

@@ -177,8 +177,9 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
     var markers = Substitute.For<ILaunchFinishMarkers>();
     var active = new ActiveLaunchSessions();
     var finish = new LaunchFinish(synchronizer, markers, NullLogger<LaunchFinish>.Instance);
+    var tracker = Substitute.For<IProcessTracker>();
     var finisher = new PendingLaunchFinisher(Substitute.For<SilverModManager.MnemonicDB.Abstractions.IConnection>(), markers, lockFactory,
-        Substitute.For<IProcessTracker>(), active, [gate], finish, NullLogger<PendingLaunchFinisher>.Instance);
+        tracker, new RunningGameDetector(tracker, new SilverModManager.Platform.Proton.ToolRunner.StartedTools(), TimeProvider.System), active, [gate], finish, NullLogger<PendingLaunchFinisher>.Instance);
     var session = new LaunchSession(lockFactory, active, synchronizer, finish, finisher, markers, processes, [gate],
         Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null, stop);
     Console.WriteLine("ready");

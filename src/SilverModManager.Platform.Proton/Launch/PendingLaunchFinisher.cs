@@ -27,20 +27,20 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
     private readonly IEnumerable<ILaunchGate> gates;
     private readonly LaunchFinish finish;
     private readonly ILogger<PendingLaunchFinisher> logger;
-    private readonly OwnProcessFamily? family;
+    private readonly IRunningGameDetector detector;
     private readonly Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf;
 
     // Public so LaunchSession, a public type, can take it and the container can build it; the optional pieces are
     // for tests and stay internal.
     public PendingLaunchFinisher(IConnection connection, ILaunchFinishMarkers markers, IInstallationLockFactory locks, IProcessTracker tracker,
-        ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger)
-        : this(connection, markers, locks, tracker, sessions, gates, finish, logger, null, null)
+        IRunningGameDetector detector, ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger)
+        : this(connection, markers, locks, tracker, detector, sessions, gates, finish, logger, null)
     {
     }
 
     internal PendingLaunchFinisher(IConnection connection, ILaunchFinishMarkers markers, IInstallationLockFactory locks, IProcessTracker tracker,
-        ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger,
-        OwnProcessFamily? family, Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf)
+        IRunningGameDetector detector, ActiveLaunchSessions sessions, IEnumerable<ILaunchGate> gates, LaunchFinish finish, ILogger<PendingLaunchFinisher> logger,
+        Func<LoadoutId, IReadOnlyList<WineDllOverride>>? wineOverridesOf)
     {
         this.connection = connection;
         this.markers = markers;
@@ -50,7 +50,7 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
         this.gates = gates;
         this.finish = finish;
         this.logger = logger;
-        this.family = family;
+        this.detector = detector;
         this.wineOverridesOf = wineOverridesOf;
     }
 
@@ -172,19 +172,27 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
         LaunchFinishReport Report(LaunchFinishOutcome outcome, string? message = null, Exception? cause = null, bool stillApplied = false)
             => new(outcome, installation, message, cause, stillApplied);
 
-        if (installation.LocatorResult.StoreUpdatePending || SteamInstallStepRunning(installation))
+        if (SteamIsUpdating(installation, tracker))
         {
             logger.LogWarning("Steam is updating {Game}; its pending finish waits", game);
             return Report(LaunchFinishOutcome.WaitingForSteam,
                 $"Steam is updating {game}, so the changes from your last session are not in '{name}' yet. The app finishes this after the update, the next time it applies or launches.");
         }
 
-        var foreign = (family ?? OwnProcessFamily.Current).Foreign(tracker.FindGameProcesses(installation));
-        if (foreign.Count > 0)
+        var running = detector.Running(installation);
+        if (running.Game.Count > 0)
         {
-            logger.LogWarning("{Game} is still running ({Processes}); its pending finish waits", game, string.Join(", ", foreign.Select(p => $"{p.Name}:{p.Pid}")));
+            logger.LogWarning("{Game} is still running ({Processes}); its pending finish waits", game, string.Join(", ", running.Game.Select(p => $"{p.Name}:{p.Pid}")));
             return Report(LaunchFinishOutcome.GameRunning,
                 $"{game} is still running, so the changes from your last session are not in '{name}' yet. Quit the game; the app finishes this the next time it applies or launches.");
+        }
+
+        if (running.Tools.Count > 0)
+        {
+            var tool = running.Tools[0];
+            logger.LogWarning("{Tool} is still open in {Game}'s prefix ({Processes}); its pending finish waits", tool.Name, game, string.Join(", ", running.Tools.Select(p => $"{p.Name}:{p.Pid}")));
+            return Report(LaunchFinishOutcome.GameRunning,
+                $"Close {tool.Name} ({tool.Pid}); it is open in {game}'s prefix, and the changes from your last session are taken into '{name}' once it is.");
         }
 
         var ownLock = heldLock is null;
@@ -246,10 +254,12 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
 
     private static string NameOf(PendingLaunchFinish marker) => marker.LoadoutName is { } name ? $"'{name}'" : "its loadout";
 
-    private bool SteamInstallStepRunning(GameInstallation installation)
-        => installation.LocatorResult.Store == GameStore.Steam
-           && uint.TryParse(installation.LocatorResult.StoreIdentifier, out var appId)
-           && tracker.IsInstallStepRunning(appId);
+    /// <summary>Whether Steam has an update pending for the game or is running its install-script step.</summary>
+    internal static bool SteamIsUpdating(GameInstallation installation, IProcessTracker tracker)
+        => installation.LocatorResult.StoreUpdatePending
+           || (installation.LocatorResult.Store == GameStore.Steam
+               && uint.TryParse(installation.LocatorResult.StoreIdentifier, out var appId)
+               && tracker.IsInstallStepRunning(appId));
 
     private IReadOnlyList<WineDllOverride> WineOverrides(GameInstallation installation, LoadoutId loadoutId)
         => wineOverridesOf is not null

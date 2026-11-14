@@ -9,6 +9,7 @@ using NSubstitute;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.PrefixSetup;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 
@@ -117,7 +118,7 @@ public class PrefixSetupRunnerTests : IDisposable
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gameFolder)));
     }
 
-    private PrefixSetupRunner Runner(OwnProcessFamily? family = null) => new(_resolver, _processes, _locks, _tools, _inspector, _fetcher, _fs, _time, id => id.Value switch
+    private PrefixSetupRunner Runner(OwnProcessFamily? family = null) => new(_resolver, _processes, TestDetectors.Over(_processes, family), _locks, _tools, _inspector, _fetcher, _fs, _time, id => id.Value switch
     {
         "vcrun2022" or "vcrun2019" => _vc,
         "d3dcompiler_47" => _d3d,
@@ -213,7 +214,7 @@ public class PrefixSetupRunnerTests : IDisposable
     [Fact]
     public async Task DryRun_ReportsTheRealPinnedTable()
     {
-        var runner = new PrefixSetupRunner(_resolver, _processes, _locks, _tools, _inspector, _fetcher, _fs, _time);
+        var runner = new PrefixSetupRunner(_resolver, _processes, TestDetectors.Over(_processes), _locks, _tools, _inspector, _fetcher, _fs, _time);
 
         var plan = (await runner.Run(_installation, DryRun("vcrun2022", "d3dcompiler_47"), CancellationToken.None)).Plan;
 
@@ -372,6 +373,20 @@ public class PrefixSetupRunnerTests : IDisposable
         (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message.Should().Contain("wineserver");
         asked.Should().Be(_prefixPath);
         _tools.Commands.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Write_IsRefusedWhileAToolTheAppStartedIsOpenInThePrefix()
+    {
+        var tools = new StartedTools();
+        using var registration = tools.Register(903, "xEdit");
+        _processes.ForInstallation = _ => [new TrackedProcess(903, "xEdit64.exe")];
+        var runner = new PrefixSetupRunner(_resolver, _processes, TestDetectors.Over(_processes, tools: tools), _locks, _tools, _inspector, _fetcher, _fs, _time);
+
+        var act = () => runner.Run(_installation, Write("vcrun2022"), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<PrefixSetupRefusedException>()).Which.Message.Should().Contain("xEdit (pid 903)");
+        _fetcher.Fetched.Should().BeEmpty();
     }
 
     private const int AppImageHelper = 902;

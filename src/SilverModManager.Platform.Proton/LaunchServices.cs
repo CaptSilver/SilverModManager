@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -18,7 +19,20 @@ public static class LaunchServices
     /// through the launch session.
     /// </summary>
     public static IServiceCollection LeaveSignalsToHost(this IServiceCollection services)
-        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true, logger: s.GetService<ILogger<GameProcessFactory>>(), registry: s.GetService<IGameRegistry>())));
+        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IRunningGameDetector>(), stop: null, leaveSignalsAlone: true, logger: s.GetService<ILogger<GameProcessFactory>>(), registry: s.GetService<IGameRegistry>())));
+
+    /// <summary>
+    /// The services every way of starting or waiting on a game shares: the clock, the registry of tools the app
+    /// started, and the detector that answers whether a game is still running. Registered by the headless launch,
+    /// by the prefix and tool services and by test graphs that build only part of the stack.
+    /// </summary>
+    public static IServiceCollection AddGameLaunchCore(this IServiceCollection services)
+    {
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.TryAddSingleton<IStartedTools, StartedTools>();
+        services.TryAddSingleton<IRunningGameDetector, RunningGameDetector>();
+        return services;
+    }
 
     /// <summary>
     /// Registers the services that let a game launch run without the GUI.
@@ -27,6 +41,7 @@ public static class LaunchServices
     {
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
+        services.AddGameLaunchCore();
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
         services.TryAddSingleton<ISteamUriLauncher>(s => new SteamBinaryUriLauncher(
             s.GetRequiredService<IProcessRunner>(),

@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -79,11 +80,11 @@ public class PendingLaunchFinisherTests : IDisposable
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
     }
 
-    private PendingLaunchFinisher NewFinisher(OwnProcessFamily? family = null)
+    private PendingLaunchFinisher NewFinisher(OwnProcessFamily? family = null, StartedTools? tools = null)
     {
         var finish = new LaunchFinish(_synchronizer, _markers, NullLogger<LaunchFinish>.Instance);
-        var finisher = new PendingLaunchFinisher(Substitute.For<IConnection>(), _markers, _locks, _tracker, _sessions, [_gateA, _gateB], finish,
-            NullLogger<PendingLaunchFinisher>.Instance, family ?? new OwnProcessFamily(_ => null, _ => null, OwnPid), _ => []);
+        var finisher = new PendingLaunchFinisher(Substitute.For<IConnection>(), _markers, _locks, _tracker, TestDetectors.Over(_tracker, family, tools, ownPid: OwnPid), _sessions, [_gateA, _gateB], finish,
+            NullLogger<PendingLaunchFinisher>.Instance, _ => []);
         finisher.Reports.Subscribe(_reports.Add);
         return finisher;
     }
@@ -447,13 +448,35 @@ public class PendingLaunchFinisherTests : IDisposable
     }
 
     [Fact]
-    public async Task TheFourMessages_ReadAsWritten()
+    public async Task FinishIfPending_WhileOnlyAStartedToolIsOpen_KeepsTheMarkerAndNamesTheTool()
+    {
+        await MarkPending();
+        var tools = new StartedTools();
+        using var registration = tools.Register(600, "xEdit");
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(600, "xEdit64.exe")]);
+
+        var report = await NewFinisher(tools: tools).FinishIfPending(_installation);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.GameRunning);
+        report.Message.Should().Be("Close xEdit (600); it is open in Test Game's prefix, and the changes from your last session are taken into 'My Loadout' once it is.");
+        _markers.IsSet.Should().BeTrue();
+        _events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task EachMessage_ReadsAsWritten()
     {
         await MarkPending();
         var finisher = NewFinisher();
+        var tools = new StartedTools();
+        using var registration = tools.Register(600, "xEdit");
+        var toolFinisher = NewFinisher(tools: tools);
 
         _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(GamePid, "game.exe")]);
         (await finisher.FinishIfPending(_installation)).Message.Should().Be("Test Game is still running, so the changes from your last session are not in 'My Loadout' yet. Quit the game; the app finishes this the next time it applies or launches.");
+
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(600, "xEdit64.exe")]);
+        (await toolFinisher.FinishIfPending(_installation)).Message.Should().Be("Close xEdit (600); it is open in Test Game's prefix, and the changes from your last session are taken into 'My Loadout' once it is.");
 
         _state = PendingLaunchFinishState.LoadoutGone;
         _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns(Array.Empty<TrackedProcess>());

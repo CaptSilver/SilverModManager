@@ -28,7 +28,7 @@ internal static class TestFinishers
             tracker = Substitute.For<IProcessTracker>();
             tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns(Array.Empty<TrackedProcess>());
         }
-        return new PendingLaunchFinisher(Substitute.For<IConnection>(), markers, locks, tracker, active, gates, finish,
-            NullLogger<PendingLaunchFinisher>.Instance, new OwnProcessFamily(_ => null, _ => null, OwnPid), _ => []);
+        return new PendingLaunchFinisher(Substitute.For<IConnection>(), markers, locks, tracker, TestDetectors.Over(tracker, ownPid: OwnPid), active, gates, finish,
+            NullLogger<PendingLaunchFinisher>.Instance, _ => []);
     }
 }

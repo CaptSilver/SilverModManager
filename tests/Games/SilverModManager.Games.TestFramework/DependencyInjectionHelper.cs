@@ -11,6 +11,7 @@ using SilverModManager.Abstractions.Serialization;
 using SilverModManager.Backend;
 using SilverModManager.Collections;
 using SilverModManager.CrossPlatform;
+using SilverModManager.Platform.Proton;
 using SilverModManager.DataModel;
 using SilverModManager.Deployment.Staging;
 using SilverModManager.FileExtractor;
@@ -83,6 +84,7 @@ public static class DependencyInjectionHelper
             .AddInMemoryUserGameInstallStore()
             .AddFakeProcessTracker()
             .AddSingleton(Substitute.For<ISteamUriLauncher>())
+            .AddGameLaunchCore()
             .AddFakeGameLaunchSession()
             .AddFakeLoadoutInstallActivity()
             .AddFakeToolRunner()

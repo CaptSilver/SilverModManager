@@ -33,6 +33,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
 
     private readonly IPrefixResolver _resolver;
     private readonly IProcessTracker _processes;
+    private readonly IRunningGameDetector _detector;
     private readonly IInstallationLockFactory _locks;
     private readonly IToolRunner _tools;
     private readonly IPrefixInspector _inspector;
@@ -48,17 +49,19 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     public PrefixSetupRunner(
         IPrefixResolver resolver,
         IProcessTracker processes,
+        IRunningGameDetector detector,
         IInstallationLockFactory locks,
         IToolRunner tools,
         IPrefixInspector inspector,
         IPrefixFileFetcher fetcher,
         IFileSystem fileSystem,
         TimeProvider time)
-        : this(resolver, processes, locks, tools, inspector, fetcher, fileSystem, time, PrefixComponents.Get) { }
+        : this(resolver, processes, detector, locks, tools, inspector, fetcher, fileSystem, time, PrefixComponents.Get) { }
 
     internal PrefixSetupRunner(
         IPrefixResolver resolver,
         IProcessTracker processes,
+        IRunningGameDetector detector,
         IInstallationLockFactory locks,
         IToolRunner tools,
         IPrefixInspector inspector,
@@ -70,6 +73,7 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
     {
         _resolver = resolver;
         _processes = processes;
+        _detector = detector;
         _locks = locks;
         _tools = tools;
         _inspector = inspector;
@@ -216,9 +220,12 @@ public sealed class PrefixSetupRunner : IPrefixSetupRunner
 
     private void RequireNoRunningProcesses(GameInstallation installation, ResolvedPrefix prefix)
     {
-        var running = _ownProcessFamily.Foreign(_processes.FindGameProcesses(installation)
-            .Concat(_processes.FindByPrefix(prefix.Path))
-            .DistinctBy(p => p.Pid));
+        // The detector covers what the locator recorded; the resolved prefix can differ from it, so it is asked as well.
+        var recorded = _detector.Running(installation);
+        var running = recorded.Game.Concat(recorded.Tools)
+            .Concat(_ownProcessFamily.Foreign(_processes.FindByPrefix(prefix.Path)))
+            .DistinctBy(p => p.Pid)
+            .ToList();
         if (running.Count == 0) return;
 
         var names = string.Join(", ", running.Select(p => $"{p.Name} (pid {p.Pid})"));
