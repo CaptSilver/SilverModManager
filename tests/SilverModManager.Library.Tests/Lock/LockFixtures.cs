@@ -117,6 +117,22 @@ internal sealed class LockFixtures(IConnection connection)
         });
     }
 
+    public Task<LibraryFile.ReadOnly> AddGameBananaFile(string fileName, string content, Sha256Value? pinned, long modId, long fileId, long dateUpdated = 0, int gameId = 297)
+    {
+        return AddLibraryFile(fileName, content, pinned, (tx, file) =>
+        {
+            _ = new GameBananaLibraryFile.New(tx, file.Id)
+            {
+                LibraryFile = file,
+                ModId = modId,
+                FileId = fileId,
+                GameId = gameId,
+                ListedFileName = fileName,
+                DateUpdated = dateUpdated,
+            };
+        });
+    }
+
     public Task<LibraryFile.ReadOnly> AddThunderstoreFile(string team, string name, string version, string content, Sha256Value? pinned, string community = "repo", bool storeDigest = true, Action<ITransaction, LibraryFile.New>? extend = null)
     {
         var fileName = $"{team}-{name}-{version}.zip";

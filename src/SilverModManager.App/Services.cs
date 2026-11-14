@@ -28,6 +28,7 @@ using SilverModManager.Games.Generic;
 using SilverModManager.Library;
 using SilverModManager.Networking.EpicGameStore;
 using SilverModManager.Networking.Forums;
+using SilverModManager.Networking.GameBanana;
 using SilverModManager.Networking.GitHub;
 using SilverModManager.Networking.GOG;
 using SilverModManager.Networking.HttpDownloader;
@@ -225,6 +226,7 @@ public static class Services
             .AddFileHashes()
             .AddTextMergeEngine()
             .AddGitHubApi()
+            .AddGameBanana()
             .AddThunderstore()
             .AddWabbajack();
 

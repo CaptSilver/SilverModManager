@@ -9,7 +9,7 @@ namespace SilverModManager.Library.Lock;
 /// must have.
 /// </summary>
 /// <param name="Id">The table name in the lock file.</param>
-/// <param name="FileId">The Nexus Mods file id; only Nexus Mods entries have one.</param>
+/// <param name="FileId">The Nexus Mods or GameBanana file id; entries of other sources have none.</param>
 /// <param name="Asset">The file name of the archive.</param>
 /// <param name="Sha256">The expected digest as the lock file spells it. It may be empty or malformed; those entries never verify.</param>
 /// <param name="Source">One of <see cref="LockSources.All"/>; the <see cref="ILibrarySource.Name"/> of the source that fetches it.</param>
@@ -36,9 +36,14 @@ public static class LockSources
     public const string Thunderstore = "thunderstore";
 
     /// <summary>
+    /// Not a source erm knows either; the entry's <c>file_id</c> is the GameBanana file's id.
+    /// </summary>
+    public const string GameBanana = "gamebanana";
+
+    /// <summary>
     /// Every source a lock file may name.
     /// </summary>
-    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore];
+    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore, GameBanana];
 }
 
 /// <summary>

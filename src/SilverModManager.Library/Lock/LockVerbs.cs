@@ -21,6 +21,7 @@ internal static class LockVerbs
         .AddSingleton<ILibrarySource, NexusLibrarySource>()
         .AddSingleton<ILibrarySource, GitHubLibrarySource>()
         .AddSingleton<ILibrarySource, ThunderstoreLibrarySource>()
+        .AddSingleton<ILibrarySource, GameBananaLibrarySource>()
         .AddTransient<LockExport>()
         .AddTransient<LockVerify>()
         .AddTransient<LockImport>()

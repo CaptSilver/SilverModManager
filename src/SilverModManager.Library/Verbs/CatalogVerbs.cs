@@ -44,6 +44,17 @@ internal static class CatalogVerbs
         [Option("j", "json", "Print the cards as JSON, then the cursor of the next page", true)] bool json)
     {
         var (catalog, game) = CatalogOrRefuse(catalogs, games, loadout, source);
+        return await RunSearch(renderer, catalog, game, adultContent, token, query, sort, cursor, adult, json);
+    }
+
+    /// <summary>
+    /// Lists one page of <paramref name="catalog"/> the way <c>catalog search</c> does, so a verb of one source prints
+    /// what the general one would.
+    /// </summary>
+    internal static async Task<int> RunSearch(
+        IRenderer renderer, IModCatalog catalog, IGameData game, IAdultContentSetting adultContent, CancellationToken token,
+        string? query, string? sort, string? cursor, bool adult, bool json)
+    {
         var chosen = sort is null
             ? catalog.Sorts[0]
             : catalog.Sorts.FirstOrDefault(candidate => candidate.Key.Equals(sort, StringComparison.OrdinalIgnoreCase))
@@ -97,6 +108,15 @@ internal static class CatalogVerbs
         var card = await catalog.Find(game, id, token)
             ?? throw new LoadoutVerbRefusedException($"{catalog.DisplayName} has no mod with the id '{id}' for this game; `silvermodmanager catalog search` lists them");
 
+        return await RunInstall(renderer, catalog, card, loadout, json, token);
+    }
+
+    /// <summary>
+    /// Installs the card the way <c>catalog install</c> does and prints what happened, so a verb of one source reads
+    /// the same as the general one.
+    /// </summary>
+    internal static async Task<int> RunInstall(IRenderer renderer, IModCatalog catalog, CatalogCard card, Loadout.ReadOnly loadout, bool json, CancellationToken token)
+    {
         switch (await catalog.Install(card, loadout.LoadoutId, token))
         {
             case CatalogInstallOutcome.Installed installed:
@@ -118,6 +138,10 @@ internal static class CatalogVerbs
                 throw new InvalidOperationException("A catalog answered an install with an outcome this verb does not know.");
         }
     }
+
+    internal static IGameData GameOf(IEnumerable<IGameData> games, Loadout.ReadOnly loadout)
+        => (GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId) ? games.FirstOrDefault(candidate => candidate.GameId == gameId) : null)
+           ?? throw new LoadoutVerbRefusedException("The loadout's game is not one this app knows.");
 
     private static (IModCatalog Catalog, IGameData Game) CatalogOrRefuse(ModCatalogs catalogs, IEnumerable<IGameData> games, Loadout.ReadOnly loadout, string source)
     {
