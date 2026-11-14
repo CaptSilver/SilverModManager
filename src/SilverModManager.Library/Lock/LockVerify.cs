@@ -27,6 +27,21 @@ public sealed class LockVerify(IConnection connection, LibraryFileDigests digest
 
         foreach (var entry in lockFile.Entries)
         {
+            // Steam keeps a Workshop item's bytes, so the library has nothing to compare; the entry says where to get it.
+            if (entry.Source == LockSources.SteamWorkshop)
+            {
+                try
+                {
+                    items.Add(new LockReportItem(LockLevel.Warn, WorkshopLockEntries.SubscribeMessage(entry)));
+                }
+                catch (LockException e)
+                {
+                    items.Add(new LockReportItem(LockLevel.Fail, e.Message));
+                }
+
+                continue;
+            }
+
             if (!Sha256Value.TryParse(entry.Sha256, out var expected))
             {
                 items.Add(new LockReportItem(LockLevel.Fail, $"{entry.Id}: the lock has no valid sha256 for {entry.Asset}"));

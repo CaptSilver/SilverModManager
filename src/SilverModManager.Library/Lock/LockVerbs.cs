@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Library.Sources;
 using SilverModManager.Library.Verbs;
+using SilverModManager.Library.Workshop;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -22,6 +23,7 @@ internal static class LockVerbs
         .AddSingleton<ILibrarySource, GitHubLibrarySource>()
         .AddSingleton<ILibrarySource, ThunderstoreLibrarySource>()
         .AddSingleton<ILibrarySource, GameBananaLibrarySource>()
+        .AddSingleton<IWorkshopLockEntries, WorkshopLockEntries>()
         .AddTransient<LockExport>()
         .AddTransient<LockVerify>()
         .AddTransient<LockImport>()
@@ -63,9 +65,9 @@ internal static class LockVerbs
 
     private sealed record ExportReport(string Path, string[] Entries, string[] Skipped);
 
-    private sealed record ImportReport(string[] Verified, string[] Skipped, string[] Failed, string[] Installed);
+    private sealed record ImportReport(string[] Verified, string[] Skipped, string[] Failed, string[] Installed, string[] Subscribe);
 
-    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release and Thunderstore files of a loadout to a lock file, skipping and reporting a file with no SHA-256 and no bytes in the file store; source = \"thunderstore\" entries are new to erm and it will not read them")]
+    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release, Thunderstore and GameBanana files of a loadout, and its game's Steam Workshop items by id, to a lock file, skipping and reporting a file with no SHA-256 and no bytes in the file store; source = \"thunderstore\" entries are new to erm and it will not read them")]
     private static async Task<int> ExportLock(
         [Injected] IRenderer renderer,
         [Injected] LockExport export,
@@ -127,8 +129,9 @@ internal static class LockVerbs
         {
             foreach (var outcome in summary.Verified) await renderer.TextLine($"[verified] {outcome.Message}");
             foreach (var outcome in summary.Skipped) await renderer.TextLine($"[skipped] {outcome.Message}");
+            foreach (var outcome in summary.Subscribe) await renderer.TextLine($"[subscribe] {outcome.Message}");
             foreach (var outcome in summary.Failed) await renderer.TextLine($"[failed] {outcome.Message}");
-            await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Failed.Count} failed.");
+            await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Subscribe.Count} to subscribe to in Steam, {summary.Failed.Count} failed.");
         }
 
         // The verified files and the ones that were already there belong in the loadout; a failed entry never does.
@@ -152,7 +155,8 @@ internal static class LockVerbs
                 summary.Verified.Select(o => o.Message).ToArray(),
                 summary.Skipped.Select(o => o.Message).ToArray(),
                 summary.Failed.Select(o => o.Message).ToArray(),
-                installed.ToArray()), CliJson.Options));
+                installed.ToArray(),
+                summary.Subscribe.Select(o => o.Message).ToArray()), CliJson.Options));
         }
 
         return summary.Failed.Count == 0 ? 0 : 1;

@@ -14,10 +14,11 @@ namespace SilverModManager.Library.Lock;
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.
 /// </summary>
 [PublicAPI]
-public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests, ICollectionOwnership ownership)
+public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests, ICollectionOwnership ownership, IWorkshopLockEntries? workshop = null)
 {
     /// <summary>
-    /// Exports every enabled group that links a file one of the library sources owns. A group that links anything else
+    /// Exports every enabled group that links a file one of the library sources owns, and every Steam Workshop item of the
+    /// loadout's game as an entry that names the item and pins no bytes. A group that links anything else
     /// fails the export: a lock that quietly left a mod out would be worse than none. The exception is a dangling
     /// file (no SHA-256 and no bytes in the file store, such as an unfinished download's record): nothing can pin it,
     /// so it is left out and its message added to <paramref name="skipped"/>. A group under a collection that owns its
@@ -61,6 +62,16 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileD
 
             if (!entries.TryAdd(entry.Id, entry))
                 throw new LockException($"{MarkdownText.Code(groupName)} ({MarkdownText.Code(file.FileName)}) and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");
+        }
+
+        // Steam's items are no library files, so no group above links them.
+        if (workshop is not null)
+        {
+            foreach (var entry in await workshop.For(loadout, cancellationToken))
+            {
+                if (!entries.TryAdd(entry.Id, entry))
+                    throw new LockException($"{MarkdownText.Code(entry.Asset)} and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");
+            }
         }
 
         return new LockFile(entries.Values.ToArray());

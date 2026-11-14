@@ -41,9 +41,15 @@ public static class LockSources
     public const string GameBanana = "gamebanana";
 
     /// <summary>
+    /// Not a source erm knows. The entry's <c>file_id</c> is the Workshop item's published file id and its
+    /// <c>sha256</c> is empty: Steam owns the files, so an import lists a subscribe link and downloads nothing.
+    /// </summary>
+    public const string SteamWorkshop = "steam-workshop";
+
+    /// <summary>
     /// Every source a lock file may name.
     /// </summary>
-    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore, GameBanana];
+    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore, GameBanana, SteamWorkshop];
 }
 
 /// <summary>

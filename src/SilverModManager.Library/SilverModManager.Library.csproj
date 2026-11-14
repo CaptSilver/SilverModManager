@@ -10,6 +10,7 @@
         <ProjectReference Include="..\SilverModManager.Networking.GameBanana\SilverModManager.Networking.GameBanana.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.Steam\SilverModManager.Networking.Steam.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
     </ItemGroup>

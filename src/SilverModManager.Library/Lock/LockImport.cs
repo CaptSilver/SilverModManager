@@ -16,6 +16,9 @@ public enum LockAction
     Skip,
     Download,
     Fail,
+
+    /// <summary>Steam owns the item: nothing is downloaded and the report names where to subscribe.</summary>
+    Subscribe,
 }
 
 /// <summary>
@@ -34,7 +37,11 @@ public sealed record LockImportPlan(IReadOnlyList<LockPlanItem> Items, NexusMods
 public sealed record LockOutcome(LockEntry Entry, string Message, LibraryFile.ReadOnly? File = null);
 
 [PublicAPI]
-public sealed record LockImportSummary(IReadOnlyList<LockOutcome> Verified, IReadOnlyList<LockOutcome> Failed, IReadOnlyList<LockOutcome> Skipped);
+public sealed record LockImportSummary(IReadOnlyList<LockOutcome> Verified, IReadOnlyList<LockOutcome> Failed, IReadOnlyList<LockOutcome> Skipped)
+{
+    /// <summary>The entries Steam keeps, each with the link to subscribe to it. They are not failures: nothing was to be downloaded.</summary>
+    public IReadOnlyList<LockOutcome> Subscribe { get; init; } = [];
+}
 
 /// <summary>
 /// Brings the files a lock names into the library. Every download is checked against the digest in the lock, and a
@@ -60,6 +67,19 @@ public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySourc
 
     private LockPlanItem PlanEntry(LockEntry entry, LibrarySourceContext context)
     {
+        // Steam owns a Workshop item's bytes, so there is no digest to check and no source to ask.
+        if (entry.Source == LockSources.SteamWorkshop)
+        {
+            try
+            {
+                return new LockPlanItem(entry, LockAction.Subscribe, WorkshopLockEntries.SubscribeMessage(entry));
+            }
+            catch (LockException e)
+            {
+                return new LockPlanItem(entry, LockAction.Fail, e.Message);
+            }
+        }
+
         if (!Sha256Value.TryParse(entry.Sha256, out var expected))
             return new LockPlanItem(entry, LockAction.Fail, $"{entry.Id}: the lock has no valid sha256 for {entry.Asset}, so a download could not be verified.");
 
@@ -87,7 +107,7 @@ public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySourc
     /// </summary>
     public async ValueTask<LockImportSummary> Apply(LockImportPlan plan, CancellationToken cancellationToken = default)
     {
-        List<LockOutcome> verified = [], failed = [], skipped = [];
+        List<LockOutcome> verified = [], failed = [], skipped = [], subscribe = [];
 
         foreach (var item in plan.Items)
         {
@@ -99,6 +119,9 @@ public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySourc
                 case LockAction.Fail:
                     failed.Add(new LockOutcome(item.Entry, item.Message));
                     break;
+                case LockAction.Subscribe:
+                    subscribe.Add(new LockOutcome(item.Entry, item.Message));
+                    break;
                 default:
                     var outcome = await Download(item, new LibrarySourceContext(connection, plan.GameData, plan.Game), cancellationToken);
                     (outcome.File is null ? failed : verified).Add(outcome);
@@ -106,7 +129,7 @@ public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySourc
             }
         }
 
-        return new LockImportSummary(verified, failed, skipped);
+        return new LockImportSummary(verified, failed, skipped) { Subscribe = subscribe };
     }
 
     private async ValueTask<LockOutcome> Download(LockPlanItem item, LibrarySourceContext context, CancellationToken cancellationToken)

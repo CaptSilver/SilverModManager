@@ -13,6 +13,8 @@ using SilverModManager.Library.Lock;
 using SilverModManager.Library.Migrations;
 using SilverModManager.Library.Pickup;
 using SilverModManager.Library.Verbs;
+using SilverModManager.Library.Workshop;
+using SilverModManager.Networking.Steam.Workshop;
 using SilverModManager.Sdk.Library;
 
 namespace SilverModManager.Library;
@@ -54,6 +56,9 @@ public static class Services
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GitHubModSource>(provider, GitHubClients.Api(provider), GitHubClients.Http(provider)))
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GameBananaProfiles>(provider, GameBananaClients.Api(provider)))
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GameBananaModSource>(provider, GameBananaClients.Http(provider)))
+            .AddSingleton(SteamWorkshopSettings.Default)
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<WorkshopItemsView>(provider, SteamWorkshopClients.Api(provider)))
+            .AddSingleton<IModSource, SteamWorkshopSource>()
             .AddSingleton<GitHubShelfEntries>()
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GitHubReleases>(provider, GitHubClients.Api(provider)))
             .AddSingleton<IModCatalog, NexusModCatalog>()
@@ -63,6 +68,8 @@ public static class Services
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GameBananaCatalog>(provider, GameBananaClients.Api(provider), GameBananaClients.Http(provider)))
             .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<GameBananaCatalog>())
             .AddSingleton<IGameBananaInstaller>(provider => provider.GetRequiredService<GameBananaCatalog>())
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<SteamWorkshopCatalog>(provider, SteamWorkshopClients.Api(provider)))
+            .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<SteamWorkshopCatalog>())
             .AddSingleton<ModCatalogs>()
             .AddSingleton<ModSourceResolver>()
             .AddSingleton<ExpectedDownloads>()
@@ -72,6 +79,7 @@ public static class Services
             .AddCatalogVerbs()
             .AddGitHubVerbs()
             .AddGameBananaVerbs()
+            .AddWorkshopVerbs()
             .AddNexusModsVerbs();
     }
 }
