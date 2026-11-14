@@ -14,10 +14,10 @@ namespace SilverModManager.Library.Lock;
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.
 /// </summary>
 [PublicAPI]
-public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests, ICollectionOwnership ownership, IWorkshopLockEntries? workshop = null)
+public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileDigests digests, ICollectionOwnership ownership, IWorkshopLockEntries? workshop = null, IModIoLockEntries? modIo = null)
 {
     /// <summary>
-    /// Exports every enabled group that links a file one of the library sources owns, and every Steam Workshop item of the
+    /// Exports every enabled group that links a file one of the library sources owns, and every Steam Workshop item and mod.io subscription of the
     /// loadout's game as an entry that names the item and pins no bytes. A group that links anything else
     /// fails the export: a lock that quietly left a mod out would be worse than none. The exception is a dangling
     /// file (no SHA-256 and no bytes in the file store, such as an unfinished download's record): nothing can pin it,
@@ -68,6 +68,16 @@ public sealed class LockExport(IEnumerable<ILibrarySource> sources, LibraryFileD
         if (workshop is not null)
         {
             foreach (var entry in await workshop.For(loadout, cancellationToken))
+            {
+                if (!entries.TryAdd(entry.Id, entry))
+                    throw new LockException($"{MarkdownText.Code(entry.Asset)} and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");
+            }
+        }
+
+        // A mod.io subscription is no library file either: the game's own mod manager downloaded it.
+        if (modIo is not null)
+        {
+            foreach (var entry in await modIo.For(loadout, cancellationToken))
             {
                 if (!entries.TryAdd(entry.Id, entry))
                     throw new LockException($"{MarkdownText.Code(entry.Asset)} and {MarkdownText.Code(entries[entry.Id].Asset)} both become the lock id {MarkdownText.Code(entry.Id)}.");

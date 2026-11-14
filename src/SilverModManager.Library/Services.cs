@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Library.Catalog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.Library.GameBanana;
+using SilverModManager.Library.ModIo;
 using SilverModManager.Library.GitHub;
 using SilverModManager.Library.Inference;
 using SilverModManager.Library.Listing;
@@ -41,6 +42,7 @@ public static class Services
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, LocalFileKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, GitHubReleaseKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, GameBananaKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, ModIoKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, SteamDepotKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, ThunderstorePackageKind>());
         return serviceCollection
@@ -60,6 +62,9 @@ public static class Services
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GitHubModSource>(provider, GitHubClients.Api(provider), GitHubClients.Http(provider)))
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GameBananaProfiles>(provider, GameBananaClients.Api(provider)))
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GameBananaModSource>(provider, GameBananaClients.Http(provider)))
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<ModIoMods>(provider, ModIoClients.Api(provider)))
+            .AddSingleton<ModIoPickups>()
+            .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<ModIoModSource>(provider, ModIoClients.Http(provider)))
             .AddSingleton(provider => provider.GetService<ISettingsManager>() is { } settings && settings.Configs.ContainsKey(typeof(SteamWorkshopSettings)) ? settings.Get<SteamWorkshopSettings>() : SteamWorkshopSettings.Default)
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<WorkshopItemsView>(provider, SteamWorkshopClients.Api(provider)))
             .AddSingleton<IModSource, SteamWorkshopSource>()
@@ -74,6 +79,8 @@ public static class Services
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GameBananaCatalog>(provider, GameBananaClients.Api(provider), GameBananaClients.Http(provider)))
             .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<GameBananaCatalog>())
             .AddSingleton<IGameBananaInstaller>(provider => provider.GetRequiredService<GameBananaCatalog>())
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<ModIoCatalog>(provider, ModIoClients.Api(provider), ModIoClients.Http(provider)))
+            .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<ModIoCatalog>())
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<SteamWorkshopCatalog>(provider, SteamWorkshopClients.Api(provider)))
             .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<SteamWorkshopCatalog>())
             .AddSingleton<ModCatalogs>()
@@ -85,6 +92,7 @@ public static class Services
             .AddCatalogVerbs()
             .AddGitHubVerbs()
             .AddGameBananaVerbs()
+            .AddModIoVerbs()
             .AddWorkshopVerbs()
             .AddNexusModsVerbs();
     }

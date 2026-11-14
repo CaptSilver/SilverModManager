@@ -17,7 +17,7 @@ public enum LockAction
     Download,
     Fail,
 
-    /// <summary>Steam owns the item: nothing is downloaded and the report names where to subscribe.</summary>
+    /// <summary>Steam or the game owns the item: nothing is downloaded and the report names where to subscribe.</summary>
     Subscribe,
 }
 
@@ -73,6 +73,19 @@ public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySourc
             try
             {
                 return new LockPlanItem(entry, LockAction.Subscribe, WorkshopLockEntries.SubscribeMessage(entry));
+            }
+            catch (LockException e)
+            {
+                return new LockPlanItem(entry, LockAction.Fail, e.Message);
+            }
+        }
+
+        // A subscription names a mod and no bytes: the game's own mod manager downloads it.
+        if (ModIoLockEntries.IsSubscription(entry))
+        {
+            try
+            {
+                return new LockPlanItem(entry, LockAction.Subscribe, ModIoLockEntries.SubscribeMessage(entry));
             }
             catch (LockException e)
             {

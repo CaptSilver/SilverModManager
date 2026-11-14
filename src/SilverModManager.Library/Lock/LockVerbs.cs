@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Library.ModIo;
 using SilverModManager.Library.Sources;
 using SilverModManager.Library.Verbs;
 using SilverModManager.Library.Workshop;
@@ -23,6 +24,8 @@ internal static class LockVerbs
         .AddSingleton<ILibrarySource, GitHubLibrarySource>()
         .AddSingleton<ILibrarySource, ThunderstoreLibrarySource>()
         .AddSingleton<ILibrarySource, GameBananaLibrarySource>()
+        .AddSingleton<ILibrarySource, ModIoLibrarySource>()
+        .AddSingleton<IModIoLockEntries>(provider => ActivatorUtilities.CreateInstance<ModIoLockEntries>(provider, ModIoClients.Api(provider)))
         .AddSingleton<IWorkshopLockEntries, WorkshopLockEntries>()
         .AddTransient<LockExport>()
         .AddTransient<LockVerify>()
@@ -67,7 +70,7 @@ internal static class LockVerbs
 
     private sealed record ImportReport(string[] Verified, string[] Skipped, string[] Failed, string[] Installed, string[] Subscribe);
 
-    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release, Thunderstore and GameBanana files of a loadout, and its game's Steam Workshop items by id, to a lock file, skipping and reporting a file with no SHA-256 and no bytes in the file store; source = \"thunderstore\" entries are new to erm and it will not read them")]
+    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release, Thunderstore and GameBanana and mod.io files of a loadout, and its game's Steam Workshop items and mod.io subscriptions by id, to a lock file, skipping and reporting a file with no SHA-256 and no bytes in the file store; source = \"thunderstore\" entries are new to erm and it will not read them")]
     private static async Task<int> ExportLock(
         [Injected] IRenderer renderer,
         [Injected] LockExport export,
@@ -131,7 +134,7 @@ internal static class LockVerbs
             foreach (var outcome in summary.Skipped) await renderer.TextLine($"[skipped] {outcome.Message}");
             foreach (var outcome in summary.Subscribe) await renderer.TextLine($"[subscribe] {outcome.Message}");
             foreach (var outcome in summary.Failed) await renderer.TextLine($"[failed] {outcome.Message}");
-            await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Subscribe.Count} to subscribe to in Steam, {summary.Failed.Count} failed.");
+            await renderer.TextLine($"{summary.Verified.Count} verified, {summary.Skipped.Count} already in the library, {summary.Subscribe.Count} to subscribe to, {summary.Failed.Count} failed.");
         }
 
         // The verified files and the ones that were already there belong in the loadout; a failed entry never does.

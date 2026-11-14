@@ -42,6 +42,13 @@ public sealed class LockVerify(IConnection connection, LibraryFileDigests digest
                 continue;
             }
 
+            // A subscription pins no bytes, so the library has nothing to compare.
+            if (ModIoLockEntries.IsSubscription(entry))
+            {
+                items.Add(new LockReportItem(LockLevel.Warn, ModIoLockEntries.SubscribeMessage(entry)));
+                continue;
+            }
+
             if (!Sha256Value.TryParse(entry.Sha256, out var expected))
             {
                 items.Add(new LockReportItem(LockLevel.Fail, $"{entry.Id}: the lock has no valid sha256 for {entry.Asset}"));

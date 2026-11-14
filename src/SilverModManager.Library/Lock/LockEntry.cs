@@ -9,7 +9,7 @@ namespace SilverModManager.Library.Lock;
 /// must have.
 /// </summary>
 /// <param name="Id">The table name in the lock file.</param>
-/// <param name="FileId">The Nexus Mods or GameBanana file id; entries of other sources have none.</param>
+/// <param name="FileId">The Nexus Mods or GameBanana file id, or the mod.io mod and file ids; entries of other sources have none.</param>
 /// <param name="Asset">The file name of the archive.</param>
 /// <param name="Sha256">The expected digest as the lock file spells it. It may be empty or malformed; those entries never verify.</param>
 /// <param name="Source">One of <see cref="LockSources.All"/>; the <see cref="ILibrarySource.Name"/> of the source that fetches it.</param>
@@ -47,9 +47,16 @@ public static class LockSources
     public const string SteamWorkshop = "steam-workshop";
 
     /// <summary>
+    /// Not a source erm knows. A file's <c>file_id</c> is <c>{mod id}:{modfile id}</c>. An entry with an empty
+    /// <c>sha256</c> names a mod the account is subscribed to for a game whose own mod manager downloads it; its
+    /// <c>file_id</c> is the mod id alone.
+    /// </summary>
+    public const string ModIo = "modio";
+
+    /// <summary>
     /// Every source a lock file may name.
     /// </summary>
-    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore, GameBanana, SteamWorkshop];
+    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore, GameBanana, SteamWorkshop, ModIo];
 }
 
 /// <summary>
