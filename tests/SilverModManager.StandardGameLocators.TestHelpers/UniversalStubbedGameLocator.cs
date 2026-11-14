@@ -42,6 +42,13 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
     /// </summary>
     public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; set; }
 
+    /// <summary>
+    /// The store client reported for a located game, by store. By default a Steam location gets the Steam client
+    /// with its id (so tests that run a game from a stubbed Steam install take the Steam path) and any other store
+    /// none.
+    /// </summary>
+    public Func<GameStore, StoreClient?> StoreClientFor { get; set; }
+
     /// <param name="gameFactory">Builds or finds the game this locator reports.</param>
     /// <param name="folderName">Names the game folder, so two games located in one test do not share it.</param>
     public UniversalStubbedGameLocator(
@@ -55,6 +62,7 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
         IFileSystem? locationsFileSystem = null)
     {
         _stores = stores ?? [GameStore.Unknown];
+        StoreClientFor = store => store == GameStore.Steam ? new StoreClient(StoreClientKind.Steam, LocatorIds[0].Value, false) : null;
         _path = fileManager.CreateFolder(folderName);
         _locatedPath = locationsFileSystem is null
             ? _path.Path
@@ -107,8 +115,7 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
                 Platform = Platform,
                 WinePrefixPath = WinePrefixPath,
                 LinuxCompatabilityDataProvider = LinuxCompatabilityDataProvider,
-                // Keeps the Steam path for tests that run a game from a stubbed Steam install.
-                StoreClient = store == GameStore.Steam ? new StoreClient(StoreClientKind.Steam, LocatorIds[0].Value, false) : null,
+                StoreClient = StoreClientFor(store),
             };
         }
     }

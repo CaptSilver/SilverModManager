@@ -1,4 +1,6 @@
 using FluentAssertions;
+using SilverModManager.Abstractions.Games.Starters;
+using SilverModManager.Platform.Proton.Launch.Starters;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -44,6 +46,18 @@ public class LaunchServicesTests
 
         var act = () => services.Validate();
         act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void AddGameLaunchCore_RegistersTheSelectorAndTheDirectAndProcessStartersOnceEach()
+    {
+        var services = new ServiceCollection();
+        services.AddGameLaunchCore();
+        services.AddGameLaunchCore();
+
+        services.Count(d => d.ServiceType == typeof(IGameStarterSelector)).Should().Be(1);
+        services.Where(d => d.ServiceType == typeof(IGameStarter)).Select(d => d.ImplementationType)
+            .Should().BeEquivalentTo([typeof(DirectGameStarter), typeof(ProcessGameStarter)]);
     }
 
     [Fact]
@@ -201,5 +215,8 @@ public class LaunchServicesTests
         services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
         services.AddSingleton(Substitute.For<IDeploymentBackendSelector>());
         services.AddSingleton<DeploymentLaunchRoots>();
+        // What the direct and process starters run the game with.
+        services.AddSingleton(Substitute.For<IToolRunner>());
+        services.AddSingleton(Substitute.For<IPrefixResolver>());
     }
 }

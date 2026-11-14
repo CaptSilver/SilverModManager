@@ -119,6 +119,26 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
     }
 
     [Fact]
+    public async Task AModdedSpecCarriesTheFilesystemRootsTheProcessStarterHandsOn()
+    {
+        var loadout = await CreateModdedLoadout();
+
+        var spec = await Tool.GetLaunchSpec(loadout, CancellationToken.None);
+
+        spec.FilesystemRoots.Should().Equal(Tool.FilesystemRootsOf(loadout));
+    }
+
+    [Fact]
+    public async Task AnUnmoddedSpecHasNoFilesystemRoots()
+    {
+        var loadout = await CreateLoadout();
+
+        var spec = await Tool.GetLaunchSpec(loadout, CancellationToken.None);
+
+        spec.FilesystemRoots.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ModdedWithoutBwrap_RefusesTheLaunchWithAPlainMessage()
     {
         var loadout = await CreateModdedLoadout();

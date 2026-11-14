@@ -17,9 +17,13 @@ public sealed class RecordingDesktopNotifier : IDesktopNotifier
         get { lock (_notifications) return _notifications.ToArray(); }
     }
 
+    /// <summary>Runs on every notification, so a test can see what else had happened when it was sent.</summary>
+    public Action<string, string>? OnNotify { get; set; }
+
     public void Notify(string summary, string body)
     {
         lock (_notifications) _notifications.Add((summary, body));
+        OnNotify?.Invoke(summary, body);
     }
 }
 

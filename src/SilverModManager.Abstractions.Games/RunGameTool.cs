@@ -1,7 +1,6 @@
-using System.Diagnostics;
-using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games.Starters;
 using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -9,7 +8,6 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using R3;
-using BehaviorSubject = System.Reactive.Subjects.BehaviorSubject<bool>;
 
 namespace SilverModManager.Abstractions.Games;
 
@@ -47,14 +45,9 @@ public class RunGameTool : IRunGameTool
 {
     private readonly ILogger _logger;
     private readonly IGame _game;
-    private readonly IProcessRunner _processRunner;
-    private readonly IToolRunner _toolRunner;
-    private readonly IPrefixResolver _prefixResolver;
-    private readonly IOSInterop _osInterop;
-    private readonly ISteamUriLauncher _steamUris;
-    private readonly IProcessTracker _processTracker;
-    private readonly IRunningGameDetector _detector;
     private readonly IGameLaunchSession _launchSessions;
+    private readonly IGameStarterSelector _starters;
+    private readonly SteamGameStarter _steam;
     private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
@@ -91,22 +84,11 @@ public class RunGameTool : IRunGameTool
     /// </summary>
     protected virtual TimeSpan SteamSettle => SettlePeriods.Steam;
 
-    private readonly BehaviorSubject _waitingForSteam = new(false);
-    private int _launchesWaitingForSteam;
+    /// <inheritdoc />
+    public IObservable<bool> WaitingForSteam => _steam.WaitingForSteam;
 
     /// <inheritdoc />
-    public IObservable<bool> WaitingForSteam => _waitingForSteam;
-
-    private readonly BehaviorSubject _runningInstallStep = new(false);
-
-    /// <inheritdoc />
-    public IObservable<bool> RunningInstallStep => _runningInstallStep;
-
-    private void SetRunningInstallStep(bool running)
-    {
-        lock (_runningInstallStep)
-            if (_runningInstallStep.Value != running) _runningInstallStep.OnNext(running);
-    }
+    public IObservable<bool> RunningInstallStep => _steam.RunningInstallStep;
 
     /// <summary>
     /// Constructor
@@ -124,14 +106,13 @@ public class RunGameTool : IRunGameTool
         _game = game;
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
-        _toolRunner = serviceProvider.GetRequiredService<IToolRunner>();
-        _prefixResolver = serviceProvider.GetRequiredService<IPrefixResolver>();
-        _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
-        _steamUris = serviceProvider.GetRequiredService<ISteamUriLauncher>();
-        _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
-        _detector = serviceProvider.GetRequiredService<IRunningGameDetector>();
         _launchSessions = serviceProvider.GetRequiredService<IGameLaunchSession>();
+        _starters = serviceProvider.GetRequiredService<IGameStarterSelector>();
+        _steam = new SteamGameStarter(
+            serviceProvider.GetRequiredService<ISteamUriLauncher>(),
+            serviceProvider.GetRequiredService<IProcessTracker>(),
+            serviceProvider.GetRequiredService<IRunningGameDetector>(),
+            logger);
     }
 
     /// <inheritdoc />
@@ -152,285 +133,37 @@ public class RunGameTool : IRunGameTool
         _logger.LogInformation("Starting {Name}", Name);
 
         var spec = await GetLaunchSpec(loadout, cancellationToken);
-        var program = spec.Exe;
-        commandLineArgs = [..commandLineArgs ?? [], ..spec.ExtraArgs];
-        var primaryFile = loadout.InstallationInstance.Locations.ToAbsolutePath(_game.GetPrimaryFile(loadout.InstallationInstance));
-
-        if (program.Equals(primaryFile))
-        {
-            var locatorResult = loadout.InstallationInstance.LocatorResult;
-            if (locatorResult.Store == GameStore.Steam)
-            {
-                await RunThroughSteam(loadout, locatorResult.StoreIdentifier, spec, cancellationToken);
-                return;
-            }
-
-            if (locatorResult.Store == GameStore.GOG)
-            {
-                await RunThroughHeroic("gog", locatorResult.StoreIdentifier, cancellationToken, commandLineArgs);
-                return;
-            }
-        }
-
-        // A script extender or launcher of a Windows build is a Windows program, and Linux cannot start it
-        // directly. Asked before the session so the loadout is not applied for a program that cannot run.
         var installation = loadout.InstallationInstance;
-        var viaToolRunner = LaunchPlatform.IsWindowsProgram(_prefixResolver.Resolve(installation), installation.LocatorResult);
-        if (viaToolRunner && !_toolRunner.CanRun(installation, out var cannotRunReason, out var cannotRunX86_64))
+        var primaryFile = installation.Locations.ToAbsolutePath(_game.GetPrimaryFile(installation));
+        var request = new GameStartRequest(loadout, installation, spec, commandLineArgs ?? [], spec.Exe.Equals(primaryFile), UseShell, Timing);
+
+        var choice = _starters.For(request, _steam);
+        // Asked before the session, so the loadout is not applied for a launch that cannot run.
+        choice.Starter.CheckCanStart(request);
+
+        var outcome = GameStartOutcome.Cancelled;
+        // The Steam launch option only ever substitutes the game's own exe, so a launcher's session carries no spec.
+        using (var launch = _launchSessions.BeginSession(loadout, request.IsPrimaryExe ? spec : null))
         {
-            var message = $"Cannot run {program.FileName} for {_game.DisplayName}: {cannotRunReason}";
-            throw cannotRunX86_64 ? new X86_64HostRequiredException(message) : new InvalidOperationException(message);
-        }
-
-        // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
-        using var launch = _launchSessions.BeginSession(loadout);
-        await launch.RunAsync(token => RunProgram(launch, installation, viaToolRunner, program, commandLineArgs, token), cancellationToken);
-    }
-
-    private async Task RunProgram(IGameLaunch launch, GameInstallation installation, bool viaToolRunner, AbsolutePath program, string[] commandLineArgs, CancellationToken cancellationToken)
-    {
-        if (viaToolRunner)
-        {
-            // The shell would hand a Windows program to the host, which cannot open it, so this wins over UseShell.
-            _logger.LogInformation("Running {Program} through the tool runner", program);
-            var result = await _toolRunner.RunWindowsTool(installation, program, commandLineArgs, null, logOutput: true, cancellationToken, purpose: ToolRunPurpose.Game);
-            if (result.ExitCode != 0)
-                _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", result.ExitCode, program);
-        }
-        else if (UseShell)
-        {
-            _logger.LogInformation("Running {Program} through shell", program);
-            await RunWithShell(cancellationToken, program, commandLineArgs);
-        }
-        else
-        {
-            _ = await RunCommand(cancellationToken, commandLineArgs, program);
-        }
-
-
-        // The program may have been only a loader: the game is whatever the process table shows for the
-        // installation, and it is over once nothing has shown up for the settle period.
-        _logger.LogInformation("Waiting for the game's processes to exit");
-        await _detector.WaitUntilGone(installation, new GoneWait(Settle, Interval: PollInterval, Progress: OpenToolsOf(launch)), cancellationToken);
-        _logger.LogInformation("Finished running {Program}", program);
-    }
-
-    // A tool the app started in the prefix keeps the launch running after the game quits; the session names it.
-    private static IProgress<RunningProcesses> OpenToolsOf(IGameLaunch launch)
-        => new ImmediateProgress<RunningProcesses>(running => launch.ReportOpenTools(running.Tools));
-
-    private async Task<CommandResult> RunCommand(CancellationToken cancellationToken, string[] arguments, AbsolutePath program)
-    {
-        var command = new Command(program.ToString())
-            .WithArguments(arguments)
-            .WithWorkingDirectory(program.Parent.ToString());
-
-        var result = await _processRunner.RunAsync(command, cancellationToken: cancellationToken);
-        return result;
-    }
-
-    private async Task<Process> RunWithShell(CancellationToken cancellationToken, AbsolutePath program, string[] arguments)
-    {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = program.ToString(),
-                WorkingDirectory = program.Parent.ToString(),
-                // ArgumentList is refused with UseShellExecute, so the quoted string is the only way in. Linux
-                // splits it into argv itself and never hands it to sh, so metacharacters stay literal.
-                Arguments = new CliWrap.Builders.ArgumentsBuilder().Add(arguments).Build(),
-                UseShellExecute = true,
-                CreateNoWindow = false,
-            },
-            EnableRaisingEvents = true,
-        };
-        
-        try
-        {
-            await _processRunner.RunAsync(process, cancellationToken);
-        }
-        catch (Exception e)
-        {
-            if (!cancellationToken.IsCancellationRequested)
-                _logger.LogError(e, "While Running {Filename}", program);
-        }
-        
-        if (process.ExitCode != 0)
-            _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", process.ExitCode, program);
-        return process;
-    }
-
-    private enum SteamRunOutcome
-    {
-        /// <summary>The game's reaper started and has exited.</summary>
-        Exited,
-
-        /// <summary>Steam, or the reaper for the game, did not show up in time.</summary>
-        TimedOut,
-
-        /// <summary>The caller stopped waiting.</summary>
-        Cancelled,
-    }
-
-    /// <summary>How a wait for Steam ended, and for a timeout, the limit that ran out.</summary>
-    private readonly record struct SteamWait(SteamRunOutcome Outcome, TimeSpan Limit = default);
-
-    private async Task RunThroughSteam(Loadout.ReadOnly loadout, string storeId, LaunchSpec spec, CancellationToken cancellationToken)
-    {
-        if (!uint.TryParse(storeId, out var appId))
-            throw new InvalidOperationException($"'{storeId}' is not a Steam app id");
-
-        // Never put arguments in this URL: Steam stops to ask the user to confirm them. The exe substitution and
-        // extra arguments go into the launch session instead, and the app's Steam launch option applies them.
-        // https://developer.valvesoftware.com/wiki/Steam_browser_protocol
-        var steamUrl = $"steam://run/{storeId}";
-
-        var outcome = new SteamWait(SteamRunOutcome.Cancelled);
-        using (var launch = _launchSessions.BeginSession(loadout, spec))
-        {
-            // The URI opens only once the session has the lock and the loadout is applied, so Steam never
+            // The starter runs only once the session has the lock and the loadout is applied, so a client never
             // starts the game against a half-applied folder.
             await launch.RunAsync(async token =>
             {
-                _steamUris.Open(new Uri(steamUrl));
-                outcome = await WaitForSteamGame(launch, loadout.InstallationInstance, appId, token);
+                if (choice.FallbackNotice is { } notice)
+                {
+                    _logger.LogInformation("{Notice}", notice);
+                    _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, notice);
+                }
+                outcome = await choice.Starter.Start(request, launch, token);
             }, cancellationToken);
         }
 
         // Said after the session has finished, so the user is not told to retry while the lock is still held.
-        if (outcome.Outcome == SteamRunOutcome.TimedOut)
-        {
-            _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(
-                ApplicationConstants.ProductName,
-                $"Steam did not start {_game.DisplayName} within {DescribeTimeout(outcome.Limit)}. Make sure Steam is running and signed in, then press Play again.");
-        }
+        if (choice.Starter.AfterSessionMessage(request, outcome) is { } message)
+            _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, message);
     }
 
-    /// <summary>
-    /// The timeout as the user reads it: whole minutes when it is a whole number of them, seconds otherwise.
-    /// </summary>
-    internal static string DescribeTimeout(TimeSpan timeout)
-    {
-        var seconds = Math.Max(1, (int)Math.Ceiling(timeout.TotalSeconds));
-        if (seconds % 60 == 0)
-        {
-            var minutes = seconds / 60;
-            return minutes == 1 ? "1 minute" : $"{minutes} minutes";
-        }
-        return seconds == 1 ? "1 second" : $"{seconds} seconds";
-    }
-
-    private void SetWaitingForSteam(int delta)
-    {
-        // Two launches can wait at once (two installations of one game), so this counts them instead of
-        // flipping a flag the first to finish would clear for the other.
-        lock (_waitingForSteam)
-        {
-            _launchesWaitingForSteam += delta;
-            if (_waitingForSteam.Value != _launchesWaitingForSteam > 0) _waitingForSteam.OnNext(_launchesWaitingForSteam > 0);
-        }
-    }
-
-    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, GameInstallation installation, uint appId, CancellationToken cancellationToken)
-    {
-        SetWaitingForSteam(+1);
-        var waiting = true;
-        try
-        {
-            return await WaitForSteamGame(launch, installation, appId, cancellationToken, () =>
-            {
-                if (!waiting) return;
-                waiting = false;
-                SetWaitingForSteam(-1);
-            });
-        }
-        finally
-        {
-            if (waiting) SetWaitingForSteam(-1);
-            SetRunningInstallStep(false);
-        }
-    }
-
-    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, GameInstallation installation, uint appId, CancellationToken cancellationToken, Action gameStarted)
-    {
-        if (await PollUntil(_processTracker.IsSteamRunning, SteamStartTimeout, launch, cancellationToken) is { } steamFailure) return steamFailure;
-
-        // NOTE(erri120): Reaper is a custom tool for cleaning up child processes
-        // See https://github.com/sonic2kk/steamtinkerlaunch/wiki/Steam-Reaper for details.
-        // Only the reaper Steam started for this app counts: another game's reaper may be running already.
-        if (await PollUntil(() => _processTracker.FindReaperForApp(appId) is not null, StartTimeout, launch, cancellationToken, appId) is { } reaperFailure)
-            return reaperFailure;
-
-        SetRunningInstallStep(false);
-        gameStarted();
-        // The reaper is only the first process of the game: Steam replaces it when the game relaunches, and the
-        // game's own processes can outlive it. The game is over when the process table has shown nothing of it
-        // for the settle period.
-        _logger.LogDebug("Waiting for the processes of app {AppId} to exit", appId);
-        try
-        {
-            await _detector.WaitUntilGone(installation, new GoneWait(SteamSettle, Interval: PollInterval, Progress: OpenToolsOf(launch)), cancellationToken);
-            return new SteamWait(SteamRunOutcome.Exited);
-        }
-        catch (OperationCanceledException)
-        {
-            return new SteamWait(SteamRunOutcome.Cancelled);
-        }
-    }
-
-    /// <summary>
-    /// Polls until <paramref name="condition"/> holds, returning null, or returns why it stopped. A timeout is
-    /// not final while a Steam wrapper has recorded itself in the launch's state file (the game is on its way
-    /// and the process table has just not caught up), or, when <paramref name="installStepOfApp"/> is given,
-    /// while Steam is running that app's install step. Either one restarts the clock.
-    /// </summary>
-    private async Task<SteamWait?> PollUntil(Func<bool> condition, TimeSpan timeout, IGameLaunch launch, CancellationToken cancellationToken, uint? installStepOfApp = null)
-    {
-        var started = Clock.GetTimestamp();
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            if (condition()) return null;
-
-            if (installStepOfApp is { } appId)
-            {
-                var installing = _processTracker.IsInstallStepRunning(appId);
-                SetRunningInstallStep(installing);
-                if (installing) started = Clock.GetTimestamp();
-            }
-
-            if (Clock.GetElapsedTime(started) >= timeout)
-            {
-                // Read the file afresh every time: the wrapper writes it from another process.
-                if (!launch.WrapperActive)
-                {
-                    _logger.LogWarning("Steam did not start the game within `{Timeout:g}`", timeout);
-                    return new SteamWait(SteamRunOutcome.TimedOut, timeout);
-                }
-                started = Clock.GetTimestamp();
-            }
-
-            try
-            {
-                await Task.Delay(PollInterval, Clock, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-        }
-        return new SteamWait(SteamRunOutcome.Cancelled);
-    }
-
-    private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
-    {
-        // TODO: track process
-        if (commandLineArgs.Length > 0)
-            _logger.LogWarning("Heroic does not currently support command line arguments: https://github.com/Nexus-Mods/NexusMods.App/issues/2264 . " +
-                               $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
-
-        _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
-    }
+    private StartTiming Timing => new(StartTimeout, SteamStartTimeout, PollInterval, Settle, SteamSettle, Clock);
 
     /// <summary>
     /// Returns the path to the main executable file for the game.

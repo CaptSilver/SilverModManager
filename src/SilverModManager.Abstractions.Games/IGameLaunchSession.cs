@@ -29,9 +29,9 @@ public interface IGameLaunchSession
     /// </summary>
     /// <param name="loadout">The loadout to apply.</param>
     /// <param name="runSpec">
-    /// What the loadout's run tool wants started, when the caller hands the game to a store client that starts
-    /// it from its own command. The session records it where the client's launch wrapper can find it, because
-    /// the client's start request cannot carry it (Steam asks the user to confirm arguments given in the URL).
+    /// What the loadout's run tool wants started in place of the game's own executable, or null for a launch of any
+    /// other program. The session records it where a store client's launch wrapper can find it, because the client's
+    /// start request cannot carry it (Steam asks the user to confirm arguments given in the URL).
     /// </param>
     IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null);
 }

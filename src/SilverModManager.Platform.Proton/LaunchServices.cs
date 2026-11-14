@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Starters;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch.Starters;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Platform.Proton.Verbs;
@@ -31,6 +33,10 @@ public static class LaunchServices
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.TryAddSingleton<IStartedTools, StartedTools>();
         services.TryAddSingleton<IRunningGameDetector, RunningGameDetector>();
+        services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();
+        services.TryAddSingleton<IGameStarterSelector, GameStarterSelector>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, DirectGameStarter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, ProcessGameStarter>());
         return services;
     }
 
@@ -51,7 +57,6 @@ public static class LaunchServices
             File.Exists));
         services.TryAddSingleton<ActiveLaunchSessions>();
         services.TryAddSingleton<IGameLaunchSession>(s => s.GetRequiredService<ActiveLaunchSessions>());
-        services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();
         services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<LaunchFinish>();

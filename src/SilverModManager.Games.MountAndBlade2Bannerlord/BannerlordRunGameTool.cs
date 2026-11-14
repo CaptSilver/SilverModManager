@@ -8,25 +8,21 @@ using static Bannerlord.LauncherManager.Constants;
 namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 /// <summary>
-/// This is to run the game or SMAPI using the shell, which allows them to start their own console,
-/// allowing users to interact with it.
+/// Starts the game, or Bannerlord Software Extender when it is installed, with the loadout's enabled modules
+/// as its command line. The launch itself is the shared one: a Windows build goes through the tool runner.
 /// </summary>
 public class BannerlordRunGameTool : RunGameTool<Bannerlord>
 {
     private readonly ILogger<BannerlordRunGameTool> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IToolRunner _runner;
 
-    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game, IToolRunner runner)
+    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game)
         : base(serviceProvider, game)
     {
         _serviceProvider = serviceProvider;
-        _runner = runner;
         _logger = serviceProvider.GetRequiredService<ILogger<BannerlordRunGameTool>>();
     }
 
-    protected override bool UseShell { get; set; } = false;
-    
     public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         // We need to 'inject' the current set of enabled modules, the same way the launcher would.
@@ -51,19 +47,6 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         }
 
         return new LaunchSpec(exe, args);
-    }
-
-    public override async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
-    {
-        var spec = await GetLaunchSpec(loadout, cancellationToken);
-
-        // External arguments specified by outside entities are preserved, ahead of the ones the tool adds.
-        // The runner starts the exe in its own folder.
-        var result = await _runner.RunWindowsTool(loadout.InstallationInstance, spec.Exe, [..commandLineArgs ?? [], ..spec.ExtraArgs], null, true, cancellationToken, purpose: ToolRunPurpose.Game);
-
-        // The runner hands back the exit code rather than throwing on it; a game closing badly is not a failed launch.
-        if (result.ExitCode != 0)
-            _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", result.ExitCode, spec.Exe);
     }
 
     // TODO: Refactor Bannerlord.LauncherManager so we don't have to copy (some) of the commandline logic.

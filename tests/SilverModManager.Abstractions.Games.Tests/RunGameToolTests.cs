@@ -236,6 +236,28 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     }
 
     [Fact]
+    public async Task EverySteamLaunchOfThePrimaryExe_GoesThroughBeginSessionWithItsSpec()
+    {
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await new FastTool(ServiceProvider, Game).Execute(loadout, _cts.Token, []);
+
+        Session.BegunWith.Should().ContainSingle().Which.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_BeginsItsSessionWithoutASpec()
+    {
+        MakeBuildNative();
+        RunnerReturnsImmediately();
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        Session.BegunWith.Should().ContainSingle().Which.Should().BeNull("the Steam launch option only ever substitutes the primary exe");
+    }
+
+    [Fact]
     public async Task SteamLaunch_HasTakenTheLockAndMarkedItRunningBeforeTheUriOpens()
     {
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
@@ -271,24 +293,6 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         Session.Events.Should().Equal("lock", "running", "finish", "release");
         Notifier.Notifications.Should().ContainSingle()
             .Which.Body.Should().Contain("Steam did not start").And.Contain("within 1 second").And.NotContain("5 minutes");
-    }
-
-    [Theory]
-    [InlineData(300, "5 minutes")]
-    [InlineData(60, "1 minute")]
-    [InlineData(120, "2 minutes")]
-    [InlineData(90, "90 seconds")]
-    [InlineData(30, "30 seconds")]
-    [InlineData(1, "1 second")]
-    public void DescribeTimeout_IsBuiltFromTheTimeSpan(int seconds, string expected)
-    {
-        RunGameTool<StubbedGame>.DescribeTimeout(TimeSpan.FromSeconds(seconds)).Should().Be(expected);
-    }
-
-    [Fact]
-    public void DescribeTimeout_RoundsAShortTimeoutUpToASecond()
-    {
-        RunGameTool<StubbedGame>.DescribeTimeout(TimeSpan.FromMilliseconds(80)).Should().Be("1 second");
     }
 
     [Fact]
@@ -696,7 +700,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         var act = async () => await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No Wine prefix was found for the stubbed game.*");
+        await act.Should().ThrowAsync<GameLaunchException>().WithMessage("*No Wine prefix was found for the stubbed game.*");
         Session.Events.Should().BeEmpty("the loadout must not be applied for a program that cannot start");
         LauncherStartedByProcessRunner().Should().BeFalse();
     }

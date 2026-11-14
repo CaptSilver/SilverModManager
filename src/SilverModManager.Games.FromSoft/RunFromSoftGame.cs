@@ -3,7 +3,6 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
-using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Settings;
@@ -14,8 +13,15 @@ namespace SilverModManager.Games.FromSoft;
 /// <summary>
 /// The launch tool of a FromSoft game. A loadout with mods runs the game's mod loader inside a bwrap sandbox that
 /// overlays the game folder, so nothing the game or a mod writes reaches the real folder; the tool's spec is that whole
-/// command. A loadout without mods starts the game's own executable through Steam, with its anti-cheat, as for any game.
+/// command, which the process starter runs as a process of this app: through Steam it would be recorded as a launch option
+/// and refused for sitting outside the game folder, and the tool runner would take bwrap for a Windows program. A loadout
+/// without mods starts the game's own executable through Steam, with its anti-cheat, as for any game.
 /// </summary>
+/// <remarks>
+/// Not run against the real game: whether me3 needs the environment Steam gives a game it starts (STEAM_COMPAT_*,
+/// SteamAppId), which a process started from here does not have, is decided by a played session. The fallback is
+/// to record the replaced command and start the game through <c>steam://run</c>, as the run verb does.
+/// </remarks>
 public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : RunGameTool<TGame>(provider, game)
     where TGame : AFromSoftGame<TGame>, IGameData<TGame>
 {
@@ -34,54 +40,13 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
         var ids = provider.GetRequiredService<IUserIds>();
         var argv = OverlayCommand.Build(LayoutOf(loadout), ids.Uid, ids.Gid, game.Loader.LaunchCommand(installation));
 
-        return new LaunchSpec(bwrap, argv[1..]) { ReplacesCommand = true, FilesOnlyInLaunch = true, Environment = game.Loader.LaunchEnvironment(installation).ToDictionary() };
-    }
-
-    /// <summary>
-    /// A loadout with mods is started here, as a process of this app: <see cref="RunGameTool{T}.Execute"/> would hand
-    /// bwrap to the Windows tool runner, since every Proton install counts as one, and going through Steam records the
-    /// spec, which refuses an executable outside the game folder. The session takes the lock, applies the loadout and
-    /// runs the gates around the process; a loadout without mods goes the ordinary way.
-    /// </summary>
-    /// <remarks>
-    /// Not run against the real game: whether me3 needs the environment Steam gives a game it starts (STEAM_COMPAT_*,
-    /// SteamAppId), which a process started from here does not have, is decided by a played session. The fallback is
-    /// to record the replaced command and start the game through <c>steam://run</c>, as the run verb does.
-    /// </remarks>
-    public override async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
-    {
-        if (!game.Loader.IsModded(loadout))
+        return new LaunchSpec(bwrap, argv[1..])
         {
-            await base.Execute(loadout, cancellationToken, commandLineArgs);
-            return;
-        }
-
-        if (commandLineArgs is { Length: > 0 })
-            throw new GameLaunchException($"Arguments for a game started through me3 are not supported: {MarkdownText.Code(string.Join(' ', commandLineArgs))}");
-
-        var installation = loadout.InstallationInstance;
-        var spec = await GetLaunchSpec(loadout, cancellationToken);
-        var plan = LaunchPlanner.Compose(
-            [], installation.Locations[LocationId.Game].Path,
-            installation.Locations.ToAbsolutePath(game.GetPrimaryFile(installation)),
-            spec, FilesystemRootsOf(loadout), WineDllOverrideRequirements.For(installation.Game, loadout), HdrLaunchEnvironment.For(loadout));
-
-        var processes = provider.GetRequiredService<IGameProcessFactory>();
-        using var launch = provider.GetRequiredService<IGameLaunchSession>().BeginSession(loadout);
-        await launch.RunAsync(async token =>
-        {
-            using var process = processes.Start(plan.Process, installation);
-            try
-            {
-                await process.WaitAsync(token);
-            }
-            catch
-            {
-                // Never leave the game running unattended behind an exception or a cancelled wait.
-                process.Terminate();
-                throw;
-            }
-        }, cancellationToken);
+            ReplacesCommand = true,
+            FilesOnlyInLaunch = true,
+            Environment = game.Loader.LaunchEnvironment(installation).ToDictionary(),
+            FilesystemRoots = FilesystemRootsOf(loadout),
+        };
     }
 
     /// <summary>

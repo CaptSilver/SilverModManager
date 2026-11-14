@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Starters;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.App.UI.DiagnosticSystem;
@@ -40,7 +41,7 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
             .AddMountAndBlade2Bannerlord()
             .AddUniversalGameLocator<Bannerlord>(new Version("1.0"))
             .AddSingleton(Substitute.For<IOSInterop>())
-            .AddSingleton<ILogger<BannerlordRunGameTool>>(_toolLogger);
+            .AddSingleton<ILogger<DirectGameStarter>>(_toolLogger);
     }
 
     private BannerlordRunGameTool Tool => ServiceProvider.GetServices<ITool>().OfType<BannerlordRunGameTool>().Single();
@@ -93,6 +94,8 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
         spec.ExtraArgs[^1].Should().Be("/forcenetcore");
     }
 
+    private FakeGameLaunchSession Session => ServiceProvider.GetRequiredService<FakeGameLaunchSession>();
+
     private FakeToolRunner ToolRunner => ServiceProvider.GetRequiredService<FakeToolRunner>();
 
     [Fact]
@@ -110,6 +113,8 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
         call.Args[2].Should().StartWith("_MODULES_*").And.EndWith("*_MODULES_");
         call.LogOutput.Should().BeTrue();
         call.Purpose.Should().Be(ToolRunPurpose.Game, "the program started is the game, so it is not registered as a tool");
+        Session.BegunWith.Should().ContainSingle();
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
     }
 
     [Fact]
@@ -162,7 +167,7 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
 
         var act = async () => await Tool.Execute(loadout, CancellationToken.None, null);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("No Proton build is installed.");
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("No Proton build is installed.");
         ToolRunner.Calls.Should().BeEmpty();
     }
 
@@ -191,7 +196,7 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
         diagnostics.Should().BeEmpty();
     }
 
-    private sealed class CapturingLogger : ILogger<BannerlordRunGameTool>
+    private sealed class CapturingLogger : ILogger<DirectGameStarter>
     {
         private readonly List<(LogLevel Level, string Message)> _entries = [];
 
