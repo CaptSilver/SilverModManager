@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.Networking.GameBanana.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Library.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Downloads\SilverModManager.Abstractions.Downloads.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,472 @@
+{
+ "_idRow": 44334,
+ "_nStatus": "0",
+ "_bIsPrivate": false,
+ "_bAccessorIsSubmitter": false,
+ "_bIsTrashed": false,
+ "_bIsWithheld": false,
+ "_sName": "The Full-Ass Tricky Mod",
+ "_sFeedbackInstructions": "Feedback is always appreciated!",
+ "_sCommentsMode": "open",
+ "_tsDateModified": 1641411766,
+ "_tsDateAdded": 1615930285,
+ "_sProfileUrl": "https://gamebanana.com/mods/44334",
+ "_aPreviewMedia": {
+  "_aImages": [
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "60b7d8741ac99.jpg",
+    "_sFile220": "220-90_60b7d8741ac99.jpg",
+    "_sFile530": "530-90_60b7d8741ac99.jpg",
+    "_sFile100": "100-90_60b7d8741ac99.jpg",
+    "_sFile800": "800-90_60b7d8741ac99.jpg",
+    "_hFile220": 123,
+    "_wFile220": 220,
+    "_hFile530": 298,
+    "_wFile530": 530,
+    "_hFile100": 56,
+    "_wFile100": 100
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "60b7d8a220d13.jpg",
+    "_sFile100": "100-90_60b7d8a220d13.jpg",
+    "_hFile100": 56,
+    "_wFile100": 100
+   }
+  ]
+ },
+ "_nUpdatesCount": 3,
+ "_bHasUpdates": true,
+ "_tsDateUpdated": 1622678310,
+ "_nAllTodosCount": 0,
+ "_bHasTodos": false,
+ "_nPostCount": 4516,
+ "_aTags": [],
+ "_bCreatedBySubmitter": true,
+ "_bIsPorted": false,
+ "_nThanksCount": 479,
+ "_sInitialVisibility": "show",
+ "_sDownloadUrl": "https://gamebanana.com/mods/download/44334",
+ "_nDownloadCount": 4658207,
+ "_aFiles": [
+  {
+   "_idRow": 583960,
+   "_sFile": "vstricky-releasebuild-v21.7z",
+   "_nFilesize": 410983105,
+   "_tsDateAdded": 1622677521,
+   "_nDownloadCount": 3129610,
+   "_sDownloadUrl": "https://gamebanana.com/dl/583960",
+   "_sMd5Checksum": "180f264ed68955adf16924b9a7c29fd6",
+   "_sAnalysisState": "done",
+   "_sAnalysisResult": "ok",
+   "_sAnalysisResultVerbose": "File passed preliminary analysis",
+   "_sAvState": "done",
+   "_sAvResult": "clean",
+   "_bIsArchived": false,
+   "_bHasContents": true,
+   "_sDescription": "2.1 Version of Vs. Tricky",
+   "_aAnalysisWarnings": {
+    "contains_exe": [
+     "Vs. Tricky.exe"
+    ]
+   },
+   "_aModManagerIntegrations": [
+    {
+     "_idToolRow": 22153,
+     "_aGameRowIds": [
+      8694
+     ],
+     "_sModManagerAlias": "FunkHub",
+     "_sInstallerName": "FunkHub CANCELLED (read desc)",
+     "_idSubmitterRow": 4686846,
+     "_sInstallerUrl": "https://gamebanana.com/tools/22153",
+     "_sIconUrl": "https://images.gamebanana.com/img/ico/tools/69b647da1dcc2.png",
+     "_sDownloadUrl": "funkhub://mod/install/44334/583960"
+    }
+   ]
+  }
+ ],
+ "_nSubscriberCount": 1686,
+ "_aContributingStudios": [],
+ "_sLicense": "<a rel=\"license\" href=\"http://creativecommons.org/licenses/by-nc-nd/4.0/\"><img alt=\"Creative Commons License\" style=\"border-width:0\" src=\"https://i.creativecommons.org/l/by-nc-nd/4.0/88x31.png\" /></a><br />This work is licensed under a <a rel=\"license\" href=\"http://creativecommons.org/licenses/by-nc-nd/4.0/\">Creative Commons Attribution-NonCommercial-NoDerivs 4.0 Unported License</a>.",
+ "_aLicenseChecklist": {
+  "yes": [
+   "Download and install this Mod",
+   "Redistribute this Mod on other sites"
+  ],
+  "ask": [
+   "Modify this Mod and distribute the modified Mod on GameBanana",
+   "Modify this Mod and distribute the modified Mod on another site",
+   "Use parts of this Mod in another Mod and distribute the Mod on GameBanana",
+   "Use parts of this Mod in another Mod and distribute the Mod on another site",
+   "Use this Mod or components of this Mod in adult/NSFW content"
+  ],
+  "no": [
+   "Use this Mod or components of this Mod commercially"
+  ]
+ },
+ "_sDescription": "Add Tricky from the Madness Combat series to FNF!",
+ "_bGenerateTableOfContents": false,
+ "_sText": "PC Requirements:<br><br>Any 2016+ Integrated/Dedicated GPU<br>Any recent cpu from the last 5 years.<br>12gb+ (this is a must need)<br>Recommended to play on an SSD (preferably a fast one)<br><br>We are happy to release the FULL Tricky Mod after a long time!<br><br>After months of harsh development, we're finally ready to release it!<br>Some sticks and stones may have been in our way for it to take this long, but better late than never.<br>Thank you for your patience!<br><br><a href=\"https://www.youtube.com/playlist?list=PL4pZAwHWpVFyG7coGhLKgR1ijGu7u1T1s\" target=\"_blank\" class=\"SelectedElement\">Here's a link to the music</a><br><br>Thank you so much to the people that worked on this with me, it has been fun and it most definitely still will be fun until Version 2 comes out.<br><br>Rozebud<br>Kadedev<br>Cval<br>JADS<br>Mor\u00d8<br>YingYang<br><br>Special Thanks to Tom Fulp for lending us certain SFX that have been used for Tricky in Version 2<br><br>Also a BIG thanks to Krinkels for looking over the project here and there, being the guy who created Madness Combat and all!<br><br>I hope everyone has a good time playing and we'll enjoy seeing people doing exactly that!<br><br>btw, you may wanna take a look into freeplay AFTER BEATING THE ENTIRE CLOWN MODE ON HARD<br><br>[Alterations of this mod for your project or remixes are allowed aslong as we have been asked and credited]",
+ "_bIsObsolete": false,
+ "_nLikeCount": 3203,
+ "_nViewCount": 9517273,
+ "_sVersion": "",
+ "_bAcceptsDonations": false,
+ "_bShowRipePromo": true,
+ "_aEmbeddables": {
+  "_sEmbeddableImageBaseUrl": "https://gamebanana.com/mods/embeddables/44334",
+  "_aVariants": [
+   "small",
+   "small_square",
+   "medium",
+   "medium_square",
+   "medium_square_minimal",
+   "large",
+   "large_minimal",
+   "large_square",
+   "large_minimal_square",
+   "thumbnail"
+  ]
+ },
+ "_aSubmitter": {
+  "_idRow": 1785113,
+  "_sName": "Banbuds",
+  "_sUserTitle": "Bananite",
+  "_sHonoraryTitle": "Server Breaker",
+  "_tsJoinDate": 1613164261,
+  "_sAvatarUrl": "https://images.gamebanana.com/img/av/691c20f125754.jpg",
+  "_sSigUrl": "",
+  "_sProfileUrl": "https://gamebanana.com/members/1785113",
+  "_sPointsUrl": "https://gamebanana.com/members/logs/pointslog/1785113",
+  "_sMedalsUrl": "https://gamebanana.com/members/stats/medals/1785113",
+  "_bIsOnline": false,
+  "_sLocation": "<a href=\"https://gamebanana.com\">Home</a> > <a href=\"https://gamebanana.com/games/8694\"><img src=\"https://images.gamebanana.com/img/ico/games/62082c1edaf3d.png\"/><span>Friday Night Funkin'</span></a> > <a href=\"https://gamebanana.com/mods/games/8694\">Mods</a> > <a href=\"https://gamebanana.com/mods/cats/3046\">Other/Misc</a> > <a href=\"https://gamebanana.com/mods/510864\">Debug Keys for V-Slice</a>",
+  "_sOnlineTitle": "",
+  "_sOfflineTitle": "",
+  "_nPoints": 3193,
+  "_nPointsRank": 18005,
+  "_aNormalMedals": [
+   [
+    "m_age_1.png",
+    "One month a member",
+    "normal",
+    361970
+   ],
+   [
+    "thanks_recvd_1.png",
+    "Received thanks 5 times",
+    "normal",
+    362183
+   ],
+   [
+    "subscribers_1.png",
+    "Reached 10 subscribers",
+    "normal",
+    362199
+   ],
+   [
+    "m_pr_1.png",
+    "Reached 1,000 Points",
+    "normal",
+    362417
+   ],
+   [
+    "m_pr_2.png",
+    "Reached 2,500 Points",
+    "normal",
+    362418
+   ],
+   [
+    "features_1.png",
+    "Submission featured",
+    "normal",
+    362557
+   ],
+   [
+    "monthly_award.gif",
+    "Gamefiler of the Month, March 2021",
+    "normal",
+    368845
+   ],
+   [
+    "m_pr_3.png",
+    "Reached 7,500 Points",
+    "normal",
+    369681
+   ],
+   [
+    "m_pr_4.png",
+    "Reached 25,000 Points",
+    "normal",
+    458154
+   ],
+   [
+    "m_age_2.png",
+    "6 months a member",
+    "normal",
+    458155
+   ],
+   [
+    "returns_1.png",
+    "Returned 100 times",
+    "normal",
+    464361
+   ],
+   [
+    "mods1.png",
+    "Submitted 5 Mods",
+    "normal",
+    532251
+   ],
+   [
+    "m_age_3.png",
+    "1 year a member",
+    "normal",
+    577514
+   ],
+   [
+    "m_age_4.png",
+    "2 years a member",
+    "normal",
+    913094
+   ],
+   [
+    "m_age_5.png",
+    "4 years a member",
+    "normal",
+    3974721
+   ]
+  ],
+  "_aRareMedals": [
+   [
+    "subscribers_2.png",
+    "Reached 50 subscribers",
+    "rare",
+    362930
+   ],
+   [
+    "thanks_recvd_2.png",
+    "Received thanks 50 times",
+    "rare",
+    364148
+   ]
+  ],
+  "_aLegendaryMedals": [
+   [
+    "subscribers_3.png",
+    "Reached 100 subscribers",
+    "legendary",
+    364759
+   ],
+   [
+    "thanks_recvd_3.png",
+    "Received thanks 500 times",
+    "legendary",
+    524509
+   ]
+  ],
+  "_bHasRipe": false,
+  "_nBuddyCount": 17,
+  "_nSubscriberCount": 1382,
+  "_aDonationMethods": [
+   {
+    "_sTitle": "Paypal",
+    "_sValue": "p.hobi@bluewin.ch",
+    "_sInputType": "text",
+    "_sInputPlaceholder": "Paypal Email...",
+    "_sIconClasses": "MiscIcon PaypalDonateIcon",
+    "_aValidator": {
+     "_regexValidPattern": "@.*?\\.",
+     "_sWarningMessage": "Email looks incorrect"
+    },
+    "_bIsUrl": false
+   }
+  ],
+  "_bAccessorIsBuddy": false,
+  "_bBuddyRequestExistsWithAccessor": false,
+  "_bAccessorIsSubscribed": false,
+  "_aDefaultLicenseChecklist": [
+   "yes",
+   "ask",
+   "ask",
+   "ask",
+   "ask",
+   "ask",
+   "no",
+   "ask"
+  ],
+  "_sDefaultLicense": ""
+ },
+ "_bFollowLinks": true,
+ "_aGame": {
+  "_idRow": 8694,
+  "_sName": "Friday Night Funkin'",
+  "_sAbbreviation": "FNF",
+  "_sProfileUrl": "https://gamebanana.com/games/8694",
+  "_sIconUrl": "https://images.gamebanana.com/img/ico/games/62082c1edaf3d.png",
+  "_sBannerUrl": "https://images.gamebanana.com/img/ico/games/62082c1edaf3d.png",
+  "_nSubscriberCount": 63143,
+  "_bHasSubmissionQueue": true,
+  "_bAccessorIsSubscribed": false
+ },
+ "_aCategory": {
+  "_idRow": 3827,
+  "_sName": "Executables",
+  "_sModelName": "ModCategory",
+  "_sProfileUrl": "https://gamebanana.com/mods/cats/3827",
+  "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/60382d91c4839.png",
+  "_bIsObsolete": false
+ },
+ "_aAlternateFileSources": [
+  {
+   "url": "magnet:?xt=urn:btih:6f87ba4fa33a4e237cace84d32d705b20846b3c2&dn=vstricky-releasebuild-v21.7z&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce",
+   "description": "Magnet/Torrent Link"
+  },
+  {
+   "url": "https://github.com/KadeDev/trickster/",
+   "description": "Source-Code"
+  },
+  {
+   "url": "https://drive.google.com/file/d/1BM-UxiN5FCTDLrsa158BBP87ywrNtYLV/view?usp=sharing",
+   "description": "Vs. Tricky v2.1 Mirror"
+  },
+  {
+   "url": "https://titnoas.xyz/tiky/Vs.Tricky-ReleaseBuild-V2.0-Content.7z",
+   "description": "Vs. Tricky v2 mirror (NOT 2.1)"
+  },
+  {
+   "url": "https://drive.google.com/file/d/1CQHiyi1ZYGC5uJowaNDHU2Zz6jQ9C-yC/view?usp=sharing",
+   "description": "Vs. Tricky MAC v2 mirror (NOT 2.1)"
+  }
+ ],
+ "_aFeaturings": {
+  "3day": {
+   "_sFeatureGroup": "3day",
+   "_sTitle": "Best of the Banana",
+   "_sIconClasses": "MiscIcon FeaturedBestOfTheBananaIcon",
+   "_tsDate": 1616187601
+  },
+  "yesterday": {
+   "_sFeatureGroup": "yesterday",
+   "_sTitle": "Best of Yesterday",
+   "_sIconClasses": "MiscIcon FeaturedYesterdayIcon",
+   "_tsDate": 1616101201
+  },
+  "today": {
+   "_sFeatureGroup": "today",
+   "_sTitle": "Today's Pick",
+   "_sIconClasses": "MiscIcon FeaturedTodayIcon",
+   "_tsDate": 1616014802
+  }
+ },
+ "_aCredits": [
+  {
+   "_sGroupName": "Devs",
+   "_aAuthors": [
+    {
+     "_sRole": "Director, Artist and Animator",
+     "_idRow": "1785113",
+     "_sName": "Banbuds",
+     "_sProfileUrl": "https://gamebanana.com/members/1785113",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/691c20f125754.jpg",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/Banbuds"
+    },
+    {
+     "_sRole": "Musician and Programming",
+     "_idRow": "1767623",
+     "_sName": "Rozebud",
+     "_sUpicUrl": "https://images.gamebanana.com/img/upic/6045b2c256ff7.png",
+     "_sProfileUrl": "https://gamebanana.com/members/1767623",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/604c04c61ac14.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/helpme_thebigt"
+    },
+    {
+     "_sRole": "Programming",
+     "_idRow": "1774971",
+     "_sName": "KadeDeveloper",
+     "_sUpicUrl": "https://images.gamebanana.com/img/upic/6046724c44bba.png",
+     "_sProfileUrl": "https://gamebanana.com/members/1774971",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/600b2fe599f2b.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/KadeDeveloper"
+    },
+    {
+     "_sRole": "Charting, off-setting",
+     "_idRow": "1744375",
+     "_sName": "Cval",
+     "_sUpicUrl": "https://images.gamebanana.com/img/upic/6045b75ad3641.png",
+     "_sProfileUrl": "https://gamebanana.com/members/1744375",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/6045b764c480c.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/cval_brown"
+    },
+    {
+     "_sRole": "Composer",
+     "_idRow": "1782271",
+     "_sName": "YingYang48",
+     "_sUpicUrl": "https://images.gamebanana.com/img/upic/6ac699492e602.png",
+     "_sProfileUrl": "https://gamebanana.com/members/1782271",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/601fde90aa64d.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/YingWasHere"
+    },
+    {
+     "_sRole": "Composer",
+     "_idRow": "1767622",
+     "_sName": "JADS",
+     "_sProfileUrl": "https://gamebanana.com/members/1767622",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/5fec50bd35f20.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/Aw3somejds"
+    },
+    {
+     "_sRole": "Cutscene 3 + 4, Backgrounds",
+     "_sName": "Moro",
+     "_sUrl": "https://www.youtube.com/channel/UC8f-8Krg89SQvyEFfts1H3A"
+    }
+   ]
+  },
+  {
+   "_sGroupName": "Special Thanks!",
+   "_aAuthors": [
+    {
+     "_sRole": "SFX",
+     "_sName": "Tom Fulp",
+     "_sUrl": "https://tomfulp.newgrounds.com/"
+    },
+    {
+     "_sRole": "Madness Combat",
+     "_sName": "Krinkels",
+     "_sUrl": "https://krinkels.newgrounds.com/"
+    },
+    {
+     "_sRole": "Video Cutscene Code",
+     "_idRow": "1799048",
+     "_sName": "DeveloVoosh GWeb",
+     "_sProfileUrl": "https://gamebanana.com/members/1799048",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/61af53f5f12c0.png",
+     "_bIsOnline": false
+    },
+    {
+     "_sRole": "Chicken Dance Remix",
+     "_idRow": "1770214",
+     "_sName": "Tsuraran",
+     "_sUpicUrl": "https://images.gamebanana.com/img/upic/61f068d41a180.png",
+     "_sProfileUrl": "https://gamebanana.com/members/1770214",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/61f0679d269f6.png",
+     "_bIsOnline": false,
+     "_sUrl": "https://twitter.com/_Tsuraran"
+    }
+   ]
+  }
+ ],
+ "_aEmbeddedMedia": [
+  "https://www.youtube.com/watch?v=yZY96AXmcDk"
+ ]
+}

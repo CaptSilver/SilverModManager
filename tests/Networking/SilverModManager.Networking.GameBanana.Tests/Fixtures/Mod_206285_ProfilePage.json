@@ -1,0 +1,610 @@
+{
+ "_idRow": 206285,
+ "_nStatus": "0",
+ "_bIsPrivate": false,
+ "_bAccessorIsSubmitter": false,
+ "_bIsTrashed": false,
+ "_bIsWithheld": false,
+ "_sName": "Paysus' Engineer First Person Animation Overhaul",
+ "_sFeedbackInstructions": "Read the description. Thanks.",
+ "_sCommentsMode": "open",
+ "_tsDateModified": 1665169541,
+ "_tsDateAdded": 1382846140,
+ "_sProfileUrl": "https://gamebanana.com/mods/206285",
+ "_aPreviewMedia": {
+  "_aImages": [
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "5a9c8714e7548.jpg",
+    "_sFile220": "220-90_5a9c8714e7548.jpg",
+    "_sFile530": "530-90_5a9c8714e7548.jpg",
+    "_sFile100": "100-90_5a9c8714e7548.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e204c8d2.jpg",
+    "_sFile100": "100-90_63406e204c8d2.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e205c80d.jpg",
+    "_sFile100": "100-90_63406e205c80d.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e206078d.jpg",
+    "_sFile100": "100-90_63406e206078d.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2075798.jpg",
+    "_sFile100": "100-90_63406e2075798.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2073f61.jpg",
+    "_sFile100": "100-90_63406e2073f61.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2071c1c.jpg",
+    "_sFile100": "100-90_63406e2071c1c.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e208f014.jpg",
+    "_sFile100": "100-90_63406e208f014.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e208aaf8.jpg",
+    "_sFile100": "100-90_63406e208aaf8.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2073598.jpg",
+    "_sFile100": "100-90_63406e2073598.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2076677.jpg",
+    "_sFile100": "100-90_63406e2076677.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e2063141.jpg",
+    "_sFile100": "100-90_63406e2063141.jpg"
+   },
+   {
+    "_sType": "screenshot",
+    "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+    "_sFile": "63406e208d247.jpg",
+    "_sFile100": "100-90_63406e208d247.jpg"
+   }
+  ]
+ },
+ "_nUpdatesCount": 5,
+ "_bHasUpdates": true,
+ "_tsDateUpdated": 1665167342,
+ "_nAllTodosCount": 0,
+ "_bHasTodos": false,
+ "_nPostCount": 481,
+ "_aTags": [
+  {
+   "_sTitle": "Texture",
+   "_sValue": "Default"
+  }
+ ],
+ "_bCreatedBySubmitter": true,
+ "_bIsPorted": false,
+ "_nThanksCount": 38,
+ "_sInitialVisibility": "show",
+ "_sDownloadUrl": "https://gamebanana.com/mods/download/206285",
+ "_nDownloadCount": 805262,
+ "_aFiles": [
+  {
+   "_idRow": 375196,
+   "_sFile": "engineer-fp-ovhl-3-1.zip",
+   "_nFilesize": 2055449,
+   "_tsDateAdded": 1520207759,
+   "_nDownloadCount": 454182,
+   "_sDownloadUrl": "https://gamebanana.com/dl/375196",
+   "_sMd5Checksum": "8c9770b62aa242426675f66a46707414",
+   "_sAnalysisState": "done",
+   "_sAnalysisResult": "ok",
+   "_sAnalysisResultVerbose": "File passed preliminary analysis",
+   "_sAvState": "done",
+   "_sAvResult": "clean",
+   "_bIsArchived": false,
+   "_bHasContents": true,
+   "_sDescription": "OLD V.3.1 Version",
+   "_aModManagerIntegrations": [
+    {
+     "_sIconClasses": "ModboyIcon",
+     "_idToolRow": 6321,
+     "_aGameRowIds": [
+      4254,
+      2,
+      4660,
+      4,
+      34,
+      262,
+      263,
+      6651,
+      312,
+      9,
+      5,
+      249,
+      292,
+      222,
+      3456,
+      296,
+      4537,
+      297,
+      5418,
+      3370,
+      5306,
+      4214,
+      10,
+      5237,
+      73,
+      66,
+      124,
+      157,
+      150,
+      5531,
+      5694,
+      1843,
+      6,
+      6137,
+      6131,
+      2929,
+      6705,
+      8679,
+      7553
+     ],
+     "_sModManagerAlias": "Modboy",
+     "_sInstallerName": "Modboy",
+     "_idSubmitterRow": 142413,
+     "_sInstallerUrl": "https://gamebanana.com/tools/6321",
+     "_sIconUrl": "https://images.gamebanana.com/img/ico/tools/60b4e38695538.png",
+     "_sDownloadUrl": "modboy://Mod,206285,375196"
+    }
+   ]
+  },
+  {
+   "_idRow": 873373,
+   "_sFile": "engy.zip",
+   "_nFilesize": 1028292,
+   "_tsDateAdded": 1665166950,
+   "_nDownloadCount": 108041,
+   "_sDownloadUrl": "https://gamebanana.com/dl/873373",
+   "_sMd5Checksum": "148785d3ff84bade96453fb18a454cd5",
+   "_sAnalysisState": "done",
+   "_sAnalysisResult": "ok",
+   "_sAnalysisResultVerbose": "File passed preliminary analysis",
+   "_sAvState": "done",
+   "_sAvResult": "clean",
+   "_bIsArchived": false,
+   "_bHasContents": true,
+   "_sDescription": "V.4b",
+   "_aModManagerIntegrations": [
+    {
+     "_sIconClasses": "ModboyIcon",
+     "_idToolRow": 6321,
+     "_aGameRowIds": [
+      4254,
+      2,
+      4660,
+      4,
+      34,
+      262,
+      263,
+      6651,
+      312,
+      9,
+      5,
+      249,
+      292,
+      222,
+      3456,
+      296,
+      4537,
+      297,
+      5418,
+      3370,
+      5306,
+      4214,
+      10,
+      5237,
+      73,
+      66,
+      124,
+      157,
+      150,
+      5531,
+      5694,
+      1843,
+      6,
+      6137,
+      6131,
+      2929,
+      6705,
+      8679,
+      7553
+     ],
+     "_sModManagerAlias": "Modboy",
+     "_sInstallerName": "Modboy",
+     "_idSubmitterRow": 142413,
+     "_sInstallerUrl": "https://gamebanana.com/tools/6321",
+     "_sIconUrl": "https://images.gamebanana.com/img/ico/tools/60b4e38695538.png",
+     "_sDownloadUrl": "modboy://Mod,206285,873373"
+    }
+   ]
+  }
+ ],
+ "_nSubscriberCount": 593,
+ "_aContributingStudios": [],
+ "_sLicense": "This is not to be reuploaded, even if edited.",
+ "_aLicenseChecklist": {
+  "yes": [
+   "Download and install this Mod"
+  ],
+  "ask": [
+   "Redistribute this Mod on other sites",
+   "Modify this Mod and distribute the modified Mod on GameBanana",
+   "Modify this Mod and distribute the modified Mod on another site",
+   "Use parts of this Mod in another Mod and distribute the Mod on GameBanana",
+   "Use parts of this Mod in another Mod and distribute the Mod on another site",
+   "Use this Mod or components of this Mod in adult/NSFW content"
+  ],
+  "no": [
+   "Use this Mod or components of this Mod commercially"
+  ]
+ },
+ "_sDescription": "Engineer First Person Animations Perfected",
+ "_bGenerateTableOfContents": false,
+ "_sText": "<h1>ENGINEER FIRST PERSON ANIMATION OVERHAUL V.4b + V.3.1</h1>V.4b<br><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/E2qkbzIqoag\" frameborder=\"0\" allowfullscreen=\"\"></iframe><br>V.3.1<br><b><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/cn5v-3ZmhMQ\" frameborder=\"0\" allowfullscreen=\"\"></iframe></b><br><b><br>This is a cosmetic skin</b>&nbsp;that replaces the&nbsp;<b>Engineer's first person animations</b>&nbsp;with&nbsp;<b>new</b>&nbsp;ones I made. This in no way gives you any disadvantages or advantages. This works properly with both viewmodel fov 54 and viewmodel fov 70. It also works decently with minmode. Please don't go higher than 70!<br><br><b>Everything works on sv_pure 1 if you use <a href=\"//steamcommunity.com/groups/PaysusSkins#announcements/detail/289752338002823917\">this method</a>! (though sometimes its buggy and doesn't work for mac/linux to my knowledge</b><br><br><h1>Discord</h1>Donate if you'd like to support my nearly ten years of modding:&nbsp;<a class=\"yt-simple-endpoint style-scope yt-formatted-string\" spellcheck=\"false\" href=\"https://www.youtube.com/redirect?event=comments&amp;redir_token=QUFFLUhqazFKM1BJbVAwdUdnR2NkR1JjVDVsRldwSlZLd3xBQ3Jtc0ttT1JvRHQyX0NLajFISmlZVmpHYngtemlOUHUzcHh5M3FFVnd1eXRjTnotblJhUmlpY3ptZmlrQWpkMmhOS3dFT2FPQ0g3Tmg2NGl4cVc5cy14RnZpSnBucnNlVmhtQlFoQTljeE9DMmZTM2ZES0Q3UQ&amp;q=https%3A%2F%2Fko-fi.com%2FPaysus&amp;stzid=Ugw_CCBFhLFrdrlZQAx4AaABAg\" rel=\"nofollow\" target=\"_blank\" dir=\"auto\">https://ko-fi.com/Paysus</a>",
+ "_bIsObsolete": false,
+ "_nLikeCount": 381,
+ "_nViewCount": 1358257,
+ "_sVersion": "4b",
+ "_bAcceptsDonations": false,
+ "_bShowRipePromo": true,
+ "_aEmbeddables": {
+  "_sEmbeddableImageBaseUrl": "https://gamebanana.com/mods/embeddables/206285",
+  "_aVariants": [
+   "small",
+   "small_square",
+   "medium",
+   "medium_square",
+   "medium_square_minimal",
+   "large",
+   "large_minimal",
+   "large_square",
+   "large_minimal_square",
+   "thumbnail"
+  ]
+ },
+ "_aWip": {
+  "_idRow": 45473,
+  "_sName": "Engineer First Person Animations Perfected",
+  "_sProfileUrl": "https://gamebanana.com/wips/45473"
+ },
+ "_aSubmitter": {
+  "_idRow": 1353324,
+  "_sName": "Paysus",
+  "_sUserTitle": "I like to make things.",
+  "_sHonoraryTitle": "Skinning/Modelling Expert",
+  "_tsJoinDate": 1370684935,
+  "_sAvatarUrl": "https://images.gamebanana.com/img/av/59a6038b8e904.jpg",
+  "_sSigUrl": "https://images.gamebanana.com/img/sig/583e496272ae7.jpg",
+  "_sProfileUrl": "https://gamebanana.com/members/1353324",
+  "_sPointsUrl": "https://gamebanana.com/members/logs/pointslog/1353324",
+  "_sMedalsUrl": "https://gamebanana.com/members/stats/medals/1353324",
+  "_bIsOnline": false,
+  "_sLocation": "<a href=\"https://gamebanana.com\">Home</a> > <a href=\"https://gamebanana.com/games/20948\"><img src=\"https://images.gamebanana.com/img/ico/games/6abe8b273abb4.png\"/><span>Deadlock</span></a> > <a href=\"https://gamebanana.com/mods/games/20948\">Mods</a> > <a href=\"https://gamebanana.com/mods/cats/33295\">Skins</a> > <a href=\"https://gamebanana.com/mods/cats/41491\">Billy</a> > <a href=\"https://gamebanana.com/mods/739242\">[WIP] Billie, Transfem Billy</a>",
+  "_sOnlineTitle": "",
+  "_sOfflineTitle": "",
+  "_nPoints": 122251,
+  "_nPointsRank": 186,
+  "_aNormalMedals": [
+   [
+    "monthly_award.gif",
+    "Skinner of the Month, May 2014",
+    "normal",
+    651
+   ],
+   [
+    "skins1.png",
+    "Submitted 10 Skins",
+    "normal",
+    1452
+   ],
+   [
+    "m_pr_1.png",
+    "Reached 1,000 Points",
+    "normal",
+    3647
+   ],
+   [
+    "m_pr_2.png",
+    "Reached 2,500 Points",
+    "normal",
+    3648
+   ],
+   [
+    "m_pr_3.png",
+    "Reached 7,500 Points",
+    "normal",
+    3649
+   ],
+   [
+    "m_ef_1.png",
+    "1 post awarded Exemplary Feedback",
+    "normal",
+    3650
+   ],
+   [
+    "m_age_1.png",
+    "One month a member",
+    "normal",
+    3651
+   ],
+   [
+    "m_age_2.png",
+    "6 months a member",
+    "normal",
+    3652
+   ],
+   [
+    "m_age_3.png",
+    "1 year a member",
+    "normal",
+    3653
+   ],
+   [
+    "m_age_4.png",
+    "2 years a member",
+    "normal",
+    3654
+   ],
+   [
+    "thanks_recvd_1.png",
+    "Received thanks 5 times",
+    "normal",
+    14606
+   ],
+   [
+    "m_pr_4.png",
+    "Reached 25,000 Points",
+    "normal",
+    38654
+   ],
+   [
+    "monthly_award.gif",
+    "Skinner of the Month, May 2015",
+    "normal",
+    46101
+   ],
+   [
+    "returns_1.png",
+    "Returned 100 times",
+    "normal",
+    69350
+   ],
+   [
+    "subscribers_1.png",
+    "Reached 10 subscribers",
+    "normal",
+    70730
+   ],
+   [
+    "features_1.png",
+    "Submission featured",
+    "normal",
+    72459
+   ],
+   [
+    "m_ef_2.png",
+    "5 posts awarded Exemplary Feedback",
+    "normal",
+    86418
+   ],
+   [
+    "wips1.png",
+    "Submitted 10 WiPs",
+    "normal",
+    107478
+   ],
+   [
+    "m_age_5.png",
+    "4 years a member",
+    "normal",
+    133911
+   ],
+   [
+    "mods1.png",
+    "Submitted 5 Mods",
+    "normal",
+    448330
+   ],
+   [
+    "mods2.png",
+    "Submitted 10 Mods",
+    "normal",
+    448331
+   ]
+  ],
+  "_aRareMedals": [
+   [
+    "thanks_recvd_2.png",
+    "Received thanks 50 times",
+    "rare",
+    14607
+   ],
+   [
+    "returns_2.png",
+    "Returned 1000 times",
+    "rare",
+    69351
+   ],
+   [
+    "subscribers_2.png",
+    "Reached 50 subscribers",
+    "rare",
+    70731
+   ],
+   [
+    "features_2.png",
+    "10 submissions featured",
+    "rare",
+    72460
+   ],
+   [
+    "m_age_6.png",
+    "6 years a member",
+    "rare",
+    251863
+   ],
+   [
+    "m_pr_5.png",
+    "Reached 75,000 Points",
+    "rare",
+    288887
+   ],
+   [
+    "mods3.png",
+    "Submitted 15 Mods",
+    "rare",
+    448332
+   ],
+   [
+    "mods4.png",
+    "Submitted 20 Mods",
+    "rare",
+    448333
+   ]
+  ],
+  "_aLegendaryMedals": [
+   [
+    "returns_3.png",
+    "Returned 5000 times",
+    "legendary",
+    69352
+   ],
+   [
+    "subscribers_3.png",
+    "Reached 100 subscribers",
+    "legendary",
+    70732
+   ],
+   [
+    "thanks_recvd_3.png",
+    "Received thanks 500 times",
+    "legendary",
+    428368
+   ],
+   [
+    "m_age_7.png",
+    "10 years a member",
+    "legendary",
+    1633635
+   ]
+  ],
+  "_bHasRipe": false,
+  "_nBuddyCount": 19,
+  "_nSubscriberCount": 2743,
+  "_aDonationMethods": [
+   {
+    "_sTitle": "Ko-fi Profile",
+    "_sValue": "https://ko-fi.com/Paysus",
+    "_sInputType": "text",
+    "_sInputPlaceholder": "Ko-fi Profile URL...",
+    "_sIconClasses": "MiscIcon KofiIcon",
+    "_aValidator": {
+     "_regexValidPattern": "^https?\\:\\/\\/(www\\.)?ko\\-fi\\.com\\/.+$",
+     "_sWarningMessage": "URL looks incorrect - it should look like: https://ko-fi.com/USERNAME"
+    },
+    "_sValueTemplate": "<a target=\"_blank\" href=\"%VALUE%\">Ko-fi Profile</a>",
+    "_bIsUrl": true,
+    "_sFormattedValue": "<a target=\"_blank\" href=\"https://ko-fi.com/Paysus\">Ko-fi Profile</a>"
+   }
+  ],
+  "_bAccessorIsBuddy": false,
+  "_bBuddyRequestExistsWithAccessor": false,
+  "_bAccessorIsSubscribed": false,
+  "_aBio": [
+   {
+    "_sTitle": "Gender",
+    "_sValue": "Female"
+   }
+  ],
+  "_aDefaultLicenseChecklist": [
+   "yes",
+   "ask",
+   "ask",
+   "ask",
+   "ask",
+   "ask",
+   "no",
+   "ask"
+  ],
+  "_sDefaultLicense": "THIS IS NOT TO BE REUPLOADED, EVEN IF EDITED.&nbsp;BY DOWNLOADING, YOU AGREE TO NOT LET YOUR DOWNLOADED COPY BE REUPLOADED.<br><br>",
+  "_sHdAvatarUrl": "https://images.gamebanana.com/img/av/59a6034b95adf.jpg"
+ },
+ "_bFollowLinks": true,
+ "_aGame": {
+  "_idRow": 297,
+  "_sName": "Team Fortress 2",
+  "_sAbbreviation": "TF2",
+  "_sProfileUrl": "https://gamebanana.com/games/297",
+  "_sIconUrl": "https://images.gamebanana.com/img/ico/games/4f5a605d0eb52.png",
+  "_sBannerUrl": "https://images.gamebanana.com/img/ico/games/4f5a605d0eb52.png",
+  "_nSubscriberCount": 44133,
+  "_bHasSubmissionQueue": false,
+  "_bAccessorIsSubscribed": false
+ },
+ "_aCategory": {
+  "_idRow": 8203,
+  "_sName": "Animations",
+  "_sModelName": "ModCategory",
+  "_sProfileUrl": "https://gamebanana.com/mods/cats/8203",
+  "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/597622015cd73.png",
+  "_bIsObsolete": false
+ },
+ "_aSuperCategory": {
+  "_idRow": 7958,
+  "_sName": "The Engineer",
+  "_sModelName": "ModCategory",
+  "_sProfileUrl": "https://gamebanana.com/mods/cats/7958",
+  "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/6223d56361bc8.png"
+ },
+ "_aCredits": [
+  {
+   "_sGroupName": "Key Authors",
+   "_aAuthors": [
+    {
+     "_sRole": "Animator, Compiler, etc",
+     "_idRow": "1353324",
+     "_sName": "Paysus",
+     "_sProfileUrl": "https://gamebanana.com/members/1353324",
+     "_sAvatarUrl": "https://images.gamebanana.com/img/av/59a6038b8e904.jpg",
+     "_bIsOnline": false
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,302 @@
+{
+ "_aMetadata": {
+  "_nRecordCount": 999,
+  "_nPerpage": 3,
+  "_bIsComplete": false
+ },
+ "_aRecords": [
+  {
+   "_idRow": 648044,
+   "_sModelName": "Mod",
+   "_sSingularTitle": "Mod",
+   "_sIconClasses": "SubmissionType Mod",
+   "_sName": "Detailed Payload Icons",
+   "_sProfileUrl": "https://gamebanana.com/mods/648044",
+   "_tsDateAdded": 1769170191,
+   "_tsDateModified": 1769261283,
+   "_bHasFiles": true,
+   "_aTags": [],
+   "_aPreviewMedia": {
+    "_aImages": [
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697364a5998f9.jpg",
+      "_sFile220": "220-90_697364a5998f9.jpg",
+      "_hFile220": 124,
+      "_wFile220": 220,
+      "_sFile530": "530-90_697364a5998f9.jpg",
+      "_hFile530": 298,
+      "_wFile530": 530,
+      "_sFile100": "100-90_697364a5998f9.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697364ac09298.jpg",
+      "_sFile100": "100-90_697364ac09298.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697364b3b3a0a.jpg",
+      "_sFile100": "100-90_697364b3b3a0a.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697364d4e2b5b.jpg",
+      "_sFile100": "100-90_697364d4e2b5b.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697364da1ba55.jpg",
+      "_sFile100": "100-90_697364da1ba55.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "6973811160e27.jpg",
+      "_sFile100": "100-90_6973811160e27.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697381143ff8d.jpg",
+      "_sFile100": "100-90_697381143ff8d.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     }
+    ]
+   },
+   "_aSubmitter": {
+    "_idRow": 1640902,
+    "_sName": "JonathanPR",
+    "_bIsOnline": false,
+    "_bHasRipe": false,
+    "_sProfileUrl": "https://gamebanana.com/members/1640902",
+    "_sAvatarUrl": "https://images.gamebanana.com/img/av/62bc00fc9cc50.jpg",
+    "_sUpicUrl": "https://images.gamebanana.com/img/upic/62d597e97c3bf.png"
+   },
+   "_aGame": {
+    "_idRow": 297,
+    "_sName": "Team Fortress 2",
+    "_sProfileUrl": "https://gamebanana.com/games/297",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/games/4f5a605d0eb52.png"
+   },
+   "_aRootCategory": {
+    "_sName": "GUIs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1644",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b49a79d865.png"
+   },
+   "_aSubCategory": {
+    "_sName": "HUDs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1649",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b4f6d86293.png"
+   },
+   "_sVersion": "",
+   "_bIsObsolete": false,
+   "_sInitialVisibility": "show",
+   "_bHasContentRatings": false,
+   "_nLikeCount": 13,
+   "_nPostCount": 3,
+   "_bWasFeatured": false,
+   "_nViewCount": 2979,
+   "_bIsOwnedByAccessor": false
+  },
+  {
+   "_idRow": 647810,
+   "_sModelName": "Mod",
+   "_sSingularTitle": "Mod",
+   "_sIconClasses": "SubmissionType Mod",
+   "_sName": "Round Control Point Icons",
+   "_sProfileUrl": "https://gamebanana.com/mods/647810",
+   "_tsDateAdded": 1769083821,
+   "_tsDateModified": 1769260972,
+   "_bHasFiles": true,
+   "_aTags": [],
+   "_aPreviewMedia": {
+    "_aImages": [
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "697250f6ac8be.jpg",
+      "_sFile220": "220-90_697250f6ac8be.jpg",
+      "_hFile220": 124,
+      "_wFile220": 220,
+      "_sFile530": "530-90_697250f6ac8be.jpg",
+      "_hFile530": 298,
+      "_wFile530": 530,
+      "_sFile100": "100-90_697250f6ac8be.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100,
+      "_sFile800": "800-90_697250f6ac8be.jpg",
+      "_hFile800": 450,
+      "_wFile800": 800
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69720f9184f74.jpg",
+      "_sFile100": "100-90_69720f9184f74.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69720f9629410.jpg",
+      "_sFile100": "100-90_69720f9629410.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69720f9b28ffb.jpg",
+      "_sFile100": "100-90_69720f9b28ffb.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69720f9fce3d6.jpg",
+      "_sFile100": "100-90_69720f9fce3d6.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69737d1e86ad6.jpg",
+      "_sFile100": "100-90_69737d1e86ad6.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "69737d21d0371.jpg",
+      "_sFile100": "100-90_69737d21d0371.jpg",
+      "_hFile100": 56,
+      "_wFile100": 100
+     }
+    ]
+   },
+   "_aSubmitter": {
+    "_idRow": 1640902,
+    "_sName": "JonathanPR",
+    "_bIsOnline": false,
+    "_bHasRipe": false,
+    "_sProfileUrl": "https://gamebanana.com/members/1640902",
+    "_sAvatarUrl": "https://images.gamebanana.com/img/av/62bc00fc9cc50.jpg",
+    "_sUpicUrl": "https://images.gamebanana.com/img/upic/62d597e97c3bf.png"
+   },
+   "_aGame": {
+    "_idRow": 297,
+    "_sName": "Team Fortress 2",
+    "_sProfileUrl": "https://gamebanana.com/games/297",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/games/4f5a605d0eb52.png"
+   },
+   "_aRootCategory": {
+    "_sName": "GUIs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1644",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b49a79d865.png"
+   },
+   "_aSubCategory": {
+    "_sName": "HUDs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1649",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b4f6d86293.png"
+   },
+   "_sVersion": "V2a",
+   "_tsDateUpdated": 1769261034,
+   "_bIsObsolete": false,
+   "_sInitialVisibility": "show",
+   "_bHasContentRatings": false,
+   "_nLikeCount": 27,
+   "_nPostCount": 14,
+   "_bWasFeatured": false,
+   "_nViewCount": 3954,
+   "_bIsOwnedByAccessor": false
+  },
+  {
+   "_idRow": 26806,
+   "_sModelName": "Mod",
+   "_sSingularTitle": "Mod",
+   "_sIconClasses": "SubmissionType Mod",
+   "_sName": "Anime-ish HUD",
+   "_sProfileUrl": "https://gamebanana.com/mods/26806",
+   "_tsDateAdded": 1279569867,
+   "_tsDateModified": 1279578016,
+   "_bHasFiles": true,
+   "_aTags": [
+    "hud"
+   ],
+   "_aPreviewMedia": {
+    "_aImages": [
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "24514a.jpg",
+      "_sFile220": "220-90_24514a.jpg",
+      "_sFile530": "530-90_24514a.jpg",
+      "_sFile100": "100-90_24514a.jpg"
+     },
+     {
+      "_sType": "screenshot",
+      "_sBaseUrl": "https://images.gamebanana.com/img/ss/mods",
+      "_sFile": "24514b.jpg",
+      "_sFile100": "100-90_24514b.jpg"
+     }
+    ]
+   },
+   "_aSubmitter": {
+    "_idRow": 1030476,
+    "_sName": "BA Survivor",
+    "_bIsOnline": false,
+    "_bHasRipe": false,
+    "_sProfileUrl": "https://gamebanana.com/members/1030476",
+    "_sAvatarUrl": "https://images.gamebanana.com/img/av/_.gif"
+   },
+   "_aGame": {
+    "_idRow": 297,
+    "_sName": "Team Fortress 2",
+    "_sProfileUrl": "https://gamebanana.com/games/297",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/games/4f5a605d0eb52.png"
+   },
+   "_aRootCategory": {
+    "_sName": "GUIs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1644",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b49a79d865.png"
+   },
+   "_aSubCategory": {
+    "_sName": "HUDs",
+    "_sProfileUrl": "https://gamebanana.com/mods/cats/1649",
+    "_sIconUrl": "https://images.gamebanana.com/img/ico/ModCategory/609b4f6d86293.png"
+   },
+   "_sVersion": "",
+   "_bIsObsolete": false,
+   "_sInitialVisibility": "show",
+   "_bHasContentRatings": false,
+   "_nLikeCount": 15,
+   "_nPostCount": 14,
+   "_bWasFeatured": false,
+   "_nViewCount": 72182,
+   "_bIsOwnedByAccessor": false
+  }
+ ]
+}
