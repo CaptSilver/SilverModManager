@@ -14,6 +14,7 @@ namespace SilverModManager.Deployment.Fuse.Tests;
 /// The deployment mounts over the game's own data folder, so everything the daemon reads from the real
 /// folder has to go through a descriptor opened before the mount: by path it would reach itself.
 /// </summary>
+[Collection(MountingTests.Name)]
 public class MountOverBackingTests : IDisposable
 {
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(10);

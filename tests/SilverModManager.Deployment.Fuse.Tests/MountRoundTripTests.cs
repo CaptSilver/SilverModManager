@@ -16,6 +16,7 @@ namespace SilverModManager.Deployment.Fuse.Tests;
 /// Mounts a real <see cref="VfsTree"/> through libfuse and drives it with ordinary file calls from this
 /// process. Every mount lives in an empty folder under the test's own temp directory.
 /// </summary>
+[Collection(MountingTests.Name)]
 public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
 {
     private const string MountInfo = "/proc/self/mountinfo";

@@ -34,3 +34,14 @@ public static class RequiresFuse
         .Split(':', StringSplitOptions.RemoveEmptyEntries)
         .Any(directory => File.Exists(Path.Combine(directory, executable)));
 }
+
+/// <summary>
+/// Test classes that mount run one at a time. With two classes mounting at once in one test process, one
+/// mount failed its handshake (reads answered ECONNREFUSED) and the other's <c>fusermount3</c> was refused
+/// its mount point.
+/// </summary>
+[CollectionDefinition(Name)]
+public sealed class MountingTests
+{
+    public const string Name = "Mounting tests";
+}
