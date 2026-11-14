@@ -48,6 +48,18 @@ public class VfsSessionFactoryTests(IServiceProvider serviceProvider) : IDisposa
     }
 
     [Fact]
+    public void StagingForIsTheDirectoryTheSessionPromotesFrom()
+    {
+        var factory = NewFactory(new RecordingSink());
+        var tree = VfsTree.Build(_directory.Combine("game"), [], [], VfsCachePolicy.Default);
+
+        var staging = factory.StagingFor(Installation);
+
+        staging.Root.Should().Be(factory.Create(Installation, Target, GameRoot, tree).Staging.Root);
+        staging.Root.Parent.Should().Be(_directory);
+    }
+
+    [Fact]
     public async Task CreateUsesTheSettingsStagingLocationAndCap()
     {
         var sink = new RecordingSink();

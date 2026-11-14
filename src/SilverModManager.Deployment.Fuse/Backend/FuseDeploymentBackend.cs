@@ -14,6 +14,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Deployment.Fuse.Backend;
 
@@ -30,6 +31,10 @@ public sealed class FuseDeploymentBackend(
     CopyDeploymentBackend copy,
     ILooseStagingStore store,
     IGameRegistry games,
+    IFuseKernel kernel,
+    IBackingScanner scanner,
+    VfsSessionFactory sessions,
+    ISettingsManager settings,
     IFuseEnvironmentProbe probe,
     IDeploymentPlanStore plans,
     IConnection connection,
@@ -37,6 +42,9 @@ public sealed class FuseDeploymentBackend(
 {
     // FuseMountOptions.Subtype, which the kernel lists as fuse.<subtype>. Recovery finds a dead session's mount by it.
     private const string FileSystemType = "fuse.silvermod";
+
+    /// <summary>How long a finishing mount waits for its session loop to end before it leaves the staged files for recovery.</summary>
+    internal TimeSpan CompletionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <inheritdoc />
     public DeploymentBackendId Id => DeploymentBackendId.Fuse;
@@ -107,8 +115,38 @@ public sealed class FuseDeploymentBackend(
     }
 
     /// <inheritdoc />
-    public Task<IDeploymentMount> Mount(GameInstallation installation, Loadout.ReadOnly loadout, GamePath root, CancellationToken token) =>
-        throw new NotSupportedException("mounting is not wired yet");
+    public async Task<IDeploymentMount> Mount(GameInstallation installation, Loadout.ReadOnly loadout, GamePath root, CancellationToken token)
+    {
+        if (!games.TryGetMetadata(installation, out var metadata))
+            throw new InvalidOperationException($"{installation.Game.DisplayName} is not a managed installation, so there is nothing to mount");
+        if (installation.Game is not IHasSynchronizer { Synchronizer: ALoadoutSynchronizer synchronizer })
+            throw new InvalidOperationException($"{installation.Game.DisplayName} has no synchronizer to say which paths the loadout deletes");
+
+        var id = metadata.GameInstallMetadataId;
+        var folder = installation.Locations.ToAbsolutePath(root);
+        var mountPoint = FusePreflight.RealDirectory(folder) ?? throw new DirectoryNotFoundException($"{folder} does not exist");
+
+        var manifest = Manifest(id, root, connection.Db);
+        foreach (var identity in manifest.Rows.Where(static r => !r.Hidden).Select(static r => r.Identity).Distinct())
+            await store.Ensure(id, identity, token);
+
+        // The folder is opened before the mount covers its path and read only through this handle from here on.
+        var backing = DirectoryHandle.Open(mountPoint);
+        try
+        {
+            var entries = scanner.Scan(backing);
+            var sources = MountSourceBuilder.Build(manifest, synchronizer.DeletedWinners(loadout), identity => store.PathFor(id, identity));
+            var tree = VfsTree.Build(backing, entries, sources, sessions.StagingFor(id), settings.Get<VfsSettings>().CachePolicy);
+            var session = sessions.Create(id, loadout.LoadoutId, root, tree);
+            var mount = await kernel.Mount(tree, FuseMountOptions.Default(mountPoint), token);
+            return new FuseMount(mount, session, backing, root, CompletionTimeout, logger);
+        }
+        catch
+        {
+            backing.Dispose();
+            throw;
+        }
+    }
 
     /// <inheritdoc />
     public Task<MountRecoveryReport> Recover(GameInstallation installation, GamePath root, LoadoutId? target, CancellationToken token) =>
