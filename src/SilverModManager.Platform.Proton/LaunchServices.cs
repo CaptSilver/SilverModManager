@@ -68,7 +68,8 @@ public static class LaunchServices
         services.TryAddSingleton<IPendingLaunchFinisher>(s => s.GetRequiredService<PendingLaunchFinisher>());
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
-        services.TryAddSingleton<LocalConfigVdfWriter>();
+        services.TryAddSingleton<SteamConfigFileEditor>();
+        services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
         services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         return services.AddLaunchVerbs();
     }

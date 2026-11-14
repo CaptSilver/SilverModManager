@@ -148,6 +148,45 @@ public class LocalConfigVdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Test_TheFirstEditKeepsTheUsersOriginalConfig()
+    {
+        WriteConfig($"'{FluorineLine}'");
+        var original = File.ReadAllBytes(ConfigFile);
+
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []).IsRefused.Should().BeFalse();
+        File.ReadAllBytes(ConfigFile + ".silvermod-orig").Should().Equal(original);
+
+        // A second edit moves the previous file to .silvermod-bak but leaves the original alone.
+        var afterFirst = File.ReadAllBytes(ConfigFile);
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Other", [], []).IsRefused.Should().BeFalse();
+
+        File.ReadAllBytes(ConfigFile + ".silvermod-orig").Should().Equal(original);
+        File.ReadAllBytes(Backup).Should().Equal(afterFirst);
+    }
+
+    [Fact]
+    public void Test_AByteOrderMarkIsNotWrittenIntoTheRootKey()
+    {
+        WriteConfig(null);
+        File.WriteAllBytes(ConfigFile, [0xEF, 0xBB, 0xBF, .. File.ReadAllBytes(ConfigFile)]);
+
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []).IsRefused.Should().BeFalse();
+
+        File.ReadAllText(ConfigFile).Should().NotContain("\uFEFF");
+    }
+
+    [Fact]
+    public void Test_TheReportedBackupIsTheFileBeforeTheEdit()
+    {
+        WriteConfig(null);
+        var before = File.ReadAllBytes(ConfigFile);
+
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
+
+        File.ReadAllBytes(result.Backup!.ToString()).Should().Equal(before);
+    }
+
+    [Fact]
     public void Test_RefusesWhileSteamRunningAndWritesNothing()
     {
         WriteConfig(null);

@@ -55,7 +55,8 @@ public static class Services
         // The doctor probes launch locks without needing the rest of the headless launch services.
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
-        services.TryAddSingleton<LocalConfigVdfWriter>();
+        services.TryAddSingleton<SteamConfigFileEditor>();
+        services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
         // The Steam launch options suggestion shows the line the fix would write.
         services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
