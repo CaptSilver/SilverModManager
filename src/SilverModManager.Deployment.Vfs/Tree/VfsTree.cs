@@ -17,7 +17,7 @@ namespace SilverModManager.Deployment.Vfs;
 /// whiteouts. The backing directory and the loose store are only ever opened for reading. Built without
 /// one the tree is read-only and changes fail with EROFS.
 /// </summary>
-public sealed class VfsTree : IVfsOperations
+public sealed class VfsTree : IVfsOperations, IDisposable
 {
     // Served files that were not scanned (staged ones) are 0644; directories are 0755.
     private const uint RegularFileMode = 0x8000 | 0x1A4;
@@ -31,6 +31,7 @@ public sealed class VfsTree : IVfsOperations
     private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
     private readonly VfsCachePolicy _policy;
     private StagingDirectory? _staging;
+    private DirectoryHandle? _ownedBacking;
     private readonly Dictionary<string, RelativePath> _whiteouts = new(StringComparer.OrdinalIgnoreCase);
 
     // Every spelling Lookup was asked for, per directory and folded name. The kernel caches a
@@ -60,15 +61,42 @@ public sealed class VfsTree : IVfsOperations
     /// replaces the node, never its spelling. A <see cref="VfsSourceKind.Hidden"/> source removes
     /// what is there, and does nothing if nothing is.
     /// </summary>
-    /// <param name="backingRoot">The directory <paramref name="backing"/> was scanned from; backing files are served from under it.</param>
+    /// <param name="backingRoot">
+    /// The directory <paramref name="backing"/> was scanned from; backing files are served from a handle the tree
+    /// opens on it. That handle has no symlinks attached, so nothing under a symlinked directory or a symlinked file
+    /// can be opened; a tree over a folder with links is built from a scanned <see cref="DirectoryHandle"/>.
+    /// </param>
     /// <param name="backing">What the scanner found under <paramref name="backingRoot"/>.</param>
     public static VfsTree Build(AbsolutePath backingRoot, IReadOnlyList<BackingEntry> backing, IReadOnlyList<VfsFileSource> sources, VfsCachePolicy policy)
         => Build(backingRoot, backing, sources, null, policy);
 
     public static VfsTree Build(AbsolutePath backingRoot, IReadOnlyList<BackingEntry> backing, IReadOnlyList<VfsFileSource> sources, StagingDirectory? staging, VfsCachePolicy policy)
     {
+        // The tree opens the folder itself and closes it with the tree; an empty folder needs no handle.
+        var handle = backing.Count == 0 ? null : DirectoryHandle.Open(backingRoot);
+        var tree = BuildCore(handle, backing, sources, staging, policy);
+        tree._ownedBacking = handle;
+        return tree;
+    }
+
+    /// <summary>
+    /// Builds the tree over a directory held open by descriptor. The caller keeps the handle open for
+    /// as long as the tree serves files, and closes it.
+    /// </summary>
+    public static VfsTree Build(DirectoryHandle backing, IReadOnlyList<BackingEntry> entries, IReadOnlyList<VfsFileSource> sources, StagingDirectory? staging, VfsCachePolicy policy)
+        => BuildCore(backing, entries, sources, staging, policy);
+
+    public static VfsTree Build(DirectoryHandle backing, IReadOnlyList<BackingEntry> entries, IReadOnlyList<VfsFileSource> sources, VfsCachePolicy policy)
+        => BuildCore(backing, entries, sources, null, policy);
+
+    private static VfsTree BuildCore(DirectoryHandle? backing, IReadOnlyList<BackingEntry> entries, IReadOnlyList<VfsFileSource> sources, StagingDirectory? staging, VfsCachePolicy policy)
+    {
         var tree = new VfsTree(policy) { _staging = staging };
-        foreach (var entry in backing) tree.InsertBacking(backingRoot, entry);
+        foreach (var entry in entries)
+        {
+            if (backing is null) throw new ArgumentException("Backing entries need the directory they were scanned from.", nameof(entries));
+            tree.InsertBacking(backing, entry);
+        }
         foreach (var source in sources) tree.Insert(source);
         if (staging is not null) tree.LayerStaging(staging);
         return tree;
@@ -99,14 +127,14 @@ public sealed class VfsTree : IVfsOperations
         }
     }
 
-    private void InsertBacking(AbsolutePath root, BackingEntry entry)
+    private void InsertBacking(DirectoryHandle root, BackingEntry entry)
     {
         var segments = entry.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length == 0) throw new ArgumentException("A backing entry needs a non-empty path.", nameof(entry));
 
         if (!entry.IsDirectory)
         {
-            Insert(new VfsFileSource(entry.Path, VfsSourceKind.Backing, root.Combine(entry.Path), entry.Size, FileIdentity.None), entry);
+            Insert(VfsFileSource.FromBacking(root, entry), entry);
             return;
         }
 
@@ -218,10 +246,12 @@ public sealed class VfsTree : IVfsOperations
         return new VfsAttr(node.Ino, RegularFileMode, source.Size.Value, mtime, ctime, 1);
     }
 
-    // A staged file's times are the real file's. One with no real file behind it (or one that
+    // A served file's times are the real file's. One with no real file behind it (or one that
     // vanished) reports when the tree was built.
     private (DateTimeOffset MTime, DateTimeOffset CTime) TimesOf(VfsFileSource source)
     {
+        if (source.Backing is { } backing)
+            return backing.Stat(source.Path) is { } stat ? (stat.MTime, stat.CTime) : (_created, _created);
         if (source.RealPath is not { } real) return (_created, _created);
         var info = new FileInfo(real.ToString());
         if (!info.Exists) return (_created, _created);
@@ -320,16 +350,18 @@ public sealed class VfsTree : IVfsOperations
 
             VfsFileSource source;
             lock (_gate) source = node.Source;
-            if (source.RealPath is not { } realPath) return VfsResult<VfsOpenFile>.Failure(Errno.EIO);
-
             // Only a staged file is ever opened for writing; the backing directory and the loose store are read-only here.
-            var handle = File.OpenHandle(realPath.ToString(), FileMode.Open, writing ? FileAccess.ReadWrite : FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            // A backing file is opened through the descriptor: its folder's path may lead to the mount by now.
+            if (source.Backing is null && source.RealPath is null) return VfsResult<VfsOpenFile>.Failure(Errno.EIO);
+            var handle = source.Backing is { } backing
+                ? backing.OpenFile(source.Path, FileAccess.Read)
+                : File.OpenHandle(source.RealPath.GetValueOrDefault().ToString(), FileMode.Open, writing ? FileAccess.ReadWrite : FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             if ((flags & VfsOpenFlags.Truncate) != 0) RandomAccess.SetLength(handle, 0);
             return VfsResult<VfsOpenFile>.Success(new VfsOpenFile
             {
                 Ino = ino,
                 Handle = handle,
-                RealPath = realPath,
+                RealPath = source.RealPath.GetValueOrDefault(),
                 Writable = writing,
                 KeepCache = _policy.KeepCache,
             });
@@ -748,6 +780,20 @@ public sealed class VfsTree : IVfsOperations
         }
     }
 
+    // A backing file is read through its descriptor; anything else by path.
+    private static void CopyBytes(in VfsFileSource source, AbsolutePath destination)
+    {
+        if (source.Backing is not { } backing)
+        {
+            File.Copy(source.RealPath.GetValueOrDefault().ToString(), destination.ToString());
+            return;
+        }
+
+        using var from = new FileStream(backing.OpenFile(source.Path, FileAccess.Read), FileAccess.Read);
+        using var to = new FileStream(destination.ToString(), FileMode.CreateNew, FileAccess.Write);
+        from.CopyTo(to);
+    }
+
     // Puts the file's bytes under the staging directory, unless they already are, so a write has
     // somewhere to land that is not the backing directory or the loose store. Returns the error to
     // report, or null once the node's source is a staging file.
@@ -764,7 +810,7 @@ public sealed class VfsTree : IVfsOperations
                 if (!_byIno.TryGetValue(node.Ino, out var live) || live != node) return Errno.ENOENT;
                 source = node.Source;
                 if (source.FromStaging) return null;
-                if (source.RealPath is null) return Errno.EIO;
+                if (source.RealPath is null && source.Backing is null) return Errno.EIO;
                 destination = _staging.PathFor(PathOf(node));
             }
 
@@ -772,7 +818,7 @@ public sealed class VfsTree : IVfsOperations
             var temp = _staging.NewTempPath();
             try
             {
-                if (copyContents) File.Copy(source.RealPath.Value.ToString(), temp.ToString());
+                if (copyContents) CopyBytes(source, temp);
                 else File.WriteAllBytes(temp.ToString(), []);
                 // Whatever the original's mode, the copy must be one the daemon can open for writing.
                 File.SetUnixFileMode(temp.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
@@ -783,7 +829,7 @@ public sealed class VfsTree : IVfsOperations
                     // Unlinked while it was being copied.
                     if (!_byIno.TryGetValue(node.Ino, out var live) || live != node) return Errno.ENOENT;
                     File.Move(temp.ToString(), destination.ToString());
-                    node.Source = source with { Kind = VfsSourceKind.Staged, RealPath = destination, FromStaging = true };
+                    node.Source = source with { Kind = VfsSourceKind.Staged, RealPath = destination, FromStaging = true, Backing = null };
                     node.Backing = null;
                     node.Shadows = true;
                     // Same inode number, different file: size, times and link count under the attribute TTL are stale.
@@ -797,4 +843,7 @@ public sealed class VfsTree : IVfsOperations
             }
         }
     }
+
+    /// <summary>Closes the backing directory the tree opened itself. A handle passed in is left to its owner.</summary>
+    public void Dispose() => _ownedBacking?.Dispose();
 }

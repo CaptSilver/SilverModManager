@@ -17,7 +17,7 @@ public class VfsTreeTests
     private static async Task<FakeFuseKernel> Mount(params VfsFileSource[] sources)
     {
         var kernel = new FakeFuseKernel();
-        var tree = VfsTree.Build(default, [], sources, VfsCachePolicy.Default);
+        var tree = VfsTree.Build(default(AbsolutePath), [], sources, VfsCachePolicy.Default);
         await kernel.Mount(tree, FuseMountOptions.Default(FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory)), CancellationToken.None);
         return kernel;
     }

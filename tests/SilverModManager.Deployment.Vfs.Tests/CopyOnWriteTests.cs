@@ -529,4 +529,20 @@ public class CopyOnWriteTests : IDisposable
         // The rename leaves no temp file next to the list.
         _staging.WhiteoutFile.Parent.EnumerateFiles().Select(f => f.FileName).Should().Equal([_staging.WhiteoutFile.FileName]);
     }
+
+    [Fact]
+    public async Task WritingAVanillaFile_CopiesUpThroughTheDescriptor()
+    {
+        WriteBacking("Data/vanilla.txt", "vanilla");
+        using var handle = DirectoryHandle.Open(_backing);
+        var tree = VfsTree.Build(handle, new BackingScanner().Scan(handle), [], _staging, VfsCachePolicy.Default);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(tree, FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        Directory.Move(_backing.ToString(), _directory.Combine("renamed").ToString());
+        WriteThrough(kernel, "Data/vanilla.txt", "V", offset: 0);
+
+        StagedText("Data/vanilla.txt").Should().Be("Vanilla", "the copy holds the original bytes with the write on top");
+        File.ReadAllText(_directory.Combine("renamed/Data/vanilla.txt").ToString()).Should().Be("vanilla");
+    }
 }

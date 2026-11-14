@@ -179,4 +179,15 @@ public class BackingAndReadTests : IDisposable
         reply.Length.Should().Be(5);
         kernel.Release(file);
     }
+
+    [Fact]
+    public async Task GetAttr_ReportsTheBackingFilesOwnMtime()
+    {
+        var vanilla = await WriteBacking("Data/vanilla.txt", "vanilla");
+        var old = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(vanilla.ToString(), old);
+        var kernel = await Mount([]);
+
+        kernel.Resolve("Data/vanilla.txt").Value.Attr.MTime.Should().BeCloseTo(old, TimeSpan.FromSeconds(1));
+    }
 }

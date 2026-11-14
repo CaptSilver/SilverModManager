@@ -20,7 +20,7 @@ public class VfsTreeNotDirTests : IDisposable
     private VfsTree Tree(params VfsFileSource[] sources)
     {
         var staging = new StagingDirectory(_directory.Combine("staging"), GameInstallMetadataId.From(0xABC));
-        return VfsTree.Build(default, [], sources, staging, VfsCachePolicy.Default);
+        return VfsTree.Build(default(AbsolutePath), [], sources, staging, VfsCachePolicy.Default);
     }
 
     private static ulong Ino(VfsTree tree, ulong parent, string name) => tree.Lookup(parent, name).Value.Ino;

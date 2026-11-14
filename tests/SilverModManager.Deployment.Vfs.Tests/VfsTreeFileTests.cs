@@ -83,4 +83,60 @@ public class VfsTreeFileTests : IDisposable
         var kernel = await MountFile("Data/a.esp", null, 5);
         kernel.Open("Data", VfsOpenFlags.Read).Error.Should().Be(Errno.EISDIR);
     }
+
+    private static string ReadAll(FakeFuseKernel kernel, string path)
+    {
+        var file = kernel.Open(path, VfsOpenFlags.Read);
+        file.Ok.Should().BeTrue($"{path} should open (got {file.Error})");
+        try { return System.Text.Encoding.UTF8.GetString(kernel.Read(file.Value!, 0, 4096).Value!); }
+        finally { kernel.Release(file.Value!); }
+    }
+
+    [Fact]
+    public async Task OpenABackingFile_UsesTheDescriptorNotThePath()
+    {
+        var game = _directory.Combine("game");
+        game.Combine("Data").CreateDirectory();
+        await game.Combine("Data/vanilla.txt").WriteAllBytesAsync("vanilla"u8.ToArray());
+        using var handle = DirectoryHandle.Open(game);
+        var tree = VfsTree.Build(handle, new BackingScanner().Scan(handle), [], VfsCachePolicy.Default);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(tree, FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        // Whatever gets mounted over the folder, its path no longer leads to the backing files.
+        Directory.Move(game.ToString(), _directory.Combine("renamed").ToString());
+
+        ReadAll(kernel, "Data/vanilla.txt").Should().Be("vanilla");
+    }
+
+    [Fact]
+    public async Task AFileUnderASymlinkedDirectory_StillServesAfterTheRootIsRenamed()
+    {
+        var game = _directory.Combine("game");
+        game.CreateDirectory();
+        var elsewhere = _directory.Combine("elsewhere");
+        elsewhere.CreateDirectory();
+        await elsewhere.Combine("file.txt").WriteAllBytesAsync("linked"u8.ToArray());
+        File.CreateSymbolicLink(game.Combine("link").ToString(), "../elsewhere");
+        using var handle = DirectoryHandle.Open(game);
+        var tree = VfsTree.Build(handle, new BackingScanner().Scan(handle), [], VfsCachePolicy.Default);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(tree, FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        // Both moved, so neither the root's path nor the link's target leads anywhere by name.
+        Directory.Move(game.ToString(), _directory.Combine("renamed").ToString());
+        Directory.Move(elsewhere.ToString(), _directory.Combine("moved").ToString());
+
+        ReadAll(kernel, "link/file.txt").Should().Be("linked");
+    }
+
+    [Fact]
+    public async Task OpenWithNoHandleAndNoPath_FailsWithEIO()
+    {
+        var source = new VfsFileSource(RelativePath.FromUnsanitizedInput("Data/a.esp"), VfsSourceKind.Backing, RealPath: null, Size.From(1), FileIdentity.XxHash3(Hash.From(1)));
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(VfsTree.Build(_directory, [], [source], VfsCachePolicy.Default), FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        kernel.Open("Data/a.esp", VfsOpenFlags.Read).Error.Should().Be(Errno.EIO);
+    }
 }
