@@ -38,6 +38,7 @@
     <StyleInclude Source="/Styles/Controls/DataGrid/DataGridStyles.axaml" />
     <StyleInclude Source="/Styles/Controls/StackPanel/StackPanelStyles.axaml" />
     <StyleInclude Source="/Styles/Controls/ToolTips/ToolTipStyles.axaml" />
+    <StyleInclude Source="/Styles/Controls/Popup/PopupStyles.axaml" />
     <StyleInclude Source="/Styles/Controls/FlexPanel/FlexPanelStyles.axaml" />
     <StyleInclude Source="/Styles/Controls/TabControl/TabControlStyles.axaml" />
     <StyleInclude Source="/Styles/Controls/Expander/ExpanderStyles.axaml" />

@@ -40,6 +40,8 @@ public class Startup
                 }
             )
             .RemoveLauncherShimRefresher()
+            .ReplaceGamepadSource()
+            .ReplaceGameModeDetector()
             .RemoveRuntimeDependencyChecker();
     }
 }

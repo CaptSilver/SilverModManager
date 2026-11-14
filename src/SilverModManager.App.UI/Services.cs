@@ -41,6 +41,8 @@ using SilverModManager.App.UI.LeftMenu.Loadout;
 using SilverModManager.App.UI.Notifications;
 using SilverModManager.Sdk;
 using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Input;
+using SilverModManager.App.UI.Input.Menu;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel;
 using SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
@@ -190,6 +192,7 @@ public static class Services
             .AddView<MessageBoxOkView, IMessageBoxOkViewModel>()
             .AddView<SteamLaunchOptionView, ISteamLaunchOptionViewModel>()
             .AddView<MessageBoxOkCancelView, IMessageBoxOkCancelViewModel>()
+            .AddView<AppMenuOverlayView, IAppMenuOverlayViewModel>()
             .AddView<UpdaterView, IUpdaterViewModel>()
             .AddView<LoadoutLeftMenuView, ILoadoutLeftMenuViewModel>()
             .AddView<DownloadsLeftMenuView, IDownloadsLeftMenuViewModel>()
@@ -398,6 +401,9 @@ public static class Services
 
             // Diagnostics
             .AddDiagnosticWriter()
+
+            // Gamepad input
+            .AddPadInput()
 
             // Overlay Helpers
             .AddHostedService<NexusLoginOverlayService>()

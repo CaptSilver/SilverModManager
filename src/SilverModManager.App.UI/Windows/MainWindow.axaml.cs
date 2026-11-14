@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.App.UI.Controls.DragAndDrop;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Input;
 using SilverModManager.App.UI.Windows.Xdnd;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
@@ -132,6 +133,13 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
                 }).DisposeWith(disposables);
         });
     }
+
+    /// <summary>
+    /// Lets a gamepad drive this window: the navigator filters the keyboard against the pad's echoes, follows the pointer to
+    /// know when the pad is not in use, and the hint bar names what each button does.
+    /// </summary>
+    public IDisposable Attach(GamepadNavigator navigator) =>
+        new CompositeDisposable(navigator.Attach(this), PadHintBar.Attach(navigator));
 
     /// <summary>Glass tints the dark window base and, more lightly, the left menu and page panels raised on it.</summary>
     public IDisposable AttachGlass(GlassAppearance glass)

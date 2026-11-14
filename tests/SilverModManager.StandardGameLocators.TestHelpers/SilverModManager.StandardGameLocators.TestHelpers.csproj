@@ -6,6 +6,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\SilverModManager.Games.StardewValley\SilverModManager.Games.StardewValley.csproj" />
         <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Platform.Gamepad\SilverModManager.Platform.Gamepad.csproj" />
         <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
     </ItemGroup>
 

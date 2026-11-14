@@ -34,6 +34,8 @@ public class LaunchRunTests
                     ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives"))],
                 })
                 .RemoveRuntimeDependencyChecker()
+                .ReplaceGamepadSource()
+                .ReplaceGameModeDetector()
                 .ReplaceDesktopNotifier())
             .Build();
     }

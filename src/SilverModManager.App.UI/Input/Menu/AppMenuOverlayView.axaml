@@ -1,0 +1,36 @@
+<reactiveUi:ReactiveUserControl
+    x:Class="SilverModManager.App.UI.Input.Menu.AppMenuOverlayView"
+    x:TypeArguments="menu:IAppMenuOverlayViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:menu="clr-namespace:SilverModManager.App.UI.Input.Menu">
+
+    <Border Padding="24" MinWidth="360" CornerRadius="8" Background="{DynamicResource SurfaceLowBrush}">
+        <StackPanel Spacing="12">
+            <TextBlock Text="Menu" Theme="{StaticResource HeadingMDSemiTheme}" />
+            <ItemsControl x:Name="MenuItems">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="menu:AppMenuItem">
+                        <!-- The reason is written out, not a tooltip: a pad cannot hover, nor focus a disabled button. -->
+                        <Button IsEnabled="{Binding IsEnabled}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" />
+                                <TextBlock Text="{Binding DisabledReason}"
+                                           IsVisible="{Binding DisabledReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Opacity="0.7" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Border>
+</reactiveUi:ReactiveUserControl>

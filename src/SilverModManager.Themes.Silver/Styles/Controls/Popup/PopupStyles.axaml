@@ -1,0 +1,10 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Popups draw inside the window while a pad drives it or the app runs in Game Mode: a separate popup window takes
+         the focus the pad is moving, and gamescope has no window manager to place one. The app sets this resource. -->
+    <Style Selector="Popup">
+        <Setter Property="ShouldUseOverlayLayer" Value="{DynamicResource PopupsInOverlayLayer}" />
+    </Style>
+
+</Styles>

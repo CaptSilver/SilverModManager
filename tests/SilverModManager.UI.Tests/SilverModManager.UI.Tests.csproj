@@ -3,6 +3,7 @@
         <ProjectReference Include="..\..\src\SilverModManager.Games.RedEngine\SilverModManager.Games.RedEngine.csproj" />
         <ProjectReference Include="..\..\src\SilverModManager.App.UI\SilverModManager.App.UI.csproj" />
         <ProjectReference Include="..\..\src\SilverModManager.App\SilverModManager.App.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Platform.Gamepad\SilverModManager.Platform.Gamepad.csproj" />
         <ProjectReference Include="..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
     </ItemGroup>
 

@@ -57,7 +57,7 @@ internal sealed class OnDiskDataFolder : IDisposable
                 PerFilesystemStores = false,
             });
 
-        services.RemoveRuntimeDependencyChecker();
+        services.RemoveRuntimeDependencyChecker().ReplaceGamepadSource().ReplaceGameModeDetector();
 
         // Only the GUI graph registers the refresher, and the helper throws when it is missing.
         if (mode.ShowUI) services.RemoveLauncherShimRefresher();

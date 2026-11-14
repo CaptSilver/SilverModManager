@@ -24,6 +24,14 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
     }
 
     [Fact]
+    public void Test_TheTestHostNeverReadsARealGamepad()
+    {
+        // The SDL source turns on background joystick events and reads the machine's pads, whatever the display is.
+        serviceProvider.GetRequiredService<SilverModManager.Platform.Gamepad.IGamepadSource>()
+            .Should().BeOfType<SilverModManager.Platform.Gamepad.NullGamepadSource>();
+    }
+
+    [Fact]
     public void Test_TheTestHostDoesNotProbeRuntimeDependencies()
     {
         // The checker runs `flatpak run ... --version` and similar at host start. A test host per run would

@@ -57,6 +57,8 @@ public class Startup
                 })
                 .AddSingleton<AvaloniaApp>()
                 .ReplaceDesktopNotifier()
+                .ReplaceGamepadSource()
+                .ReplaceGameModeDetector()
                 .RemoveLauncherShimRefresher()
                 .ReplaceGameArtSource()
                 .RemoveRuntimeDependencyChecker()

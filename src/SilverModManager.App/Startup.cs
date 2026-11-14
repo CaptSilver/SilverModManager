@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Converters;
+using SilverModManager.App.UI.Input;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk;
 using Projektanker.Icons.Avalonia;
@@ -84,6 +85,8 @@ public class Startup
         var reactiveWindow = Provider.GetRequiredService<MainWindow>();
         GameModeWindowShell.Apply(reactiveWindow, Provider.GetRequiredService<IGameModeDetector>().IsGameMode);
         reactiveWindow.ViewModel = Provider.GetRequiredService<MainWindowViewModel>();
+        var padInput = reactiveWindow.Attach(Provider.GetRequiredService<GamepadNavigator>());
+        reactiveWindow.Closed += (_, _) => padInput.Dispose();
         reactiveWindow.Show();
     }
 

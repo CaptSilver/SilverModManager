@@ -24,6 +24,8 @@
 
     <SolidColorBrush x:Key="SystemControlTransparentBrush" Color="Transparent" />
     <x:Boolean x:Key="UseSystemFocusVisuals">True</x:Boolean>
+    <!-- Read by the Popup style; the app turns it on in Game Mode and while a pad is in use. -->
+    <x:Boolean x:Key="PopupsInOverlayLayer">False</x:Boolean>
     <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
     <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
     <Thickness x:Key="TextControlThemePadding">8,5,6,4</Thickness>

@@ -47,6 +47,8 @@ public class HeadlessHostProfileTests
                     MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
                     ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives"))],
                 })
+                .ReplaceGamepadSource()
+                .ReplaceGameModeDetector()
                 .ReplaceDesktopNotifier())
             .Build();
     }
