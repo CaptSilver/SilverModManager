@@ -273,6 +273,50 @@ public class PadBindingsTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
+    public async Task RbFromInsideATabKeepsWorkingAfterTheContentSwaps()
+    {
+        await OnUi(() =>
+        {
+            var inOne = new Button { Content = "in one" };
+            var tabs = new TabControl
+            {
+                Width = 300,
+                Height = 200,
+                ItemsSource = new[]
+                {
+                    new TabItem { Header = "one", Content = inOne },
+                    new TabItem { Header = "two", Content = new Button { Content = "in two" } },
+                    new TabItem { Header = "three", Content = new Button { Content = "in three" } },
+                },
+            };
+            using var rig = new PadRig(tabs, () => [new TabCycleBinding(forward: true), new TabCycleBinding(forward: false)]);
+            rig.Show();
+            inOne.Focus(NavigationMethod.Tab);
+
+            rig.Send(new ButtonDown(TimeSpan.Zero, GamepadButton.RB));
+            Settle(rig);
+            tabs.SelectedIndex.Should().Be(1);
+            FocusAncestors.Nearest<TabControl>(rig.Focused).Should().BeSameAs(tabs, "focus must stay inside the tab control after the swap");
+
+            rig.Send(new ButtonDown(TimeSpan.Zero, GamepadButton.RB));
+            Settle(rig);
+            tabs.SelectedIndex.Should().Be(2);
+
+            rig.Send(new ButtonDown(TimeSpan.Zero, GamepadButton.LB));
+            Settle(rig);
+            tabs.SelectedIndex.Should().Be(1);
+        });
+
+        // The old content detaches on layout, not when SelectedIndex is set; without this the bug never happens in the test.
+        static void Settle(PadRig rig)
+        {
+            rig.Window.UpdateLayout();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            PadRig.Drain();
+        }
+    }
+
+    [Fact]
     public async Task LbOnTheFirstTabStaysOnTheFirstTab()
     {
         await OnUi(() =>

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using SilverModManager.Platform.Gamepad;
 
 namespace SilverModManager.App.UI.Input.Bindings;
@@ -14,7 +15,12 @@ public sealed class TabCycleBinding(bool forward) : PadBinding
 
     public override void Execute(GamepadEvent e, FocusContext ctx)
     {
-        if (TargetOf(ctx) is var (tabs, index)) tabs.SelectedIndex = index;
+        if (TargetOf(ctx) is not var (tabs, index)) return;
+        tabs.SelectedIndex = index;
+        // The swap detaches whatever was focused inside the old tab, and Avalonia clears focus on detach. Land on the new
+        // header so the next RB/LB still finds a TabControl around the focus. Directional focus selects the TabItem, which
+        // is the one just selected, so nothing moves twice.
+        tabs.ContainerFromIndex(index)?.Focus(NavigationMethod.Directional);
     }
 
     private (TabControl Tabs, int Index)? TargetOf(FocusContext ctx)
