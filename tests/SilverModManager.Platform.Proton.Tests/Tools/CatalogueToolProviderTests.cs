@@ -91,7 +91,7 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task ARowWithAToolIdListsUnderItsDefinitionsName()
+    public async Task ARowWithAToolIdListsUnderTheNameItWasSavedUnder()
     {
         var loadout = await CreateLoadout();
         await AddRow(loadout, "saved name", "/tools/dyndolod.exe", toolId: "dyndolod");
@@ -99,9 +99,18 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
         var tools = CatalogueProvider(Catalogue("dyndolod", "DynDOLOD", _ => true)).GetTools(loadout).ToArray();
 
         var tool = tools.Should().ContainSingle().Which.Should().BeOfType<ModdingTool>().Subject;
-        tool.Name.Should().Be("DynDOLOD");
+        tool.Name.Should().Be("saved name");
         tool.Exe.Should().Be(FileSystem.FromUnsanitizedFullPath("/tools/dyndolod.exe"));
         tool.GameIds.Should().Equal(Definition.GameId);
+    }
+
+    [Fact]
+    public async Task ARowSavedWithABlankNameListsUnderItsDefinitionsName()
+    {
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "", "/tools/dyndolod.exe", toolId: "dyndolod");
+
+        CatalogueProvider(Catalogue("dyndolod", "DynDOLOD", _ => true)).GetTools(loadout).Single().Name.Should().Be("DynDOLOD");
     }
 
     [Fact]
@@ -185,6 +194,20 @@ public class CatalogueToolProviderTests(ITestOutputHelper helper)
         await _runner.Received().RunWindowsTool(Arg.Any<GameInstallation>(), Arg.Any<AbsolutePath>(),
             Arg.Is<IReadOnlyList<string>>(a => a.SequenceEqual(new[] { "-fixed", "--for-xedit.exe" })),
             Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<ToolRunVia>());
+    }
+
+    [Fact]
+    public async Task EachSavedRowOfOneCatalogueToolKeepsTheNameItWasSavedUnder()
+    {
+        // A list registers the same program several times, once per entry of its own executables list.
+        var loadout = await CreateLoadout();
+        await AddRow(loadout, "SSEEdit", "/tools/xedit.exe", toolId: "xedit");
+        await AddRow(loadout, "SSEEdit QAC", "/tools/xedit.exe", toolId: "xedit", arguments: "-qac");
+        await AddRow(loadout, "SSEEdit Find Dirty", "/tools/xedit.exe", toolId: "xedit", arguments: "-dirty");
+
+        var names = CatalogueProvider(Catalogue("xedit", "xEdit", _ => true)).GetTools(loadout).Select(t => t.Name);
+
+        names.Should().BeEquivalentTo("SSEEdit", "SSEEdit QAC", "SSEEdit Find Dirty");
     }
 
     [Fact]

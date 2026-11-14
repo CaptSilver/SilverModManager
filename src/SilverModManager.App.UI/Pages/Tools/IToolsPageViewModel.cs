@@ -153,10 +153,14 @@ public sealed record CatalogueToolRow(string Name, ModdingTool Tool, UserTool.Re
 
     internal static CatalogueToolRow For(ModdingTool tool, GameInstallation installation, IEnumerable<UserTool.ReadOnly> rows)
     {
+        // A list can save one program several times under its own names and arguments, so the id and exe alone would
+        // pair every one of those tools with the first row, and Remove would take the wrong entry away.
+        var saved = tool.Installed;
         UserTool.ReadOnly? row = null;
         foreach (var candidate in rows)
         {
-            if (candidate.ToolId.HasValue && candidate.ToolId.Value == tool.CatalogueId?.Value && candidate.Exe == tool.Exe.GetFullPath())
+            if (candidate.ToolId.HasValue && candidate.ToolId.Value == tool.CatalogueId?.Value && candidate.Exe == tool.Exe.GetFullPath()
+                && (saved.Name is null || (candidate.Name == saved.Name && SavedArguments(candidate) == saved.Arguments)))
             {
                 row = candidate;
                 break;
@@ -165,6 +169,9 @@ public sealed record CatalogueToolRow(string Name, ModdingTool Tool, UserTool.Re
 
         return new CatalogueToolRow(tool.Name, tool, row, tool.MissingPrerequisites(installation), tool.MissingPrerequisiteIds(installation), tool.CanQuickAutoClean);
     }
+
+    // A blank line on the row means "not set", the same as the tool built from it.
+    private static string? SavedArguments(UserTool.ReadOnly row) => string.IsNullOrWhiteSpace(row.Arguments) ? null : row.Arguments;
 }
 
 /// <summary>A plugin picked for a tool's Quick Auto Clean.</summary>

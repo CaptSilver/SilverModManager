@@ -419,6 +419,32 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         => CreateToolFactory(runner).Create(definition, new InstalledTool(FileSystem.Shared.FromUnsanitizedFullPath(exe)), GameId.From("any"));
 
     [Fact]
+    public async Task CatalogueTools_PairEachToolWithItsOwnSavedRow()
+    {
+        // Three entries of one list for the same program: Remove on any of them must remove that entry, not the first.
+        var loadout = await CreateLoadout();
+        var runner = new FakeToolRunner();
+        var xedit = Catalogue("xedit", "xEdit", "SSEEdit.exe");
+        var saved = new[] { ("SSEEdit", ""), ("SSEEdit QAC", "-qac"), ("SSEEdit Find Dirty", "-dirty") };
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var (name, arguments) in saved)
+            {
+                var row = new UserTool.New(tx) { InstallationId = loadout.InstallationId, Name = name, Exe = "/tools/SSEEdit.exe", Arguments = arguments, RunVia = ToolRunVia.Auto };
+                tx.Add(row.Id, UserTool.ToolId, "xedit");
+            }
+            await tx.Commit();
+        }
+        var tools = saved.Select(s => (ITool)CreateToolFactory(runner).Create(xedit,
+            new InstalledTool(FileSystem.Shared.FromUnsanitizedFullPath("/tools/SSEEdit.exe"), s.Item2.Length == 0 ? null : s.Item2, Name: s.Item1), GameId.From("any"))).ToArray();
+        var vm = CreateViewModel(new FakeToolManager { Tools = tools }, runner, new FakeFilePicker());
+
+        vm.LoadoutId = loadout.LoadoutId;
+
+        vm.CatalogueTools.Select(t => (t.Name, t.Row?.Name)).Should().BeEquivalentTo(saved.Select(s => (s.Item1, (string?)s.Item1)));
+    }
+
+    [Fact]
     public async Task CatalogueTools_ListsOnlyTheToolsAddedFromTheCatalogue()
     {
         var loadout = await CreateLoadout();

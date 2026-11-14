@@ -36,6 +36,9 @@ public sealed class ModdingTool(
 
     public AbsolutePath Exe => installed.Exe;
 
+    /// <summary>The tool as the user has it saved, overrides included.</summary>
+    public InstalledTool Installed => installed;
+
     /// <summary>The catalogue id of the definition, or null for a program the user added by hand.</summary>
     public ToolId? CatalogueId => definition.Id;
 
@@ -69,7 +72,7 @@ public sealed class ModdingTool(
 
     public IEnumerable<GameId> GameIds => [gameId];
 
-    public string Name => definition.DisplayName;
+    public string Name => installed.Name is { Length: > 0 } saved ? saved : definition.DisplayName;
 
     public ToolOutput Output => WithGroupName(definition.Output);
 

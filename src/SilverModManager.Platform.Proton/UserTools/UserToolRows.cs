@@ -13,10 +13,14 @@ internal static class UserToolRows
     // own arguments and run strategy in charge. A hand-added program's definition has neither, so nothing changes for it.
     public static InstalledTool ToInstalledTool(this UserTool.ReadOnly row, AbsolutePath exe)
         => new(exe,
-            string.IsNullOrWhiteSpace(row.Arguments) ? null : row.Arguments,
+            row.SavedArguments(),
             row.RunVia is ToolRunVia.Auto ? null : row.RunVia,
             row.OutputGroupName.ValueOrDefault(),
-            row.WorkingDirectory.ValueOrDefault() is { Length: > 0 } startIn ? exe.FileSystem.FromUnsanitizedFullPath(startIn) : null);
+            row.WorkingDirectory.ValueOrDefault() is { Length: > 0 } startIn ? exe.FileSystem.FromUnsanitizedFullPath(startIn) : null,
+            row.Name);
+
+    /// <summary>The row's arguments as <see cref="ToInstalledTool"/> reads them: blank means not set.</summary>
+    public static string? SavedArguments(this UserTool.ReadOnly row) => string.IsNullOrWhiteSpace(row.Arguments) ? null : row.Arguments;
 
     /// <summary>Whether the user asked for what a hand-added program writes into the game folder to be kept as its own group.</summary>
     public static bool KeepsOutput(this UserTool.ReadOnly row) => UserTool.CapturesGameFolderOutput.Contains(row);
