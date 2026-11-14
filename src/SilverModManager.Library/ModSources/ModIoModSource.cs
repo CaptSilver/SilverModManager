@@ -233,7 +233,7 @@ internal sealed class ModIoModSource(
             ?? throw new ModIoInstallRefusedException($"mod.io no longer has {MarkdownText.Inline(update.Mod.Name)}.", null);
         var file = mod.Modfile ?? throw new ModIoInstallRefusedException($"{MarkdownText.Inline(mod.Name)} has no file on mod.io now.", null);
         var page = Uri.TryCreate(mod.ProfileUrl, UriKind.Absolute, out var listed) ? listed : new Uri("https://mod.io/");
-        if (!file.IsClean) throw new ModIoInstallRefusedException($"mod.io's virus scan flagged {MarkdownText.Code(file.FileName)}.", page);
+        if (file.ScanProblem is { } problem) throw new ModIoInstallRefusedException($"{MarkdownText.Code(file.FileName)} was not installed: mod.io's virus scan {problem}.", page);
 
         var acquisition = new UpdateAcquisition(current.Select(static item => LibraryItemId.From(item.Id)));
         var job = AddModIoFileJob.Create(provider, client(), update.GameId, mod.Id, file, page, acquisition, mod.DateUpdated);

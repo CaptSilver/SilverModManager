@@ -48,9 +48,25 @@ public sealed record ModIoFile(
     [property: JsonPropertyName("virus_positive")] int VirusPositive)
 {
     /// <summary>
-    /// Whether mod.io's scan found nothing. A file it has not scanned yet is not called dirty; only a positive is refused.
+    /// Whether mod.io finished scanning the file and found nothing. A scan that never ran finds nothing too, so a file
+    /// mod.io has not scanned, is still scanning or could not scan is not clean.
     /// </summary>
-    public bool IsClean => VirusPositive == 0;
+    public bool IsClean => ScanProblem is null;
+
+    /// <summary>Why the file is not clean, finishing "mod.io …"; null when it is.</summary>
+    public string? ScanProblem => (VirusStatus, VirusPositive) switch
+    {
+        (1, 0) => null,
+        (1, 1) => "found it malicious",
+        (1, 2) => "found it potentially harmful",
+        (1, var positive) => $"flagged it (result {positive})",
+        (0, _) => "has not scanned it yet",
+        (2, _) => "is still scanning it",
+        (3, _) => "could not scan it: the file is too large",
+        (4, _) => "could not find the file to scan",
+        (5, _) => "failed to scan it",
+        (var status, _) => $"reports scan status {status}, which this app does not know",
+    };
 }
 
 public sealed record ModIoFileHash([property: JsonPropertyName("md5")] string? Md5);

@@ -106,7 +106,7 @@ internal sealed class ModIoCatalog(
             ?? throw new ModIoInstallRefusedException($"mod.io has no mod {modId} for {MarkdownText.InlineMidLine(game.DisplayName)}.", null);
         var page = PageOf(mod, support);
         var file = mod.Modfile ?? throw new CardNotInstallableException(mod.Name);
-        if (!file.IsClean) throw new ModIoInstallRefusedException($"mod.io's virus scan flagged {MarkdownText.Code(file.FileName)}.", page);
+        if (file.ScanProblem is { } problem) throw new ModIoInstallRefusedException($"{MarkdownText.Code(file.FileName)} was not installed: mod.io's virus scan {problem}.", page);
 
         var acquisition = new GameAcquisition(game.GameId);
         Exception? rejected = null;
