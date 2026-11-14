@@ -279,11 +279,11 @@ public class RegisterUriSchemeHandlerAppImageTests : IDisposable
     }
 
     [Fact]
-    public async Task TheWrittenDesktopFileListsBothSchemes()
+    public async Task TheWrittenDesktopFileListsEveryScheme()
     {
         await Register(null, InstallationMethod.Manually, "ror2mm");
 
-        File.ReadAllLines(Applications(OwnDesktopFile)).Should().Contain("MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm;");
+        File.ReadAllLines(Applications(OwnDesktopFile)).Should().Contain("MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm;x-scheme-handler/silvermodmanager;");
     }
 
     [Theory]

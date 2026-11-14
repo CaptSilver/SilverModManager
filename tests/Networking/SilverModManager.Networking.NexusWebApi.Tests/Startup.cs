@@ -16,6 +16,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit.DependencyInjection.Logging;
 
 namespace SilverModManager.Networking.NexusWebApi.Tests;
@@ -34,6 +35,8 @@ public class Startup
             .AddSingleton<LocalHttpServer>()
             .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
             .AddNexusWebApi()
+            // The real detector reads /proc through the launch services, which this host does not add.
+            .AddSingleton<IGameModeDetector>(new FixedGameModeDetector(isGameMode: false))
             .AddOSInterop()
             .AddRuntimeDependencies()
             .RemoveRuntimeDependencyChecker()

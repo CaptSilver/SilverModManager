@@ -7,7 +7,7 @@ namespace SilverModManager.UI.Tests;
 public class AccountsSectionTests(IServiceProvider provider) : AUiTest(provider)
 {
     [Fact]
-    public void TheAccountsSectionListsNexusGitHubBothForumsAndSteam()
+    public void TheAccountsSectionListsEverySourceThatSignsIn()
     {
         var settings = provider.GetRequiredService<ISettingsManager>();
 
@@ -16,7 +16,7 @@ public class AccountsSectionTests(IServiceProvider provider) : AUiTest(provider)
             .Where(property => property.Options.Section == Sections.Accounts)
             .ToList();
 
-        rows.Select(row => row.Options.DisplayName).Should().BeEquivalentTo("Nexus Mods", "GitHub", "LoversLab", "VectorPlexus", "Steam (depot files)");
+        rows.Select(row => row.Options.DisplayName).Should().BeEquivalentTo("Nexus Mods", "GitHub", "LoversLab", "VectorPlexus", "mod.io", "Steam (depot files)", "Steam (Workshop browse)");
         rows.Should().OnlyContain(row => row.ContainerOptions is ActionButtonContainerOptions, "every account is an action row, not a value to edit");
     }
 }
