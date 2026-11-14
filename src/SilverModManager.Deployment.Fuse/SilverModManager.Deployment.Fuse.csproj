@@ -4,6 +4,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Deployment.Fuse.Tests" />
+        <InternalsVisibleTo Include="silvermod-testhost" />
     </ItemGroup>
 
     <ItemGroup>

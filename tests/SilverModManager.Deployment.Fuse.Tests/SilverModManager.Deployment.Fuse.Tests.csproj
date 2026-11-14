@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\src\SilverModManager.Deployment.Fuse\SilverModManager.Deployment.Fuse.csproj" />
     <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
     <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+    <ProjectReference Include="..\silvermod-testhost\silvermod-testhost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

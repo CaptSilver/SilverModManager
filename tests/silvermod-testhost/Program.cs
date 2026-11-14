@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Vfs;
 using SilverModManager.Platform.Proton;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
@@ -27,6 +30,9 @@ using NSubstitute;
 //                                    "in <phase>" once the fakes are blocked in that phase, then after the run
 //                                    "result <exit code> <events>" where events lists the fakes' calls in order
 //   selftest-helper <args...>        run the shipped binary's hidden helper logic (SelftestHelper) in this process
+//   mount-holder <backing> <stagingLocation>
+//                                    mount a tree over <backing> that stages writes under <stagingLocation> (installation
+//                                    0xABC), print "mounted", then serve until killed
 //   host-lifetime <console|nosignal> run a generic host beside a StopHandler, print "ready", then after a signal
 //                                    "stopping" if ApplicationStopping fired or "running" if it did not
 return args switch
@@ -38,10 +44,29 @@ return args switch
     ["stop-handler"] => StopHandlerScenario(),
     ["session", var dir, var phase] => SessionScenario(dir, phase, killFail: false),
     ["session", var dir, var phase, "killfail"] => SessionScenario(dir, phase, killFail: true),
+    ["mount-holder", var backing, var staging] => MountHolderScenario(backing, staging),
     ["host-lifetime", var kind] => HostLifetimeScenario(kind),
     ["selftest-helper", .. var rest] => SelftestHelper.Run(rest, Console.Out, Console.Error),
     _ => Usage(),
 };
+
+static int MountHolderScenario(string backing, string stagingLocation)
+{
+    var path = FileSystem.Shared.FromUnsanitizedFullPath(backing);
+    var staging = new StagingDirectory(FileSystem.Shared.FromUnsanitizedFullPath(stagingLocation), GameInstallMetadataId.From(0xABC));
+
+    // The folder is read through a descriptor opened before the mount covers it, as the backend does.
+    using var handle = DirectoryHandle.Open(path);
+    var tree = VfsTree.Build(handle, new BackingScanner().Scan(handle), [], staging, VfsCachePolicy.Default);
+    var kernel = new LibFuseLowLevelKernel(NullLogger<LibFuseLowLevelKernel>.Instance, new FusermountUnmounter(new CliFusermountRunner()));
+    var mount = kernel.Mount(tree, FuseMountOptions.Default(path), CancellationToken.None).GetAwaiter().GetResult();
+    Console.WriteLine("mounted");
+    Console.Out.Flush();
+
+    // Serves until the test kills this process, which is the point: nothing here unmounts.
+    Thread.Sleep(Timeout.Infinite);
+    return 0;
+}
 
 static int HoldLock(string path, double seconds)
 {
