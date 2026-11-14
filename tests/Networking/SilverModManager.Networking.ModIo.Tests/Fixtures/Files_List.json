@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "id": 88001, "mod_id": 4101, "date_added": 1710000400, "virus_status": 1, "virus_positive": 0,
+      "filesize": 2048, "filehash": { "md5": "180f264ed68955adf16924b9a7c29fd6" },
+      "filename": "wider-camera.zip", "version": "1.2.0",
+      "download": { "binary_url": "https://g-6715.modapi.io/v1/games/6715/mods/4101/files/88001/download/abc123/wider-camera.zip", "date_expires": 1710099999 }
+    },
+    {
+      "id": 87000, "mod_id": 4101, "date_added": 1700000500, "virus_status": 1, "virus_positive": 0,
+      "filesize": 1024, "filehash": { "md5": "0123456789abcdef0123456789abcdef" },
+      "filename": "wider-camera-old.zip", "version": "1.0.0",
+      "download": { "binary_url": "https://g-6715.modapi.io/v1/games/6715/mods/4101/files/87000/download/def456/wider-camera-old.zip", "date_expires": 1710099999 }
+    }
+  ],
+  "result_count": 2, "result_offset": 0, "result_limit": 100, "result_total": 2
+}

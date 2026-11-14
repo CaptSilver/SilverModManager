@@ -1,0 +1,47 @@
+{
+  "data": [
+    {
+      "id": 4101,
+      "game_id": 6715,
+      "status": 1,
+      "visible": 1,
+      "date_added": 1700000000,
+      "date_updated": 1710000500,
+      "maturity_option": 0,
+      "name": "Wider Camera",
+      "name_id": "wider-camera",
+      "summary": "Pulls the camera back.",
+      "profile_url": "https://mod.io/g/baldursgate3/m/wider-camera",
+      "submitted_by": { "id": 12, "username": "Camille" },
+      "logo": { "filename": "logo.png", "original": "https://thumb.modcdn.io/mods/a/logo.png", "thumb_320x180": "https://thumb.modcdn.io/mods/a/crop_320x180/logo.png" },
+      "modfile": {
+        "id": 88001, "mod_id": 4101, "date_added": 1710000400, "virus_status": 1, "virus_positive": 0,
+        "filesize": 2048, "filehash": { "md5": "180f264ed68955adf16924b9a7c29fd6" },
+        "filename": "wider-camera.zip", "version": "1.2.0",
+        "download": { "binary_url": "https://g-6715.modapi.io/v1/games/6715/mods/4101/files/88001/download/abc123/wider-camera.zip", "date_expires": 1710099999 }
+      },
+      "stats": { "mod_id": 4101, "downloads_total": 12345, "subscribers_total": 900 }
+    },
+    {
+      "id": 4102,
+      "game_id": 6715,
+      "status": 1,
+      "visible": 1,
+      "date_added": 1700000100,
+      "date_updated": 1710000100,
+      "maturity_option": 4,
+      "name": "Spicy Outfits",
+      "name_id": "spicy-outfits",
+      "summary": "Adult content.",
+      "profile_url": "https://mod.io/g/baldursgate3/m/spicy-outfits",
+      "submitted_by": { "id": 13, "username": "Dax" },
+      "logo": { "filename": "logo.png", "original": "https://thumb.modcdn.io/mods/b/logo.png", "thumb_320x180": "https://thumb.modcdn.io/mods/b/crop_320x180/logo.png" },
+      "modfile": null,
+      "stats": { "mod_id": 4102, "downloads_total": 7, "subscribers_total": 1 }
+    }
+  ],
+  "result_count": 2,
+  "result_offset": 0,
+  "result_limit": 30,
+  "result_total": 61
+}

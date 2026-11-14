@@ -19,6 +19,10 @@ public static class WellKnownSecrets
 
     public const string SteamWebApiKeyVariable = "STEAM_WEB_API_KEY";
 
+    public static readonly SecretKey ModIoToken = new("modio.token");
+
+    public const string ModIoTokenVariable = "MODIO_TOKEN";
+
     /// <summary>
     /// Each key with the environment variable that supplies it.
     /// </summary>
@@ -27,5 +31,6 @@ public static class WellKnownSecrets
         [NexusApiKey] = NexusApiKeyVariable,
         [GitHubToken] = GitHubTokenVariable,
         [SteamWebApiKey] = SteamWebApiKeyVariable,
+        [ModIoToken] = ModIoTokenVariable,
     };
 }

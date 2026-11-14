@@ -32,6 +32,7 @@ using SilverModManager.Networking.GameBanana;
 using SilverModManager.Networking.GitHub;
 using SilverModManager.Networking.GOG;
 using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.ModIo;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Networking.Steam;
 using SilverModManager.Networking.Thunderstore;
@@ -228,6 +229,7 @@ public static class Services
             .AddTextMergeEngine()
             .AddGitHubApi()
             .AddGameBanana()
+            .AddModIo()
             .AddThunderstore()
             .AddWabbajack();
 

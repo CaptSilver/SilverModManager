@@ -42,6 +42,7 @@
         <ProjectReference Include="..\SilverModManager.Library\SilverModManager.Library.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.GameBanana\SilverModManager.Networking.GameBanana.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.ModIo\SilverModManager.Networking.ModIo.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
         <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
         <ProjectReference Include="..\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
