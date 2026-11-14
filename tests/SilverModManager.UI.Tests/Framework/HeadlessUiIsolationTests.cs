@@ -46,6 +46,15 @@ public class HeadlessUiIsolationTests(IServiceProvider provider) : AUiTest(provi
     }
 
     [Fact]
+    public void TheDensityTests_RunAlone()
+    {
+        // They merge the Couch sizes into the whole application, which any page rendered meanwhile would pick up.
+        var collection = typeof(Theme.DensityTests).GetCustomAttribute<CollectionAttribute>();
+        collection.Should().NotBeNull();
+        collection!.Name.Should().Be(HeadlessUi.Collection);
+    }
+
+    [Fact]
     public void TheHeadlessCollection_DisablesParallelization()
     {
         var definition = typeof(HeadlessUi).Assembly.GetTypes()

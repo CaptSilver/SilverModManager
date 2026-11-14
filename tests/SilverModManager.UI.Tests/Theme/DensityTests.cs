@@ -5,9 +5,13 @@ using Avalonia.Threading;
 using FluentAssertions;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Theme;
 
+// The Couch merge changes the one Application's resources, and showing a window pumps the dispatcher, so a page
+// snapshot rendering in parallel would be drawn at Couch sizes.
+[Collection(HeadlessUi.Collection)]
 public class DensityTests(IServiceProvider provider) : AUiTest(provider)
 {
     [Theory]
