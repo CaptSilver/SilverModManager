@@ -42,7 +42,7 @@ public class LaunchSessionRequestStopTests : IDisposable
         });
 
         var process = Substitute.For<IGameProcess>();
-        process.WaitAsync(Arg.Any<CancellationToken>()).Returns(_ => _exit.Task);
+        process.WaitAsync(Arg.Any<CancellationToken>(), Arg.Any<IProgress<RunningProcesses>?>()).Returns(_ => _exit.Task);
         process.When(p => p.Terminate()).Do(_ =>
         {
             _events.Add("terminate");

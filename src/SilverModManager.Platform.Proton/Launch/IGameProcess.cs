@@ -12,7 +12,7 @@ public interface IGameProcess : IDisposable
     int Pid { get; }
 
     /// <inheritdoc cref="GameProcess.WaitAsync"/>
-    Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default);
+    Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default, IProgress<RunningProcesses>? progress = null);
 
     /// <inheritdoc cref="GameProcess.Terminate"/>
     void Terminate();

@@ -55,6 +55,34 @@ public class ActiveLaunchSessionsTests
     }
 
     [Fact]
+    public void WhenOpenTools_EmitsTheNamesWhileReportedAndEmptyOnUnregister()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+        var seen = new List<string[]>();
+        using var subscription = sessions.WhenOpenTools(installation).Subscribe(names => seen.Add(names.ToArray()));
+        var registration = sessions.Register(installation);
+
+        sessions.ReportOpenTools(installation, ["xEdit"]);
+        sessions.ReportOpenTools(installation, ["xEdit"]);
+        sessions.ReportOpenTools(installation, ["xEdit", "LOOT"]);
+        registration.Dispose();
+
+        seen.Should().BeEquivalentTo(new[] { Array.Empty<string>(), ["xEdit"], ["xEdit", "LOOT"], Array.Empty<string>() }, options => options.WithStrictOrdering());
+    }
+
+    [Fact]
+    public void ReportOpenTools_WithoutARegistration_IsIgnored()
+    {
+        var sessions = new ActiveLaunchSessions();
+        var installation = Installation("1");
+
+        sessions.ReportOpenTools(installation, ["xEdit"]);
+
+        sessions.WhenOpenTools(installation).FirstAsync().Wait().Should().BeEmpty("a report after the launch ended must not leave a tool named");
+    }
+
+    [Fact]
     public void IsFinishing_FollowsTheReportedPhase()
     {
         var sessions = new ActiveLaunchSessions();

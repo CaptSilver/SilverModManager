@@ -31,6 +31,9 @@ public partial class LaunchButtonDesignViewModel : AViewModel<ILaunchButtonViewM
     public partial Percent? Progress { get; set; }
 
     [Reactive]
+    public partial string ToolTip { get; set; } = "Click to launch the game";
+
+    [Reactive]
     public partial bool IsWaitingForSteam { get; set; }
 
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }

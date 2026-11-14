@@ -1297,6 +1297,20 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task AToolStillOpenAfterTheGameQuits_IsNamedWhileTheLaunchHoldsTheInstallation()
+    {
+        _processes.OpenTools = [new TrackedProcess(31, "xEdit")];
+        var seen = new List<string[]>();
+        using var subscription = _active.WhenOpenTools(_installation).Subscribe(names => seen.Add(names.ToArray()));
+
+        var session = NewSession();
+        await Run(session);
+        session.Release();
+
+        seen.Should().BeEquivalentTo(new[] { Array.Empty<string>(), ["xEdit"], Array.Empty<string>() }, options => options.WithStrictOrdering());
+    }
+
+    [Fact]
     public async Task AnUnavailableLaunchLock_IsLoggedWithItsException()
     {
         var broke = new IOException("runtime dir is read-only");
@@ -1396,6 +1410,7 @@ public class LaunchSessionTests : IDisposable
         public LaunchPhase? PhaseAtStart { get; private set; }
 
         public TrackedProcess? Survivor { get; set; }
+        public IReadOnlyList<TrackedProcess> OpenTools { get; set; } = [];
         public IReadOnlySet<int>? StartedWith { get; private set; }
         public IReadOnlySet<int>? ShutDownWith { get; private set; }
 
@@ -1415,17 +1430,18 @@ public class LaunchSessionTests : IDisposable
             LogCountAtStart = log.Entries.Count;
             PhaseAtStart = test.Phase();
             OnStart?.Invoke();
-            return new FakeProcess(events, Result);
+            return new FakeProcess(events, Result, OpenTools);
         }
     }
 
-    private sealed class FakeProcess(List<string> events, GameProcessResult result) : IGameProcess
+    private sealed class FakeProcess(List<string> events, GameProcessResult result, IReadOnlyList<TrackedProcess> openTools) : IGameProcess
     {
         public int Pid => 1234;
 
-        public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default)
+        public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default, IProgress<RunningProcesses>? progress = null)
         {
             events.Add("wait");
+            if (openTools.Count > 0) progress?.Report(new RunningProcesses([], openTools));
             return Task.FromResult(result);
         }
 

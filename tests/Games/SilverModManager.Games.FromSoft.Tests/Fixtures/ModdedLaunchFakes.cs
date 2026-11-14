@@ -109,7 +109,7 @@ public sealed class RecordingProcessFactory : IGameProcessFactory
     public sealed class FinishedProcess : IGameProcess
     {
         public int Pid => 4242;
-        public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default) => Task.FromResult(new GameProcessResult(0, null));
+        public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default, IProgress<RunningProcesses>? progress = null) => Task.FromResult(new GameProcessResult(0, null));
         public void Terminate() { }
         public void Dispose() { }
     }

@@ -1,6 +1,7 @@
 using System.Runtime.ExceptionServices;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.Launch;
 
@@ -28,6 +29,8 @@ internal sealed class GameLaunch(LaunchSession session, LaunchContext context) :
 
         throw new GameLaunchException(message);
     }
+
+    public void ReportOpenTools(IReadOnlyList<TrackedProcess> tools) => session.ReportOpenTools(tools);
 
     public void Dispose() => session.Release();
 }

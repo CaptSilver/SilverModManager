@@ -55,6 +55,31 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             .Switch()
             .OnUI();
 
+    private IObservable<string> SessionToolTip() => this.WhenAnyValue(vm => vm.LoadoutId)
+            .ObserveOn(RxApp.TaskpoolScheduler)
+            .Select(loadoutId =>
+            {
+                var marker = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId);
+                if (!marker.IsValid()) return Observable.Return(Language.LaunchButtonViewModel_LaunchGame_ToolTip);
+                var gameName = marker.InstallationInstance.Game.DisplayName;
+                return _activeSessions.WhenOpenTools(marker.InstallationInstance).Select(tools => ToolTipFor(tools, gameName));
+            })
+            .Switch()
+            .OnUI();
+
+    [Reactive] public partial string ToolTip { get; set; } = Language.LaunchButtonViewModel_LaunchGame_ToolTip;
+
+    /// <summary>
+    /// A tool the app started that outlives the game keeps the session running, so the label stays and the tooltip
+    /// says what is holding it.
+    /// </summary>
+    private static string ToolTipFor(IReadOnlyList<string> tools, string gameName) => tools.Count switch
+    {
+        0 => Language.LaunchButtonViewModel_LaunchGame_ToolTip,
+        1 => string.Format(Language.LaunchButtonViewModel_ToolOpen_ToolTip, tools[0], gameName),
+        _ => string.Format(Language.LaunchButtonViewModel_ToolsOpen_ToolTip, $"{string.Join(", ", tools.Take(tools.Count - 1))} and {tools[^1]}", gameName),
+    };
+
     [Reactive] public partial bool CanLaunch { get; set; } = true;
 
     [Reactive] public partial string Label { get; set; } = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
@@ -117,6 +142,7 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             }).DisposeWith(cd);
 
             SessionPhase().Subscribe(ShowPhase).DisposeWith(cd);
+            SessionToolTip().Subscribe(toolTip => ToolTip = toolTip).DisposeWith(cd);
         });
 
         Command = ReactiveCommand.CreateFromObservable(() => Observable.StartAsync(LaunchGame, RxApp.TaskpoolScheduler));
@@ -142,7 +168,8 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
             waitingSubscription = new System.Reactive.Disposables.CompositeDisposable(
                 tool.WaitingForSteam.Subscribe(waiting => SetWaitingForSteam(waiting, gameName)),
                 tool.RunningInstallStep.Subscribe(running => SetRunningInstallStep(running, gameName)),
-                _activeSessions.WhenPhase(marker.InstallationInstance).Subscribe(ShowPhase));
+                _activeSessions.WhenPhase(marker.InstallationInstance).Subscribe(ShowPhase),
+                _activeSessions.WhenOpenTools(marker.InstallationInstance).Subscribe(tools => ToolTip = ToolTipFor(tools, gameName)));
             var cancellationToken = launchCancellation.Token;
             await Task.Run(async () => await _toolManager.RunTool(tool, marker, _monitor, token: cancellationToken), cancellationToken);
         }

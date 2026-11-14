@@ -37,6 +37,11 @@ public class FakeGameLaunchSession : IGameLaunchSession
     public GameLaunchException? Refusal { get; set; }
 
     /// <summary>
+    /// The tool names each <see cref="IGameLaunch.ReportOpenTools"/> call carried, in order.
+    /// </summary>
+    public List<string[]> OpenTools { get; } = [];
+
+    /// <summary>
     /// The run specs the sessions were begun with, in order.
     /// </summary>
     public List<LaunchSpec?> BegunWith { get; } = [];
@@ -72,6 +77,11 @@ public class FakeGameLaunchSession : IGameLaunchSession
             {
                 lock (owner.Events) owner.Events.Add("finish");
             }
+        }
+
+        public void ReportOpenTools(IReadOnlyList<TrackedProcess> tools)
+        {
+            lock (owner.OpenTools) owner.OpenTools.Add(tools.Select(tool => tool.Name).ToArray());
         }
 
         public void Dispose()

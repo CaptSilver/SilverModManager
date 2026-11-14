@@ -2368,6 +2368,24 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} is still open in {1}&apos;s prefix.
+        /// </summary>
+        public static string LaunchButtonViewModel_ToolOpen_ToolTip {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_ToolOpen_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} are still open in {1}&apos;s prefix.
+        /// </summary>
+        public static string LaunchButtonViewModel_ToolsOpen_ToolTip {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_ToolsOpen_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Still waiting. Steam or the game's launcher may be waiting on a window....
         /// </summary>
         public static string LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM_SLOW {

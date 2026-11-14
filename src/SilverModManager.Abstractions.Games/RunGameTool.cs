@@ -184,10 +184,10 @@ public class RunGameTool : IRunGameTool
 
         // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
         using var launch = _launchSessions.BeginSession(loadout);
-        await launch.RunAsync(token => RunProgram(installation, viaToolRunner, program, commandLineArgs, token), cancellationToken);
+        await launch.RunAsync(token => RunProgram(launch, installation, viaToolRunner, program, commandLineArgs, token), cancellationToken);
     }
 
-    private async Task RunProgram(GameInstallation installation, bool viaToolRunner, AbsolutePath program, string[] commandLineArgs, CancellationToken cancellationToken)
+    private async Task RunProgram(IGameLaunch launch, GameInstallation installation, bool viaToolRunner, AbsolutePath program, string[] commandLineArgs, CancellationToken cancellationToken)
     {
         if (viaToolRunner)
         {
@@ -211,9 +211,13 @@ public class RunGameTool : IRunGameTool
         // The program may have been only a loader: the game is whatever the process table shows for the
         // installation, and it is over once nothing has shown up for the settle period.
         _logger.LogInformation("Waiting for the game's processes to exit");
-        await _detector.WaitUntilGone(installation, new GoneWait(Settle, Interval: PollInterval), cancellationToken);
+        await _detector.WaitUntilGone(installation, new GoneWait(Settle, Interval: PollInterval, Progress: OpenToolsOf(launch)), cancellationToken);
         _logger.LogInformation("Finished running {Program}", program);
     }
+
+    // A tool the app started in the prefix keeps the launch running after the game quits; the session names it.
+    private static IProgress<RunningProcesses> OpenToolsOf(IGameLaunch launch)
+        => new ImmediateProgress<RunningProcesses>(running => launch.ReportOpenTools(running.Tools));
 
     private async Task<CommandResult> RunCommand(CancellationToken cancellationToken, string[] arguments, AbsolutePath program)
     {
@@ -366,7 +370,7 @@ public class RunGameTool : IRunGameTool
         _logger.LogDebug("Waiting for the processes of app {AppId} to exit", appId);
         try
         {
-            await _detector.WaitUntilGone(installation, new GoneWait(SteamSettle, Interval: PollInterval), cancellationToken);
+            await _detector.WaitUntilGone(installation, new GoneWait(SteamSettle, Interval: PollInterval, Progress: OpenToolsOf(launch)), cancellationToken);
             return new SteamWait(SteamRunOutcome.Exited);
         }
         catch (OperationCanceledException)

@@ -49,6 +49,18 @@ public sealed record GoneWait(
     IProgress<RunningProcesses>? Progress = null);
 
 /// <summary>
+/// Runs the handler on the reporting thread, in order. <see cref="Progress{T}"/> posts to the thread pool, which can
+/// deliver two scans out of order, and a scan that names an open tool must not overtake the one that cleared it.
+/// </summary>
+/// <param name="handler">Called once per report.</param>
+[PublicAPI]
+public sealed class ImmediateProgress<T>(Action<T> handler) : IProgress<T>
+{
+    /// <inheritdoc />
+    public void Report(T value) => handler(value);
+}
+
+/// <summary>
 /// The one answer to "is this game running": the process tracker's list for the installation minus this app's own
 /// process family, its ancestors and the processes the caller protects, with the tools the app started set apart.
 /// </summary>

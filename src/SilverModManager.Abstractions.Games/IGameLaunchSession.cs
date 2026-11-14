@@ -56,6 +56,13 @@ public interface IGameLaunch : IDisposable
     /// even though no game process has shown up yet. Read from disk on every call.
     /// </summary>
     bool WrapperActive { get; }
+
+    /// <summary>
+    /// Says which tools the app started are still open in the game's prefix. They keep the launch running after
+    /// the game quits and are never signalled, so the status names them. Pass the tools of the latest scan; an
+    /// empty list clears the status.
+    /// </summary>
+    void ReportOpenTools(IReadOnlyList<TrackedProcess> tools);
 }
 
 /// <summary>

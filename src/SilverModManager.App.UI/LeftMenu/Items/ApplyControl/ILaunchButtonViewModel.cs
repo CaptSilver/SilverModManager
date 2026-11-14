@@ -38,6 +38,12 @@ public interface ILaunchButtonViewModel : IViewModelInterface
     public Percent? Progress { get; }
 
     /// <summary>
+    /// What the button's tooltip says: how to launch, or which tool the app started is still open and keeping the
+    /// launch running.
+    /// </summary>
+    public string ToolTip { get; }
+
+    /// <summary>
     /// True while the launch has handed the game to Steam and Steam has not started it yet. Nothing in Steam
     /// tells us when the user backs out there, so this is the phase <see cref="CancelCommand"/> is for.
     /// </summary>

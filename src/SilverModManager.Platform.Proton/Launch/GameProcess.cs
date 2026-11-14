@@ -264,7 +264,9 @@ public sealed partial class GameProcess : IGameProcess
     /// Waits for the child to exit, forwarding termination signals sent to us while it runs, then shuts
     /// down whatever of the game is left.
     /// </summary>
-    public async Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default)
+    /// <param name="cancellationToken">Stops the wait.</param>
+    /// <param name="progress">Receives every scan of the process table that found something, tools included.</param>
+    public async Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default, IProgress<RunningProcesses>? progress = null)
     {
         // SIGINT and SIGQUIT come from the terminal and reach the child already, because it shares our
         // process group; forwarding them as well would deliver Ctrl-C twice. They only need to stop
@@ -289,7 +291,7 @@ public sealed partial class GameProcess : IGameProcess
             // new process. Sweeping on the first empty scan would kill a game that is alive a moment later, so
             // the sweep waits for the game to stay gone, unless a stop was asked for. A stop that the game
             // ignores must not leave the wait polling for ever.
-            var left = await detector.WaitUntilGone(installation, new GoneWait(_settle, _protectedPids, _stop), cancellationToken);
+            var left = await detector.WaitUntilGone(installation, new GoneWait(_settle, _protectedPids, _stop, Progress: progress), cancellationToken);
             if (left.Any) survivor = await ShutDownStragglersAsync(detector, installation, cancellationToken);
         }
         return new GameProcessResult(exitCode, survivor);

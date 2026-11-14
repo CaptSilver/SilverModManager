@@ -392,7 +392,7 @@ public sealed class LaunchSession
                         AttachProcess(process);
                         try
                         {
-                            exit = await WaitFor(process, cancellationToken);
+                            exit = await WaitFor(process, new ImmediateProgress<RunningProcesses>(running => ReportOpenTools(running.Tools)), cancellationToken);
                         }
                         finally
                         {
@@ -524,6 +524,12 @@ public sealed class LaunchSession
         }
     }
 
+    /// <summary>Names the tools the app started that are still open, for the launch button's status.</summary>
+    internal void ReportOpenTools(IReadOnlyList<TrackedProcess> tools)
+    {
+        if (_installation is { } installation) _activeSessions.ReportOpenTools(installation, tools.Select(tool => tool.Name).Distinct().ToArray());
+    }
+
     private void SetPhase(LaunchPhase phase)
     {
         _phase = phase;
@@ -596,11 +602,11 @@ public sealed class LaunchSession
             string.Join(' ', plan.Process.Argv), plan.Process.WorkingDirectory ?? "inherited");
     }
 
-    private static async Task<GameProcessResult> WaitFor(IGameProcess process, CancellationToken cancellationToken)
+    private static async Task<GameProcessResult> WaitFor(IGameProcess process, IProgress<RunningProcesses> progress, CancellationToken cancellationToken)
     {
         try
         {
-            return await process.WaitAsync(cancellationToken);
+            return await process.WaitAsync(cancellationToken, progress);
         }
         catch
         {

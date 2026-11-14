@@ -245,7 +245,7 @@ internal sealed class ScenarioProcess(ConcurrentQueue<string> events, ManualRese
 
     public int Pid => 4321;
 
-    public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default)
+    public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default, IProgress<RunningProcesses>? progress = null)
     {
         park("running");
         if (blockUntilTerminated) _terminated.Wait(TimeSpan.FromSeconds(30));

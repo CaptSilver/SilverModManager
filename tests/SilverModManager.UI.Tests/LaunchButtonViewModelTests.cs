@@ -258,6 +258,31 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
     }
 
     [Fact]
+    public async Task ToolTip_NamesTheOpenTool()
+    {
+        var sessions = new ActiveLaunchSessions(null);
+        var rig = await Build(sessions: sessions);
+        using var activation = await OnUi(() => Task.FromResult(rig.ViewModel.Activator.Activate()));
+        var plainToolTip = rig.ViewModel.ToolTip;
+        var registration = sessions.Register(rig.Installation);
+        await Eventually(() => rig.ViewModel.Label == Language.LaunchButtonViewModel_LaunchGame_RUNNING);
+
+        sessions.ReportOpenTools(rig.Installation, ["xEdit"]);
+
+        await Eventually(() => rig.ViewModel.ToolTip.Contains("xEdit"));
+        rig.ViewModel.ToolTip.Should().Be($"xEdit is still open in {rig.GameName}'s prefix");
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_RUNNING, "the session is still running, so the label stays");
+
+        sessions.ReportOpenTools(rig.Installation, ["xEdit", "LOOT"]);
+        await Eventually(() => rig.ViewModel.ToolTip.Contains("LOOT"));
+        rig.ViewModel.ToolTip.Should().Be($"xEdit and LOOT are still open in {rig.GameName}'s prefix");
+
+        sessions.ReportOpenTools(rig.Installation, []);
+        await Eventually(() => rig.ViewModel.ToolTip == plainToolTip);
+        registration.Dispose();
+    }
+
+    [Fact]
     public async Task ActivatingTheButtonReadsTheDatabaseOffTheActivatingThread()
     {
         var threads = new List<int>();

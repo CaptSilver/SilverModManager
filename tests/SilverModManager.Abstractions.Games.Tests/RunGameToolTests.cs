@@ -7,6 +7,7 @@ using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
@@ -214,6 +215,23 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
 
         scans().Should().BeGreaterThanOrEqualTo(6, "the gap before the game appeared must not end the wait");
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_WhenOnlyAStartedToolIsLeft_TheSessionIsToldWhichTool()
+    {
+        MakeBuildNative();
+        RunnerReturnsImmediately();
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        // The game is gone after the second scan; xEdit, started by the app, outlives it for two more.
+        ServiceProvider.GetRequiredService<IStartedTools>().Register(30, "xEdit");
+        ScriptInstallationScans("20", "20,30", "30", "30", "");
+
+        await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        Session.OpenTools.Should().Contain(names => names.SequenceEqual(new[] { "xEdit" }), "the status names the tool while it is the only thing left");
+        Session.OpenTools.First().Should().BeEmpty("the game's own processes are not tools");
         Session.Events.Should().Equal("lock", "running", "finish", "release");
     }
 

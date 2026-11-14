@@ -25,6 +25,9 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     // Where each launch that reports one stands. A registration without a session (a forwarded Steam launch) has none.
     private readonly Dictionary<(GameStore Store, string StoreId), LaunchPhase> _phases = new();
 
+    // The tools each launch reports as still open. Removed with the last registration.
+    private readonly Dictionary<(GameStore Store, string StoreId), IReadOnlyList<string>> _openTools = new();
+
     // Says which installation's count just changed. Subscribers read the count themselves.
     private readonly Subject<(GameStore, string)> _changes = new();
 
@@ -104,6 +107,42 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
         }).DistinctUntilChanged();
     }
 
+    /// <summary>
+    /// The names of the tools the app started that are still open in <paramref name="installation"/>'s prefix (the
+    /// current list on subscribe, then each change). Empty when none is, or when no launch holds the installation.
+    /// </summary>
+    public IObservable<IReadOnlyList<string>> WhenOpenTools(GameInstallation installation)
+    {
+        var key = KeyOf(installation);
+        return Observable.Create<IReadOnlyList<string>>(observer =>
+        {
+            var gate = new object();
+            void Emit()
+            {
+                lock (gate)
+                {
+                    lock (_lock) observer.OnNext(_openTools.TryGetValue(key, out var names) ? names : []);
+                }
+            }
+            var subscription = _changes.Where(changed => changed == key).Subscribe(_ => Emit());
+            Emit();
+            return subscription;
+        }).DistinctUntilChanged(names => string.Join('\n', names));
+    }
+
+    internal void ReportOpenTools(GameInstallation installation, IReadOnlyList<string> names)
+    {
+        var key = KeyOf(installation);
+        lock (_lock)
+        {
+            // A report that arrives after the launch released the installation must not name a tool for it.
+            if (!_counts.ContainsKey(key)) return;
+            if (names.Count == 0) _openTools.Remove(key);
+            else _openTools[key] = names;
+        }
+        _changes.OnNext(key);
+    }
+
     internal void ReportPhase(GameInstallation installation, LaunchPhase phase)
     {
         var key = KeyOf(installation);
@@ -160,6 +199,7 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
             {
                 _counts.Remove(key);
                 _phases.Remove(key);
+                _openTools.Remove(key);
             }
             else _counts[key] = remaining;
         }
