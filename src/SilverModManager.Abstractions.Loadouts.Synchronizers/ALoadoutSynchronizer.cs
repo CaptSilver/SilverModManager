@@ -1037,7 +1037,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newState);
         }
 
-        LogSummary($"Sync of loadout {loadout.Name} ({loadout.LoadoutId})", syncTree, groups, context);
+        LogSummary($"Sync of loadout {loadout.Name} ({loadout.LoadoutId})", syncTree, groups, context, plan);
 
         // The collector sweeps the staging store, which waits for every hold.
         stagingHold.Dispose();
@@ -1393,11 +1393,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newDiskState);
         }
 
-        LogSummary($"Reset of the game folder of {gameInstallation.Game.DisplayName}", syncTree, groups, context);
+        LogSummary($"Reset of the game folder of {gameInstallation.Game.DisplayName}", syncTree, groups, context, plan);
     }
 
-    private void LogSummary(string subject, Dictionary<GamePath, SyncNode> tree, List<BackendGroup> groups, DeploymentContext context)
-        => Logger.LogInformation("{Summary}", SyncSummary.Describe(subject, tree, groups.Select(static g => (g.Backend.Id, g.Nodes)), context.EmptyFoldersRemoved));
+    private void LogSummary(string subject, Dictionary<GamePath, SyncNode> tree, List<BackendGroup> groups, DeploymentContext context, DeploymentPlan plan)
+        => Logger.LogInformation("{Summary}", SyncSummary.Describe(subject, tree, groups.Select(static g => (g.Backend.Id, g.Nodes)), context.EmptyFoldersRemoved,
+            plan.Roots.Where(static r => r.Backend == DeploymentBackendId.Fuse).Select(static r => r.Root).ToArray()));
 
     /// <summary>
     /// Refuses the apply when a root recorded with a backend other than copy no longer accepts it, before

@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Sdk.Games;
 
@@ -16,7 +17,8 @@ internal static class SyncSummary
     /// <param name="subject">What was synced, as the start of the line: "Sync of loadout X".</param>
     /// <param name="groups">The tree split by the backend that carries each part out.</param>
     /// <param name="foldersRemoved">Empty folders the backends removed after the commit.</param>
-    public static string Describe(string subject, IReadOnlyDictionary<GamePath, SyncNode> tree, IEnumerable<(DeploymentBackendId Backend, IReadOnlyDictionary<GamePath, SyncNode> Nodes)> groups, int foldersRemoved)
+    /// <param name="mountedRoots">The roots the plan serves through a mount. The sync wrote nothing under them, so the line says when their files appear.</param>
+    public static string Describe(string subject, IReadOnlyDictionary<GamePath, SyncNode> tree, IEnumerable<(DeploymentBackendId Backend, IReadOnlyDictionary<GamePath, SyncNode> Nodes)> groups, int foldersRemoved, IReadOnlyList<GamePath> mountedRoots)
     {
         var deployed = groups
             .Select(g => (g.Backend, Count: g.Nodes.Count(static n => n.Value.Actions.HasFlag(Actions.ExtractToDisk))))
@@ -44,6 +46,7 @@ internal static class SyncSummary
         line += $", deleted {Files(deleted.Count)}, replaced {replaced}, backed up {backedUp}, ingested {ingested}, removed {foldersRemoved} empty {(foldersRemoved == 1 ? "folder" : "folders")}";
 
         if (deleted.Count > 0) line += ". Most deletions in " + string.Join(", ", TopFolders(deleted));
+        foreach (var root in mountedRoots) line += $". Files under {DeploymentRootNames.Describe(root)} appear only when the game or a tool is started from SilverModManager.";
         return line;
     }
 
