@@ -98,8 +98,9 @@ public class AddGameBananaFileJob : IJobDefinitionWithStart<AddGameBananaFileJob
 
     public async ValueTask<GameBananaLibraryFile.ReadOnly> StartAsync(IJobContext<AddGameBananaFileJob> context)
     {
-        // The name becomes a file name in the library, so it must not be able to name a path.
-        if (File.FileName.Length == 0 || File.FileName != Path.GetFileName(File.FileName))
+        // The name becomes a file name in a folder of ours, so it must not be able to name a path. Path.GetFileName
+        // passes "." and "..", so those and control characters are refused by hand.
+        if (!IsPlainFileName(File.FileName))
             throw new GameBananaIntegrityException($"File name {MarkdownText.Code(File.FileName)} of GameBanana file {File.Id} is not a plain file name.");
 
         var listedMd5 = TryParseMd5(File.Md5Checksum);
@@ -109,6 +110,8 @@ public class AddGameBananaFileJob : IJobDefinitionWithStart<AddGameBananaFileJob
         var temporaryFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         await using var folder = temporaryFileManager.CreateFolder();
         var downloaded = folder.Path.Combine(File.FileName);
+        if (downloaded.Parent != folder.Path)
+            throw new GameBananaIntegrityException($"File name {MarkdownText.Code(File.FileName)} of GameBanana file {File.Id} is not a plain file name.");
 
         try
         {
@@ -164,6 +167,9 @@ public class AddGameBananaFileJob : IJobDefinitionWithStart<AddGameBananaFileJob
             if (downloaded.FileExists) downloaded.Delete();
         }
     }
+
+    private static bool IsPlainFileName(string name)
+        => name.Length > 0 && name is not ("." or "..") && name == Path.GetFileName(name) && !name.Any(char.IsControl);
 
     // The page lists the checksum as 32 hex digits; anything else is as good as none.
     private static Md5Value? TryParseMd5(string? text)

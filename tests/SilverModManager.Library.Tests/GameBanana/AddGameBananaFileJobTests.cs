@@ -122,12 +122,18 @@ public class AddGameBananaFileJobTests(IServiceProvider serviceProvider, IConnec
         handler.Requests.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task ANameThatIsAPathIsRefused()
+    [Theory]
+    [InlineData("../evil.zip")]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData("evil\0.zip")]
+    [InlineData("evil\n.zip")]
+    public async Task ANameThatIsAPathIsRefused(string name)
     {
+        // A name the site lists becomes a file in a folder of ours: ".." alone is a "file name" by Path.GetFileName.
         var handler = new PayloadHandler(_payload);
 
-        var act = async () => await Run(FileListed(PayloadMd5, "../evil.zip"), handler: handler);
+        var act = async () => await Run(FileListed(PayloadMd5, name), handler: handler);
 
         await act.Should().ThrowAsync<GameBananaIntegrityException>();
         handler.Requests.Should().BeEmpty();
