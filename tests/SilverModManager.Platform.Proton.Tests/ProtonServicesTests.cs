@@ -2,6 +2,7 @@ using SilverModManager.DataModel;
 using SilverModManager.Sdk.FileStore;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -9,6 +10,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Protontricks;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.ToolRunner;
@@ -39,6 +41,9 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<ISynchronizerService>());
         services.AddSingleton(Substitute.For<ILooseStagingStore>());
         services.AddSingleton<DeploymentLaunchRoots>();
+        // What the promote-staged-files action needs from the data model.
+        services.AddSingleton<HeldMounts>();
+        services.AddSingleton(Substitute.For<IDiagnosticManager>());
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         // The stale-mount sweep the doctor verb runs goes through the finisher that headless launch registers.
         services.AddSingleton(Substitute.For<IPendingLaunchFinisher>());
@@ -77,7 +82,8 @@ public class ProtonServicesTests
         ]);
         provider.GetServices<IToolRunStrategy>().OfType<ILastResortToolRunStrategy>().Should().ContainSingle()
             .Which.Should().BeOfType<ProtontricksStrategy>();
-        provider.GetServices<IDiagnosticEmitter>().Select(e => e.GetType()).Should().BeEquivalentTo([typeof(SteamLaunchOptionEmitter), typeof(BuiltInDxgiOverrideEmitter)]);
+        provider.GetServices<IDiagnosticEmitter>().Select(e => e.GetType()).Should().BeEquivalentTo([typeof(SteamLaunchOptionEmitter), typeof(BuiltInDxgiOverrideEmitter), typeof(MountDiagnosticEmitter)]);
+        provider.GetServices<IDiagnosticActionHandler>().Select(h => h.ActionId).Should().Contain(DiagnosticActions.PromoteStagedFilesId);
         provider.GetServices<IRuntimeDependency>().Should().ContainSingle().Which.Should().BeOfType<AggregateProtontricksDependency>();
     }
 }

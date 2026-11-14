@@ -149,6 +149,33 @@ public static class DiagnosticActions
         => new(VerifyGameFilesInSteamId, "Verify the game's files in Steam", [appId],
             "Steam checks every file against its own and downloads the ones that differ.");
 
+    /// <summary>
+    /// Id of the action that promotes the files a game wrote through a mounted folder into a loadout.
+    /// </summary>
+    public const string PromoteStagedFilesId = "promote-staged-files";
+
+    /// <summary>
+    /// Promotes what was staged under <paramref name="root"/> into <paramref name="loadout"/>. The arguments are the
+    /// installation id, the root as the deployment command names it, and the loadout id;
+    /// <see cref="ParsePromoteStagedFiles"/> reads them back.
+    /// </summary>
+    public static DiagnosticAction PromoteStagedFiles(GameInstallMetadataId installation, string root, LoadoutId loadout, string loadoutName)
+        => new(PromoteStagedFilesId, $"Promote into {loadoutName}",
+            [installation.Value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), root, loadout.Value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)],
+            "The files are added to that loadout as overrides.");
+
+    /// <summary>
+    /// Reads the arguments <see cref="PromoteStagedFiles"/> wrote.
+    /// </summary>
+    public static (GameInstallMetadataId Installation, string Root, LoadoutId Loadout) ParsePromoteStagedFiles(ImmutableArray<string> arguments)
+    {
+        if (arguments.Length != 3
+            || !ulong.TryParse(arguments[0], System.Globalization.CultureInfo.InvariantCulture, out var installation)
+            || !ulong.TryParse(arguments[2], System.Globalization.CultureInfo.InvariantCulture, out var loadout))
+            throw new ArgumentException("The action names no staged files to promote", nameof(arguments));
+        return (GameInstallMetadataId.From(EntityId.From(installation)), arguments[1], LoadoutId.From(EntityId.From(loadout)));
+    }
+
     private const string RemoveNote = "The file comes off disk and the loadout is applied now.";
 
     /// <summary>

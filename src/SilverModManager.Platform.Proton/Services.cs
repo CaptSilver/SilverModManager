@@ -10,6 +10,7 @@ using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Platform.Proton.ToolRunner;
 using SilverModManager.Platform.Proton.Tools;
 using SilverModManager.Platform.Proton.UserTools;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk;
@@ -61,6 +62,10 @@ public static class Services
         services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, BuiltInDxgiOverrideEmitter>());
+        // The finding list is the one the launch gate fills, so the emitter and the promote action see what a recovery recorded.
+        services.TryAddSingleton<MountRecoveryFindings>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MountDiagnosticEmitter>());
+        services.AddDiagnosticActionHandler<PromoteStagedFilesActionHandler>();
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         // Runs through the finisher the headless launch services register, which the doctor verb and the app start both have.
         services.TryAddSingleton<StaleMountSweep>();
