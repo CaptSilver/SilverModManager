@@ -38,6 +38,22 @@ public sealed class HostExecution(string binfmtDirectory, Architecture processAr
 
     private const int MachineLowByte = 18;
 
+    /// <summary>The architecture this process runs as, so callers can branch on it without a second lookup.</summary>
+    public Architecture ProcessArchitecture => processArchitecture;
+
+    /// <summary>
+    /// Whether these are the opening bytes of an x86-64 ELF file: the ident and <c>e_machine</c> at bytes 18-19,
+    /// so the first 20 bytes of a file are enough.
+    /// </summary>
+    public static bool IsX86_64Elf(ReadOnlySpan<byte> header)
+    {
+        foreach (var (position, value) in X86_64Header)
+        {
+            if (position >= header.Length || header[position] != value) return false;
+        }
+        return true;
+    }
+
     /// <summary>The folder this probe reads, for messages.</summary>
     public string BinfmtDirectory => binfmtDirectory;
 

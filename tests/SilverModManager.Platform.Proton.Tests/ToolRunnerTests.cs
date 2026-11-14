@@ -43,12 +43,13 @@ public class ToolRunnerTests : IDisposable
             .Returns(_ => new CommandResult(7, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
     }
 
-    private ToolRunner.ToolRunner Runner(IReadOnlyList<string>? filesystemRoots = null, HostExecution? host = null, ISettingsManager? settings = null, bool withPlainWine = false, IStartedTools? startedTools = null)
+    private ToolRunner.ToolRunner Runner(IReadOnlyList<string>? filesystemRoots = null, HostExecution? host = null, ISettingsManager? settings = null, bool withPlainWine = false, IStartedTools? startedTools = null, IEnvironmentReader? environment = null)
     {
         var protonResolver = new ProtonResolver(new EmptyEnvironment());
+        var steamProton = new SteamProtonStrategy(protonResolver, environment ?? new EmptyEnvironment());
         IToolRunStrategy[] strategies = withPlainWine
-            ? [new SteamProtonStrategy(protonResolver), new PlainWineStrategy(_processRunner)]
-            : [new SteamProtonStrategy(protonResolver)];
+            ? [steamProton, new PlainWineStrategy(_processRunner)]
+            : [steamProton];
         return new ToolRunner.ToolRunner(
             new PrefixResolver(),
             strategies,
@@ -225,7 +226,7 @@ public class ToolRunnerTests : IDisposable
                 GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty));
             var prefix = new ResolvedPrefix(viaLink.Combine("steamapps/compatdata/42/pfx"), CompatibilityLayerKind.SteamProton, null, 42);
 
-            var plan = new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()))
+            var plan = new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()), new EmptyEnvironment())
                 .Plan(installation, prefix, PrefixCommand.ForExe(Exe));
 
             plan.IsRunnable.Should().BeTrue(plan.Diagnostic);
@@ -473,13 +474,41 @@ public class ToolRunnerTests : IDisposable
         foreach (var directory in _cleanup) Directory.Delete(directory, recursive: true);
     }
 
+    // An Arm64 process whose binfmt directory does not exist: Unknown if read, so a run proves it was not read.
+    private static HostExecution Arm64WithUnreadableBinfmt() => new("/nonexistent/binfmt_misc", Architecture.Arm64);
+
+    private sealed class FixedEnvironment(string name, string? value) : IEnvironmentReader
+    {
+        public string? Get(string variable) => variable == name ? value : null;
+    }
+
+    [Fact]
+    public void ProtonWithAnArm64Build_RunsOnAnArm64HostWithoutReadingBinfmt()
+    {
+        _fs.CreateDirectory(_protonDir.Combine("files/bin-arm64"));
+
+        Runner(host: Arm64WithUnreadableBinfmt()).CanRun(SteamGame(), out var diagnostic).Should().BeTrue(diagnostic);
+    }
+
+    [Fact]
+    public void ProtonUseArm64SetToZero_RefusesEvenWithAnArm64Build()
+    {
+        _fs.CreateDirectory(_protonDir.Combine("files/bin-arm64"));
+
+        var runner = Runner(host: NoX86_64Interpreter(), environment: new FixedEnvironment("PROTON_USE_ARM64", "0"));
+
+        runner.CanRun(SteamGame(), out var diagnostic, out var cannotRunX86_64).Should().BeFalse();
+        cannotRunX86_64.Should().BeTrue();
+        diagnostic.Should().Contain("PROTON_USE_ARM64 is set to '0'").And.Contain("unset it");
+    }
+
     [Fact]
     public void AHostWithoutX86_64RefusesAStrategyThatNeedsIt()
     {
         var runner = Runner(host: NoX86_64Interpreter());
 
         runner.CanRun(SteamGame(), out var diagnostic).Should().BeFalse();
-        diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs").And.Contain("SteamProton");
+        diagnostic.Should().Contain("FEX").And.Contain(ToolRunner.ToolRunner.OverrideKey).And.Contain("SteamProton").And.Contain("files/bin-arm64").And.Contain("in Steam").And.Contain("This machine is not x86-64");
         runner.Plan(SteamGame(), Exe, [], null).IsRunnable.Should().BeFalse();
     }
 
@@ -504,10 +533,12 @@ public class ToolRunnerTests : IDisposable
         runner.CanRun(GogInWine(), out var diagnostic).Should().BeTrue(diagnostic);
     }
 
+    private const string FakeRequirement = "the fake launcher is an x86-64 program";
+
     private sealed class FakeStrategy(bool needsX86_64Host, string? notRunnable) : IToolRunStrategy
     {
         public CompatibilityLayerKind Kind => CompatibilityLayerKind.SteamProton;
-        public bool NeedsX86_64Host => needsX86_64Host;
+        public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix) => needsX86_64Host ? FakeRequirement : null;
         public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix) => notRunnable;
         public ToolRunPlan Plan(GameInstallation installation, ResolvedPrefix prefix, PrefixCommand command)
             => ToolRunPlan.Runnable("Fake", ["fake"], prefix.Path, new Dictionary<string, string>());
@@ -516,7 +547,7 @@ public class ToolRunnerTests : IDisposable
     private sealed class FakeLastResort(bool needsX86_64Host) : ILastResortToolRunStrategy
     {
         public CompatibilityLayerKind Kind => CompatibilityLayerKind.SteamProton;
-        public bool NeedsX86_64Host => needsX86_64Host;
+        public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix) => needsX86_64Host ? FakeRequirement : null;
         public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix) => null;
         public ToolRunPlan Plan(GameInstallation installation, ResolvedPrefix prefix, PrefixCommand command)
             => ToolRunPlan.Runnable("FakeLastResort", ["fake-last-resort"], prefix.Path, new Dictionary<string, string>());
@@ -610,7 +641,7 @@ public class ToolRunnerTests : IDisposable
         runner.CanRun(SteamGame(), out var diagnostic, out var cannotRunX86_64).Should().BeFalse();
 
         cannotRunX86_64.Should().BeTrue();
-        diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs");
+        diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs").And.Contain("SteamProton cannot run: primary cannot run");
     }
 
     [Fact]
@@ -655,7 +686,7 @@ public class ToolRunnerTests : IDisposable
         var unreadable = new HostExecution("/nonexistent/binfmt_misc", Architecture.Arm64);
 
         Runner(host: unreadable).CanRun(SteamGame(), out var diagnostic).Should().BeFalse();
-        diagnostic.Should().Contain("could not read /nonexistent/binfmt_misc").And.Contain("HostExecutionSettings.AssumeX86_64Runs")
+        diagnostic.Should().Contain("/nonexistent/binfmt_misc could not be read").And.Contain("HostExecutionSettings.AssumeX86_64Runs").And.Contain("files/bin-arm64")
             .And.NotContain("cannot run x86-64 programs");
     }
 
@@ -680,12 +711,68 @@ public class ToolRunnerTests : IDisposable
     }
 
     [Fact]
+    public void AnX86_64HostNeverAsksTheStrategy()
+    {
+        var strategy = new CountingStrategy();
+
+        RunnerOf(UnmanagedGames.X64Host(), strategy).CanRun(SteamGame(), out var diagnostic).Should().BeTrue(diagnostic);
+
+        strategy.RequirementAsked.Should().Be(0);
+    }
+
+    [Fact]
+    public void ALauncherThatRunsOnAarch64IsStillRefusedOnAnotherCpu()
+    {
+        var host = new HostExecution("/nonexistent/binfmt_misc", Architecture.RiscV64);
+
+        RunnerOf(host, new FakeStrategy(needsX86_64Host: false, notRunnable: null)).CanRun(SteamGame(), out var diagnostic, out var cannotRunX86_64).Should().BeFalse();
+
+        cannotRunX86_64.Should().BeTrue();
+        diagnostic.Should().Contain("SteamProton was only checked for aarch64 hosts").And.Contain("This machine is not x86-64");
+    }
+
+    private sealed class CountingStrategy : IToolRunStrategy
+    {
+        public int RequirementAsked { get; private set; }
+        public CompatibilityLayerKind Kind => CompatibilityLayerKind.SteamProton;
+        public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix)
+        {
+            RequirementAsked++;
+            return FakeRequirement;
+        }
+        public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix) => null;
+        public ToolRunPlan Plan(GameInstallation installation, ResolvedPrefix prefix, PrefixCommand command)
+            => ToolRunPlan.Runnable("Counting", ["counting"], prefix.Path, new Dictionary<string, string>());
+    }
+
+    [Fact]
+    public void AForcedStrategyWhoseBuildDoesNotResolve_ReportsTheResolverNotTheX86_64Fallback()
+    {
+        var plan = Runner(host: NoX86_64Interpreter()).Plan(SteamGame(withProvider: false), Exe, [], null, ToolRunVia.SteamProton);
+
+        plan.IsRunnable.Should().BeFalse();
+        plan.Diagnostic.Should().Contain("Steam installation").And.NotContain("could not be resolved");
+        plan.CannotRunX86_64.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheOverrideSettingIsNotReadWhenTheLauncherRunsOnThisCpu()
+    {
+        _fs.CreateDirectory(_protonDir.Combine("files/bin-arm64"));
+        var settings = UnmanagedGames.Settings();
+
+        Runner(host: Arm64WithUnreadableBinfmt(), settings: settings).CanRun(SteamGame(), out _).Should().BeTrue();
+
+        settings.DidNotReceiveWithAnyArgs().Get<HostExecutionSettings>();
+    }
+
+    [Fact]
     public void TwoStrategiesForOneKind_AreRefused()
     {
         var protonResolver = new ProtonResolver(new EmptyEnvironment());
         var act = () => new ToolRunner.ToolRunner(
             new PrefixResolver(),
-            [new SteamProtonStrategy(protonResolver), new SteamProtonStrategy(protonResolver)],
+            [new SteamProtonStrategy(protonResolver, new EmptyEnvironment()), new SteamProtonStrategy(protonResolver, new EmptyEnvironment())],
             _processRunner,
             UnmanagedGames.Registry(),
             UnmanagedGames.LaunchRoots(),

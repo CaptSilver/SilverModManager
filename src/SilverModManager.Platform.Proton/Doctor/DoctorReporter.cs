@@ -3,6 +3,7 @@ using SilverModManager.Deployment.Fuse.Availability;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Steam;
 
 namespace SilverModManager.Platform.Proton.Doctor;
@@ -29,7 +30,8 @@ public sealed class DoctorReporter(
     IPrefixInspector? prefixInspector = null,
     IEnumerable<IPrefixComponentRequirements>? componentRequirements = null,
     HostExecution? hostExecution = null,
-    IFuseEnvironmentProbe? fuseProbe = null)
+    IFuseEnvironmentProbe? fuseProbe = null,
+    ISettingsManager? settings = null)
 {
     private readonly IInstallationCheck[] _checks = checks?.ToArray() ?? [];
     private readonly IPrefixComponentRequirements[] _componentRequirements = componentRequirements?.ToArray() ?? [];
@@ -69,6 +71,7 @@ public sealed class DoctorReporter(
 
         var steamApp = SteamApp(installation);
         var prefix = prefixResolver.Resolve(installation);
+        var hostX86_64 = DescribeHostX86_64(prefix);
         return new DoctorInstallation(
             installation.Game.DisplayName,
             store,
@@ -83,7 +86,8 @@ public sealed class DoctorReporter(
         {
             Checks = _checks.SelectMany(check => check.Check(installation)).ToArray(),
             PrefixComponents = DescribeComponents(installation, prefix),
-            HostX86_64 = DescribeHostX86_64(prefix),
+            HostX86_64 = hostX86_64,
+            X86_64CheckSkipped = hostX86_64 is not null && settings?.Get<HostExecutionSettings>().AssumeX86_64Runs == true,
             MountSweep = DescribeMountSweep(installation, mountSweep),
         };
     }

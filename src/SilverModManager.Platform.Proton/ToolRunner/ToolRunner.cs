@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Text;
 using CliWrap;
 using Microsoft.Extensions.Logging;
@@ -232,10 +233,11 @@ public sealed class ToolRunner(
         }
 
         // Gated on the strategy that would actually run, so a last resort is refused the same way.
-        if (X86_64Refusal(installation, strategy) is { } refusal)
+        if (X86_64Refusal(installation, strategy, resolved) is { } refusal)
         {
             strategy = null;
-            diagnostic = refusal;
+            // A refused last resort would otherwise hide why the regular strategy was skipped.
+            diagnostic = fallbackReason is null ? refusal : $"{refusal} {fallbackReason}";
             cannotRunX86_64 = true;
             return false;
         }
@@ -272,15 +274,15 @@ public sealed class ToolRunner(
             return false;
         }
 
-        if (X86_64Refusal(installation, forced) is { } refusal)
+        diagnostic = forced.CheckRunnable(installation, resolved);
+        if (diagnostic is not null) return false;
+
+        if (X86_64Refusal(installation, forced, resolved) is { } refusal)
         {
             diagnostic = refusal;
             cannotRunX86_64 = true;
             return false;
         }
-
-        diagnostic = forced.CheckRunnable(installation, resolved);
-        if (diagnostic is not null) return false;
 
         strategy = forced;
         prefix = resolved;
@@ -288,16 +290,26 @@ public sealed class ToolRunner(
     }
 
     /// <summary>
-    /// The one place every program start passes through to learn whether this machine can start the
-    /// strategy's x86-64 launcher. Null when it can, when the strategy is not x86-64, or when the user said
-    /// to assume it can.
+    /// The one place every program start passes through to learn whether this machine can start the strategy's
+    /// launcher. Null when the process is x86-64, when the launcher runs on this CPU, when the kernel has an
+    /// x86-64 interpreter, or when the user said to skip the check.
     /// </summary>
-    private string? X86_64Refusal(GameInstallation installation, IToolRunStrategy strategy)
+    private string? X86_64Refusal(GameInstallation installation, IToolRunStrategy strategy, ResolvedPrefix prefix)
     {
-        if (!strategy.NeedsX86_64Host) return null;
+        var architecture = hostExecution.ProcessArchitecture;
+        if (architecture == Architecture.X64) return null;
+
+        // Asked before the binfmt table is read: a launcher that runs on this CPU must not be refused because
+        // /proc/sys/fs/binfmt_misc is unreadable. Only aarch64 was checked, so null means nothing elsewhere.
+        var requirement = strategy.X86_64Requirement(installation, prefix);
+        if (requirement is null)
+        {
+            if (architecture == Architecture.Arm64) return null;
+            requirement = $"{strategy.Kind} was only checked for aarch64 hosts";
+        }
 
         var support = hostExecution.CanRunX86_64();
-        if (support is X86_64Support.Native or X86_64Support.Interpreter) return null;
+        if (support is X86_64Support.Interpreter) return null;
 
         if (settingsManager.Get<HostExecutionSettings>().AssumeX86_64Runs)
         {
@@ -307,10 +319,10 @@ public sealed class ToolRunner(
         }
 
         var game = installation.Game.DisplayName;
-        var fixHint = $"If Proton does run here, turn on {OverrideKey} with: settings set -k {OverrideKey} -v true";
+        var head = $"{game}'s Windows programs run through {strategy.Kind}, and {requirement}. This machine is not x86-64 and ";
         return support is X86_64Support.Unknown
-            ? $"{game}'s Windows programs run through {strategy.Kind}, an x86-64 program, and this machine is not x86-64 and could not read {hostExecution.BinfmtDirectory} to check for an x86-64 interpreter (FEX). {fixHint}"
-            : $"{game}'s Windows programs run through {strategy.Kind}, an x86-64 program, and this machine is not x86-64 and has no x86-64 binfmt interpreter (FEX) registered. {fixHint}";
+            ? $"{head}{hostExecution.BinfmtDirectory} could not be read to check for an x86-64 interpreter (FEX); make it readable to the app, or register FEX with the kernel. If x86-64 programs do run here, run: settings set -k {OverrideKey} -v true"
+            : $"{head}no x86-64 interpreter (FEX) is registered with the kernel; registering one runs any x86-64 launcher. If x86-64 programs do run here and the app is wrong, run: settings set -k {OverrideKey} -v true";
     }
 
     internal const string OverrideKey = "HostExecutionSettings.AssumeX86_64Runs";

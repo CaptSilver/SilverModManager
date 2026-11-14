@@ -73,8 +73,8 @@ public class RunInPrefixTests
     {
         List<IToolRunStrategy> strategies =
         [
-            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment())),
-            new UmuStrategy(_processRunner),
+            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()), new EmptyEnvironment()),
+            new UmuStrategy(_processRunner, new EmptyEnvironment()),
             new HeroicFlatpakStrategy(_processRunner),
             new PlainWineStrategy(_processRunner),
         ];

@@ -25,6 +25,7 @@ public class SettingsVerbTests
         public bool Enabled { get; init; }
         public int Count { get; init; } = 3;
         public long Big { get; init; }
+        public bool Hidden { get; init; }
         public double Ratio { get; init; } = 0.5;
         public int Level { get; init; } = 1;
         public Speed Speed { get; init; }
@@ -40,6 +41,7 @@ public class SettingsVerbTests
                     : ValidationResult.CreateFailed("Count can't be negative.")),
                 null)
             .ConfigureProperty(x => x.Big, Options<long>("Big"), null)
+            .ConfigureProperty(x => x.Hidden, Options<bool>("Hidden"), null)
             .ConfigureProperty(x => x.Ratio, Options<double>("Ratio"), new SliderContainerOptions(0, 1, 0.05))
             .ConfigureProperty(x => x.Level, Options<int>("Level"), SingleValueMultipleChoiceContainerOptions.Create<int>(
                 EqualityComparer<int>.Default, [1, 2, 3, 4, 5], static i => i.ToString()))
@@ -116,6 +118,17 @@ public class SettingsVerbTests
         proxy.GetProperty("name").GetString().Should().Be("HTTP proxy");
         proxy.GetProperty("value").GetString().Should().Be("");
         proxy.GetProperty("requiresRestart").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Set_ABoolWithoutAPageControl_IsStillSet()
+    {
+        var harness = new Harness();
+
+        var (exitCode, _, _) = await harness.Run("settings", "set", "-k", "SampleSettings.Hidden", "-v", "true");
+
+        exitCode.Should().Be(0);
+        harness.Settings.Get<SampleSettings>().Hidden.Should().BeTrue();
     }
 
     [Fact]

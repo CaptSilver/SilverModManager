@@ -19,7 +19,8 @@ public static class DoctorTextFormatter
             lines.Add($"  Loadouts: {string.Join(", ", install.Loadouts)}");
             lines.Add($"  Prefix: {Prefix(install.Prefix)}");
             if (install.Proton is { } proton) lines.AddRange(Proton(proton));
-            if (install.HostX86_64 is { } hostSupport) lines.Add($"  x86-64 programs: {HostX86_64(hostSupport)}");
+            if (install.HostX86_64 is { } hostSupport)
+                lines.Add($"  x86-64 programs: {HostX86_64(hostSupport)}{(install.X86_64CheckSkipped ? $", check skipped: {ToolRunner.ToolRunner.OverrideKey} is on" : "")}");
             lines.Add($"  Runner: {Runner(install.Runner)}");
             if (install.LaunchOptions is { } options) lines.Add($"  Launch options: {LaunchOptions(options)}");
             if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
@@ -68,7 +69,7 @@ public static class DoctorTextFormatter
     private static string HostX86_64(X86_64Support support) => support switch
     {
         X86_64Support.Interpreter => "run through an interpreter registered with the kernel",
-        X86_64Support.None => "cannot run here, no x86-64 binfmt interpreter (FEX) is registered",
+        X86_64Support.None => "no x86-64 interpreter (FEX) is registered with the kernel",
         X86_64Support.Unknown => $"unknown, could not read {HostExecution.DefaultBinfmtDirectory}",
         _ => "run natively",
     };

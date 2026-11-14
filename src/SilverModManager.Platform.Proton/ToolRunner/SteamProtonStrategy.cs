@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.ToolRunner;
@@ -9,7 +10,7 @@ namespace SilverModManager.Platform.Proton.ToolRunner;
 /// Runs a program through the <c>proton</c> script of the build Steam uses for the game, with the
 /// environment Steam gives it.
 /// </summary>
-public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolRunStrategy
+public sealed class SteamProtonStrategy(IProtonResolver protonResolver, IEnvironmentReader environment) : IToolRunStrategy
 {
     internal const string StrategyName = "SteamProton";
 
@@ -19,6 +20,16 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
 
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
         => Resolve(installation, prefix).Diagnostic;
+
+    public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix)
+    {
+        var game = installation.Game.DisplayName;
+        var resolution = Resolve(installation, prefix);
+        if (!resolution.Found) return $"the Proton build for {game} could not be resolved, so its ARM64 support is unknown";
+
+        return WineRunSupport.ProtonArm64Requirement(resolution.Build.Launcher, resolution.Build.Name, environment,
+            $"pick a Proton build with ARM64 support for {game} in Steam");
+    }
 
     public ToolRunPlan Plan(
         GameInstallation installation,

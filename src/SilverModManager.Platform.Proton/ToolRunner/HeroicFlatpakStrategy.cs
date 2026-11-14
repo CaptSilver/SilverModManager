@@ -33,6 +33,9 @@ public sealed class HeroicFlatpakStrategy(IProcessRunner processRunner) : IToolR
         return diagnostic ?? (_heroic.IsInstalled() ? null : _heroic.MissingText);
     }
 
+    public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix)
+        => "programs inside Heroic's Flatpak were not checked for ARM64 support";
+
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,

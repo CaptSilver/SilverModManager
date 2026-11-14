@@ -20,6 +20,9 @@ public sealed class ProtontricksStrategy(AggregateProtontricksDependency protont
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
         => Resolve(installation, prefix).Diagnostic;
 
+    public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix)
+        => "protontricks-launch picks the Proton build itself, so its ARM64 support was not checked";
+
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,

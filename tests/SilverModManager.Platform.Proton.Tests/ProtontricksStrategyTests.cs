@@ -52,7 +52,7 @@ public class ProtontricksStrategyTests
     private IToolRunner Runner(HostExecution? host = null) => new ToolRunner.ToolRunner(
         new PrefixResolver(),
         [
-            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment())),
+            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()), new EmptyEnvironment()),
             new ProtontricksStrategy(Protontricks()),
         ],
         _processRunner,
@@ -122,7 +122,7 @@ public class ProtontricksStrategyTests
             var runner = Runner(new HostExecution(directory, Architecture.Arm64));
 
             runner.CanRun(SteamGame(), out var diagnostic).Should().BeFalse();
-            diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs");
+            diagnostic.Should().Contain("FEX").And.Contain("HostExecutionSettings.AssumeX86_64Runs").And.Contain("protontricks-launch").And.Contain("SteamProton cannot run");
             runner.Plan(SteamGame(), Exe, [], null).IsRunnable.Should().BeFalse();
         }
         finally

@@ -84,6 +84,12 @@ public sealed record DoctorInstallation(
     public X86_64Support? HostX86_64 { get; init; }
 
     /// <summary>
+    /// Whether the user told the runner to skip the x86-64 check. Only ever true where <see cref="HostX86_64"/>
+    /// is set, so the JSON gains a true value only on a machine that is not x86-64.
+    /// </summary>
+    public bool X86_64CheckSkipped { get; init; }
+
+    /// <summary>
     /// What the stale-mount sweep did for this installation, or <c>no stale mount</c> when it had nothing to clean up.
     /// Null when the report was built without running the sweep.
     /// </summary>

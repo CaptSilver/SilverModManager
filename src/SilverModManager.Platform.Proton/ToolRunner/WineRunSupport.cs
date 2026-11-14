@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton.ToolRunner;
@@ -13,6 +14,32 @@ internal static class WineRunSupport
     /// compat data directory, rather than a <c>wine</c> executable.
     /// </summary>
     public static bool IsProtonScript(AbsolutePath runnerBinary) => runnerBinary.FileName == "proton";
+
+    /// <summary>The variable Proton's <c>proton</c> script reads to decide whether to use its ARM64 Wine.</summary>
+    public const string ProtonUseArm64Variable = "PROTON_USE_ARM64";
+
+    /// <summary>
+    /// Whether the Proton tree around this <c>proton</c> script carries an ARM64 build. The script itself checks
+    /// for the <c>files/bin-arm64/</c> directory, not for any file inside it.
+    /// </summary>
+    public static bool HasArm64Build(AbsolutePath protonScript)
+        => protonScript.Parent.Combine("files/bin-arm64").DirectoryExists();
+
+    /// <summary>
+    /// Null when the <c>proton</c> script would pick its ARM64 Wine on an aarch64 host; otherwise why it would
+    /// not. The script takes the ARM64 path only when <c>PROTON_USE_ARM64</c> is unset or exactly <c>1</c>, so
+    /// any other value is reported as the reason.
+    /// </summary>
+    public static string? ProtonArm64Requirement(AbsolutePath protonScript, string buildName, IEnvironmentReader environment, string pickAdvice)
+    {
+        if (!HasArm64Build(protonScript))
+            return $"the Proton build {buildName} at '{protonScript.Parent}' has no ARM64 build (files/bin-arm64); {pickAdvice}";
+
+        var value = environment.Get(ProtonUseArm64Variable) ?? "1";
+        return value == "1"
+            ? null
+            : $"{ProtonUseArm64Variable} is set to '{value}', so Proton skips its ARM64 Wine; unset it";
+    }
 
     public static string NoRunner(GameInstallation installation)
         => $"{installation.Game.DisplayName} runs through Heroic, but Heroic's settings name no runner for it.";

@@ -19,10 +19,12 @@ public interface IToolRunStrategy
     ToolRunVia? Via => null;
 
     /// <summary>
-    /// Whether the launcher this strategy starts is itself an x86-64 program (Proton, umu, Heroic's bundled
-    /// Proton, protontricks), so a machine with another CPU needs an x86-64 interpreter to use it.
+    /// What about the launcher this strategy starts needs an x86-64 host, as a phrase that fits after "and" and
+    /// ends with what the user can pick instead when there is something to pick; or null when the launcher runs
+    /// on an aarch64 host's own CPU. The runner only honours null on an Arm64 process and never asks on an x86-64
+    /// one. Asked after <see cref="CheckRunnable"/> has passed, so a strategy may assume its launcher resolves.
     /// </summary>
-    bool NeedsX86_64Host => true;
+    string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix);
 
     /// <summary>
     /// The reason a program cannot be run for the installation, or null when it can.

@@ -3,6 +3,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Steam;
 
 namespace SilverModManager.Platform.Proton.ToolRunner;
 
@@ -11,7 +12,7 @@ namespace SilverModManager.Platform.Proton.ToolRunner;
 /// it is installed, and through the runner's <c>proton</c> script when it is not. A Wine runner is run
 /// like any Wine prefix.
 /// </summary>
-public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
+public sealed class UmuStrategy(IProcessRunner processRunner, IEnvironmentReader environment) : IToolRunStrategy
 {
     internal const string UmuStrategyName = "Umu";
     internal const string ProtonStrategyName = "Proton";
@@ -31,6 +32,29 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
         if (_umu.IsInstalled() || runner.FileExists) return null;
         return $"{_umu.MissingText} The Proton script at '{runner}' is not there either, so there is nothing to run the program with.";
     }
+
+    public string? X86_64Requirement(GameInstallation installation, ResolvedPrefix prefix)
+    {
+        // CheckRunnable has already refused a prefix with no runner.
+        if (!RunnerOf(installation, prefix, out var runner, out _)) return null;
+        if (!WineRunSupport.IsProtonScript(runner)) return _wine.X86_64Requirement(installation, prefix);
+
+        var game = installation.Game.DisplayName;
+        var buildName = runner.Parent.FileName;
+        if (_umu.IsInstalled())
+        {
+            // umu-run starts the proton script inside the Steam Linux Runtime its toolmanifest.vdf names; only
+            // the steamrt4-arm64 runtime is an aarch64 program, every other one is x86-64 whatever Wine it holds.
+            var runtime = VdfFile.Read(runner.Parent.Combine("toolmanifest.vdf"))?["require_tool_appid"]?.Value;
+            if (runtime != Arm64RuntimeAppId)
+                return $"umu-run would start the Proton runner {buildName} inside the x86-64 Steam Linux Runtime its toolmanifest.vdf asks for (require_tool_appid {runtime ?? "missing"}); pick a Proton runner built for ARM64 for {game} in Heroic";
+        }
+
+        return WineRunSupport.ProtonArm64Requirement(runner, buildName, environment, $"pick a Proton runner with ARM64 support for {game} in Heroic");
+    }
+
+    // Steam's app id for SteamLinuxRuntime_steamrt4-arm64, the one aarch64 runtime umu-launcher knows.
+    private const string Arm64RuntimeAppId = "4185400";
 
     public ToolRunPlan Plan(
         GameInstallation installation,

@@ -15,7 +15,7 @@ namespace SilverModManager.Platform.Proton.Tests;
 /// The strategies for prefixes that Steam does not own: umu and Proton for native Heroic, Heroic's Flatpak
 /// sandbox, and plain Wine. Availability is decided by a fake process runner, so nothing is started.
 /// </summary>
-public class OtherRunnerStrategyTests
+public class OtherRunnerStrategyTests : IDisposable
 {
     private readonly InMemoryFileSystem _fs = new(OSInformation.FakeUnix);
     private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
@@ -39,17 +39,53 @@ public class OtherRunnerStrategyTests
             });
     }
 
-    private ToolRunner.ToolRunner Runner() => new(
+    private ToolRunner.ToolRunner Runner(HostExecution? host = null, IEnvironmentReader? environment = null) => new(
         new PrefixResolver(),
         [
-            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment())),
-            new UmuStrategy(_processRunner),
+            new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment()), environment ?? new EmptyEnvironment()),
+            new UmuStrategy(_processRunner, environment ?? new EmptyEnvironment()),
             new HeroicFlatpakStrategy(_processRunner),
             new PlainWineStrategy(_processRunner),
         ],
         _processRunner,
         UnmanagedGames.Registry(),
-        UnmanagedGames.LaunchRoots(), UnmanagedGames.X64Host(), UnmanagedGames.Settings(), new StartedTools());
+        UnmanagedGames.LaunchRoots(), host ?? UnmanagedGames.X64Host(), UnmanagedGames.Settings(), new StartedTools());
+
+    // An arm64 process whose kernel table has no x86-64 entry, like a headset without FEX registered.
+    private HostExecution NoX86_64Interpreter()
+    {
+        var directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smm-binfmt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(System.IO.Path.Combine(directory, "status"), "enabled\n");
+        _cleanup.Add(directory);
+        return new HostExecution(directory, Architecture.Arm64);
+    }
+
+    private readonly List<string> _cleanup = [];
+
+    public void Dispose()
+    {
+        foreach (var directory in _cleanup) Directory.Delete(directory, recursive: true);
+    }
+
+    private static readonly byte[] X86_64ElfHeader = Convert.FromHexString(HostExecutionTests.X86_64Magic);
+    private static readonly byte[] Aarch64ElfHeader = Convert.FromHexString(HostExecutionTests.Aarch64Magic);
+
+    private void WriteHeader(string path, byte[] header)
+    {
+        using var stream = _fs.CreateFile(Path(path));
+        stream.Write(header);
+    }
+
+    // Called before HeroicProton() has created the runner's folder, so it creates the folder itself.
+    private void HeroicProtonManifest(string requireToolAppId)
+    {
+        _fs.CreateDirectory(Path("/heroic/tools/proton/GE-Proton9-1"));
+        _fs.WriteAllText(Path("/heroic/tools/proton/GE-Proton9-1/toolmanifest.vdf"),
+            $"\"manifest\"\n{{\n  \"version\" \"2\"\n  \"commandline\" \"/proton %verb%\"\n  \"require_tool_appid\" \"{requireToolAppId}\"\n}}\n");
+    }
+
+    private void HeroicProtonArm64Build() => _fs.CreateDirectory(Path("/heroic/tools/proton/GE-Proton9-1/files/bin-arm64"));
 
     private AbsolutePath Exe => _fs.FromUnsanitizedFullPath("/tools/xEdit/SSEEdit.exe");
 
@@ -90,6 +126,89 @@ public class OtherRunnerStrategyTests
     // Heroic keeps Proton runners as <tools>/proton/<name>/proton and Wine runners as <name>/bin/wine.
     private GameInstallation HeroicProton(string prefix = "/heroic/Prefixes/Test Game")
         => Install(CompatibilityLayerKind.Heroic, prefix, "/heroic/tools/proton/GE-Proton9-1/proton");
+
+    // --- x86-64 launchers on an arm64 host ---
+
+    [Fact]
+    public void HeroicWineRunner_OnArm64_IsRefusedWhenTheBinaryIsAnX86_64Elf()
+    {
+        _installed.Add("/heroic/tools/wine-ge/bin/wine");
+        var installation = Install(CompatibilityLayerKind.Heroic, "/heroic/Prefixes/Test Game", "/heroic/tools/wine-ge/bin/wine");
+        WriteHeader("/heroic/tools/wine-ge/bin/wine", X86_64ElfHeader);
+
+        Runner(host: NoX86_64Interpreter()).CanRun(installation, out var diagnostic, out var cannotRunX86_64).Should().BeFalse();
+
+        cannotRunX86_64.Should().BeTrue();
+        diagnostic.Should().Contain("/heroic/tools/wine-ge/bin/wine' is an x86-64 Wine build").And.Contain("FEX");
+    }
+
+    [Fact]
+    public void PlainWine_OnArm64_RunsAnAarch64WineBinary()
+    {
+        _installed.Add("/wine/bin/wine");
+        var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", "/wine/bin/wine");
+        WriteHeader("/wine/bin/wine", Aarch64ElfHeader);
+
+        Runner(host: NoX86_64Interpreter()).CanRun(installation, out var diagnostic).Should().BeTrue(diagnostic);
+    }
+
+    [Fact]
+    public void PlainWine_OnArm64_RunsWineFromPathWithoutInspectingIt()
+    {
+        _installed.Add("wine");
+        var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", null);
+
+        Runner(host: NoX86_64Interpreter()).CanRun(installation, out var diagnostic).Should().BeTrue(diagnostic);
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithUmu_OnArm64_IsRefusedWhenTheManifestWantsAnX86_64Runtime()
+    {
+        _installed.Add("umu-run");
+        HeroicProtonManifest("4183110");
+        HeroicProtonArm64Build();
+
+        Runner(host: NoX86_64Interpreter()).CanRun(HeroicProton(), out var diagnostic, out var cannotRunX86_64).Should().BeFalse();
+
+        cannotRunX86_64.Should().BeTrue();
+        diagnostic.Should().Contain("umu-run would start the Proton runner GE-Proton9-1 inside the x86-64 Steam Linux Runtime")
+            .And.Contain("require_tool_appid 4183110").And.Contain("in Heroic").And.NotContain("uninstall").And.NotContain("in Steam");
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithUmu_OnArm64_RunsWhenTheManifestWantsTheArm64RuntimeAndTheBuildHasOne()
+    {
+        _installed.Add("umu-run");
+        HeroicProtonManifest("4185400");
+        HeroicProtonArm64Build();
+
+        Runner(host: new HostExecution("/nonexistent/binfmt_misc", Architecture.Arm64)).CanRun(HeroicProton(), out var diagnostic).Should().BeTrue(diagnostic);
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithUmu_OnArm64_IsRefusedWithoutAManifest()
+    {
+        _installed.Add("umu-run");
+        HeroicProtonArm64Build();
+
+        Runner(host: NoX86_64Interpreter()).CanRun(HeroicProton(), out var diagnostic).Should().BeFalse();
+        diagnostic.Should().Contain("require_tool_appid missing");
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithoutUmu_OnArm64_RunsWithAnArm64Build()
+    {
+        HeroicProtonArm64Build();
+
+        Runner(host: new HostExecution("/nonexistent/binfmt_misc", Architecture.Arm64)).CanRun(HeroicProton(), out var diagnostic).Should().BeTrue(diagnostic);
+    }
+
+    [Fact]
+    public void HeroicProtonRunner_WithoutUmu_OnArm64_IsRefusedWithoutAnArm64BuildAndSaysHeroic()
+    {
+        Runner(host: NoX86_64Interpreter()).CanRun(HeroicProton(), out var diagnostic).Should().BeFalse();
+        diagnostic.Should().Contain("GE-Proton9-1").And.Contain("files/bin-arm64").And.Contain("in Heroic").And.NotContain("in Steam");
+    }
 
     // --- plain Wine ---
 

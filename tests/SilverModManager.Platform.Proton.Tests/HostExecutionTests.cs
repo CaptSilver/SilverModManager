@@ -8,8 +8,8 @@ namespace SilverModManager.Platform.Proton.Tests;
 /// </summary>
 public class HostExecutionTests : IDisposable
 {
-    private const string X86_64Magic = "7f454c4602010100000000000000000002003e00";
-    private const string Aarch64Magic = "7f454c460201010000000000000000000200b700";
+    internal const string X86_64Magic = "7f454c4602010100000000000000000002003e00";
+    internal const string Aarch64Magic = "7f454c460201010000000000000000000200b700";
     private const string Mask = "ffffffffffffff00fffffffffffffffffeffffff";
 
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "smm-binfmt-" + Guid.NewGuid().ToString("N"));
@@ -22,6 +22,26 @@ public class HostExecutionTests : IDisposable
         => File.WriteAllText(Path.Combine(_directory, name), $"{state}\ninterpreter /usr/bin/{name}\nflags: F\noffset {offset}\nmagic {magic}\nmask {mask}\n");
 
     private X86_64Support Probe(Architecture architecture = Architecture.Arm64) => new HostExecution(_directory, architecture).CanRunX86_64();
+
+    [Fact]
+    public void TheProcessArchitectureIsTheOneGiven()
+        => new HostExecution(_directory, Architecture.Arm64).ProcessArchitecture.Should().Be(Architecture.Arm64);
+
+    [Fact]
+    public void AnX86_64ElfHeaderIsRecognised()
+        => HostExecution.IsX86_64Elf(Convert.FromHexString(X86_64Magic)).Should().BeTrue();
+
+    [Fact]
+    public void AnAarch64ElfHeaderIsNotX86_64()
+        => HostExecution.IsX86_64Elf(Convert.FromHexString(Aarch64Magic)).Should().BeFalse();
+
+    [Fact]
+    public void AScriptIsNotAnX86_64Elf()
+        => HostExecution.IsX86_64Elf("#!/bin/sh\nexec wine \"$@\"\n"u8).Should().BeFalse();
+
+    [Fact]
+    public void AHeaderShorterThanTheMachineFieldIsNotX86_64()
+        => HostExecution.IsX86_64Elf(Convert.FromHexString(X86_64Magic)[..18]).Should().BeFalse();
 
     [Fact]
     public void AnX64ProcessRunsX86_64Natively()

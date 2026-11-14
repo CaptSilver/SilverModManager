@@ -13,6 +13,7 @@ using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.Tests.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
 namespace SilverModManager.Platform.Proton.Tests.Doctor;
@@ -46,6 +47,7 @@ public class DoctorReporterTests : IDisposable
         ProtonResolution? proton = null,
         FakeToolRunner? runner = null,
         HostExecution? host = null,
+        ISettingsManager? settings = null,
         params IInstallationCheck[] checks)
         => new(
             new FakePrefixResolver(prefix ?? PrefixResolution.Resolved(new ResolvedPrefix(_prefix, CompatibilityLayerKind.SteamProton, ProtonAppId: 42))),
@@ -53,7 +55,8 @@ public class DoctorReporterTests : IDisposable
             runner ?? new FakeToolRunner(),
             new InstallationLockFactory(new FakeEnvironment(_runtimeDir)),
             checks,
-            hostExecution: host);
+            hostExecution: host,
+            settings: settings);
 
     private GameInstallation SteamGame(string name = "Test Game", string id = AppId, bool withProvider = true)
     {
@@ -143,14 +146,36 @@ public class DoctorReporterTests : IDisposable
     }
 
     [Fact]
-    public void Build_OnAnArm64MachineWithoutAnInterpreter_SaysX86_64CannotRunHere()
+    public void Build_OnAnArm64MachineWithoutAnInterpreter_SaysNoInterpreterIsRegistered()
     {
         WriteLocalConfig(null);
 
         var report = Reporter(host: Arm64HostWithBinfmt(directoryExists: true)).Build([Managed(SteamGame())]);
 
         report.Installations[0].HostX86_64.Should().Be(X86_64Support.None);
-        DoctorTextFormatter.Format(report).Should().Contain(l => l.StartsWith(HostLine) && l.Contains("cannot run here"));
+        DoctorTextFormatter.Format(report).Should().Contain(l => l.StartsWith(HostLine) && l.Contains("no x86-64 interpreter (FEX) is registered") && !l.Contains("cannot run here"));
+    }
+
+    [Fact]
+    public void Build_WithTheSkipSettingOnAnArm64Machine_SaysTheCheckIsSkipped()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(host: Arm64HostWithBinfmt(directoryExists: true), settings: UnmanagedGames.Settings(assumeX86_64Runs: true)).Build([Managed(SteamGame())]);
+
+        report.Installations[0].X86_64CheckSkipped.Should().BeTrue();
+        DoctorTextFormatter.Format(report).Should().Contain(l => l.StartsWith(HostLine) && l.Contains("check skipped: HostExecutionSettings.AssumeX86_64Runs is on"));
+    }
+
+    [Fact]
+    public void Build_WithTheSkipSettingOnAnX86_64Machine_SaysNothingAboutIt()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter(host: UnmanagedGames.X64Host(), settings: UnmanagedGames.Settings(assumeX86_64Runs: true)).Build([Managed(SteamGame())]);
+
+        report.Installations[0].X86_64CheckSkipped.Should().BeFalse();
+        DoctorTextFormatter.Format(report).Should().NotContain(l => l.StartsWith(HostLine));
     }
 
     [Fact]
