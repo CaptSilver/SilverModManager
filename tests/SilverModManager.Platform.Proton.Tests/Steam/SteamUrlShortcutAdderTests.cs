@@ -47,6 +47,32 @@ public class SteamUrlShortcutAdderTests : IDisposable
     }
 
     [Fact]
+    public async Task AMarkerThatIsALinkIsRefusedAndWhatItPointsAtIsLeftAlone()
+    {
+        // The marker sits in /tmp, where anyone can leave a link under its name.
+        var victim = System.IO.Path.Combine(_root, "victim.txt");
+        await File.WriteAllTextAsync(victim, "keep");
+        File.CreateSymbolicLink(Marker, victim);
+
+        var act = () => Adder([1u]).AddAsync(Request(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<SteamShortcutRefusedException>().WithMessage("*link*");
+        (await File.ReadAllTextAsync(victim)).Should().Be("keep");
+        _launcher.DidNotReceiveWithAnyArgs().Open(default!);
+    }
+
+    [Fact]
+    public async Task AMarkerLeftByAnEarlierAddIsMadeAgain()
+    {
+        await File.WriteAllTextAsync(Marker, "left over");
+
+        await Adder([1u], [1u]).AddAsync(Request(), CancellationToken.None);
+
+        new FileInfo(Marker).Length.Should().Be(0, "the marker is made afresh, not written through");
+        _launcher.ReceivedWithAnyArgs(1).Open(default!);
+    }
+
+    [Fact]
     public async Task TheOneNewAppIdIsRecordedWhenSteamFlushesAtOnce()
     {
         var write = await Adder([1u], [1u, 2147483650u]).AddAsync(Request(), CancellationToken.None);

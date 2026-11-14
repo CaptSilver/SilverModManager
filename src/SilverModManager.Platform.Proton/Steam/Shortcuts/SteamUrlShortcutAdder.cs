@@ -1,6 +1,7 @@
 using System.Text;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.Steam.Shortcuts;
 
@@ -20,7 +21,7 @@ public sealed class SteamUrlShortcutAdder(ISteamUriLauncher steam, Func<string, 
         var shortcuts = ShortcutsVdfWriter.ShortcutsFilePath(request.SteamRoot, request.Account.AccountId);
         var before = appIdsIn(shortcuts);
 
-        File.Create(markerFile.ToString()).Dispose();
+        TouchMarker();
         steam.Open(new Uri("steam://addnonsteamgame/" + Encode(request.ShimPath.ToString())));
 
         // Steam may write the file at once or only when it exits; one look now, and the id stays unknown if it is not there.
@@ -29,6 +30,26 @@ public sealed class SteamUrlShortcutAdder(ISteamUriLauncher steam, Func<string, 
             ? new SteamShortcutWrite(added[0], Confirmed: true, [])
             : new SteamShortcutWrite(null, Confirmed: false, []);
         return Task.FromResult(write);
+    }
+
+    // Steam fixes the marker's path in /tmp, where any user can leave a link or a file under that name first, so the
+    // marker is never opened through what is there: a link is refused, a leftover file is removed, and the new one is
+    // created exclusively, which fails rather than follows a link that appears in between.
+    private void TouchMarker()
+    {
+        var path = markerFile.ToString();
+        if (new FileInfo(path).LinkTarget is { } target)
+            throw new SteamShortcutRefusedException($"Steam's marker file {MarkdownText.Code(path)} is a link to {MarkdownText.Code(target)}, so the app did not touch it. Delete it if you did not make it, then try again.", removing: false);
+
+        try
+        {
+            File.Delete(path);
+            using var _ = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new SteamShortcutRefusedException($"Could not make Steam's marker file {MarkdownText.Code(path)}: {MarkdownText.Inline(ex.Message)}", removing: false);
+        }
     }
 
     /// <summary>
