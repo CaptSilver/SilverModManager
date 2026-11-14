@@ -28,21 +28,6 @@ public class OpenMwRunGameToolTests(ITestOutputHelper helper) : AOpenMwGameTest<
         spec.ExtraArgs.Should().BeEmpty();
     }
 
-    private sealed class ExposedTool(IServiceProvider provider, CreationEngine.OpenMw.OpenMw game) : OpenMwRunGameTool(provider, game)
-    {
-        public IReadOnlySet<string> Names(AbsolutePath program, AbsolutePath primaryFile) => TrackedProcessNames(program, primaryFile);
-    }
-
-    [Fact]
-    public void OnlyTheEngineProcessIsTracked()
-    {
-        // The default would also wait on anything named "Morrowind", which is the original game's, not OpenMW.
-        var tool = new ExposedTool(ServiceProvider, Game);
-
-        tool.Names(Roots.NativeProgram!.Value, GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "Data Files/Morrowind.esm")))
-            .Should().BeEquivalentTo("openmw");
-    }
-
     [Fact]
     public async Task AnUninstalledProgramIsRefused()
     {

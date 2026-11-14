@@ -30,10 +30,6 @@ public class OpenMwRunGameTool(IServiceProvider serviceProvider, OpenMw game) : 
             ?? throw new OpenMwProgramMissingException("OpenMW is not installed, so there is nothing to start.");
         return ValueTask.FromResult(new LaunchSpec(program, []));
     }
-
-    // The program is the engine itself, and nothing else of that name is the game.
-    protected override IReadOnlySet<string> TrackedProcessNames(AbsolutePath program, AbsolutePath primaryFile) =>
-        new HashSet<string> { "openmw" };
 }
 
 /// <summary>The app cannot say what to start for an OpenMW installation.</summary>

@@ -53,6 +53,7 @@ public class RunGameTool : IRunGameTool
     private readonly IOSInterop _osInterop;
     private readonly ISteamUriLauncher _steamUris;
     private readonly IProcessTracker _processTracker;
+    private readonly IRunningGameDetector _detector;
     private readonly IGameLaunchSession _launchSessions;
     private readonly IServiceProvider _serviceProvider;
 
@@ -78,7 +79,17 @@ public class RunGameTool : IRunGameTool
     /// <summary>The clock the waits run on; tests replace it so they never sit through a real timeout.</summary>
     protected virtual TimeProvider Clock => TimeProvider.System;
 
-    private const int ReaperGoneAfterMisses = 3;
+    /// <summary>
+    /// How long the game's processes must stay gone before a program this tool started itself counts as finished.
+    /// A launcher can exit a few hundred milliseconds before the game's own process shows up.
+    /// </summary>
+    protected virtual TimeSpan Settle => SettlePeriods.Direct;
+
+    /// <summary>
+    /// The same for a game Steam started, where the client can take seconds to hand the game its reaper again,
+    /// for example when a game relaunches itself.
+    /// </summary>
+    protected virtual TimeSpan SteamSettle => SettlePeriods.Steam;
 
     private readonly BehaviorSubject _waitingForSteam = new(false);
     private int _launchesWaitingForSteam;
@@ -119,6 +130,7 @@ public class RunGameTool : IRunGameTool
         _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         _steamUris = serviceProvider.GetRequiredService<ISteamUriLauncher>();
         _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
+        _detector = serviceProvider.GetRequiredService<IRunningGameDetector>();
         _launchSessions = serviceProvider.GetRequiredService<IGameLaunchSession>();
     }
 
@@ -172,23 +184,11 @@ public class RunGameTool : IRunGameTool
 
         // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
         using var launch = _launchSessions.BeginSession(loadout);
-        await launch.RunAsync(token => RunProgram(installation, viaToolRunner, program, primaryFile, commandLineArgs, token), cancellationToken);
+        await launch.RunAsync(token => RunProgram(installation, viaToolRunner, program, commandLineArgs, token), cancellationToken);
     }
 
-    private async Task RunProgram(GameInstallation installation, bool viaToolRunner, AbsolutePath program, AbsolutePath primaryFile, string[] commandLineArgs, CancellationToken cancellationToken)
+    private async Task RunProgram(GameInstallation installation, bool viaToolRunner, AbsolutePath program, string[] commandLineArgs, CancellationToken cancellationToken)
     {
-        var names = TrackedProcessNames(program, primaryFile);
-
-        // In the case of a preloader, we need to wait for the actual game file to exit
-        // before we completely exit this routine. So get a list of all the processes with a give
-        // name at the start, after the preloader finishes find any other processes with the same set of
-        // names, and then we wait for those to exit.
-
-        // In the case of something like Skyrim this means we will start with loading skse64_loader.exe then
-        // notice that SkyrimSE.exe is running and wait for that to exit.
-
-        var existing = FindMatchingProcesses(names).Select(p => p.Pid).ToHashSet();
-            
         if (viaToolRunner)
         {
             // The shell would hand a Windows program to the host, which cannot open it, so this wins over UseShell.
@@ -208,41 +208,12 @@ public class RunGameTool : IRunGameTool
         }
 
 
-        var maxProcessCount = 0;
-        _logger.LogInformation("Waiting for processes to exit");
-        while (true)
-        {
-            var newProcesses = CheckForNewProcesses();
-            if (newProcesses.Count == 0)
-                break;
-            maxProcessCount = Math.Max(maxProcessCount, newProcesses.Count);
-            await Task.Delay(2000, cancellationToken);
-        }
-        _logger.LogInformation("All {Count} processes have exited", maxProcessCount);
-
+        // The program may have been only a loader: the game is whatever the process table shows for the
+        // installation, and it is over once nothing has shown up for the settle period.
+        _logger.LogInformation("Waiting for the game's processes to exit");
+        await _detector.WaitUntilGone(installation, new GoneWait(Settle, Interval: PollInterval), cancellationToken);
         _logger.LogInformation("Finished running {Program}", program);
-
-        HashSet<TrackedProcess> CheckForNewProcesses()
-        {
-            // Check if the process has spawned any new processes that we need to wait for (e.g. Launcher -> Game)
-            var hashSet = FindMatchingProcesses(names)
-                .Where(p => !existing.Contains(p.Pid))
-                .ToHashSet();
-            return hashSet;
-        }
     }
-
-    /// <summary>
-    /// The process names to wait on once the started program returns, because a launcher can hand the game to a process
-    /// of another name. Defaults to the program's and the primary file's names, with and without an extension.
-    /// </summary>
-    protected virtual IReadOnlySet<string> TrackedProcessNames(AbsolutePath program, AbsolutePath primaryFile) => new HashSet<string>
-    {
-        program.FileName,
-        program.GetFileNameWithoutExtension(),
-        primaryFile.FileName,
-        primaryFile.GetFileNameWithoutExtension(),
-    };
 
     private async Task<CommandResult> RunCommand(CancellationToken cancellationToken, string[] arguments, AbsolutePath program)
     {
@@ -319,7 +290,7 @@ public class RunGameTool : IRunGameTool
             await launch.RunAsync(async token =>
             {
                 _steamUris.Open(new Uri(steamUrl));
-                outcome = await WaitForSteamGame(launch, appId, token);
+                outcome = await WaitForSteamGame(launch, loadout.InstallationInstance, appId, token);
             }, cancellationToken);
         }
 
@@ -357,13 +328,13 @@ public class RunGameTool : IRunGameTool
         }
     }
 
-    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken)
+    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, GameInstallation installation, uint appId, CancellationToken cancellationToken)
     {
         SetWaitingForSteam(+1);
         var waiting = true;
         try
         {
-            return await WaitForSteamGame(launch, appId, cancellationToken, () =>
+            return await WaitForSteamGame(launch, installation, appId, cancellationToken, () =>
             {
                 if (!waiting) return;
                 waiting = false;
@@ -377,40 +348,31 @@ public class RunGameTool : IRunGameTool
         }
     }
 
-    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken, Action gameStarted)
+    private async Task<SteamWait> WaitForSteamGame(IGameLaunch launch, GameInstallation installation, uint appId, CancellationToken cancellationToken, Action gameStarted)
     {
         if (await PollUntil(_processTracker.IsSteamRunning, SteamStartTimeout, launch, cancellationToken) is { } steamFailure) return steamFailure;
 
         // NOTE(erri120): Reaper is a custom tool for cleaning up child processes
         // See https://github.com/sonic2kk/steamtinkerlaunch/wiki/Steam-Reaper for details.
         // Only the reaper Steam started for this app counts: another game's reaper may be running already.
-        TrackedProcess? reaper = null;
-        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, StartTimeout, launch, cancellationToken, appId) is { } reaperFailure)
+        if (await PollUntil(() => _processTracker.FindReaperForApp(appId) is not null, StartTimeout, launch, cancellationToken, appId) is { } reaperFailure)
             return reaperFailure;
-
-        // PollUntil only reports success once the lambda above has found the reaper.
-        var startedReaper = reaper ?? throw new InvalidOperationException($"Steam reaper for app {appId} was reported found but is missing");
 
         SetRunningInstallStep(false);
         gameStarted();
-        _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", startedReaper.Pid, appId);
-        var misses = 0;
-        while (!cancellationToken.IsCancellationRequested)
+        // The reaper is only the first process of the game: Steam replaces it when the game relaunches, and the
+        // game's own processes can outlive it. The game is over when the process table has shown nothing of it
+        // for the settle period.
+        _logger.LogDebug("Waiting for the processes of app {AppId} to exit", appId);
+        try
         {
-            // A /proc entry that can't be read for a moment drops out of one scan. Taking that for the exit would
-            // shut the game down while it runs, so the reaper has to be missing from several scans in a row.
-            misses = _processTracker.FindReaperForApp(appId)?.Pid == startedReaper.Pid ? 0 : misses + 1;
-            if (misses >= ReaperGoneAfterMisses) return new SteamWait(SteamRunOutcome.Exited);
-            try
-            {
-                await Task.Delay(PollInterval, Clock, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
+            await _detector.WaitUntilGone(installation, new GoneWait(SteamSettle, Interval: PollInterval), cancellationToken);
+            return new SteamWait(SteamRunOutcome.Exited);
         }
-        return new SteamWait(SteamRunOutcome.Cancelled);
+        catch (OperationCanceledException)
+        {
+            return new SteamWait(SteamRunOutcome.Cancelled);
+        }
     }
 
     /// <summary>
@@ -464,11 +426,6 @@ public class RunGameTool : IRunGameTool
                                $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
 
         _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
-    }
-
-    private HashSet<TrackedProcess> FindMatchingProcesses(IReadOnlySet<string> names)
-    {
-        return names.SelectMany(_processTracker.FindByName).ToHashSet();
     }
 
     /// <summary>

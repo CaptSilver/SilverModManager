@@ -59,6 +59,8 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         protected override TimeSpan StartTimeout => TimeSpan.FromMilliseconds(80);
         protected override TimeSpan SteamStartTimeout => TimeSpan.FromMilliseconds(80);
         protected override TimeSpan PollInterval => TimeSpan.FromMilliseconds(5);
+        protected override TimeSpan Settle => TimeSpan.FromMilliseconds(80);
+        protected override TimeSpan SteamSettle => TimeSpan.FromMilliseconds(80);
     }
 
     private uint AppId => uint.Parse(GameInstallation.LocatorResult.StoreIdentifier);
@@ -149,6 +151,9 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
             var baseSpec = await base.GetLaunchSpec(loadout, cancellationToken);
             return baseSpec with { Exe = baseSpec.Exe.Parent.Combine("launcher.exe"), ExtraArgs = extraArgs ?? [] };
         }
+
+        protected override TimeSpan PollInterval => TimeSpan.FromMilliseconds(5);
+        protected override TimeSpan Settle => TimeSpan.FromMilliseconds(80);
     }
 
     private FakeToolRunner ToolRunner => ServiceProvider.GetRequiredService<FakeToolRunner>();
@@ -161,35 +166,55 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private void MakeBuildNative()
         => ServiceProvider.GetRequiredService<FakePrefixResolver>().Resolution = _ => PrefixResolution.Native("runs natively");
 
+    private void RunnerReturnsImmediately()
+        => _processRunner.RunAsync(Arg.Any<CliWrap.Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            Task.FromResult(new CliWrap.CommandResult(0, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)));
+
+    // Answers each scan of the installation from the script; the last entry repeats. Notes the session's events at
+    // the first empty scan, which is the latest the session can have been finished by.
+    private (Func<int> Scans, Func<string[]?> EventsAtFirstEmptyScan) ScriptInstallationScans(params string[] script)
+    {
+        var scans = 0;
+        string[]? eventsAtEmpty = null;
+        Tracker.ForInstallation = _ =>
+        {
+            var scan = Math.Min(Interlocked.Increment(ref scans), script.Length) - 1;
+            var pids = script[scan].Length == 0 ? [] : script[scan].Split(',').Select(int.Parse).ToArray();
+            if (pids.Length == 0 && eventsAtEmpty is null) lock (Session.Events) eventsAtEmpty = Session.Events.ToArray();
+            return pids.Select(pid => new TrackedProcess(pid, "game.exe")).ToArray();
+        };
+        return (() => Volatile.Read(ref scans), () => eventsAtEmpty);
+    }
+
     [Fact]
     public async Task Execute_WaitsForGameProcessesTheTrackerFindsAfterTheLaunch()
     {
         // Not the primary file, so the tool starts the launcher itself instead of going through the store.
         MakeBuildNative();
+        RunnerReturnsImmediately();
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
-        var tool = new LauncherTool(ServiceProvider, Game);
-        var gameExe = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation)).FileName;
+        var (scans, eventsAtFirstEmptyScan) = ScriptInstallationScans("10", "10,11", "10", "10", "");
 
-        // The game is already running once; the launcher starts a second copy that has to exit too.
-        var launched = false;
-        var polls = 0;
-        Tracker.ByName = name =>
-        {
-            if (name != gameExe) return [];
-            if (!launched) return [new TrackedProcess(10, name)];
-            polls++;
-            return polls == 1 ? [new TrackedProcess(10, name), new TrackedProcess(11, name)] : [new TrackedProcess(10, name)];
-        };
-        _processRunner.RunAsync(Arg.Any<CliWrap.Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ =>
-        {
-            launched = true;
-            return Task.FromResult(new CliWrap.CommandResult(0, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
-        });
+        await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
 
-        await tool.Execute(loadout, CancellationToken.None, []);
+        scans().Should().BeGreaterThanOrEqualTo(5);
+        eventsAtFirstEmptyScan().Should().Equal("lock", "running");
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
 
-        polls.Should().Be(2, "it polls again while the new process is alive and stops once only the old one is left");
-        Tracker.NameQueries.Should().Contain(["launcher.exe", gameExe]);
+    [Fact]
+    public async Task NonPrimaryExe_ALauncherThatExitsBeforeItsGameAppears_StillWaitsForTheGame()
+    {
+        MakeBuildNative();
+        RunnerReturnsImmediately();
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        // The launcher is gone and nothing shows for a few scans, then the game does.
+        var (scans, _) = ScriptInstallationScans("", "", "20", "20", "20", "");
+
+        await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        scans().Should().BeGreaterThanOrEqualTo(6, "the gap before the game appeared must not end the wait");
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
     }
 
     [Fact]
@@ -296,6 +321,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private sealed class FastPollTool(IServiceProvider provider, StubbedGame game) : RunGameTool<StubbedGame>(provider, game)
     {
         protected override TimeSpan PollInterval => TimeSpan.FromMilliseconds(5);
+        protected override TimeSpan SteamSettle => TimeSpan.FromMilliseconds(20);
     }
 
     private static async Task WaitUntil(Func<bool> condition)
@@ -339,44 +365,53 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         _cancelOnOpen = false;
         Tracker.SteamRunning = true;
         var queried = new List<uint>();
-        var reaperAlive = 3;
+        // Another game's reaper never answers for this app id.
         Tracker.ReaperForApp = id =>
         {
             lock (queried) queried.Add(id);
-            // Another game's reaper never answers for this app id.
-            return id == AppId && reaperAlive-- > 0 ? new TrackedProcess(77, "reaper") : null;
+            return id == AppId ? new TrackedProcess(77, "reaper") : null;
         };
+        var (scans, eventsAtFirstEmptyScan) = ScriptInstallationScans("77", "77", "77", "");
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
         await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
 
         queried.Should().OnlyContain(id => id == AppId);
-        queried.Count.Should().BeGreaterThan(1, "it keeps asking until the reaper is gone");
+        scans().Should().BeGreaterThanOrEqualTo(4, "it keeps scanning until the game's processes are gone");
+        eventsAtFirstEmptyScan().Should().Equal("lock", "running");
         Session.Events.Should().Equal("lock", "running", "finish", "release");
         Notifier.Notifications.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task SteamLaunch_DoesNotTakeOneMissedScanForTheReaperExiting()
+    public async Task SteamLaunch_DoesNotTakeOneMissedScanForTheGameExiting()
     {
         _cancelOnOpen = false;
         Tracker.SteamRunning = true;
+        Tracker.ReaperForApp = _ => new TrackedProcess(77, "reaper");
         // Found, missed by one scan (a /proc entry that could not be read), then found again before it really exits.
-        var answers = new Queue<bool>([true, true, false, true, true]);
-        var foundAfterTheMiss = false;
-        var missed = false;
-        Tracker.ReaperForApp = _ =>
-        {
-            if (!answers.TryDequeue(out var alive)) return null;
-            if (!alive) missed = true;
-            else if (missed) foundAfterTheMiss = true;
-            return alive ? new TrackedProcess(77, "reaper") : null;
-        };
+        var (scans, _) = ScriptInstallationScans("77", "77", "", "77", "77", "");
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
         await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
 
-        foundAfterTheMiss.Should().BeTrue("a single scan that misses the reaper must not end the wait, or the game gets shut down while it runs");
+        scans().Should().BeGreaterThanOrEqualTo(6, "a single empty scan must not end the wait, or the game gets shut down while it runs");
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
+
+    [Fact]
+    public async Task SteamLaunch_ARelaunchWithANewReaperPidIsOneSession()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        Tracker.ReaperForApp = _ => new TrackedProcess(1, "reaper");
+        // Steam replaces the reaper with no gap the scans can see.
+        var (scans, _) = ScriptInstallationScans("1", "1", "2", "2", "2", "");
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        scans().Should().BeGreaterThanOrEqualTo(6);
         Session.Events.Should().Equal("lock", "running", "finish", "release");
     }
 
@@ -384,6 +419,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     private sealed class ClockedTool(IServiceProvider provider, StubbedGame game, TimeProvider clock) : RunGameTool<StubbedGame>(provider, game)
     {
         protected override TimeProvider Clock => clock;
+        protected override TimeSpan SteamSettle => TimeSpan.FromMilliseconds(20);
         public TimeProvider ClockForTest => clock;
         public TimeSpan DefaultStartTimeout => StartTimeout;
         public TimeSpan DefaultSteamStartTimeout => SteamStartTimeout;
