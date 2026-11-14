@@ -2,6 +2,8 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
+using NSubstitute;
+using SilverModManager.Platform.Proton.Launch.Starters;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.StandardGameLocators.TestHelpers;
@@ -10,13 +12,18 @@ using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 namespace SilverModManager.Abstractions.Games.Tests;
 
 /// <summary>
-/// A game whose store client the app has no starter for, or that has no client at all (the locator reports it as
-/// a Steam install, since the stubbed store backend only knows one): the launch still goes through
-/// a session and starts the program itself.
+/// A game whose store client cannot carry the launch's arguments, or that has no client at all (the locator
+/// reports it as a Steam install unless a test says otherwise, since the stubbed store backend only knows one):
+/// the launch still goes through a session and starts the program itself.
 /// </summary>
 public abstract class RunGameToolStarterTests(ITestOutputHelper helper) : AIsolatedGameTest<RunGameToolStarterTests, StubbedGame>(helper)
 {
     protected abstract StoreClient? Client { get; }
+
+    protected virtual GameStore Store => GameStore.Steam;
+
+    /// <summary>The arguments the launch is given.</summary>
+    protected virtual string[] Arguments => [];
 
     protected override IServiceCollection AddServices(IServiceCollection services)
         => base.AddServices(services)
@@ -25,7 +32,7 @@ public abstract class RunGameToolStarterTests(ITestOutputHelper helper) : AIsola
                 s,
                 s.GetRequiredService<IFileSystem>(),
                 s.GetRequiredService<TemporaryFileManager>(),
-                stores: [GameStore.Steam])
+                stores: [Store])
             {
                 LocatorIds = [LocatorId.From("3976631895")],
                 StoreClientFor = _ => Client,
@@ -47,7 +54,7 @@ public abstract class RunGameToolStarterTests(ITestOutputHelper helper) : AIsola
     {
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
 
-        await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+        await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, Arguments);
 
         Session.BegunWith.Should().ContainSingle().Which.Should().NotBeNull();
         Session.Events.Should().Equal("lock", "running", "finish", "release");
@@ -70,9 +77,21 @@ public sealed class RunGameToolWithoutStoreClientTests(ITestOutputHelper helper)
     }
 }
 
-public sealed class RunGameToolWithAClientWithoutAStarterTests(ITestOutputHelper helper) : RunGameToolStarterTests(helper)
+public sealed class RunGameToolWithAClientThatCannotCarryTheArgumentsTests(ITestOutputHelper helper) : RunGameToolStarterTests(helper)
 {
     protected override StoreClient? Client => new(StoreClientKind.Heroic, "some-game", false);
+
+    protected override GameStore Store => GameStore.EGS;
+
+    // The query form of Heroic's launch URL, which carries arguments, starts with 2.16.
+    protected override string[] Arguments => ["-modded"];
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        var versions = Substitute.For<IHeroicVersionProbe>();
+        versions.Read(Arg.Any<bool>()).Returns(new Version(2, 15, 2));
+        return base.AddServices(services).AddSingleton(versions);
+    }
 
     [Fact]
     public async Task ADirectFallbackForAClientInstall_NotifiesInsideTheSession()
@@ -86,10 +105,10 @@ public sealed class RunGameToolWithAClientWithoutAStarterTests(ITestOutputHelper
         };
         ToolRunner.OnRun = () => notificationsAtStart = Notifier.Notifications.Count;
 
-        await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+        await new FastTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, Arguments);
 
         eventsAtNotice.Should().Equal(["lock", "running"], "the notice is shown once the session holds the lock and has applied the loadout");
         notificationsAtStart.Should().Be(1, "the notice comes before the program runs");
-        Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("Heroic").And.Contain("cloud saves");
+        Notifier.Notifications.Should().ContainSingle().Which.Body.Should().Contain("Heroic").And.Contain("-modded").And.Contain("cloud saves");
     }
 }

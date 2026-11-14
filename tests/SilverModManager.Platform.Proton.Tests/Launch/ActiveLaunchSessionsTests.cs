@@ -198,6 +198,8 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton(Substitute.For<IToolRunner>());
         services.AddSingleton(Substitute.For<IPrefixResolver>());
         services.AddSingleton<HeldMounts>();
+        services.AddSingleton(Substitute.For<IExecutableLocator>());
+        services.AddSingleton(Substitute.For<IOSInterop>());
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

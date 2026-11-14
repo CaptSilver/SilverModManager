@@ -84,7 +84,7 @@ public sealed class SteamGameStarter : IGameStarter
     /// <summary>
     /// The timeout as the user reads it: whole minutes when it is a whole number of them, seconds otherwise.
     /// </summary>
-    internal static string DescribeTimeout(TimeSpan timeout)
+    public static string DescribeTimeout(TimeSpan timeout)
     {
         var seconds = Math.Max(1, (int)Math.Ceiling(timeout.TotalSeconds));
         if (seconds % 60 == 0)

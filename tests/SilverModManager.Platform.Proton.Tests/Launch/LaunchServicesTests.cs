@@ -49,7 +49,7 @@ public class LaunchServicesTests
     }
 
     [Fact]
-    public void AddGameLaunchCore_RegistersTheSelectorAndTheDirectAndProcessStartersOnceEach()
+    public void AddGameLaunchCore_RegistersTheSelectorAndEachSharedStarterOnce()
     {
         var services = new ServiceCollection();
         services.AddGameLaunchCore();
@@ -57,7 +57,22 @@ public class LaunchServicesTests
 
         services.Count(d => d.ServiceType == typeof(IGameStarterSelector)).Should().Be(1);
         services.Where(d => d.ServiceType == typeof(IGameStarter)).Select(d => d.ImplementationType)
-            .Should().BeEquivalentTo([typeof(DirectGameStarter), typeof(ProcessGameStarter)]);
+            .Should().BeEquivalentTo([typeof(DirectGameStarter), typeof(ProcessGameStarter), typeof(LutrisGameStarter), typeof(HeroicGameStarter)]);
+    }
+
+    [Fact]
+    public void HeroicAndLutris_HaveARegisteredStarter()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddLaunchDependencies(services);
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        // Steam's starter belongs to each tool, so it is not among the shared ones.
+        provider.GetServices<IGameStarter>().Select(s => s.Kind).Should()
+            .BeEquivalentTo([GameStarterKind.Direct, GameStarterKind.Process, GameStarterKind.Lutris, GameStarterKind.Heroic]);
     }
 
     [Fact]
@@ -219,5 +234,8 @@ public class LaunchServicesTests
         services.AddSingleton(Substitute.For<IToolRunner>());
         services.AddSingleton(Substitute.For<IPrefixResolver>());
         services.AddSingleton<HeldMounts>();
+        // What the Heroic and Lutris starters look their clients up with and open a URL through.
+        services.AddSingleton(Substitute.For<IExecutableLocator>());
+        services.AddSingleton(Substitute.For<IOSInterop>());
     }
 }

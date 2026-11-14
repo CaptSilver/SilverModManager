@@ -39,7 +39,7 @@ public abstract class ProbedDependency(IProcessRunner runner) : ExecutableRuntim
     /// The probe runs on the thread pool so that blocking on it from a thread with a synchronization context,
     /// such as the UI thread, cannot deadlock on its continuations.
     /// </remarks>
-    public bool IsInstalled() => Task.Run(() => QueryInstallationInformation(CancellationToken.None).AsTask()).GetAwaiter().GetResult().HasValue;
+    public virtual bool IsInstalled() => Task.Run(() => QueryInstallationInformation(CancellationToken.None).AsTask()).GetAwaiter().GetResult().HasValue;
 
     /// <summary>
     /// The sentence that says what is missing and where to get it.
@@ -76,7 +76,7 @@ public sealed class WineDependency(IProcessRunner runner, string binary) : Probe
 /// <summary>
 /// The Flatpak build of Heroic, which carries the runners its games use.
 /// </summary>
-public sealed class HeroicFlatpakDependency(IProcessRunner runner) : ProbedDependency(runner)
+public class HeroicFlatpakDependency(IProcessRunner runner) : ProbedDependency(runner)
 {
     public const string FlatpakId = "com.heroicgameslauncher.hgl";
 

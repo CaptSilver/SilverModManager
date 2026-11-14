@@ -47,6 +47,9 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<SilverModManager.Sdk.Jobs.IJobMonitor>());
         services.AddSingleton(new ToolOutputCapture(Substitute.For<IConnection>(), Substitute.For<IFileStore>()));
         services.AddSingleton(new HttpClient());
+        // What the app's OS services provide to the Heroic and Lutris starters.
+        services.AddSingleton(Substitute.For<IExecutableLocator>());
+        services.AddSingleton(Substitute.For<IOSInterop>());
         services.AddLogging();
         services.AddProton();
 

@@ -12,6 +12,7 @@ using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Platform.Proton.Steam.BinaryKeyValues;
 using SilverModManager.Platform.Proton.Steam.Shortcuts;
 using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -42,6 +43,11 @@ public static class LaunchServices
         services.TryAddSingleton<IGameStarterSelector, GameStarterSelector>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, DirectGameStarter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, ProcessGameStarter>());
+        services.TryAddSingleton<HeroicFlatpakDependency>();
+        services.TryAddSingleton<LutrisFlatpakDependency>();
+        services.TryAddSingleton<IHeroicVersionProbe, HeroicVersionProbe>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, LutrisGameStarter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameStarter, HeroicGameStarter>());
         return services;
     }
 
