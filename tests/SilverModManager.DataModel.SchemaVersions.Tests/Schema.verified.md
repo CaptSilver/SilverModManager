@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xDC81BF414AB763DD
-   - Total attributes: 442
-   - Total namespaces: 116
+   - Fingerprint: 0x86CB55AD6184EC37
+   - Total attributes: 451
+   - Total namespaces: 117
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -177,11 +177,20 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.Witcher.WitcherModsSettingsNotice/Summary                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.DownloadedFile/DownloadPageUri                                   | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/AssetName                                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/DigestAdvertised                                   | UInt8                   | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/HiddenUpdateTag                                    | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/Organization                                       | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/PinnedSha256                                       | Blob                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/Repository                                         | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/RepositoryId                                       | UInt64                  | True    | False | False     | 
 | SilverModManager.Library.GitHubRelease/Tag                                                | Utf8                    | True    | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/AssetSuffix                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/GameId                                          | UInt64                  | True    | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/IncludePrereleases                              | UInt8                   | False   | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/NameHint                                        | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/Organization                                    | Utf8                    | True    | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/Repository                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubShelfEntry/RepositoryId                                    | UInt64                  | True    | False | False     | 
 | SilverModManager.Library.LibraryArchive/Archive                                           | Null                    | False   | False | False     | 
 | SilverModManager.Library.LibraryArchiveFileEntry/Parent                                   | Reference               | False   | False | False     | 
 | SilverModManager.Library.LibraryArchiveFileEntry/Path                                     | Utf8Insensitive         | False   | False | False     | 

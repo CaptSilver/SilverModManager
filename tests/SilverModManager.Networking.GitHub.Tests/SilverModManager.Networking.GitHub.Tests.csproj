@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <ProjectReference Include="..\..\src\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
     <ProjectReference Include="..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     <ProjectReference Include="..\..\src\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />

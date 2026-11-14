@@ -19,14 +19,22 @@ internal class GitHubApi : IGitHubApi
     private readonly ILogger _logger;
     private readonly HttpClient _httpClient;
     private readonly ISecretStore _secrets;
+    private readonly TimeProvider _time;
+
+    // Set when a reply says no requests are left; until then nothing is sent, because every refused request still
+    // counts against the budget GitHub is about to refill. Anonymous requests and requests with a token draw on
+    // separate budgets, so a token added after the anonymous one ran out is used at once.
+    private long _anonymousLimitedUntilUnix;
+    private long _authenticatedLimitedUntilUnix;
 
     public AuthenticationHeaderValue? AuthenticationHeader { get; set; }
 
-    public GitHubApi(ILogger<GitHubApi> logger, HttpClient httpClient, ISecretStore secrets)
+    public GitHubApi(ILogger<GitHubApi> logger, HttpClient httpClient, ISecretStore secrets, TimeProvider? time = null)
     {
         _logger = logger;
         _httpClient = httpClient;
         _secrets = secrets;
+        _time = time ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -90,8 +98,53 @@ internal class GitHubApi : IGitHubApi
         request.Headers.Add(HeaderApiVersion, ApiVersion);
         if (authenticate) await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
         var authenticated = request.Headers.Authorization is not null;
+        ThrowIfLimited(authenticated);
         var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObserveRateLimit(response, authenticated);
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
+
         return (response, authenticated);
+    }
+
+    private ref long LimitedUntilUnix(bool authenticated) => ref authenticated ? ref _authenticatedLimitedUntilUnix : ref _anonymousLimitedUntilUnix;
+
+    private void ThrowIfLimited(bool authenticated)
+    {
+        var until = DateTimeOffset.FromUnixTimeSeconds(Volatile.Read(ref LimitedUntilUnix(authenticated)));
+        if (_time.GetUtcNow() < until) throw new GitHubRateLimitedException(until);
+    }
+
+    // https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api: x-ratelimit-reset is a Unix time in
+    // seconds. An answer that took the last request is still an answer; only a refusal with an empty budget throws.
+    private void ObserveRateLimit(HttpResponseMessage response, bool authenticated)
+    {
+        if (!TryReadHeader(response, "x-ratelimit-remaining", out var remaining)) return;
+        if (remaining > 0)
+        {
+            Volatile.Write(ref LimitedUntilUnix(authenticated), 0);
+            return;
+        }
+
+        if (!TryReadHeader(response, "x-ratelimit-reset", out var reset)) return;
+
+        var until = DateTimeOffset.FromUnixTimeSeconds(reset);
+        Volatile.Write(ref LimitedUntilUnix(authenticated), reset);
+        _logger.LogWarning("GitHub reports no requests left until {Reset}", until);
+        if (!response.IsSuccessStatusCode) throw new GitHubRateLimitedException(until);
+    }
+
+    private static bool TryReadHeader(HttpResponseMessage response, string name, out long value)
+    {
+        value = 0;
+        return response.Headers.TryGetValues(name, out var values)
+            && long.TryParse(values.FirstOrDefault(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out value);
     }
 
     public async ValueTask<bool> ValidateToken(string token, CancellationToken cancellationToken = default)
@@ -133,6 +186,10 @@ internal class GitHubApi : IGitHubApi
         catch (OperationCanceledException)
         {
             // ignore
+        }
+        catch (GitHubRateLimitedException)
+        {
+            throw;
         }
         catch (Exception e)
         {
@@ -197,9 +254,46 @@ internal class GitHubApi : IGitHubApi
         {
             // ignore
         }
+        catch (GitHubRateLimitedException)
+        {
+            throw;
+        }
         catch (Exception e)
         {
             _logger.LogWarning(e, "Exception fetching release from `{Uri}`", uri);
+        }
+
+        return null;
+    }
+
+    public async ValueTask<ulong?> FetchRepositoryId(string organization, string repository, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"{BaseUrl}/repos/{organization}/{repository}");
+        _logger.LogDebug("Fetching repository from {Uri}", uri);
+
+        try
+        {
+            using var response = await SendAsync(uri, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GitHub Api returned with status code `{Code}` for `{Uri}`", response.StatusCode, uri);
+                return null;
+            }
+
+            using var document = await System.Text.Json.JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), cancellationToken: cancellationToken).ConfigureAwait(false);
+            return document.RootElement.TryGetProperty("id", out var id) && id.TryGetUInt64(out var value) ? value : null;
+        }
+        catch (OperationCanceledException)
+        {
+            // ignore
+        }
+        catch (GitHubRateLimitedException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Exception fetching repository from `{Uri}`", uri);
         }
 
         return null;

@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Library.Catalog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.DataModel.SchemaVersions;
+using SilverModManager.Library.GitHub;
 using SilverModManager.Library.Inference;
 using SilverModManager.Library.Listing;
 using SilverModManager.Library.Lock;
@@ -26,6 +27,7 @@ public static class Services
     /// </summary>
     public static IServiceCollection AddLibrary(this IServiceCollection serviceCollection)
     {
+        serviceCollection.TryAddSingleton(TimeProvider.System);
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, LoadoutLinkInference>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<IDestinationInference, ThunderstoreCommunityInference>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, NexusModFileKind>());
@@ -47,8 +49,13 @@ public static class Services
             .AddSingleton<INexusUpdateDownloader, NexusUpdateDownloader>()
             .AddSingleton<IModSource, NexusModSource>()
             .AddSingleton<IModSource, ThunderstoreModSource>()
+            .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GitHubModSource>(provider, GitHubClients.Api(provider), GitHubClients.Http(provider)))
+            .AddSingleton<GitHubShelfEntries>()
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<GitHubReleases>(provider, GitHubClients.Api(provider)))
             .AddSingleton<IModCatalog, NexusModCatalog>()
             .AddSingleton<IModCatalog, ThunderstoreModCatalog>()
+            .AddSingleton(provider => ActivatorUtilities.CreateInstance<GitHubShelfCatalog>(provider, GitHubClients.Api(provider), GitHubClients.Http(provider)))
+            .AddSingleton<IModCatalog>(provider => provider.GetRequiredService<GitHubShelfCatalog>())
             .AddSingleton<ModCatalogs>()
             .AddSingleton<ModSourceResolver>()
             .AddSingleton<ExpectedDownloads>()
@@ -56,6 +63,7 @@ public static class Services
             .AddLockVerbs()
             .AddThunderstoreVerbs()
             .AddCatalogVerbs()
+            .AddGitHubVerbs()
             .AddNexusModsVerbs();
     }
 }

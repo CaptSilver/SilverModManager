@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.FromSoft.Me3;
 
@@ -24,6 +25,16 @@ public static class Me3HostFiles
 
     /// <summary>Preferred part of the asset name when a release carries more than one Linux tarball.</summary>
     public const string ReleaseAssetHint = "me3-linux-amd64";
+
+    /// <summary>The owner and name of the repository that publishes me3.</summary>
+    public const string RepositoryOwner = "garyttierney";
+
+    /// <inheritdoc cref="RepositoryOwner"/>
+    public const string RepositoryName = "me3";
+
+    /// <summary>The shelf row that lists me3's release for every game it launches.</summary>
+    public static GitHubShelfEntryDefinition ShelfEntry { get; } =
+        new(RepositoryOwner, RepositoryName, ReleaseAssetSuffix, ReleaseAssetHint, "Mod loader") { RepositoryId = RepositoryId };
 
     /// <summary>Everything me3 reads at run time. The binary resolves the other two out of its own folder tree.</summary>
     public static readonly string[] ReleaseFiles = [Binary, Launcher, ModHost];

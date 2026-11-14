@@ -44,6 +44,8 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
 
         public ValueTask<bool> ValidateToken(string token, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public ValueTask<ulong?> FetchRepositoryId(string organization, string repository, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public ValueTask<Release?> FetchLatestRelease(string organization, string repository, IComparer<Release>? comparer = null, CancellationToken cancellationToken = default)
         {
             Requested = $"highest tag {organization}/{repository}";
@@ -170,6 +172,90 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
         await act.Should().ThrowAsync<ReleaseAssetIntegrityException>();
         api.Requested.Should().Be("latest #1");
         LibraryCopiesOfThePayload().Should().Be(copiesBefore);
+    }
+
+    [Fact]
+    public async Task AnAssetWithoutADigestIsPinnedOnFirstUseAndSaysSo()
+    {
+        var api = new StubApi(ReleaseWith("v6", assetDigest: null));
+
+        var result = await Run(api, GitHubRepositoryRef.FromName("o", "r"), tag: null, expected: null);
+
+        result.PinnedSha256.Should().Be(PayloadDigest, "the first download decides what later ones are checked against");
+        result.DigestAdvertised.Value.Should().BeFalse("GitHub vouched for nothing, so the row must not claim it did");
+    }
+
+    [Fact]
+    public async Task AnAssetWithAnAdvertisedDigestSaysGitHubVouchedForIt()
+    {
+        var api = new StubApi(ReleaseWith("v7", Digest(PayloadDigest)));
+
+        var result = await Run(api, GitHubRepositoryRef.FromName("o", "r"), tag: null, expected: null);
+
+        result.DigestAdvertised.Value.Should().BeTrue();
+    }
+
+    private IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly> RunWithSidecar(StubApi api, Sha256Value? listed)
+    {
+        IReadOnlyDictionary<string, Sha256Value> sums = listed is { } value
+            ? new Dictionary<string, Sha256Value> { [AssetName] = value }
+            : new Dictionary<string, Sha256Value>();
+        return AddGitHubReleaseAssetJob.Create(
+            serviceProvider, api, new HttpClient(new PayloadHandler(Payload)),
+            GitHubRepositoryRef.FromName("o", "r"), tag: null, suffix: ".tar.gz", acquisition: UnassignedAcquisition.Instance, nameHint: "linux",
+            expectedSha256: null, sidecar: sums
+        );
+    }
+
+    [Fact]
+    public async Task ASidecarMismatchAddsNothing()
+    {
+        var api = new StubApi(ReleaseWith("v8", assetDigest: null));
+        var copiesBefore = LibraryCopiesOfThePayload();
+
+        var act = async () => await RunWithSidecar(api, OtherDigest);
+
+        var failure = await act.Should().ThrowAsync<ReleaseAssetIntegrityException>();
+        failure.Which.Message.Should().Contain(OtherDigest.ToString()).And.Contain(PayloadDigest.ToString());
+        LibraryCopiesOfThePayload().Should().Be(copiesBefore);
+    }
+
+    [Fact]
+    public async Task AMatchingSidecarStillLeavesTheRowAsPinnedOnFirstUse()
+    {
+        // The checksum file comes from the same uploader as the asset, so it catches a corrupt transfer and nothing more.
+        var api = new StubApi(ReleaseWith("v9", assetDigest: null));
+
+        var result = await RunWithSidecar(api, PayloadDigest);
+
+        result.PinnedSha256.Should().Be(PayloadDigest);
+        result.DigestAdvertised.Value.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ASidecarThatDoesNotListTheAssetChangesNothing()
+    {
+        var api = new StubApi(ReleaseWith("v10", assetDigest: null));
+
+        var result = await RunWithSidecar(api, listed: null);
+
+        result.PinnedSha256.Should().Be(PayloadDigest);
+    }
+
+    [Fact]
+    public async Task AKnownRepositoryIdIsRecordedBesideTheName()
+    {
+        var api = new StubApi(ReleaseWith("v11", Digest(PayloadDigest)));
+
+        var result = await AddGitHubReleaseAssetJob.Create(
+            serviceProvider, api, new HttpClient(new PayloadHandler(Payload)),
+            GitHubRepositoryRef.FromName("o", "r"), tag: null, suffix: ".tar.gz", acquisition: UnassignedAcquisition.Instance, nameHint: "linux",
+            expectedSha256: null, knownRepositoryId: 42UL
+        );
+
+        result.Organization.Value.Should().Be("o");
+        result.Repository.Value.Should().Be("r");
+        result.RepositoryId.Value.Should().Be(42UL, "an update check addresses the repository by id, which survives a rename");
     }
 
     [Fact]

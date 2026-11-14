@@ -41,7 +41,18 @@ public class UpdateChecker
 
     public async ValueTask<Release?> FetchUpdateRelease(Version currentVersion, CancellationToken cancellationToken = default)
     {
-        var latestRelease = await _gitHubApi.FetchLatestRelease(GitHubOrganization, GitHubRepository, comparer: ReleaseTagComparer.Instance, cancellationToken: cancellationToken).ConfigureAwait(false);
+        Release? latestRelease;
+        try
+        {
+            latestRelease = await _gitHubApi.FetchLatestRelease(GitHubOrganization, GitHubRepository, comparer: ReleaseTagComparer.Instance, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (GitHubRateLimitedException e)
+        {
+            // The check runs unasked at startup, so a used-up request budget is not worth a dialog.
+            _logger.LogInformation("Not checking for an update: {Reason}", e.Message);
+            return null;
+        }
+
         if (latestRelease is null) return null;
 
         if (!latestRelease.TryGetVersion(out var latestVersion))

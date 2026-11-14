@@ -13,11 +13,17 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.SkyrimSE;
 
-public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>, IHasIniFiles, IGameUpdateSensitivity, IDxgiGame
+public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>, IHasIniFiles, IGameUpdateSensitivity, IDxgiGame, IGitHubShelfGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.SkyrimSE");
     public static string DisplayName => "Skyrim Special Edition";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(1704);
+
+    /// <summary>The SKSE64 release on GitHub; its asset is the one 7z, named skse64_ and the version.</summary>
+    public static GitHubShelfEntryDefinition Skse64Shelf { get; } = new("ianpatt", "skse64", ".7z", "skse64_", "Script extender");
+
+    /// <inheritdoc />
+    public IReadOnlyList<GitHubShelfEntryDefinition> GitHubShelf { get; } = [Skse64Shelf];
 
     public TimeSpan? DateWindow => TimeSpan.FromDays(30);
     public string WhatBreaks => "SKSE and mods with a DLL in Data/SKSE/Plugins are built for one game version. Address Library mods work again once a matching library ships; others may need an update from their author. ESP/ESM plugins, archives and textures are unaffected.";

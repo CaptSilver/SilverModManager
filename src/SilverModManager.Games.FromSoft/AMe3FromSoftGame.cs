@@ -13,11 +13,15 @@ namespace SilverModManager.Games.FromSoft;
 /// the installers and the per-loadout save plan are the family's, so the game class holds only the three statics and
 /// the definition.
 /// </summary>
-public abstract class AMe3FromSoftGame<TSelf> : AFromSoftGame<TSelf>, IPerLoadoutSaves
+public abstract class AMe3FromSoftGame<TSelf> : AFromSoftGame<TSelf>, IPerLoadoutSaves, IGitHubShelfGame
     where TSelf : AMe3FromSoftGame<TSelf>, IGameData<TSelf>
 {
     protected AMe3FromSoftGame(IServiceProvider provider, FromSoftGameDefinition definition, Me3LoaderOptions options)
         : base(provider, definition, _ => new Me3Loader(provider, options, definition)) { }
+
+    /// <inheritdoc />
+    /// <remarks>me3 is the loader every game of this family launches through, so each lists its release.</remarks>
+    public IReadOnlyList<GitHubShelfEntryDefinition> GitHubShelf { get; } = [Me3HostFiles.ShelfEntry];
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new FromSoftSynchronizer(provider, this);
 

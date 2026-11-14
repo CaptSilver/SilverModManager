@@ -169,6 +169,20 @@ public class UpdateCheckerTests
         await gitHubApi.Received(1).FetchLatestRelease("CaptSilver", "SilverModManager", Arg.Any<IComparer<Release>?>(), TestContext.Current.CancellationToken);
     }
 
+    [Fact]
+    public async Task Test_FetchUpdateRelease_AUsedUpRateLimitMeansNoUpdateRatherThanAFailure()
+    {
+        var gitHubApi = Substitute.For<IGitHubApi>();
+        gitHubApi
+            .FetchLatestRelease(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IComparer<Release>?>(), Arg.Any<CancellationToken>())
+            .Returns<ValueTask<Release?>>(_ => throw new GitHubRateLimitedException(DateTimeOffset.UtcNow.AddMinutes(20)));
+        var services = new ServiceCollection().AddSingleton(gitHubApi).AddLogging().BuildServiceProvider();
+
+        var release = await new UpdateChecker(services).FetchUpdateRelease(new Version(1, 0, 0), TestContext.Current.CancellationToken);
+
+        release.Should().BeNull("the check runs unasked at startup, so a refusal must not open an error dialog");
+    }
+
     public static TheoryData<string, InstallationMethod> TestData_Matches()
     {
         return new TheoryData<string, InstallationMethod>

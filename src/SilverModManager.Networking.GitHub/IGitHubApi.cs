@@ -48,6 +48,12 @@ public interface IGitHubApi
     ValueTask<Release?> FetchReleaseByTagById(long repositoryId, string tag, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The numeric id of the repository, which stays the same when it is renamed or transferred. Null when there is no
+    /// such repository or the request fails.
+    /// </summary>
+    ValueTask<ulong?> FetchRepositoryId(string organization, string repository, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Asks GitHub whether <paramref name="token"/> is accepted, with that token alone: neither the instance's header
     /// nor the stored token takes part. False when GitHub refuses it (401).
     /// </summary>

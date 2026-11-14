@@ -27,7 +27,8 @@ public sealed record LibraryItemRow(
     bool? InStore,
     string? ThumbnailUri,
     bool Dangling,
-    string[] Loadouts);
+    string[] Loadouts,
+    string? Note = null);
 
 /// <summary>
 /// Reads the library items of a game or a loadout (archive members, which the Library page never shows, are left out
@@ -97,6 +98,6 @@ public sealed class LibraryListing(IConnection connection, LibraryFileDigests di
         var match = kinds.OrderBy(kind => kind.Order).Select(kind => kind.Match(item)).FirstOrDefault(found => found is not null)
                     ?? new LibraryItemKindMatch(LibraryItemKinds.Other);
 
-        return new LibraryItemRow(item.Id.ToString(), item.Name, match.Kind, match.Host, match.NexusGameId, match.NexusModId, match.NexusFileId, match.ModPageId, match.ModPageName, match.Version, size, inStore, match.ThumbnailUri, dangling, loadouts);
+        return new LibraryItemRow(item.Id.ToString(), item.Name, match.Kind, match.Host, match.NexusGameId, match.NexusModId, match.NexusFileId, match.ModPageId, match.ModPageName, match.Version, size, inStore, match.ThumbnailUri, dangling, loadouts, match.Note);
     }
 }

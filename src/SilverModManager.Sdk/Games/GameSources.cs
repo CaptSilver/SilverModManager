@@ -11,7 +11,14 @@ namespace SilverModManager.Sdk.Games;
 /// <param name="NameHint">Text the right asset's name contains, to pick among several with the same ending; null when the ending is enough.</param>
 /// <param name="Role">What the repository's release is for, shown beside it ("Mod loader").</param>
 [PublicAPI]
-public sealed record GitHubShelfEntryDefinition(string Owner, string Repository, string AssetSuffix, string? NameHint, string Role);
+public sealed record GitHubShelfEntryDefinition(string Owner, string Repository, string AssetSuffix, string? NameHint, string Role)
+{
+    /// <summary>
+    /// The repository's numeric id when the game knows it, which saves the app a request to learn it and keeps a
+    /// release it already downloaded matched to this entry after a rename.
+    /// </summary>
+    public ulong? RepositoryId { get; init; }
+}
 
 /// <summary>
 /// A game whose tools and loaders are published as GitHub releases, which the app lists on a shelf page.

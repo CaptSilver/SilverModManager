@@ -33,6 +33,7 @@ internal static class LibraryListVerbs
             if (row.NexusModId is { } mod)
                 await renderer.TextLine($"    nexus game {row.NexusGameId}, mod {mod}, file {row.NexusFileId}; mod page {row.ModPageId} \"{row.ModPageName}\"");
             if (row.Host is { } host) await renderer.TextLine($"    host {host}");
+            if (row.Note is { } note) await renderer.TextLine($"    note: {note}");
             if (row.ThumbnailUri is { } thumbnail) await renderer.TextLine($"    thumbnail {thumbnail}");
             if (row.Loadouts.Length > 0) await renderer.TextLine($"    loadouts: {string.Join(", ", row.Loadouts)}");
         }

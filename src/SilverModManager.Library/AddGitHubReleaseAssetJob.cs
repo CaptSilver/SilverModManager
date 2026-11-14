@@ -56,6 +56,19 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
     /// </summary>
     public bool RequireAdvertisedDigest { get; init; }
 
+    /// <summary>
+    /// The digests a checksum file of the release lists, by asset name. The downloaded bytes must match the one listed
+    /// for the asset. The file comes from the same uploader as the asset, so it catches a damaged transfer, not a
+    /// compromised release: it does not turn a first-use pin into one GitHub vouched for.
+    /// </summary>
+    public IReadOnlyDictionary<string, Sha256Value>? Sidecar { get; init; }
+
+    /// <summary>
+    /// The numeric id of a repository that is addressed by name, recorded beside the name so later checks can follow
+    /// the repository through a rename.
+    /// </summary>
+    public ulong? KnownRepositoryId { get; init; }
+
     private IGitHubApi Api { get; }
     private HttpClient Client { get; }
     private IServiceProvider ServiceProvider { get; }
@@ -75,9 +88,11 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         IAcquisitionContext acquisition,
         string? nameHint = null,
         Sha256Value? expectedSha256 = null,
-        bool requireAdvertisedDigest = false)
+        bool requireAdvertisedDigest = false,
+        IReadOnlyDictionary<string, Sha256Value>? sidecar = null,
+        ulong? knownRepositoryId = null)
     {
-        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, acquisition, nameHint, expectedSha256, requireAdvertisedDigest);
+        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, acquisition, nameHint, expectedSha256, requireAdvertisedDigest, sidecar, knownRepositoryId);
     }
 
     internal static IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly> Create(
@@ -90,7 +105,9 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         IAcquisitionContext acquisition,
         string? nameHint,
         Sha256Value? expectedSha256,
-        bool requireAdvertisedDigest = false)
+        bool requireAdvertisedDigest = false,
+        IReadOnlyDictionary<string, Sha256Value>? sidecar = null,
+        ulong? knownRepositoryId = null)
     {
         if (repository.Id is null && repository.Organization is null)
             throw new ArgumentException("The repository is neither an id nor a name.", nameof(repository));
@@ -104,6 +121,8 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             NameHint = nameHint,
             ExpectedSha256 = expectedSha256,
             RequireAdvertisedDigest = requireAdvertisedDigest,
+            Sidecar = sidecar,
+            KnownRepositoryId = knownRepositoryId,
         };
         return provider.GetRequiredService<IJobMonitor>().Begin<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly>(job);
     }
@@ -149,6 +168,8 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
 
             Verify(asset, release.TagName, ExpectedSha256, actual, "the pinned digest");
             Verify(asset, release.TagName, advertised, actual, "the digest GitHub reports for the asset");
+            if (Sidecar is not null && Sidecar.TryGetValue(asset.Name, out var listed))
+                Verify(asset, release.TagName, listed, actual, "the checksum file of the release");
 
             await context.YieldAsync();
             using var tx = ServiceProvider.GetRequiredService<IConnection>().BeginTransaction();
@@ -162,9 +183,14 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
                 PinnedSha256 = actual,
             };
 
+            // GitHub vouched for the bytes when it reported a digest, and a pin that existed before the download was
+            // checked against something. Otherwise the pin is only what the first download happened to contain.
+            tx.Add(model.Id, GitHubReleaseLibraryFile.DigestAdvertised, advertised is not null || ExpectedSha256 is not null);
+
             if (Repository.Id is { } id) tx.Add(model.Id, GitHubReleaseLibraryFile.RepositoryId, id);
             if (Repository.Organization is { } organization) tx.Add(model.Id, GitHubReleaseLibraryFile.Organization, organization);
             if (Repository.Repository is { } repository) tx.Add(model.Id, GitHubReleaseLibraryFile.Repository, repository);
+            if (Repository.Id is null && KnownRepositoryId is { } known) tx.Add(model.Id, GitHubReleaseLibraryFile.RepositoryId, known);
 
             var result = await tx.Commit();
             return result.Remap(model);

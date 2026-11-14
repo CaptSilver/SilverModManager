@@ -36,8 +36,8 @@ public partial class GitHubReleaseLibraryFile : IModelDefinition
     public static readonly Sha256Attribute PinnedSha256 = new(Namespace, nameof(PinnedSha256));
 
     /// <summary>
-    /// The numeric id of the repository. Present when the repository was addressed by id, which stays valid
-    /// across renames and transfers.
+    /// The numeric id of the repository. Present when the repository was addressed by id, or when the download
+    /// recorded it beside the name. It stays valid across renames and transfers.
     /// </summary>
     public static readonly UInt64Attribute RepositoryId = new(Namespace, nameof(RepositoryId)) { IsOptional = true, IsIndexed = true };
 
@@ -50,4 +50,17 @@ public partial class GitHubReleaseLibraryFile : IModelDefinition
     /// The name of the repository. Present when the repository was addressed by name.
     /// </summary>
     public static readonly StringAttribute Repository = new(Namespace, nameof(Repository)) { IsOptional = true };
+
+    /// <summary>
+    /// Whether GitHub itself vouched for the bytes, by reporting a digest for the asset, or the pin was already
+    /// known before the download. False when the pin is the digest of the bytes first downloaded, which nothing
+    /// but the uploader has checked. Absent on rows that were added before this was recorded.
+    /// </summary>
+    public static readonly BooleanAttribute DigestAdvertised = new(Namespace, nameof(DigestAdvertised)) { IsOptional = true };
+
+    /// <summary>
+    /// The tag of the newest release whose update the user hid. An update to this tag or an older one is not offered;
+    /// a newer release is.
+    /// </summary>
+    public static readonly StringAttribute HiddenUpdateTag = new(Namespace, nameof(HiddenUpdateTag)) { IsOptional = true };
 }

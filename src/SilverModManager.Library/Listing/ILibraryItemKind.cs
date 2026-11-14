@@ -44,6 +44,9 @@ public sealed record LibraryItemKindMatch(string Kind, string? Version = null)
     /// <inheritdoc cref="NexusGameId"/>
     public uint? NexusFileId { get; init; }
 
+    /// <summary>A caveat to show beside the source, such as how a download was pinned.</summary>
+    public string? Note { get; init; }
+
     /// <summary>The library's mod page row and its name.</summary>
     public string? ModPageId { get; init; }
 
