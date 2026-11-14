@@ -13,6 +13,13 @@ public interface ISteamSession
     /// Connect to the Steam session, performing any necessary setup.
     /// </summary>
     public Task Connect(CancellationToken token);
+
+    /// <summary>
+    /// Connect like <see cref="Connect(CancellationToken)"/>, showing the QR code of a login this call starts through
+    /// <paramref name="handler"/> instead of the registered one. A verb passes its own terminal; the window's overlay
+    /// would otherwise show a code the person at the terminal never sees.
+    /// </summary>
+    public Task Connect(IAuthInterventionHandler handler, CancellationToken token);
     
     /// <summary>
     /// Get the product info for the specified app ID

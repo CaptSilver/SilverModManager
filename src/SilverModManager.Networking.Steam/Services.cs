@@ -66,7 +66,9 @@ public static class Services
             }
         );
         services.AddSteam();
-        services.AddSingleton<IAuthInterventionHandler, RenderingAuthenticationHandler>();
+        // Only the default for a login nobody brought a handler for; the verbs pass their own, and the window registers
+        // its overlay before this runs.
+        services.TryAddSingleton<IAuthInterventionHandler, LoggingAuthInterventionHandler>();
         services.AddSecretStoreAuthStorage();
         services.AddSteamVerbs();
         return services;

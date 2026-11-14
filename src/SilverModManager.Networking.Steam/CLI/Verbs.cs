@@ -25,12 +25,12 @@ public static class Verbs
             .AddVerb(() => Logout);
     
     [Verb("steam login", "Starts the login process for Steam")]
-    private static async Task<int> Login(
+    internal static async Task<int> Login(
         [Injected] IRenderer renderer,
         [Injected] ISteamSession steamSession,
         [Injected] CancellationToken token)
     {
-        await steamSession.Connect(token);
+        await steamSession.Connect(new RenderingAuthenticationHandler(renderer), token);
         return 0;
     }
     
@@ -71,8 +71,7 @@ public static class Verbs
             WriteIndented = true,
         };
 
-        RenderingAuthenticationHandler.Renderer = renderer;
-        await steamSession.Connect(token);
+        await steamSession.Connect(new RenderingAuthenticationHandler(renderer), token);
 
         await using (var _ = await renderer.WithProgress())
         {

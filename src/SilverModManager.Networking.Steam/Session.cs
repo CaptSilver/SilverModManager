@@ -32,6 +32,12 @@ public class Session : ISteamSession
     private readonly IAuthInterventionHandler _handler;
 
     /// <summary>
+    /// The handler of the <see cref="Connect(IAuthInterventionHandler, CancellationToken)"/> call that started the login
+    /// in progress, or null. A verb brings its own terminal; the registered handler serves everything else.
+    /// </summary>
+    private IAuthInterventionHandler? _loginHandler;
+
+    /// <summary>
     /// Base steam component, this is used for communicating with the Steam network.
     /// </summary>
     private readonly SteamClient _steamClient;
@@ -155,7 +161,7 @@ public class Session : ISteamSession
         _isConnected = true;
         try
         {
-            await new SteamLogin(_authStorage, new SteamKitAuthenticator(this), _logger, Environment.GetEnvironmentVariable).RunAsync();
+            await new SteamLogin(_authStorage, new SteamKitAuthenticator(this, ActiveHandler), _logger, Environment.GetEnvironmentVariable).RunAsync();
         }
         catch (Exception ex)
         {
@@ -172,7 +178,7 @@ public class Session : ISteamSession
     /// <summary>
     /// Runs the authentication steps against the real Steam network.
     /// </summary>
-    private sealed class SteamKitAuthenticator(Session session) : ISteamAuthenticator
+    private sealed class SteamKitAuthenticator(Session session, IAuthInterventionHandler handler) : ISteamAuthenticator
     {
         public async Task<SteamCredentials> AuthenticateWithPasswordAsync(string username, string password)
         {
@@ -190,9 +196,12 @@ public class Session : ISteamSession
         {
             var authSession = await session._steamClient.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails());
 
-            authSession.ChallengeURLChanged = () => { session._handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None); };
+            // Steam swaps the code for a fresh one every half minute or so; the callback runs on SteamKit's own thread,
+            // so the handler is the one captured when the login began, not whatever is current by then.
+            using var qr = new QrPresenter(handler, () => authSession.ChallengeURL);
+            authSession.ChallengeURLChanged = qr.Show;
 
-            session._handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None);
+            qr.Show();
             var pollResponse = await authSession.PollingWaitForResultAsync();
             return new SteamCredentials(pollResponse.AccountName, pollResponse.RefreshToken);
         }
@@ -220,6 +229,37 @@ public class Session : ISteamSession
     public async Task Connect(CancellationToken token)
     {
         await ConnectedAsync(token);
+    }
+
+    /// <inheritdoc />
+    public async Task Connect(IAuthInterventionHandler handler, CancellationToken token)
+    {
+        using var scope = BeginLogin(handler);
+        await ConnectedAsync(token);
+    }
+
+    /// <summary>
+    /// The handler that shows a QR code for the login in progress: the one its caller brought, else the registered one.
+    /// </summary>
+    internal IAuthInterventionHandler ActiveHandler => Volatile.Read(ref _loginHandler) ?? _handler;
+
+    /// <summary>
+    /// Makes <paramref name="handler"/> the one the login started now shows its QR code through, until the scope is
+    /// disposed. A login already under way keeps the handler it began with: a second caller joins it rather than
+    /// moving its code to another terminal.
+    /// </summary>
+    internal IDisposable BeginLogin(IAuthInterventionHandler handler)
+    {
+        var owned = Interlocked.CompareExchange(ref _loginHandler, handler, null) is null;
+        return new LoginScope(owned ? this : null, handler);
+    }
+
+    private sealed class LoginScope(Session? owner, IAuthInterventionHandler handler) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (owner is not null) Interlocked.CompareExchange(ref owner._loginHandler, null, handler);
+        }
     }
 
     public async Task<ProductInfo> GetProductInfoAsync(AppId appId, CancellationToken cancellationToken = default)
