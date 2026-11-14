@@ -102,4 +102,29 @@ public class GameSourcesTests
 
         SteamWorkshopGame.For(game).Should().BeSameAs(game);
     }
+
+    [Fact]
+    public void ADefinitionsModIoSideReachesTheGameClass()
+    {
+        var support = new ModIoSupport(1234, "some-game", GameSyncsSubscriptions: false);
+        var game = GameWith(new GameSources(ModIo: support));
+
+        ModIoGame.For(game).Should().BeSameAs(support);
+        GameBananaGame.For(game).Should().BeNull("a mod.io game is not on GameBanana because of it");
+    }
+
+    [Fact]
+    public void ADefinitionWithoutModIoAndAnUnrelatedTypeAreNotServedByIt()
+    {
+        ModIoGame.For(GameWith(GameSources.None)).Should().BeNull();
+        ModIoGame.For(Substitute.For<IGameData>()).Should().BeNull();
+    }
+
+    [Fact]
+    public void AHandWrittenGameImplementsTheModIoMarkerItself()
+    {
+        var game = Substitute.For<IGameData, IModIoGame>();
+
+        ModIoGame.For(game).Should().BeSameAs(game);
+    }
 }

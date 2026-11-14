@@ -15,7 +15,7 @@ namespace SilverModManager.Games.Larian.BaldursGate3;
 
 // Lists IWineDllOverrideRequirements itself, though ALarianGame implements it, because the game is where the
 // extender's override is declared.
-public class BaldursGate3(IServiceProvider provider) : ALarianGame<BaldursGate3>(provider), IGameData<BaldursGate3>, IWineDllOverrideRequirements
+public class BaldursGate3(IServiceProvider provider) : ALarianGame<BaldursGate3>(provider), IGameData<BaldursGate3>, IWineDllOverrideRequirements, IModIoGame
 {
     public static GameId GameId { get; } = GameId.From("Larian.BaldursGate3");
     public static string DisplayName => "Baldur's Gate 3";
@@ -26,6 +26,17 @@ public class BaldursGate3(IServiceProvider provider) : ALarianGame<BaldursGate3>
         SteamAppIds = [1086940u],
         GOGProductIds = [1456460669L],
     };
+
+    /// <summary>mod.io's id for the game, the <c>game_id</c> of https://mod.io/g/baldursgate3.</summary>
+    public uint ModIoGameId => 6715;
+
+    /// <inheritdoc />
+    public string ModIoNameId => "baldursgate3";
+
+    // The game's Mod Manager downloads the signed-in mod.io account's subscriptions, and Bg3InGameModRecognizer turns
+    // what it downloaded into a group.
+    /// <inheritdoc />
+    public bool GameSyncsSubscriptions => true;
 
     private BaldursGate3Settings? _settings;
 
