@@ -30,5 +30,8 @@ public interface IGameDefinition
     /// <inheritdoc cref="IGameData.LocationSentenceNames"/>
     IReadOnlyDictionary<string, string> LocationSentenceNames => ImmutableDictionary<string, string>.Empty;
 
+    /// <summary>The mod sources that serve the game. A definition that sets none is served by no source beyond Nexus Mods.</summary>
+    GameSources Sources => GameSources.None;
+
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 }

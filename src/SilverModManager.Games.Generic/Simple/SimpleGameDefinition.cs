@@ -24,6 +24,9 @@ public sealed record SimpleGameDefinition : IGameDefinition
 
     public RelativePath? NativeLinuxExecutable { get; init; }
 
+    /// <inheritdoc cref="IGameDefinition.Sources"/>
+    public GameSources Sources { get; init; } = GameSources.None;
+
     public required ModLocation ModRoot { get; init; }
 
     /// <summary>

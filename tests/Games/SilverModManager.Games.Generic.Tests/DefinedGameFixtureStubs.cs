@@ -20,6 +20,7 @@ internal sealed record FixtureDefinition : IGameDefinition
     public RelativePath Executable => "bin/fixture.exe";
     public RelativePath? NativeLinuxExecutable => null;
     public IReadOnlyDictionary<string, string> LocationNames => ImmutableDictionary<string, string>.Empty;
+    public GameSources Sources { get; init; } = GameSources.None;
 
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult) =>
         ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gameLocatorResult.Path);

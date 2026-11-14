@@ -10,7 +10,7 @@ namespace SilverModManager.Games.Generic;
 /// A game whose identity, stores, executable and locations are a record, not a type. One class serves every record of
 /// its kind, registered once per definition. A family subclass adds only what differs between families.
 /// </summary>
-public abstract class DefinedGame<TDefinition>(IServiceProvider provider, TDefinition definition) : AGameBase(provider)
+public abstract class DefinedGame<TDefinition>(IServiceProvider provider, TDefinition definition) : AGameBase(provider), IHasGameSources
     where TDefinition : IGameDefinition
 {
     public TDefinition Definition { get; } = definition;
@@ -18,6 +18,9 @@ public abstract class DefinedGame<TDefinition>(IServiceProvider provider, TDefin
     protected sealed override GameId GameIdValue => Definition.GameId;
     protected sealed override string DisplayNameValue => Definition.DisplayName;
     protected sealed override Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameIdValue => Definition.NexusModsGameId;
+
+    /// <inheritdoc />
+    public GameSources Sources => Definition.Sources;
 
     public sealed override StoreIdentifiers StoreIdentifiers => Definition.Stores;
     protected sealed override RelativePath PrimaryExe => Definition.Executable;

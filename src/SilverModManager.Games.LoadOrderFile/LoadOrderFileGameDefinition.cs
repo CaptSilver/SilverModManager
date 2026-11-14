@@ -84,6 +84,9 @@ public sealed record LoadOrderFileGameDefinition : IGameDefinition
     /// <summary>The executable of the game's native Linux build, relative to the game folder; null when it has none.</summary>
     public RelativePath? NativeLinuxExecutable { get; init; }
 
+    /// <inheritdoc cref="IGameDefinition.Sources"/>
+    public GameSources Sources { get; init; } = GameSources.None;
+
     /// <summary>What a player calls an extra location, keyed by its location id string.</summary>
     public IReadOnlyDictionary<string, string> LocationNames { get; init; } = ImmutableDictionary<string, string>.Empty;
 
