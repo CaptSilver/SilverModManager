@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x86CB55AD6184EC37
-   - Total attributes: 451
-   - Total namespaces: 117
+   - Fingerprint: 0x0DD1C719CB459E32
+   - Total attributes: 457
+   - Total namespaces: 118
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -176,6 +176,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.Witcher.WitcherModsSettingsNotice/SortOrder                        | Reference               | True    | False | False     | 
 | SilverModManager.Games.Witcher.WitcherModsSettingsNotice/Summary                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.DownloadedFile/DownloadPageUri                                   | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GameBanana/DateUpdated                                           | Int64                   | False   | False | False     | 
+| SilverModManager.Library.GameBanana/FileId                                                | Int64                   | True    | False | False     | 
+| SilverModManager.Library.GameBanana/GameId                                                | Int32                   | False   | False | False     | 
+| SilverModManager.Library.GameBanana/ListedFileName                                        | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GameBanana/ListedVersion                                         | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GameBanana/ModId                                                 | Int64                   | True    | False | False     | 
 | SilverModManager.Library.GitHubRelease/AssetName                                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/DigestAdvertised                                   | UInt8                   | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/HiddenUpdateTag                                    | Utf8                    | False   | False | False     | 

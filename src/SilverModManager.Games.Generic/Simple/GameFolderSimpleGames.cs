@@ -441,6 +441,11 @@ public static class GameFolderSimpleGames
         Install = AsIs,
     };
 
+    /// <summary>
+    /// GameBanana's id for Team Fortress 2: https://gamebanana.com/apiv11/Game/297/ProfilePage answers its name.
+    /// </summary>
+    private const int TeamFortress2GameBananaId = 297;
+
     /// <summary>From Vortex.</summary>
     public static readonly SimpleGameDefinition TeamFortress2 = new()
     {
@@ -452,6 +457,7 @@ public static class GameFolderSimpleGames
         NativeLinuxExecutable = (RelativePath)"tf.sh",
         ModRoot = new ModLocation(ModLocationRoot.GameFolder, "tf/custom"),
         Install = FolderOfFirstFile(".vpk"),
+        Sources = new GameSources(GameBanana: new GameBananaSupport(TeamFortress2GameBananaId, [GameBananaSection.Mod])),
     };
 
     /// <summary>From Vortex.</summary>

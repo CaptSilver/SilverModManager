@@ -55,7 +55,7 @@ public static class GitHubShelfGame
 /// per game. Every source finds its games through its marker's <c>For</c>, never through a cast alone.
 /// </summary>
 [PublicAPI]
-public sealed record GameSources(IGitHubShelfGame? GitHubShelf = null)
+public sealed record GameSources(IGitHubShelfGame? GitHubShelf = null, IGameBananaGame? GameBanana = null)
 {
     /// <summary>A game no source serves.</summary>
     public static GameSources None { get; } = new();
