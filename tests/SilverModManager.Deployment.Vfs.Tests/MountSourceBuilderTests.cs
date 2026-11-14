@@ -34,6 +34,39 @@ public class MountSourceBuilderTests
     }
 
     [Fact]
+    public void ARowsMtimeReachesItsSource()
+    {
+        var planned = new DateTimeOffset(2001, 2, 3, 4, 5, 6, TimeSpan.Zero);
+        var row = new MountManifestRow(Root / "a.esp", Id(2), Size.FromLong(20), Id(1), false, planned);
+
+        Build(new MountManifestView(Root, [row])).Single().MTime.Should().Be(planned);
+    }
+
+    // A vanilla master the real folder holds may have no staged copy and no xxHash3 identity, so asking the
+    // staging store for it would fail the mount.
+    [Fact]
+    public void ARowOverBytesTheRealFolderHoldsOnlyRetimesTheRealFile()
+    {
+        var planned = new DateTimeOffset(2001, 2, 3, 4, 5, 6, TimeSpan.Zero);
+        var row = new MountManifestRow(Root / "a.esm", Id(1), Size.FromLong(20), Id(1), false, planned);
+
+        var source = MountSourceBuilder.Build(new MountManifestView(Root, [row]), [], _ => throw new InvalidOperationException("nothing is staged for it")).Single();
+
+        source.Kind.Should().Be(VfsSourceKind.Retimed);
+        source.Path.Should().Be(RelativePath.FromUnsanitizedInput("a.esm"));
+        source.RealPath.Should().BeNull();
+        source.MTime.Should().Be(planned);
+    }
+
+    [Fact]
+    public void ARowWithoutAnMtimeLeavesItsSourceUnstamped()
+    {
+        var row = new MountManifestRow(Root / "a.esp", Id(2), Size.FromLong(20), Id(1), false, null);
+
+        Build(new MountManifestView(Root, [row])).Single().MTime.Should().BeNull();
+    }
+
+    [Fact]
     public void AHiddenRowHidesThePath()
     {
         var row = new MountManifestRow(Root / "old.esp", FileIdentity.None, Size.Zero, Id(1), true, null);

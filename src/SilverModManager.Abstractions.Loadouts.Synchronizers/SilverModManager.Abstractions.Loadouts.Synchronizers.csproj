@@ -19,6 +19,7 @@
     </ItemGroup>
     <ItemGroup>
       <InternalsVisibleTo Include="SilverModManager.Benchmarks" />
+      <InternalsVisibleTo Include="SilverModManager.Deployment.Fuse" />
       <InternalsVisibleTo Include="SilverModManager.Deployment.Links" />
       <InternalsVisibleTo Include="SilverModManager.DataModel.Synchronizer.Tests" />
       <InternalsVisibleTo Include="SilverModManager.Platform.Proton.Tests" />

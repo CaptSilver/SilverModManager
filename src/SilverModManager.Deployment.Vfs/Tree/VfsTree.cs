@@ -174,8 +174,8 @@ public sealed class VfsTree : IVfsOperations, IDisposable
                 continue;
             }
 
-            // Hiding something below a directory that is not there removes nothing.
-            if (source.Kind == VfsSourceKind.Hidden) return;
+            // Hiding or retiming something below a directory that is not there touches nothing.
+            if (source.Kind is VfsSourceKind.Hidden or VfsSourceKind.Retimed) return;
 
             directory = EnsureDirectory(directory, segments[i], lower: !source.FromStaging);
         }
@@ -188,6 +188,13 @@ public sealed class VfsTree : IVfsOperations, IDisposable
             if (existing is null) return;
             Unindex(existing);
             directory.Children.Remove(leafKey);
+            return;
+        }
+
+        // The real file keeps its node and its bytes; only the time it reports changes.
+        if (source.Kind == VfsSourceKind.Retimed)
+        {
+            if (existing is VfsFile { Backing: not null } real) real.Source = real.Source with { MTime = source.MTime };
             return;
         }
 
@@ -244,17 +251,19 @@ public sealed class VfsTree : IVfsOperations, IDisposable
             return new VfsAttr(node.Ino, stat.Mode, (ulong)stat.Size, stat.MTime, stat.CTime, 1);
 
         if (file.Backing is { } scanned)
-            return new VfsAttr(node.Ino, scanned.Mode, scanned.Size.Value, scanned.MTime, scanned.CTime, 1);
+            return new VfsAttr(node.Ino, scanned.Mode, scanned.Size.Value, file.Source.MTime ?? scanned.MTime, file.Source.MTime ?? scanned.CTime, 1);
 
         var source = file.Source;
         var (mtime, ctime) = TimesOf(source);
         return new VfsAttr(node.Ino, RegularFileMode, source.Size.Value, mtime, ctime, 1);
     }
 
-    // A served file's times are the real file's. One with no real file behind it (or one that
-    // vanished) reports when the tree was built.
+    // A served file's times are the real file's, unless the source carries a planned time (a game that orders
+    // its plugins by file time). One with no real file behind it (or one that vanished) reports when the tree
+    // was built.
     private (DateTimeOffset MTime, DateTimeOffset CTime) TimesOf(VfsFileSource source)
     {
+        if (source.MTime is { } planned) return (planned, planned);
         if (source.Backing is { } backing)
             return backing.Stat(source.Path) is { } stat ? (stat.MTime, stat.CTime) : (_created, _created);
         if (source.RealPath is not { } real) return (_created, _created);

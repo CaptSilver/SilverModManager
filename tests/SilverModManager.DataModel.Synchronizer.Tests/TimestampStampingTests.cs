@@ -25,6 +25,7 @@ namespace SilverModManager.DataModel.Synchronizer.Tests;
 /// get them on the apply that deploys them or moves them, and the disk state records the same times so the next
 /// index does not see the files as edited.
 /// </summary>
+[Collection(TimestampStubbedGame.Collection)]
 public class TimestampStampingTests : AIsolatedGameTest<TimestampStampingTests, TimestampStubbedGame>
 {
     private static readonly DateTimeOffset T0 = new(2024, 3, 1, 12, 0, 0, TimeSpan.Zero);
@@ -165,13 +166,21 @@ public class TimestampStampingTests : AIsolatedGameTest<TimestampStampingTests, 
 }
 
 /// <summary>A game with a plugin folder whose order is whatever the test sets.</summary>
-public class TimestampStubbedGame : IGame, IGameData<TimestampStubbedGame>, ITimestampOrderedGame
+public class TimestampStubbedGame : IGame, IGameData<TimestampStubbedGame>, ITimestampOrderedGame, IMountableGame
 {
+    public IReadOnlyList<GamePath> MountRoots(GameInstallation installation) => [new GamePath(LocationId.Game, "plugins")];
+
     public static GameId GameId { get; } = GameId.From("TimestampStubbedGame");
     public static string DisplayName => "Stubbed Game With File Times";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(uint.MaxValue - 4);
 
     public static List<(GamePath Path, DateTimeOffset Mtime)> Order { get; set; } = [];
+
+    /// <summary>
+    /// Every test class that sets <see cref="Order"/> joins this collection: the order is static, so two classes
+    /// running at once would stamp with each other's times.
+    /// </summary>
+    public const string Collection = "TimestampStubbedGame.Order";
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {

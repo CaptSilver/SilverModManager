@@ -44,9 +44,6 @@ internal static class FusePreflight
         var folder = installation.Locations.ToAbsolutePath(root);
         if (RealDirectory(folder) is null) return DeploymentPreflight.Refuse($"{folder} does not exist");
 
-        if (installation.Game is ITimestampOrderedGame)
-            return DeploymentPreflight.Refuse($"{game} orders plugins by file time, which a mounted folder cannot present yet");
-
         foreach (var intrinsic in intrinsicPaths)
         {
             if (intrinsic.InFolder(root))

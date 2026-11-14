@@ -21,9 +21,9 @@ public static class MountSourceBuilder
         foreach (var row in manifest.Rows)
         {
             var relative = RelativeTo(row.Path, manifest.Root);
-            sources.Add(row.Hidden
-                ? Hidden(relative)
-                : new VfsFileSource(relative, VfsSourceKind.Staged, stagedPathFor(row.Identity), row.Size, row.Identity));
+            if (row.Hidden) sources.Add(Hidden(relative));
+            else if (row.ServesTheRealFile) sources.Add(new VfsFileSource(relative, VfsSourceKind.Retimed, RealPath: null, row.Size, row.Identity, MTime: row.MTime));
+            else sources.Add(new VfsFileSource(relative, VfsSourceKind.Staged, stagedPathFor(row.Identity), row.Size, row.Identity, MTime: row.MTime));
         }
 
         foreach (var path in deletedWinners)

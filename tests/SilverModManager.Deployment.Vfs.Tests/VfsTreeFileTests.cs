@@ -25,6 +25,48 @@ public class VfsTreeFileTests : IDisposable
     }
 
     [Fact]
+    public async Task ASourceWithAnMtimeReportsIt()
+    {
+        var real = _directory.Combine("a.esp");
+        await real.WriteAllBytesAsync("hello"u8.ToArray());
+        var planned = new DateTimeOffset(2001, 2, 3, 4, 5, 6, TimeSpan.Zero);
+        var source = new VfsFileSource(RelativePath.FromUnsanitizedInput("Data/a.esp"), VfsSourceKind.Staged, real, Size.From(5), FileIdentity.XxHash3(Hash.From(1)), MTime: planned);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(VfsTree.Build(_directory, [], [source], VfsCachePolicy.Default), FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        kernel.Resolve("Data/a.esp").Value.Attr.MTime.Should().Be(planned, "the planned time wins over the staged file's own");
+    }
+
+    [Fact]
+    public async Task ARetimedRealFileKeepsItsBytesAndShowsThePlannedTime()
+    {
+        var real = _directory.Combine("Data").Combine("a.esm");
+        real.Parent.CreateDirectory();
+        await real.WriteAllBytesAsync("vanilla"u8.ToArray());
+        var planned = new DateTimeOffset(2001, 2, 3, 4, 5, 6, TimeSpan.Zero);
+        var retime = new VfsFileSource(RelativePath.FromUnsanitizedInput("Data/a.esm"), VfsSourceKind.Retimed, null, Size.From(7), FileIdentity.None, MTime: planned);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(VfsTree.Build(_directory, new BackingScanner().Scan(_directory), [retime], VfsCachePolicy.Default), FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        kernel.Resolve("Data/a.esm").Value.Attr.MTime.Should().Be(planned);
+        var file = kernel.Open("Data/a.esm", VfsOpenFlags.Read).Value;
+        try { kernel.Read(file, 0, 64).Value.Should().Equal("vanilla"u8.ToArray()); }
+        finally { kernel.Release(file); }
+    }
+
+    [Fact]
+    public async Task ARetimeWithNoRealFileServesNothing()
+    {
+        _directory.Combine("Data").CreateDirectory();
+        await _directory.Combine("Data").Combine("other.esp").WriteAllBytesAsync("x"u8.ToArray());
+        var retime = new VfsFileSource(RelativePath.FromUnsanitizedInput("Data/a.esm"), VfsSourceKind.Retimed, null, Size.From(7), FileIdentity.None, MTime: DateTimeOffset.UnixEpoch);
+        var kernel = new FakeFuseKernel();
+        await kernel.Mount(VfsTree.Build(_directory, new BackingScanner().Scan(_directory), [retime], VfsCachePolicy.Default), FuseMountOptions.Default(_directory), CancellationToken.None);
+
+        kernel.Resolve("Data/a.esm").Ok.Should().BeFalse("the row retimes a file the real folder no longer has");
+    }
+
+    [Fact]
     public async Task ReadsComeFromTheRealFileAndStopAtItsEnd()
     {
         var real = _directory.Combine("a.esp");

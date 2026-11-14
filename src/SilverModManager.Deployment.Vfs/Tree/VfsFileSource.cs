@@ -14,6 +14,12 @@ public enum VfsSourceKind
 
     /// <summary>Removes an earlier node for the same path (a deleted winner over a vanilla file).</summary>
     Hidden,
+
+    /// <summary>
+    /// The file the backing directory already has at this path, served with <see cref="VfsFileSource.MTime"/> in place of
+    /// its own time. With no such file it adds nothing.
+    /// </summary>
+    Retimed,
 }
 
 /// <summary>
@@ -24,6 +30,8 @@ public enum VfsSourceKind
 /// directory's own path.
 /// <paramref name="FromStaging"/> marks a file the game wrote into the staging directory, as opposed to
 /// one the loadout provides, so promotion can tell the two apart.
+/// <paramref name="MTime"/> is the modification time to serve when the game orders its files by time and the
+/// file's own time is not the one it must show; null serves the real file's time.
 /// </summary>
 public readonly record struct VfsFileSource(
     RelativePath Path,
@@ -32,7 +40,8 @@ public readonly record struct VfsFileSource(
     Size Size,
     FileIdentity Identity,
     bool FromStaging = false,
-    DirectoryHandle? Backing = null)
+    DirectoryHandle? Backing = null,
+    DateTimeOffset? MTime = null)
 {
     /// <summary>A file of <paramref name="backing"/> as the scanner saw it, read only through the handle.</summary>
     public static VfsFileSource FromBacking(DirectoryHandle backing, BackingEntry entry) =>

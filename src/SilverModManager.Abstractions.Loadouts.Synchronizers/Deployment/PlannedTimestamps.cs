@@ -36,8 +36,7 @@ internal static class PlannedTimestamps
     {
         foreach (var (path, mtime) in stamps)
         {
-            if (!context.SyncTree.TryGetValue(path, out var node)) continue;
-            if (!node.HaveDisk || (node.Actions & Skipped) != 0) continue;
+            if (!TryGetStampable(context, path, out var node)) continue;
 
             var file = context.Locations.ToAbsolutePath(path);
             if (FileFingerprint.Of(file).LastModified.UtcTicks != mtime.UtcTicks)
@@ -48,4 +47,12 @@ internal static class PlannedTimestamps
                 context.Transaction.Add(node.Disk.EntityId, DiskStateEntry.LastModified, written);
         }
     }
+
+    /// <summary>
+    /// Whether <see cref="Stamp"/> acts on a path: it has a file on disk and the apply neither extracts, ingests,
+    /// deletes nor stops tracking it. A backend that records the time somewhere other than the file asks the same
+    /// question so it skips the same paths.
+    /// </summary>
+    internal static bool TryGetStampable(DeploymentContext context, GamePath path, out SyncNode node) =>
+        context.SyncTree.TryGetValue(path, out node) && node.HaveDisk && (node.Actions & Skipped) == 0;
 }

@@ -132,7 +132,7 @@ public sealed class FuseDeploymentBackend(
         var mountPoint = FusePreflight.RealDirectory(folder) ?? throw new DirectoryNotFoundException($"{folder} does not exist");
 
         var manifest = Manifest(id, root, connection.Db);
-        foreach (var identity in manifest.Rows.Where(static r => !r.Hidden).Select(static r => r.Identity).Distinct())
+        foreach (var identity in manifest.Rows.Where(static r => !r.Hidden && !r.ServesTheRealFile).Select(static r => r.Identity).Distinct())
             await store.Ensure(id, identity, token);
 
         // The folder is opened before the mount covers its path and read only through this handle from here on.
@@ -255,9 +255,11 @@ public sealed class FuseDeploymentBackend(
 
             if (existing.IsValid()) tx.Delete(existing.Id, recursive: false);
 
-            // The real file already holds these bytes, so the folder serves them without a row.
+            // The real file already holds these bytes, so the folder serves them without a row, unless the game wants a
+            // modification time the real file does not have: the row is what carries it.
             var backing = BackingOf(existing, node);
-            if (backing is { } covered && covered.Equals(node.Loadout.Identity)) continue;
+            DateTimeOffset? planned = context.PlannedModifiedTimes.TryGetValue(path, out var time) ? time : null;
+            if (backing is { } covered && covered.Equals(node.Loadout.Identity) && planned is null) continue;
 
             _ = new MountedFileEntry.New(tx)
             {
@@ -267,10 +269,46 @@ public sealed class FuseDeploymentBackend(
                 Identity = node.Loadout.Identity,
                 Size = node.Loadout.Size,
                 BackingIdentity = backing,
+                MTime = planned,
             };
         }
 
         context.Job?.ReportProgress(SyncPhases.Deploying, extract.Count, extract.Count);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The time goes on the file's row, since the real file is not touched. A file the real folder holds with no row
+    /// over it gets one whose identity is its backing identity: it carries only the time, and the mount serves the real
+    /// file under it (<see cref="MountManifestRow.ServesTheRealFile"/>).
+    /// </remarks>
+    public Task StampTimestamps(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps)
+    {
+        var tx = context.Transaction;
+        var rows = ExistingRows(context);
+        var fuseRoots = FuseRoots(context);
+        foreach (var (path, mtime) in stamps)
+        {
+            if (!PlannedTimestamps.TryGetStampable(context, path, out var node)) continue;
+
+            if (rows.TryGetValue(path, out var row))
+            {
+                if (!row.MTime.HasValue || row.MTime.Value.UtcTicks != mtime.UtcTicks) tx.Add(row.Id, MountedFileEntry.MTime, mtime);
+                continue;
+            }
+
+            _ = new MountedFileEntry.New(tx)
+            {
+                InstallationId = context.MetadataId,
+                Root = RootOf(fuseRoots, context, path).ToGamePathParentTuple(context.MetadataId),
+                Path = path.ToGamePathParentTuple(context.MetadataId),
+                Identity = node.Disk.Identity,
+                Size = node.Disk.Size,
+                BackingIdentity = node.Disk.Identity,
+                MTime = mtime,
+            };
+        }
+        return Task.CompletedTask;
     }
 
     // What the row under this path covers. A row already there keeps what it covered (a mod replacing another mod leaves

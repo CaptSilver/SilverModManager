@@ -101,8 +101,7 @@ public sealed class FusePreflightTests : IDisposable
     }
 
     [Fact]
-    public void RefusesAGameThatOrdersPluginsByTime() =>
-        Evaluate(Installation(timestamps: true)).Reason.Should().Be("Test Game orders plugins by file time, which a mounted folder cannot present yet");
+    public void AcceptsAGameThatOrdersPluginsByTime() => Evaluate(Installation(timestamps: true)).Accepted.Should().BeTrue();
 
     [Fact]
     public void RefusesAnIntrinsicFileUnderTheRoot() =>
@@ -120,7 +119,7 @@ public sealed class FusePreflightTests : IDisposable
     [Fact]
     public void ReportsTheFirstFailingLine()
     {
-        var result = Evaluate(Installation(timestamps: true), fuse: new FuseAvailabilityReport(false, "no fuse", []), mounted: _ => true);
+        var result = Evaluate(Installation(), fuse: new FuseAvailabilityReport(false, "no fuse", []), mounted: _ => true);
 
         result.Reason.Should().Be("no fuse");
     }

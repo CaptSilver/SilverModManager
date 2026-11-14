@@ -22,7 +22,14 @@ public readonly record struct MountManifestRow(
     Size Size,
     FileIdentity? BackingIdentity,
     bool Hidden,
-    DateTimeOffset? MTime);
+    DateTimeOffset? MTime)
+{
+    /// <summary>
+    /// The real folder already holds the served bytes, so the row only carries <see cref="MTime"/>: the mount serves the
+    /// real file under that time and stages nothing. A vanilla master can have no staged copy at all.
+    /// </summary>
+    public bool ServesTheRealFile => !Hidden && BackingIdentity is { } backing && backing.Equals(Identity);
+}
 
 /// <summary>
 /// What a mounted folder serves, as the rows the synchronizer lays over the real folder's state when it builds a sync
@@ -38,7 +45,8 @@ public sealed record MountManifestView(GamePath Root, IReadOnlyList<MountManifes
     /// differs from the real entry now there (so the real file is ingested), hidden or not. Every other path passes through.
     /// </summary>
     /// <remarks>
-    /// A row with no real entry at its path is added, unless it is hidden. One pass over <paramref name="state"/>,
+    /// A row with no real entry at its path is added, unless it is hidden or only retimes the real file (nothing serves
+    /// it then, and the tree has to see the deletion). One pass over <paramref name="state"/>,
     /// which holds every file of the game, so the lookup is by path and not by scanning the rows.
     /// </remarks>
     public IEnumerable<PathPartPair> Overlay(IEnumerable<PathPartPair> state)
@@ -77,7 +85,7 @@ public sealed record MountManifestView(GamePath Root, IReadOnlyList<MountManifes
 
         foreach (var row in Rows)
         {
-            if (row.Hidden || seen.Contains(row.Path)) continue;
+            if (row.Hidden || row.ServesTheRealFile || seen.Contains(row.Path)) continue;
             yield return new PathPartPair(row.Path, Served(row, new SyncNodePart { Identity = row.Identity, Size = row.Size, LastModifiedTicks = 0 }));
         }
     }

@@ -104,6 +104,12 @@ public class MountManifestViewTests
         view.Overlay([]).Single().Part.LastModifiedTicks.Should().Be(mtime.UtcTicks);
     }
 
+    // Such a row only carries a time for the real file; with the file gone nothing serves the path, and the sync tree
+    // has to see the deletion.
+    [Fact]
+    public void ARowThatRetimesAMissingRealFileAddsNothing() =>
+        Overlay(Row(ModEsp, hash: 1, size: 10, backing: 1) with { MTime = DateTimeOffset.UnixEpoch }).Should().BeEmpty();
+
     [Fact]
     public void AnEmptyViewPassesEverythingThrough()
     {
