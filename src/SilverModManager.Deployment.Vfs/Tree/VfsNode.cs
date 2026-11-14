@@ -19,6 +19,18 @@ internal abstract class VfsNode
 internal sealed class VfsDirectory : VfsNode
 {
     public Dictionary<VfsNameKey, VfsNode> Children { get; } = new();
+
+    /// <summary>Permission bits a caller set on this directory; null serves the default.</summary>
+    public uint? Mode { get; set; }
+
+    /// <summary>Modification time a caller set on this directory; null serves the time the tree was built.</summary>
+    public DateTimeOffset? MTime { get; set; }
+
+    /// <summary>
+    /// How staging spells this directory when that differs from <see cref="VfsNode.DisplayName"/> (staging
+    /// holds <c>data/</c> under a game folder the tree calls <c>Data</c>). Null when they agree.
+    /// </summary>
+    public string? StagedName { get; set; }
 }
 
 internal sealed class VfsFile : VfsNode

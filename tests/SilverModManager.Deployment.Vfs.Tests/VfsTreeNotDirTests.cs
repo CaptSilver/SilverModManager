@@ -121,4 +121,91 @@ public class VfsTreeNotDirTests : IDisposable
         var tree = TreeWithStagedFileMissingItsRealPath();
         tree.Rename(IVfsOperations.RootInode, "a.esp", IVfsOperations.RootInode, "b.esp").Error.Should().Be(Errno.EIO);
     }
+
+    [Fact]
+    public void SetAttrOnADirectory_AcceptsMtimeAndMode()
+    {
+        var tree = Tree(Backing("Data/a.esp"));
+        var data = Ino(tree, IVfsOperations.RootInode, "Data");
+        var stamp = new DateTimeOffset(2021, 5, 6, 7, 8, 9, TimeSpan.Zero);
+
+        var changed = tree.SetAttr(data, new VfsSetAttr(null, stamp, 0x1C0));
+
+        changed.Ok.Should().BeTrue();
+        changed.Value.MTime.Should().Be(stamp);
+        (changed.Value.Mode & 0xFFF).Should().Be(0x1C0);
+        tree.GetAttr(data).Value.MTime.Should().Be(stamp);
+        tree.Lookup(IVfsOperations.RootInode, "Data").Value.Attr.MTime.Should().Be(stamp);
+    }
+
+    [Fact]
+    public void SetAttrWithASizeOnADirectory_IsEISDIR()
+    {
+        var tree = Tree(Backing("Data/a.esp"));
+        var data = Ino(tree, IVfsOperations.RootInode, "Data");
+
+        tree.SetAttr(data, new VfsSetAttr(0, null, null)).Error.Should().Be(Errno.EISDIR);
+    }
+
+    [Fact]
+    public void RmDirOfACaseVariantStagedDirectory_RemovesTheStagedSpelling()
+    {
+        var tree = Tree();
+        tree.MkDir(IVfsOperations.RootInode, "Textures", 0x1ED).Ok.Should().BeTrue();
+        var staged = _directory.Combine("staging").Combine(GameInstallMetadataId.From(0xABC).Value.Value.ToString("x")).Combine("Textures");
+        staged.DirectoryExists().Should().BeTrue();
+
+        tree.RmDir(IVfsOperations.RootInode, "textures").Ok.Should().BeTrue();
+
+        staged.DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public void RmDirOfAStagedDirectorySpelledDifferentlyFromTheTree_RemovesItFromDisk()
+    {
+        // The game's folder is `Data`; an earlier session staged its new directory under `data`.
+        var staging = new StagingDirectory(_directory.Combine("staging"), GameInstallMetadataId.From(0xABC));
+        staging.Root.Combine("data/Textures").CreateDirectory();
+        var tree = VfsTree.Build(default(AbsolutePath), [], [Backing("Data/a.esp")], staging, VfsCachePolicy.Default);
+        var data = Ino(tree, IVfsOperations.RootInode, "Data");
+
+        tree.RmDir(data, "Textures").Ok.Should().BeTrue();
+
+        staging.Root.Combine("data/Textures").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateInAStagedDirectorySpelledDifferentlyFromTheTree_LandsInTheStagedSpelling()
+    {
+        var staging = new StagingDirectory(_directory.Combine("staging"), GameInstallMetadataId.From(0xABC));
+        staging.Root.Combine("data/Textures").CreateDirectory();
+        var tree = VfsTree.Build(default(AbsolutePath), [], [Backing("Data/a.esp")], staging, VfsCachePolicy.Default);
+        var data = Ino(tree, IVfsOperations.RootInode, "Data");
+        var textures = Ino(tree, data, "Textures");
+
+        var created = tree.Create(textures, "new.dds", 0x1A4, VfsOpenFlags.Write);
+
+        created.Ok.Should().BeTrue();
+        tree.Release(created.Value.File);
+        staging.Root.Combine("data/Textures/new.dds").FileExists.Should().BeTrue();
+        staging.Root.Combine("Data").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public void RenameIntoAStagedDirectorySpelledDifferentlyFromTheTree_LandsInTheStagedSpelling()
+    {
+        var staging = new StagingDirectory(_directory.Combine("staging"), GameInstallMetadataId.From(0xABC));
+        staging.Root.Combine("data/Textures").CreateDirectory();
+        var tree = VfsTree.Build(default(AbsolutePath), [], [Backing("Data/a.esp")], staging, VfsCachePolicy.Default);
+        var data = Ino(tree, IVfsOperations.RootInode, "Data");
+        var textures = Ino(tree, data, "Textures");
+        var created = tree.Create(IVfsOperations.RootInode, "new.dds", 0x1A4, VfsOpenFlags.Write);
+        created.Ok.Should().BeTrue();
+        tree.Release(created.Value.File);
+
+        tree.Rename(IVfsOperations.RootInode, "new.dds", textures, "moved.dds").Ok.Should().BeTrue();
+
+        staging.Root.Combine("data/Textures/moved.dds").FileExists.Should().BeTrue();
+        staging.Root.Combine("Data").DirectoryExists().Should().BeFalse();
+    }
 }
