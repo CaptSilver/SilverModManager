@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\SilverModManager.Abstractions.Accounts\SilverModManager.Abstractions.Accounts.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Secrets\SilverModManager.Abstractions.Secrets.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
         <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />

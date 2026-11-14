@@ -1,26 +1,37 @@
 using FluentAssertions;
 using NSubstitute;
 using R3;
+using SilverModManager.Abstractions.Accounts;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Networking.Forums.Tests;
 
-public class ForumAccountButtonTests
+public class ForumAccountTests
 {
     private readonly IForumAccounts _accounts = Substitute.For<IForumAccounts>();
     private readonly IForumSignInFlow _flow = Substitute.For<IForumSignInFlow>();
     private readonly Subject<ForumSite> _changed = new();
 
-    public ForumAccountButtonTests()
+    public ForumAccountTests()
     {
         _accounts.Changed.Returns(_changed);
         _accounts.StatusOf(Arg.Any<ForumSite>()).Returns(new ForumAccountStatus(ForumAccountState.SignedOut, ""));
     }
 
-    private ForumAccountButton Button(ForumSite site = ForumSite.LoversLab) => new(_accounts, _flow, site);
+    private AccountButton Button(ForumSite site = ForumSite.LoversLab) => new(new ForumAccount(_accounts, _flow, site));
 
     private void Status(ForumSite site, ForumAccountState state, string source = "")
         => _accounts.StatusOf(site).Returns(new ForumAccountStatus(state, source));
+
+    [Fact]
+    public void TwoSitesReportIndependently()
+    {
+        Status(ForumSite.LoversLab, ForumAccountState.SignedIn, "Secret Service");
+        Status(ForumSite.VectorPlexus, ForumAccountState.SignedOut);
+
+        new ForumAccount(_accounts, _flow, ForumSite.LoversLab).Status.Should().Be(new AccountStatus(AccountState.SignedIn, "Secret Service"));
+        new ForumAccount(_accounts, _flow, ForumSite.VectorPlexus).Status.Should().Be(new AccountStatus(AccountState.SignedOut, ""));
+    }
 
     [Theory]
     [InlineData(ForumSite.LoversLab, "LoversLab")]

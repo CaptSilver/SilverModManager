@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Accounts;
 using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Networking.Forums;
@@ -21,8 +22,8 @@ public record ForumAuthSettings : ISettings
     {
         return settingsBuilder
             .ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json))
-            .ConfigureProperty(x => x.LoversLabClientId, Row(ForumSite.LoversLab), AccountButton(ForumSite.LoversLab))
-            .ConfigureProperty(x => x.VectorPlexusClientId, Row(ForumSite.VectorPlexus), AccountButton(ForumSite.VectorPlexus));
+            .ConfigureProperty(x => x.LoversLabClientId, Row(ForumSite.LoversLab), CreateAccountButton(ForumSite.LoversLab))
+            .ConfigureProperty(x => x.VectorPlexusClientId, Row(ForumSite.VectorPlexus), CreateAccountButton(ForumSite.VectorPlexus));
     }
 
     private static PropertyOptions<ForumAuthSettings, string> Row(ForumSite site) => new()
@@ -32,11 +33,11 @@ public record ForumAuthSettings : ISettings
         DescriptionFactory = _ => $"Sign in to download {site.DisplayName()} files that modlists ask for.",
     };
 
-    private static ActionButtonContainerOptions AccountButton(ForumSite site) => new()
+    private static ActionButtonContainerOptions CreateAccountButton(ForumSite site) => new()
     {
-        CreateSource = services => new ForumAccountButton(
+        CreateSource = services => new AccountButton(new ForumAccount(
             services.GetRequiredService<IForumAccounts>(),
             services.GetRequiredService<IForumSignInFlow>(),
-            site),
+            site)),
     };
 }

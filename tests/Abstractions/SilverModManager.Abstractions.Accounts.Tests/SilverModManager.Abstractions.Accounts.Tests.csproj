@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Abstractions.Accounts\SilverModManager.Abstractions.Accounts.csproj" />
+    </ItemGroup>
+</Project>
