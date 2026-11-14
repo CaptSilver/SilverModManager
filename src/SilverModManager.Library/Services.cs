@@ -13,6 +13,8 @@ using SilverModManager.Library.Lock;
 using SilverModManager.Library.Migrations;
 using SilverModManager.Library.Pickup;
 using SilverModManager.Library.Verbs;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Library.Steam;
 using SilverModManager.Library.Workshop;
 using SilverModManager.Networking.Steam.Workshop;
 using SilverModManager.Sdk.Library;
@@ -38,6 +40,7 @@ public static class Services
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, LocalFileKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, GitHubReleaseKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, GameBananaKind>());
+        serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, SteamDepotKind>());
         serviceCollection.TryAddEnumerable(ServiceDescriptor.Singleton<ILibraryItemKind, ThunderstorePackageKind>());
         return serviceCollection
             .AddMigration<_0006_AssignLibraryDestinations>()
@@ -59,6 +62,8 @@ public static class Services
             .AddSingleton(SteamWorkshopSettings.Default)
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<WorkshopItemsView>(provider, SteamWorkshopClients.Api(provider)))
             .AddSingleton<IModSource, SteamWorkshopSource>()
+            .AddSingleton<ISteamDepotLocations, InstalledSteamDepotLocations>()
+            .AddSingleton<ISteamDepotFiles, SteamDepotFileSource>()
             .AddSingleton<GitHubShelfEntries>()
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GitHubReleases>(provider, GitHubClients.Api(provider)))
             .AddSingleton<IModCatalog, NexusModCatalog>()

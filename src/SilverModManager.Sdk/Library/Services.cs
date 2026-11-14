@@ -21,6 +21,7 @@ public static class Services
             .AddGitHubReleaseLibraryFileModel()
             .AddGitHubShelfEntryModel()
             .AddGameBananaLibraryFileModel()
+            .AddSteamDepotLibraryFileModel()
             .AddThunderstoreLibraryFileModel()
             .AddUpdatePinModel()
             .AddLocalFileModel()

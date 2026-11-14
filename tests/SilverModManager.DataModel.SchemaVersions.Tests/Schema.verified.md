@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x23297125EDCCF287
-   - Total attributes: 457
-   - Total namespaces: 118
+   - Fingerprint: 0xA37F50ED58D43D2E
+   - Total attributes: 462
+   - Total namespaces: 119
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -212,6 +212,11 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Library.LibraryItem/Name                                                 | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.LocalFile/OriginalPath                                           | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.ManuallyCreatedArchive/CreationSource                            | Int32                   | False   | False | False     | 
+| SilverModManager.Library.SteamDepot/AppId                                                 | UInt32                  | True    | False | False     | 
+| SilverModManager.Library.SteamDepot/DepotId                                               | UInt32                  | False   | False | False     | 
+| SilverModManager.Library.SteamDepot/ManifestId                                            | UInt64                  | True    | False | False     | 
+| SilverModManager.Library.SteamDepot/Path                                                  | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.SteamDepot/Sha1                                                  | Blob                    | False   | False | False     | 
 | SilverModManager.Library.Thunderstore/Community                                           | Utf8                    | True    | False | False     | 
 | SilverModManager.Library.Thunderstore/Name                                                | Utf8                    | True    | False | False     | 
 | SilverModManager.Library.Thunderstore/Namespace                                           | Utf8                    | True    | False | False     | 

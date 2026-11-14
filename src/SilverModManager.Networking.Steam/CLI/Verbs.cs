@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Cli;
@@ -10,6 +11,8 @@ using SilverModManager.Networking.Steam.Exceptions;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.Networking.Steam.CLI;
@@ -22,6 +25,7 @@ public static class Verbs
             .AddModule("steam app", "Verbs for querying app data")
             .AddVerb(() => IndexSteamApp)
             .AddVerb(() => Login)
+            .AddVerb(() => FetchFile)
             .AddVerb(() => Logout);
     
     [Verb("steam login", "Starts the login process for Steam")]
@@ -34,6 +38,34 @@ public static class Verbs
         return 0;
     }
     
+
+    [Verb("steam fetch-file", "Fetches one file of a Steam depot manifest into the library, checked against the manifest's SHA-1; needs the Steam login")]
+    internal static async Task<int> FetchFile(
+        [Injected] IRenderer renderer,
+        [Injected] ISteamDepotFiles files,
+        [Injected] CancellationToken token,
+        [Option("a", "app", "The Steam app id")] long app,
+        [Option("d", "depot", "The depot id")] long depot,
+        [Option("m", "manifest", "The manifest id, from Steam's depotcache folder or the build's page")] string manifest,
+        [Option("p", "path", "The file's path inside the depot")] string path,
+        [Option("l", "loadout", "The loadout whose game the file is for; leave it out to add the file to the library unassigned", true)] Loadout.ReadOnly? loadout)
+    {
+        if (app is <= 0 or > uint.MaxValue) throw new SteamVerbRefusedException($"'{app}' is not a Steam app id");
+        if (depot is <= 0 or > uint.MaxValue) throw new SteamVerbRefusedException($"'{depot}' is not a Steam depot id");
+        if (!ulong.TryParse(manifest.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var manifestId) || manifestId == 0)
+            throw new SteamVerbRefusedException($"'{manifest}' is not a manifest id; it is a number of about 19 digits");
+        if (string.IsNullOrWhiteSpace(path)) throw new SteamVerbRefusedException("The file's path inside the depot is empty");
+
+        IAcquisitionContext acquisition = loadout is { } chosen ? new LoadoutAcquisition(chosen.LoadoutId) : UnassignedAcquisition.Instance;
+        var file = await files.FetchFile(
+            AppId.From((uint)app), DepotId.From((uint)depot), ManifestId.From(manifestId),
+            RelativePath.FromUnsanitizedInput(path.Trim()), expected: null, acquisition, token,
+            // The terminal that asked is the one to show the QR code on, not the window's overlay.
+            new RenderingAuthenticationHandler(renderer));
+
+        await renderer.TextLine($"Added {file.FileName} ({file.Size}) to the library, SHA-256 {file.Sha256.Value}");
+        return 0;
+    }
 
     [Verb("steam logout", "Forgets the stored Steam login")]
     private static async Task<int> Logout(
