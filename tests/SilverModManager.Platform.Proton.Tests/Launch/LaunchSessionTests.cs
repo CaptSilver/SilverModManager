@@ -1419,6 +1419,7 @@ public class LaunchSessionTests : IDisposable
         var thrown = (await act.Should().ThrowAsync<GameDidNotStopException>()).Which;
         thrown.Message.Should().Contain("4242");
         thrown.Title.Should().Be("The game did not stop");
+        thrown.Action.Should().Be(new OpenHealthCheck(_context.LoadoutId));
         _active.IsRunning(_installation).Should().BeTrue();
         launch.Dispose();
         _active.IsRunning(_installation).Should().BeFalse();

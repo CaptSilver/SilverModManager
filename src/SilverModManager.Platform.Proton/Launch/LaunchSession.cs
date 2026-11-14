@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -457,7 +458,8 @@ public sealed class LaunchSession
             var message = $"{game} did not stop: process {survivor.Pid} ({survivor.Name}) survived SIGKILL. " +
                           "The loadout is still applied. Stop that process, then launch again.";
             // The cause makes an awaiting caller show this as "the game did not stop" and not as a launch that never started.
-            return new LaunchFailure(message, Cause: new GameDidNotStopException(message));
+            // The Health Check holds the action that stops the survivor and finishes the launch.
+            return new LaunchFailure(message, Cause: new GameDidNotStopException(message) { Action = new OpenHealthCheck(context.LoadoutId) });
         }
 
         var stopped = BeginFinishing();
