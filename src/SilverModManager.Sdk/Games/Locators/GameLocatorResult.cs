@@ -136,6 +136,13 @@ public class GameLocatorResult
     public bool StoreUpdatesInBackground { get; init; }
 
     /// <summary>
+    /// The store client that can start this install, or null when none can (a game found inside a Wine
+    /// prefix, or a Heroic GOG game neither Heroic install's list holds). Rebuilt on every locate and not
+    /// part of <see cref="HasSameStoreStateAs"/>: it says who starts the game, not what state the files are in.
+    /// </summary>
+    public StoreClient? StoreClient { get; init; }
+
+    /// <summary>
     /// True when <paramref name="other"/> describes the same build in the same store state: same ids, build,
     /// update target, pending/in-progress/damaged flags and last write. A copy captured mid-update that the
     /// store later settles on the same build differs here, which comparing the build alone would miss.

@@ -55,6 +55,16 @@ public sealed class LutrisLocatorTests : IDisposable
     }
 
     [Fact]
+    public void Locate_RecordsLutrisWithTheSlug()
+    {
+        var root = NativeRoot();
+        var home = Home();
+        WriteGame(root, "game-slug", "gog", GogId.ToString(), runner: "wine", directory: home.Combine("Games/game").GetFullPath(), exe: "Game.exe", prefix: home.Combine("Games/prefix").GetFullPath(), wineVersion: "lutris-ge-8-26");
+
+        Locate(root, Game("Game", gogId: GogId)).StoreClient.Should().Be(new StoreClient(StoreClientKind.Lutris, "game-slug", IsFlatpak: false));
+    }
+
+    [Fact]
     public void Locate_EpicRow_FindsTheGameAsEpic()
     {
         var root = NativeRoot();

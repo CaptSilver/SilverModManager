@@ -32,6 +32,12 @@ public class SteamLocatorTests
     }
 
     [Fact]
+    public void Locate_RecordsTheSteamClientWithTheAppId()
+    {
+        LocateSingle(withProtonPrefix: false).Result.StoreClient.Should().Be(new StoreClient(StoreClientKind.Steam, AppId.ToString(), IsFlatpak: false));
+    }
+
+    [Fact]
     public void Locate_NativeLinuxBuild_RecordsNoCompatibilityLayer()
     {
         LocateSingle(withProtonPrefix: false, hasNativeLinuxBuild: true).Result.Compatibility.Should().BeNull();

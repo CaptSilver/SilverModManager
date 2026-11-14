@@ -52,6 +52,19 @@ public class HeroicAmazonLocatorTests
     }
 
     [Fact]
+    public void Locate_RecordsHeroicWithTheProductId_AndTheLayerKindAgrees()
+    {
+        var (fileSystem, home) = NewHome();
+        var root = home.Combine(FlatpakConfigRoot);
+        WriteInstall(fileSystem, root, home.Combine("Games/Heroic/Game"), home.Combine("p"), root.Combine("wine"));
+
+        var result = Locate(fileSystem, Game("Game", ProductId));
+
+        result.StoreClient.Should().Be(new StoreClient(StoreClientKind.Heroic, ProductId, IsFlatpak: true));
+        result.Compatibility!.Kind.Should().Be(CompatibilityLayerKind.HeroicFlatpak);
+    }
+
+    [Fact]
     public void Locate_NoGamesConfig_StillLocatesWithoutACompatibilityLayer()
     {
         var (fileSystem, home) = NewHome();

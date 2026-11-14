@@ -101,6 +101,9 @@ internal class HeroicGOGLocator : IGameLocator
                 Compatibility = GetCompatibilityLayer(gameFinderGame, roots, settings),
                 Platform = gameFinderGame.Platform,
                 WinePrefixPath = gameFinderGame.Platform == OSPlatform.Windows ? WinePrefix(gameFinderGame, settings) : null,
+                // A game under both roots was refused above, so null here means neither root's list holds it and
+                // nothing says whether the native or the Flatpak Heroic owns it.
+                StoreClient = roots.Length == 1 ? roots[0].StoreClient(appName) : null,
             };
         }
     }
@@ -116,7 +119,7 @@ internal class HeroicGOGLocator : IGameLocator
         var prefix = WinePrefix(game, settings);
         if (prefix is not { } winePrefix) return null;
 
-        var kind = roots is [{ IsFlatpak: true }] ? CompatibilityLayerKind.HeroicFlatpak : CompatibilityLayerKind.Heroic;
+        var kind = roots is [var single] ? single.CompatibilityKind : CompatibilityLayerKind.Heroic;
         var bin = settings?.WineBin ?? game.WineData?.WineVersion.Bin;
         return new CompatibilityLayer(
             kind,

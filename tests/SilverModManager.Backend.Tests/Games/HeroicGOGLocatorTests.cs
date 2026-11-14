@@ -88,6 +88,30 @@ public class HeroicGOGLocatorTests
     }
 
     [Fact]
+    public void Locate_RecordsHeroicFlatpakFromTheFlatpakRoot_AndTheLayerKindAgrees()
+    {
+        var (fileSystem, home) = NewHome();
+        var prefix = home.Combine("Games/Heroic/Prefixes/default/Game");
+        var wine = home.Combine(FlatpakConfigRoot).Combine("tools/wine/Wine-GE/bin/wine");
+        WriteHeroicConfig(fileSystem, home.Combine(FlatpakConfigRoot), home.Combine("Games/Heroic/Game"), prefix, wine);
+
+        var result = Locate(fileSystem);
+
+        result.StoreClient.Should().Be(new StoreClient(StoreClientKind.Heroic, ProductId.ToString(), IsFlatpak: true));
+        result.Compatibility!.Kind.Should().Be(CompatibilityLayerKind.HeroicFlatpak);
+    }
+
+    [Fact]
+    public void Locate_RecordsHeroicNativeFromTheNativeRoot()
+    {
+        var (fileSystem, home) = NewHome();
+        var root = fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic");
+        WriteHeroicConfig(fileSystem, root, home.Combine("Games/Heroic/Game"), home.Combine("p"), root.Combine("wine"));
+
+        Locate(fileSystem).StoreClient.Should().Be(new StoreClient(StoreClientKind.Heroic, ProductId.ToString(), IsFlatpak: false));
+    }
+
+    [Fact]
     public void Locate_WindowsGame_RecordsTheWinePrefixFromHeroicsSettings()
     {
         var (fileSystem, home) = NewHome();

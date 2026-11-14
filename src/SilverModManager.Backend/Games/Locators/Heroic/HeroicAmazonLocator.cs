@@ -74,13 +74,13 @@ internal class HeroicAmazonLocator : IGameLocator
                 Platform = OSPlatform.Windows,
                 WinePrefixPath = compatibility?.Prefix,
                 Compatibility = compatibility,
+                StoreClient = root.StoreClient(productId),
             };
         }
     }
 
     private CompatibilityLayer CompatibilityLayer(HeroicConfigRoot root, AbsolutePath prefix, HeroicGameSettings settings)
     {
-        var kind = root.IsFlatpak ? CompatibilityLayerKind.HeroicFlatpak : CompatibilityLayerKind.Heroic;
-        return new CompatibilityLayer(kind, prefix, settings.WineBin is null ? null : _fileSystem.FromUnsanitizedFullPath(settings.WineBin), settings.WineName);
+        return new CompatibilityLayer(root.CompatibilityKind, prefix, settings.WineBin is null ? null : _fileSystem.FromUnsanitizedFullPath(settings.WineBin), settings.WineName);
     }
 }

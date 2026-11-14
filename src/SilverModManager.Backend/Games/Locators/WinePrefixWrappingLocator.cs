@@ -111,6 +111,7 @@ internal class WinePrefixWrappingLocator : IGameLocator
             StoreFilesDamaged = result.StoreFilesDamaged,
             StoreLastWrite = result.StoreLastWrite,
             StoreUpdatesInBackground = result.StoreUpdatesInBackground,
+            // StoreClient is left unset: nothing started a game found inside a prefix, so no client can start it.
             WinePrefixPath = result.WinePrefixPath ?? winePrefix.ConfigurationDirectory,
             Compatibility = result.Compatibility ?? prefixCompatibility,
         };

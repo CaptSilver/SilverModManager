@@ -83,6 +83,8 @@ internal class HeroicEpicLocator : IGameLocator
                 Platform = isWindows ? OSPlatform.Windows : OSPlatform.Linux,
                 WinePrefixPath = compatibility?.Prefix,
                 Compatibility = compatibility,
+                // Heroic's URL takes the installed.json key, which is not StoreIdentifier when Legendary has a catalog id.
+                StoreClient = root.StoreClient(appName),
             };
         }
     }
@@ -111,7 +113,6 @@ internal class HeroicEpicLocator : IGameLocator
 
     private CompatibilityLayer CompatibilityLayer(HeroicConfigRoot root, AbsolutePath prefix, HeroicGameSettings settings)
     {
-        var kind = root.IsFlatpak ? CompatibilityLayerKind.HeroicFlatpak : CompatibilityLayerKind.Heroic;
-        return new CompatibilityLayer(kind, prefix, settings.WineBin is null ? null : _fileSystem.FromUnsanitizedFullPath(settings.WineBin), settings.WineName);
+        return new CompatibilityLayer(root.CompatibilityKind, prefix, settings.WineBin is null ? null : _fileSystem.FromUnsanitizedFullPath(settings.WineBin), settings.WineName);
     }
 }

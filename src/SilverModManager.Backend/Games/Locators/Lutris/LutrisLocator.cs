@@ -195,6 +195,8 @@ internal class LutrisLocator : IGameLocator
                 Platform = isWine ? OSPlatform.Windows : OSPlatform.Linux,
                 WinePrefixPath = compatibility?.Prefix,
                 Compatibility = compatibility,
+                // lutris:rungame/<slug> takes the slug; the locator already refuses duplicate slugs.
+                StoreClient = new StoreClient(StoreClientKind.Lutris, row.Slug, root.IsFlatpak),
             };
         }
         catch (Exception e) when (IsUnusablePath(e))

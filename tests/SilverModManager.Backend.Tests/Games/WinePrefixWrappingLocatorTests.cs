@@ -41,6 +41,23 @@ public class WinePrefixWrappingLocatorTests
     }
 
     [Fact]
+    public void Locate_LeavesStoreClientNullForAWrappedInstall()
+    {
+        var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var prefix = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".wine");
+        fileSystem.CreateDirectory(prefix.Combine("drive_c"));
+        fileSystem.WriteAllText(prefix.Combine("system.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("user.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("userdef.reg"), "WINE REGISTRY Version 2\n");
+        var services = new ServiceCollection().AddLogging().AddSingleton<IFileSystem>(fileSystem).BuildServiceProvider();
+
+        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeClient: new StoreClient(StoreClientKind.Heroic, "app", false));
+        var locator = new WinePrefixWrappingLocator(services, [(_, _, _, _) => wrapped]);
+
+        locator.Locate().Should().ContainSingle().Which.StoreClient.Should().BeNull("nothing started a game found inside a prefix");
+    }
+
+    [Fact]
     public void Wrap_ForwardsStoreRootStoreBuildIdAndStoreUpdatePending()
     {
         var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
@@ -209,7 +226,7 @@ public class WinePrefixWrappingLocatorTests
         public IEnumerable<GameLocatorResult> Locate() => throw new IOException("No such device");
     }
 
-    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null, bool storeUpdatesInBackground = false, string? storeTargetBuildId = null, bool storeUpdateInProgress = false, bool storeFilesDamaged = false) : IGameLocator
+    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null, bool storeUpdatesInBackground = false, string? storeTargetBuildId = null, bool storeUpdateInProgress = false, bool storeFilesDamaged = false, StoreClient? storeClient = null) : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate()
         {
@@ -229,6 +246,7 @@ public class WinePrefixWrappingLocatorTests
                 StoreLastWrite = storeLastWrite,
                 StoreUpdatesInBackground = storeUpdatesInBackground,
                 StoreTargetBuildId = storeTargetBuildId,
+                StoreClient = storeClient,
             };
         }
     }

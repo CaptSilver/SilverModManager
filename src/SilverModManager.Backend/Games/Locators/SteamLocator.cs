@@ -141,6 +141,7 @@ internal class SteamLocator : IGameLocator
             StoreFilesDamaged = (gameFinderGame.AppManifest.StateFlags & (StateFlags.FilesMissing | StateFlags.FilesCorrupt)) != 0,
             StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
             StoreUpdatesInBackground = gameFinderGame.AppManifest.AutoUpdateBehavior != AutoUpdateBehavior.UpdateOnLaunch,
+            StoreClient = new StoreClient(StoreClientKind.Steam, gameFinderGame.AppId.Value.ToString(), IsFlatpak: false),
         };
     }
 

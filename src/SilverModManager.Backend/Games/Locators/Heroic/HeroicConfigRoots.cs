@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Backend.Games.Locators;
 
@@ -10,6 +11,15 @@ namespace SilverModManager.Backend.Games.Locators;
 /// </summary>
 internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
 {
+    /// <summary>
+    /// The client record for a game this root lists. Built here, next to <see cref="CompatibilityKind"/>, so the
+    /// two statements of "this is the Flatpak" cannot disagree.
+    /// </summary>
+    public StoreClient StoreClient(string appName) => new(StoreClientKind.Heroic, appName, IsFlatpak);
+
+    /// <summary>The compatibility layer kind for a game whose Wine settings this root holds.</summary>
+    public CompatibilityLayerKind CompatibilityKind => IsFlatpak ? CompatibilityLayerKind.HeroicFlatpak : CompatibilityLayerKind.Heroic;
+
     /// <summary>One game Legendary lists as installed.</summary>
     /// <param name="Platform">Legendary's platform name (<c>Windows</c>, <c>Mac</c>), or null when the entry has none.</param>
     public sealed record EpicInstall(string AppName, string InstallPath, string? Platform);

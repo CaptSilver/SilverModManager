@@ -53,6 +53,30 @@ public class HeroicEpicLocatorTests
     }
 
     [Fact]
+    public void Locate_RecordsHeroicWithTheInstalledJsonKeyNotTheCatalogId()
+    {
+        var (fileSystem, home) = NewHome();
+        WriteInstall(fileSystem, NativeRoot(fileSystem), home.Combine("Games/Heroic/Game"), home.Combine("p"), home.Combine("wine"));
+
+        var result = Locate(fileSystem, Game("Game", CatalogItemId));
+
+        result.StoreIdentifier.Should().Be(CatalogItemId);
+        result.StoreClient.Should().Be(new StoreClient(StoreClientKind.Heroic, AppName, IsFlatpak: false));
+    }
+
+    [Fact]
+    public void Locate_RecordsHeroicFlatpakFromTheFlatpakRoot_AndTheLayerKindAgrees()
+    {
+        var (fileSystem, home) = NewHome();
+        WriteInstall(fileSystem, home.Combine(FlatpakConfigRoot), home.Combine("Games/Heroic/Game"), home.Combine("p"), home.Combine("wine"));
+
+        var result = Locate(fileSystem, Game("Game", CatalogItemId));
+
+        result.StoreClient!.IsFlatpak.Should().BeTrue();
+        result.StoreClient.IsFlatpak.Should().Be(result.Compatibility!.Kind == CompatibilityLayerKind.HeroicFlatpak);
+    }
+
+    [Fact]
     public void Locate_GameDeclaringTheAppName_MatchesByAppNameWhenMetadataHasADifferentId()
     {
         var (fileSystem, home) = NewHome();

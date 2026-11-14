@@ -107,6 +107,8 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
                 Platform = Platform,
                 WinePrefixPath = WinePrefixPath,
                 LinuxCompatabilityDataProvider = LinuxCompatabilityDataProvider,
+                // Keeps the Steam path for tests that run a game from a stubbed Steam install.
+                StoreClient = store == GameStore.Steam ? new StoreClient(StoreClientKind.Steam, LocatorIds[0].Value, false) : null,
             };
         }
     }
