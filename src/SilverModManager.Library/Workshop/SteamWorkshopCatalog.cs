@@ -1,5 +1,6 @@
 using System.Globalization;
 using SilverModManager.Abstractions.Library.Catalog;
+using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Networking.Steam.Workshop;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -12,11 +13,14 @@ namespace SilverModManager.Library.Workshop;
 /// item's page so Steam can subscribe to it. Nothing is downloaded here; Steam owns the files.
 /// </summary>
 /// <remarks>
-/// The list is the folder, not the Workshop: browsing the whole Workshop needs the user's own Web API key.
+/// With the user's own Web API key stored the list is a search of the whole Workshop, paged by Steam's cursor. Without
+/// one it is the folder, and the cards say how to get the rest.
 /// </remarks>
-internal sealed class SteamWorkshopCatalog(WorkshopItemsView view, ISteamWorkshopApi api, IGameRegistry registry, IOSInterop os) : IModCatalog
+internal sealed class SteamWorkshopCatalog(WorkshopItemsView view, ISteamWorkshopApi api, IGameRegistry registry, IOSInterop os, ISecretStore secrets) : IModCatalog
 {
     internal const string SubscribedKey = "subscribed";
+
+    internal const string KeyHint = "Add your Steam Web API key under Settings → Accounts to browse";
 
     /// <inheritdoc />
     public string DisplayName => "Steam Workshop";
@@ -34,6 +38,19 @@ internal sealed class SteamWorkshopCatalog(WorkshopItemsView view, ISteamWorksho
     public async Task<CatalogPage> Search(IGameData game, CatalogQuery query, CancellationToken cancellationToken)
     {
         var text = query.Text.Trim();
+        string hint;
+        switch (await secrets.GetAsync(WellKnownSecrets.SteamWebApiKey, cancellationToken))
+        {
+            case SecretResult.Found { Value.Length: > 0 } found when SteamWorkshopGame.For(game) is { } support:
+                return await Browse(support.SteamWorkshopAppId, text, query.Cursor, found.Value, cancellationToken);
+            case SecretResult.Unavailable unavailable:
+                hint = $"The Steam Web API key cannot be read: {unavailable.Reason}";
+                break;
+            default:
+                hint = KeyHint;
+                break;
+        }
+
         var cards = new List<CatalogCard>();
         foreach (var install in registry.LocateGameInstallations().Where(install => install.Game.GameId == game.GameId))
         {
@@ -44,12 +61,24 @@ internal sealed class SteamWorkshopCatalog(WorkshopItemsView view, ISteamWorksho
                     && !row.Id.ToString(CultureInfo.InvariantCulture).Contains(text, StringComparison.Ordinal)) continue;
 
                 cards.Add(new CatalogCard(
-                    row.Id.ToString(CultureInfo.InvariantCulture), row.Title, "", row.UpdatedBySteam ? "Updated by Steam" : "",
+                    row.Id.ToString(CultureInfo.InvariantCulture), row.Title, "", row.UpdatedBySteam ? $"Updated by Steam. {hint}" : hint,
                     Icon: null, row.WebPage, Version: "", Downloads: 0, Rating: null, IsAdult: false, row.Updated, new WorkshopHandle(row.Id)));
             }
         }
 
         return new CatalogPage(cards, NextCursor: null, cards.Count, FromCache: false);
+    }
+
+    private async Task<CatalogPage> Browse(uint appId, string text, string? cursor, string key, CancellationToken cancellationToken)
+    {
+        var page = await api.Query(appId, text, cursor, key, cancellationToken);
+        var cards = page.Items
+            .Where(item => item.IsAvailable)
+            .Select(item => new CatalogCard(
+                item.Id.ToString(CultureInfo.InvariantCulture), item.Title ?? item.Id.ToString(CultureInfo.InvariantCulture), "", item.ShortDescription ?? "",
+                item.PreviewUrl, SteamWorkshopLinks.WebPage(item.Id), Version: "", item.Subscriptions ?? 0, Rating: null, IsAdult: false, item.TimeUpdated, new WorkshopHandle(item.Id)))
+            .ToList();
+        return new CatalogPage(cards, page.NextCursor, page.Total, FromCache: false);
     }
 
     /// <inheritdoc />

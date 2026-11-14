@@ -14,6 +14,17 @@ public sealed class SteamWorkshopUnavailableException(string message, Exception?
 }
 
 /// <summary>
+/// Steam refused the user's Web API key.
+/// </summary>
+[PublicAPI]
+public sealed class SteamWebApiKeyRejectedException(Exception? inner = null)
+    : UserFacingException("Steam did not accept the Web API key. Replace it under Settings → Accounts, in the Steam (Workshop browse) row.", inner)
+{
+    /// <inheritdoc />
+    public override string Title => "Steam did not accept the Web API key";
+}
+
+/// <summary>
 /// Steam answered, but not with the item details the client asked for.
 /// </summary>
 [PublicAPI]

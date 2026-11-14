@@ -13,6 +13,12 @@ internal sealed class DeferredSteamWorkshopApi(IServiceProvider provider) : ISte
 {
     public Task<IReadOnlyList<PublishedFileDetails>> Details(IReadOnlyList<ulong> ids, CancellationToken ct)
         => provider.GetRequiredService<ISteamWorkshopApi>().Details(ids, ct);
+
+    public Task<WorkshopQueryPage> Query(uint appId, string text, string? cursor, string key, CancellationToken ct)
+        => provider.GetRequiredService<ISteamWorkshopApi>().Query(appId, text, cursor, key, ct);
+
+    public Task<bool> IsKeyAccepted(string key, CancellationToken ct)
+        => provider.GetRequiredService<ISteamWorkshopApi>().IsKeyAccepted(key, ct);
 }
 
 /// <summary>

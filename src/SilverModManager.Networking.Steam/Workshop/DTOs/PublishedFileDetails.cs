@@ -15,6 +15,8 @@ namespace SilverModManager.Networking.Steam.Workshop.DTOs;
 /// <param name="ConsumerAppId">The game the item is for.</param>
 /// <param name="Visibility">0 public, 1 friends only, 2 private, 3 unlisted.</param>
 /// <param name="Banned">1 when Steam took the item down.</param>
+/// <param name="ShortDescription">The author's summary; only the search answers carry it.</param>
+/// <param name="Subscriptions">How many users subscribe to the item; only the search answers carry it.</param>
 public sealed record PublishedFileDetails(
     [property: JsonPropertyName("publishedfileid")] ulong Id,
     [property: JsonPropertyName("result")] int Result,
@@ -24,7 +26,9 @@ public sealed record PublishedFileDetails(
     [property: JsonPropertyName("preview_url")] Uri? PreviewUrl = null,
     [property: JsonPropertyName("consumer_app_id")] uint? ConsumerAppId = null,
     [property: JsonPropertyName("visibility")] int? Visibility = null,
-    [property: JsonPropertyName("banned")] int? Banned = null)
+    [property: JsonPropertyName("banned")] int? Banned = null,
+    [property: JsonPropertyName("short_description")] string? ShortDescription = null,
+    [property: JsonPropertyName("subscriptions")] long? Subscriptions = null)
 {
     /// <summary>Whether Steam returned the item itself rather than a result code for a missing one.</summary>
     [JsonIgnore]

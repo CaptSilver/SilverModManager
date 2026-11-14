@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SilverModManager.Abstractions.Accounts;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Abstractions.Steam.Values;
@@ -24,11 +25,18 @@ public static class Services
     }
     
     /// <summary>
-    /// Adds the keyless Steam Workshop client, which asks Steam's Web API what an item is called and when it was updated.
+    /// Adds the Steam Workshop client, which asks Steam's Web API what an item is called and when it was updated, and
+    /// searches the Workshop for a user who has added their own Web API key.
     /// </summary>
     public static IServiceCollection AddSteamWorkshop(this IServiceCollection services)
     {
         services.TryAddSingleton<ISteamWorkshopApi>(provider => new SteamWorkshopApi(provider.GetRequiredService<HttpClient>()));
+        // The window registers its overlay prompt before this runs; a host without one refuses and names the row.
+        services.TryAddSingleton<ISecretPrompt, HeadlessSecretPrompt>();
+        services.AddSecretKeys(SteamSecretKeys.WebApiKey);
+        services.AddSettings<SteamWorkshopSettings>();
+        services.AddSingleton<SteamWebApiAccount>();
+        services.AddSingleton<ISecretPrimable>(sp => sp.GetRequiredService<SteamWebApiAccount>());
         return services;
     }
 

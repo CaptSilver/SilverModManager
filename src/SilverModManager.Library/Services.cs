@@ -16,6 +16,7 @@ using SilverModManager.Library.Verbs;
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Library.Steam;
 using SilverModManager.Library.Workshop;
+using SilverModManager.Sdk.Settings;
 using SilverModManager.Networking.Steam.Workshop;
 using SilverModManager.Sdk.Library;
 
@@ -59,7 +60,7 @@ public static class Services
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GitHubModSource>(provider, GitHubClients.Api(provider), GitHubClients.Http(provider)))
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<GameBananaProfiles>(provider, GameBananaClients.Api(provider)))
             .AddSingleton<IModSource>(provider => ActivatorUtilities.CreateInstance<GameBananaModSource>(provider, GameBananaClients.Http(provider)))
-            .AddSingleton(SteamWorkshopSettings.Default)
+            .AddSingleton(provider => provider.GetService<ISettingsManager>() is { } settings && settings.Configs.ContainsKey(typeof(SteamWorkshopSettings)) ? settings.Get<SteamWorkshopSettings>() : SteamWorkshopSettings.Default)
             .AddSingleton(provider => ActivatorUtilities.CreateInstance<WorkshopItemsView>(provider, SteamWorkshopClients.Api(provider)))
             .AddSingleton<IModSource, SteamWorkshopSource>()
             .AddSingleton<ISteamDepotLocations, InstalledSteamDepotLocations>()

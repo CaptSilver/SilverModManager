@@ -15,6 +15,10 @@ public static class WellKnownSecrets
 
     public const string GitHubTokenVariable = "GITHUB_TOKEN";
 
+    public static readonly SecretKey SteamWebApiKey = new("steam.web-api-key");
+
+    public const string SteamWebApiKeyVariable = "STEAM_WEB_API_KEY";
+
     /// <summary>
     /// Each key with the environment variable that supplies it.
     /// </summary>
@@ -22,5 +26,6 @@ public static class WellKnownSecrets
     {
         [NexusApiKey] = NexusApiKeyVariable,
         [GitHubToken] = GitHubTokenVariable,
+        [SteamWebApiKey] = SteamWebApiKeyVariable,
     };
 }

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Library.Tests.GitHub;
 using SilverModManager.Library.Workshop;
 using SilverModManager.Networking.Steam.Workshop;
@@ -20,6 +21,25 @@ internal sealed class FakeWorkshopApi : ISteamWorkshopApi
 
     /// <summary>Thrown by every call when set.</summary>
     public Exception? Failure { get; set; }
+
+    /// <summary>Every <see cref="Query"/> call, in order.</summary>
+    public List<(uint AppId, string Text, string? Cursor, string Key)> QueryCalls { get; } = [];
+
+    /// <summary>The page <see cref="Query"/> answers for a cursor ("" for the first page).</summary>
+    public Dictionary<string, WorkshopQueryPage> Pages { get; } = [];
+
+    /// <summary>The only key <see cref="IsKeyAccepted"/> and <see cref="Query"/> accept, when set.</summary>
+    public string? AcceptedKey { get; set; }
+
+    public Task<WorkshopQueryPage> Query(uint appId, string text, string? cursor, string key, CancellationToken ct)
+    {
+        QueryCalls.Add((appId, text, cursor, key));
+        if (Failure is not null) throw Failure;
+        if (AcceptedKey is not null && key != AcceptedKey) throw new SteamWebApiKeyRejectedException();
+        return Task.FromResult(Pages.TryGetValue(cursor ?? "", out var page) ? page : new WorkshopQueryPage([], null, 0));
+    }
+
+    public Task<bool> IsKeyAccepted(string key, CancellationToken ct) => Task.FromResult(AcceptedKey is null || key == AcceptedKey);
 
     public Task<IReadOnlyList<PublishedFileDetails>> Details(IReadOnlyList<ulong> ids, CancellationToken ct)
     {
@@ -85,6 +105,7 @@ internal sealed class WorkshopRig : IDisposable
     public SteamLibraryFixture Library { get; } = new();
     public FakeWorkshopGame Game { get; } = new(GameId.From("Tests.Workshop." + Guid.NewGuid().ToString("N")));
     public WorkshopItemsView View { get; }
+    public InMemorySecretStore Secrets { get; } = new();
 
     public WorkshopRig() => View = new WorkshopItemsView(Api, Time, SteamWorkshopSettings.Default, NullLogger<WorkshopItemsView>.Instance);
 
