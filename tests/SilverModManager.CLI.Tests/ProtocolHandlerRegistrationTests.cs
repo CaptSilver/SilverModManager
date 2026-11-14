@@ -12,14 +12,14 @@ namespace SilverModManager.CLI.Tests;
 public class ProtocolHandlerRegistrationTests
 {
     [Fact]
-    public void NxmAndRor2mmEachHaveOneHandler()
+    public void EachSchemeHasOneHandler()
     {
         var handlers = new ServiceCollection().AddCLI()
             .Where(descriptor => descriptor.ServiceType == typeof(IIpcProtocolHandler))
             .Select(descriptor => descriptor.ImplementationType)
             .ToArray();
 
-        handlers.Should().BeEquivalentTo([typeof(NxmIpcProtocolHandler), typeof(Ror2mmIpcProtocolHandler)]);
+        handlers.Should().BeEquivalentTo([typeof(NxmIpcProtocolHandler), typeof(Ror2mmIpcProtocolHandler), typeof(GameBananaIpcProtocolHandler)]);
     }
 
     [Fact]
@@ -45,6 +45,7 @@ public class ProtocolHandlerRegistrationTests
 
     [Theory]
     [InlineData(typeof(Ror2mmHandlerSettings))]
+    [InlineData(typeof(GameBananaHandlerSettings))]
     [InlineData(typeof(ProtocolNoticeSettings))]
     public void TheCliRegistersItsOwnSettings(Type settings)
     {

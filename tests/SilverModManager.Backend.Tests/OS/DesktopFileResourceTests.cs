@@ -20,6 +20,7 @@ public class DesktopFileResourceTests
 
         text.Should().Contain("MimeType=x-scheme-handler/nxm");
         text.Should().Contain("x-scheme-handler/ror2mm");
+        text.Should().Contain("x-scheme-handler/silvermodmanager");
         text.Should().Contain("Name=SilverModManager");
         text.Should().Contain("StartupWMClass=SilverModManager");
         text.Should().Contain($"Icon={ApplicationConstants.ApplicationId}");
@@ -37,6 +38,6 @@ public class DesktopFileResourceTests
         var lines = (await reader.ReadToEndAsync()).Split('\n').Select(line => line.TrimEnd('\r'));
 
         lines.Should().ContainSingle(line => line.StartsWith("MimeType="))
-            .Which.Should().Be("MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm;");
+            .Which.Should().Be("MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm;x-scheme-handler/silvermodmanager;");
     }
 }

@@ -54,24 +54,14 @@ public class Ror2mmIpcProtocolHandler(
             return;
         }
 
-        var candidates = managedGames.InstallationCandidates(game => ThunderstoreGame.For(game) is { } thunderstore && communities.Contains(thunderstore.ThunderstoreCommunity));
-        var inUse = candidates.Count > 1 ? candidates.Where(candidate => candidate.HasAppliedLoadout).ToList() : candidates;
-        if (candidates.Count == 0)
-        {
-            logger.LogWarning("Mod download aborted: no managed game takes mods from {Communities}", communities);
-            eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.GameNotManaged(string.Join(", ", communities))));
-            return;
-        }
+        var chosen = LinkTarget.Choose(
+            managedGames,
+            game => ThunderstoreGame.For(game) is { } thunderstore && communities.Contains(thunderstore.ThunderstoreCommunity),
+            linked: package.ToString(),
+            wanted: string.Join(", ", communities),
+            eventBus, logger);
+        if (chosen is not { } loadout) return;
 
-        // Several games list the package: the one the user has applied a loadout to is the one in use.
-        if (inUse.Count != 1)
-        {
-            var games = candidates.Select(candidate => candidate.Installation.Game.DisplayName).Distinct().ToList();
-            eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.Ambiguous(package.ToString(), games)));
-            return;
-        }
-
-        var loadout = managedGames.LoadoutOf(inUse[0].Installation);
         eventBus.Send(new CliMessages.ModDownloadStarted());
 
         try

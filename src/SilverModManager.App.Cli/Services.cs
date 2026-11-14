@@ -44,6 +44,8 @@ public static class Services
         services.AddSingleton<IIpcProtocolHandler, NxmIpcProtocolHandler>();
         services.AddSingleton<IIpcProtocolHandler, Ror2mmIpcProtocolHandler>();
         services.AddSettings<Ror2mmHandlerSettings>();
+        services.AddSingleton<IIpcProtocolHandler, GameBananaIpcProtocolHandler>();
+        services.AddSettings<GameBananaHandlerSettings>();
         services.AddSettings<ProtocolNoticeSettings>();
         services.AddSingleton<ProtocolNotices>();
 

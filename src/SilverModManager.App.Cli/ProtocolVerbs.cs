@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.CLI.Types;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.GameBanana;
 using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.CLI;
@@ -18,6 +19,7 @@ public static class ProtocolVerbs
     public static IServiceCollection AddProtocolVerbs(this IServiceCollection services) =>
         services.AddVerb(() => AssociateNxm)
             .AddVerb(() => AssociateRor2mm)
+            .AddVerb(() => AssociateSilverModManager)
             .AddVerb(() => ProtocolInvoke);
 
 
@@ -32,6 +34,13 @@ public static class ProtocolVerbs
     private static async Task<int> AssociateRor2mm([Injected] IOSInterop osInterop, [Injected] ProtocolNotices notices, [Injected] CancellationToken token)
     {
         await Associate("ror2mm", osInterop, notices, token);
+        return 0;
+    }
+
+    [Verb("associate-silvermodmanager", "Associate the silvermodmanager:// protocol, GameBanana's one-click install links, with this application")]
+    private static async Task<int> AssociateSilverModManager([Injected] IOSInterop osInterop, [Injected] ProtocolNotices notices, [Injected] CancellationToken token)
+    {
+        await Associate(GameBananaUrl.Scheme, osInterop, notices, token);
         return 0;
     }
 

@@ -10,7 +10,7 @@ using SilverModManager.SingleProcess;
 namespace SilverModManager.CLI.Tests;
 
 /// <summary>
-/// The associate-nxm and associate-ror2mm verbs, run through the command line over a substituted OS layer. Nothing
+/// The associate-nxm, associate-ror2mm and associate-silvermodmanager verbs, run through the command line over a substituted OS layer. Nothing
 /// here reaches xdg-mime, xdg-settings or the user's desktop files.
 /// </summary>
 public class AssociateVerbTests
@@ -41,6 +41,7 @@ public class AssociateVerbTests
     [Theory]
     [InlineData("nxm")]
     [InlineData("ror2mm")]
+    [InlineData("silvermodmanager")]
     public async Task TheVerb_TakesItsOwnSchemeWithTheTakeClaim(string scheme)
     {
         RegistrationReturns(scheme, new UriSchemeRegistration(true, null));
@@ -55,6 +56,7 @@ public class AssociateVerbTests
     [Theory]
     [InlineData("nxm", "vortex.desktop")]
     [InlineData("ror2mm", "r2modman.desktop")]
+    [InlineData("silvermodmanager", "another-manager.desktop")]
     public async Task TakingASchemeAnotherAppHeld_PublishesProtocolHandlerTaken(string scheme, string previous)
     {
         RegistrationReturns(scheme, new UriSchemeRegistration(true, previous));
