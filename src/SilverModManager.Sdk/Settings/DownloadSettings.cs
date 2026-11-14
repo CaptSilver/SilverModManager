@@ -24,7 +24,7 @@ public class DownloadSettings : ISettings
             x => x.MaxParallelDownloads,
             new PropertyOptions<DownloadSettings,int>
             {
-                Section = Sections.General,
+                Section = Sections.Downloads,
                 DisplayName = "Max Parallel Downloads",
                 DescriptionFactory = _ => "Set the maximum number of downloads that can happen in parallel, for collections and for the archives of a Wabbajack modlist",
             },

@@ -22,7 +22,7 @@ public record NxmHandlerSettings : ISettings
             x => x.RegisterAsDefaultHandler,
             new PropertyOptions<NxmHandlerSettings, bool>
             {
-                Section = Sections.General,
+                Section = Sections.Downloads,
                 DisplayName = "Handle nxm:// links",
                 DescriptionFactory = _ => "Makes this app the system handler for nxm:// links, replacing any other mod manager that currently has them. Turning it on registers right away; turning it off does not give the links back to the other app.",
             },

@@ -126,43 +126,44 @@ public static class ServiceExtensions
                 Id: Sections.Theme,
                 Name: "Theme",
                 IconFunc: () => IconValues.ColorLens,
-                Priority: ushort.MaxValue - 1
+                Priority: ushort.MaxValue - 1,
+                Tab: SettingsTab.Appearance
+            ))
+            .AddSingleton(new SectionDescriptor(
+                Id: Sections.Downloads,
+                Name: "Downloads",
+                IconFunc: () => IconValues.Download,
+                Priority: ushort.MaxValue - 3,
+                Tab: SettingsTab.Downloads
             ))
             .AddSingleton(new SectionDescriptor(
                 Id: Sections.Accounts,
                 Name: "Accounts",
                 IconFunc: () => IconValues.Account,
-                Priority: ushort.MaxValue - 2
-            ))
-            .AddSingleton(new SectionDescriptor(
-                Id: Sections.Privacy,
-                Name: "Privacy",
-                IconFunc: () => IconValues.ShieldHalfFull
-            ))
-            .AddSingleton(new SectionDescriptor(
-                Id: Sections.GameSpecific,
-                Name: "Game specific",
-                IconFunc: () => IconValues.Game,
-                Priority: ushort.MinValue + 3
+                Priority: ushort.MaxValue - 2,
+                Tab: SettingsTab.Accounts
             ))
             .AddSingleton(new SectionDescriptor(
                 Id: Sections.Advanced,
-                Name: "Advanced",
+                Name: "Key storage",
                 IconFunc: () => IconValues.School,
-                Priority: ushort.MinValue + 2
+                Priority: ushort.MinValue + 2,
+                Tab: SettingsTab.Accounts
             ))
             .AddSingleton(new SectionDescriptor(
                 Id: Sections.DeveloperTools,
                 Name: "Developer tools",
                 IconFunc: () => IconValues.Code,
-                Priority: ushort.MinValue + 1
+                Priority: ushort.MinValue + 1,
+                Tab: SettingsTab.Developer
             ))
             .AddSingleton(new SectionDescriptor(
                 Id: Sections.Experimental,
                 Name: "Experimental - Not currently supported",
                 IconFunc: () => IconValues.WarningAmber,
                 Priority: ushort.MinValue,
-                Hidden: !ApplicationConstants.IsDebug
+                Hidden: !ApplicationConstants.IsDebug,
+                Tab: SettingsTab.Developer
             ))
             .AddSettingModel();
     }

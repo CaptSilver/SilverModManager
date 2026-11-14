@@ -21,7 +21,7 @@ public record Ror2mmHandlerSettings : ISettings
             x => x.RegisterAsDefaultHandler,
             new PropertyOptions<Ror2mmHandlerSettings, bool>
             {
-                Section = Sections.General,
+                Section = Sections.Downloads,
                 DisplayName = "Handle Thunderstore (ror2mm://) links",
                 DescriptionFactory = _ => "Makes this app open Thunderstore's Install with Mod Manager links. If r2modman has them, this takes them; r2modman takes them back each time it starts, and this app then leaves them to it until you turn this setting off and on again or run associate-ror2mm.",
             },

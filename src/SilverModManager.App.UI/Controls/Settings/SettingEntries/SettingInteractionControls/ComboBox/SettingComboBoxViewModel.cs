@@ -1,4 +1,3 @@
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
 using SilverModManager.Sdk.Settings;
@@ -25,18 +24,15 @@ public partial class SettingComboBoxViewModel : AViewModel<ISettingComboBoxViewM
         DisplayItems = valueContainer.Values.Select(x => x.Value).ToArray();
         SelectedItemIndex = GetIndex(valueContainer.CurrentValue);
 
-        this.WhenActivated(disposables =>
-        {
-            this.WhenAnyValue(x => x.SelectedItemIndex)
-                .Select(GetValue)
-                .BindToVM(this, vm => vm.SingleValueMultipleChoiceContainer.CurrentValue)
-                .DisposeWith(disposables);
+        // The container is the single source of truth. Both directions stay wired for the view model's life, not only
+        // while a view shows it: a tab that is hidden still receives Save and Discard through the container.
+        this.WhenAnyValue(x => x.SelectedItemIndex)
+            .Select(GetValue)
+            .BindToVM(this, vm => vm.SingleValueMultipleChoiceContainer.CurrentValue);
 
-            this.WhenAnyValue(x => x.SingleValueMultipleChoiceContainer.CurrentValue)
-                .Select(GetIndex)
-                .BindToVM(this, vm => vm.SelectedItemIndex)
-                .DisposeWith(disposables);
-        });
+        this.WhenAnyValue(x => x.SingleValueMultipleChoiceContainer.CurrentValue)
+            .Select(GetIndex)
+            .BindToVM(this, vm => vm.SelectedItemIndex);
     }
 
     private object GetValue(int index)

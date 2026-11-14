@@ -12,6 +12,7 @@ using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Controls.Settings.SettingEntries;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk.Settings;
 using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests;
@@ -196,9 +197,9 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public void TheSettingsPageOffersGlassAndATintSliderInOneSection()
+    public async Task TheSettingsPageOffersGlassAndATintSliderInOneSection()
     {
-        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var page = await NewPage();
 
         var toggle = page.SettingEntries.Single(e => e.InteractionControlViewModel is ISettingToggleViewModel && e.Config.Options.DisplayName == "Glass");
         var slider = page.SettingEntries.Single(e => e.InteractionControlViewModel is ISettingSliderViewModel && e.Config.Options.DisplayName == "Glass tint");
@@ -213,21 +214,18 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public void TheThemeSectionComesRightAfterGeneralAndBeforeAdvanced()
+    public async Task TheThemeSectionIsOnTheAppearanceTabRightAfterGeneral()
     {
-        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
-
-        // The settings view lists sections by descending priority.
-        var order = page.Sections.OrderByDescending(s => s.Descriptor.Priority).Select(s => s.Descriptor.Name).ToList();
-
-        order.IndexOf("Theme").Should().Be(order.IndexOf("General") + 1);
-        order.IndexOf("Theme").Should().BeLessThan(order.IndexOf("Advanced"));
+        var page = await NewPage();
+        var appearance = page.Tabs.Single(t => t.Entries.Any(e => e.Config.Options.Section == Sections.Theme));
+        appearance.Tab.Should().Be(SettingsTab.Appearance);
+        page.Tabs.ToList().IndexOf(appearance).Should().Be(page.Tabs.ToList().FindIndex(t => t.Tab == SettingsTab.General) + 1);
     }
 
     [Fact]
     public async Task TheSliderControlShowsTheValueWithinTheSettingsBounds()
     {
-        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var page = await NewPage();
         var viewModel = page.SettingEntries.Select(e => e.InteractionControlViewModel).OfType<ISettingSliderViewModel>().Single();
 
         var (control, window) = await Dispatcher.UIThread.InvokeAsync(() =>
@@ -275,13 +273,13 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public void TheGlassSettingsCarryTheKdeOnlyReason()
+    public async Task TheGlassSettingsCarryTheKdeOnlyReason()
     {
         AppearanceSettings.DisabledReasonFor("GNOME").Should().Be(SilverModManager.App.UI.Resources.Language.Appearance_Glass_NeedsKde);
         AppearanceSettings.DisabledReasonFor(null).Should().NotBeNullOrWhiteSpace();
         AppearanceSettings.DisabledReasonFor("KDE").Should().BeNull();
 
-        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var page = await NewPage();
         var glass = page.SettingEntries.Where(e => e.Config.Options.DisplayName is "Glass" or "Glass tint").ToList();
         glass.Should().HaveCount(2);
         var expected = AppearanceSettings.DisabledReasonFor(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP"));
@@ -294,17 +292,17 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Fact]
-    public void AnEntryWithADisabledReasonIsDisabledAndAnotherIsNot()
+    public async Task AnEntryWithADisabledReasonIsDisabledAndAnotherIsNot()
     {
-        CreateEntry(() => "Not here").Should().Match<ISettingEntryViewModel>(e => !e.IsEnabled && e.DisabledReason == "Not here");
-        CreateEntry(() => null).Should().Match<ISettingEntryViewModel>(e => e.IsEnabled && e.DisabledReason == null);
-        CreateEntry(null).IsEnabled.Should().BeTrue();
+        (await CreateEntry(() => "Not here")).Should().Match<ISettingEntryViewModel>(e => !e.IsEnabled && e.DisabledReason == "Not here");
+        (await CreateEntry(() => null)).Should().Match<ISettingEntryViewModel>(e => e.IsEnabled && e.DisabledReason == null);
+        (await CreateEntry(null)).IsEnabled.Should().BeTrue();
     }
 
     [Fact]
     public async Task ADisabledEntryGreysOutItsControlAndShowsTheReason()
     {
-        var (entry, window) = await ShowEntry(CreateEntry(() => "Needs something"));
+        var (entry, window) = await ShowEntry(await CreateEntry(() => "Needs something"));
         try
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -325,7 +323,7 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     [Fact]
     public async Task AnEnabledEntryShowsNoReason()
     {
-        var (entry, window) = await ShowEntry(CreateEntry(() => null));
+        var (entry, window) = await ShowEntry(await CreateEntry(() => null));
         try
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -337,9 +335,13 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
         finally { await Dispatcher.UIThread.InvokeAsync(window.Close); }
     }
 
-    private ISettingEntryViewModel CreateEntry(Func<string?>? disabledReason)
+    // The combo rows bind their view model on construction, which the app does on the UI thread.
+    private Task<SettingsPageViewModel> NewPage() =>
+        Dispatcher.UIThread.InvokeAsync(() => (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>()).GetTask();
+
+    private async Task<ISettingEntryViewModel> CreateEntry(Func<string?>? disabledReason)
     {
-        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var page = await NewPage();
         var source = page.SettingEntries.Single(e => e.InteractionControlViewModel is ISettingToggleViewModel && e.Config.Options.DisplayName == "Glass");
         var options = new PropertyOptionsWrapper
         {

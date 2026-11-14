@@ -23,7 +23,7 @@ public record GameBananaHandlerSettings : ISettings
             x => x.RegisterAsDefaultHandler,
             new PropertyOptions<GameBananaHandlerSettings, bool>
             {
-                Section = Sections.General,
+                Section = Sections.Downloads,
                 DisplayName = "Handle GameBanana (silvermodmanager://) links",
                 DescriptionFactory = _ => "Makes this app open GameBanana's one-click install links, which name a mod and one of its files. If another manager has them, this takes them; if that manager takes them back, this app leaves them to it until you turn this setting off and on again or run associate-silvermodmanager.",
             },

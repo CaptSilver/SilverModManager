@@ -78,23 +78,11 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
     [Fact]
     public async Task Test_Settings()
     {
-        // The default and the choices both follow the machine's processor count, so pin it to a value every
-        // machine offers and put the old one back for the tests that share this settings store.
-        var settings = Provider.GetRequiredService<ISettingsManager>();
-        var parallelDownloads = settings.Get<DownloadSettings>().MaxParallelDownloads;
-        settings.Update<DownloadSettings>(_ => new DownloadSettings { MaxParallelDownloads = 16 });
-        try
+        var png = await Capture(() => new SettingsView
         {
-            var png = await Capture(() => new SettingsView
-            {
-                DataContext = ActivatorUtilities.CreateInstance<SettingsPageViewModel>(Provider, Substitute.For<IWindowManager>()),
-            }, beforeCapture: PinTestScratchPaths);
-            await VerifyPng(png);
-        }
-        finally
-        {
-            settings.Update<DownloadSettings>(_ => new DownloadSettings { MaxParallelDownloads = parallelDownloads });
-        }
+            DataContext = ActivatorUtilities.CreateInstance<SettingsPageViewModel>(Provider, Substitute.For<IWindowManager>()),
+        }, beforeCapture: PinTestScratchPaths);
+        await VerifyPng(png);
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public record HttpProxySettings : ISettings
             x => x.HttpProxy,
             new PropertyOptions<HttpProxySettings, string>
             {
-                Section = Sections.Advanced,
+                Section = Sections.Downloads,
                 DisplayName = "HTTP proxy",
                 DescriptionFactory = _ => Description,
                 RequiresRestart = true,

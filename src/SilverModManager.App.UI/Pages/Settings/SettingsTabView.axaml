@@ -1,0 +1,37 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="settings:ISettingsTabViewModel" xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:settings="clr-namespace:SilverModManager.App.UI.Pages.Settings"
+                                xmlns:ui="clr-namespace:SilverModManager.UI.Sdk;assembly=SilverModManager.UI.Sdk"
+                                mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+                                x:Class="SilverModManager.App.UI.Pages.Settings.SettingsTabView">
+
+    <ScrollViewer>
+        <!-- NOTE(insomnious): Using a single column grid to limit the max width of the content while still letting it stretch.
+    HorizontalAlignment is ignored on a control when numerical entries are set on 
+    Width/Height/MaxWidth/MaxHeight etc.
+    -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="1024" />
+            </Grid.ColumnDefinitions>
+            <ItemsControl x:Name="SettingEntriesItemsControl"
+                          Margin="0,0,0,24">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="{StaticResource Spacing-2}" Margin="0 0 12 0" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type ui:IViewModelInterface}">
+                        <reactiveUi:ViewModelViewHost ViewModel="{CompiledBinding .}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </ScrollViewer>
+
+</reactiveUi:ReactiveUserControl>

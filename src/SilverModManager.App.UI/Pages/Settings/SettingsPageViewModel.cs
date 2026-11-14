@@ -26,6 +26,7 @@ public class SettingsPageViewModel : APageViewModel<ISettingsPageViewModel>, ISe
     public ReactiveCommand<Unit> CancelCommand { get; }
     public ReadOnlyObservableCollection<ISettingEntryViewModel> SettingEntries { get; }
     public ReadOnlyObservableCollection<ISettingSectionViewModel> Sections { get; }
+    public IReadOnlyList<ISettingsTabViewModel> Tabs { get; }
     public R3.ReactiveProperty<bool> HasAnyValueChanged { get; } = new();
 
     private readonly IServiceProvider _serviceProvider;
@@ -57,6 +58,10 @@ public class SettingsPageViewModel : APageViewModel<ISettingsPageViewModel>, ISe
         SettingEntries = new ReadOnlyObservableCollection<ISettingEntryViewModel>(new ObservableCollection<ISettingEntryViewModel>(entryViewModels));
         Sections = new ReadOnlyObservableCollection<ISettingSectionViewModel>(new ObservableCollection<ISettingSectionViewModel>(sectionViewModels));
 
+        Tabs = SettingsTabs.Group(sections.Values, entryViewModels, e => e.Config.Options.Section, e => e.Config.Options.DisplayName)
+            .Select(group => new SettingsTabViewModel(group))
+            .ToArray();
+
         SaveCommand = HasAnyValueChanged.ToReactiveCommand(_ =>
         {
             var changedEntries = SettingEntries
@@ -81,16 +86,14 @@ public class SettingsPageViewModel : APageViewModel<ISettingsPageViewModel>, ISe
             }
         });
 
-        ViewForMixins.WhenActivated(this, disposables =>
-        {
-            System.Reactive.Linq.Observable.Merge(SettingEntries
+        // The entries live exactly as long as this view model, so the merge is owned here, not by a view's activation:
+        // Save and Discard must work on a page that has not been shown, and every tab's badge reads the same containers.
+        System.Reactive.Linq.Observable.Merge(SettingEntries
                 .Select(vm => vm.WhenAnyValue(x => x.InteractionControlViewModel.ValueContainer.HasChanged)))
-                .SubscribeWithErrorLogging(_ =>
-                {
-                    HasAnyValueChanged.Value = SettingEntries.Any(vm => vm.InteractionControlViewModel.ValueContainer.HasChanged);
-                })
-                .AddTo(disposables);
-        });
+            .SubscribeWithErrorLogging(_ =>
+            {
+                HasAnyValueChanged.Value = SettingEntries.Any(vm => vm.InteractionControlViewModel.ValueContainer.HasChanged);
+            });
     }
 
     private ISettingEntryViewModel CreateEntryViewModel(PropertyConfig config)

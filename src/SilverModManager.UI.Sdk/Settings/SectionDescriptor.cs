@@ -10,5 +10,6 @@ public record SectionDescriptor(
     string Name,
     Func<IconValue> IconFunc,
     uint Priority = 0,
-    bool Hidden = false
+    bool Hidden = false,
+    SettingsTab Tab = SettingsTab.General
 );

@@ -14,4 +14,6 @@ public interface ISettingsPageViewModel : IPageViewModelInterface
     ReadOnlyObservableCollection<ISettingEntryViewModel> SettingEntries { get; }
 
     ReadOnlyObservableCollection<ISettingSectionViewModel> Sections { get; }
+
+    IReadOnlyList<ISettingsTabViewModel> Tabs { get; }
 }
