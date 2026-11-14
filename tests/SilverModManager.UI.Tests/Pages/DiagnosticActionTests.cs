@@ -219,7 +219,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private RestoreFolderFromBackupActionHandler RestoreHandler(IWindowManager windows, IDiagnosticManager manager, bool gameRunning = false)
     {
         var session = Substitute.For<IGameLaunchSession>();
-        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        session.Describe(Arg.Any<GameInstallation>()).Returns(gameRunning ? new RunningInThisProcess("running", LaunchPhase.Running) : null);
         return RestoreHandler(windows, manager, session);
     }
 
@@ -302,7 +302,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         using var fixture = new RestoreFixture();
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
         var session = Substitute.For<IGameLaunchSession>();
-        session.IsRunning(Arg.Any<GameInstallation>()).Returns(false, true);
+        session.Describe(Arg.Any<GameInstallation>()).Returns(null, new RunningInThisProcess("running", LaunchPhase.Running));
         var handler = RestoreHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), session);
 
         await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
@@ -349,7 +349,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private DiscardOverlayFindingActionHandler DiscardHandler(OverlayFindingFixture fixture, IWindowManager windows, IDiagnosticManager manager, bool gameRunning = false)
     {
         var session = Substitute.For<IGameLaunchSession>();
-        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        session.Describe(Arg.Any<GameInstallation>()).Returns(gameRunning ? new RunningInThisProcess("running", LaunchPhase.Running) : null);
         return DiscardHandler(fixture, windows, manager, session);
     }
 
@@ -407,7 +407,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         var seeded = await SeedLoadoutRow<EldenRingGame>(GameStore.Steam, "Discard");
         using var fixture = new OverlayFindingFixture(seeded);
         var session = Substitute.For<IGameLaunchSession>();
-        session.IsRunning(Arg.Any<GameInstallation>()).Returns(false, true);
+        session.Describe(Arg.Any<GameInstallation>()).Returns(null, new RunningInThisProcess("running", LaunchPhase.Running));
         var manager = Substitute.For<IDiagnosticManager>();
         var handler = DiscardHandler(fixture, Answering(ButtonDefinitionId.Accept), manager, session);
 
@@ -442,7 +442,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private MoveHostFolderIntoGameActionHandler HostCopyHandler(HostCopyFixture fixture, IDiagnosticManager manager, bool gameRunning = false)
     {
         var session = Substitute.For<IGameLaunchSession>();
-        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        session.Describe(Arg.Any<GameInstallation>()).Returns(gameRunning ? new RunningInThisProcess("running", LaunchPhase.Running) : null);
         return new MoveHostFolderIntoGameActionHandler(new ServicesWith(Provider, (typeof(IGameLaunchSession), session)), new FreedesktopTrash(fixture.DataHome), manager);
     }
 
@@ -488,6 +488,38 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         Directory.GetFileSystemEntries(fixture.Prefix).Should().BeEmpty();
         Directory.Exists(fixture.DataHome).Should().BeFalse();
         await manager.DidNotReceiveWithAnyArgs().RefreshAsync(default);
+    }
+
+    [Fact]
+    public async Task Test_MovingTheHostCopyRefusesWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        using var fixture = new HostCopyFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "HostCopy");
+        var session = Substitute.For<IGameLaunchSession>();
+        session.Describe(Arg.Any<GameInstallation>()).Returns(new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty));
+        var handler = new MoveHostFolderIntoGameActionHandler(new ServicesWith(Provider, (typeof(IGameLaunchSession), session)), new FreedesktopTrash(fixture.DataHome), Substitute.For<IDiagnosticManager>());
+
+        var act = () => handler.ExecuteAsync(seeded.LoadoutId, [fixture.Host, fixture.Prefix]);
+
+        (await act.Should().ThrowAsync<UserFacingException>()).Which.Message.Should().Be("Game.exe is running (pid 777). Quit it first.");
+        File.Exists(Path.Combine(fixture.Host, "old.ess")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_RestoreRefusesWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var session = Substitute.For<IGameLaunchSession>();
+        session.Describe(Arg.Any<GameInstallation>()).Returns(new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty));
+        var errors = Substitute.For<IErrorPresenter>();
+        var services = new ServicesWith(Provider, (typeof(IGameLaunchSession), session), (typeof(IOverlayController), Substitute.For<IOverlayController>()), (typeof(IErrorPresenter), errors));
+        var handler = new RestoreFolderFromBackupActionHandler(services, Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>());
+
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await errors.Received().Report(Arg.Is<Exception>(e => e.Message == "Game.exe is running (pid 777). Quit it first."), Arg.Any<string>());
+        fixture.LinkIsStillDangling.Should().BeTrue();
     }
 
     [Fact]
@@ -544,7 +576,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
             var seeded = await SeedLoadoutRow(GameStore.Steam, "Regulation");
             var manager = Substitute.For<IDiagnosticManager>();
             var session = Substitute.For<IGameLaunchSession>();
-            session.IsRunning(Arg.Any<GameInstallation>()).Returns(true);
+            session.Describe(Arg.Any<GameInstallation>()).Returns(new RunningInThisProcess("running", LaunchPhase.Running));
 
             var act = () => RegulationHandler(manager, session, scratch).ExecuteAsync(seeded.LoadoutId, []);
 

@@ -46,8 +46,12 @@ public static class CollectionOrderReapply
         {
             var loadout = Loadout.Load(connection.Db, loadoutId);
             var installation = loadout.InstallationInstance;
-            if (serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation))
-                throw new CollectionOrderReapplyRefusedException($"{installation.Game.DisplayName} is running from SilverModManager. Quit the game, then apply the load order again.");
+            if (serviceProvider.GetRequiredService<IGameLaunchSession>().Describe(installation) is { } why)
+            {
+                throw new CollectionOrderReapplyRefusedException(why is RunningInThisProcess
+                    ? $"{installation.Game.DisplayName} is running from SilverModManager. Quit the game, then apply the load order again."
+                    : why.Message);
+            }
 
             var current = NexusCollectionLoadoutGroup.Load(connection.Db, group.Id);
             var root = await serviceProvider.GetRequiredService<NexusModsLibrary>().ParseCollectionJsonFile(current.LibraryFile, cancellationToken);

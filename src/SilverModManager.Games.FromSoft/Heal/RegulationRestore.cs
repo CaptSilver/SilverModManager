@@ -78,8 +78,12 @@ public sealed class RegulationRestore(RegulationBaselines baselines, IManifestVo
     /// <exception cref="RegulationRestoreRefusedException">The game is running, or no kept baseline is vouched for the installed build. Nothing was changed.</exception>
     public RegulationRestored Restore(GameInstallation installation, BuildIdentity? stamped)
     {
-        if (session.IsRunning(installation))
-            throw new RegulationRestoreRefusedException($"{installation.Game.DisplayName} is running. Close it, then restore the regulation.");
+        if (session.Describe(installation) is { } why)
+        {
+            throw new RegulationRestoreRefusedException(why is RunningInThisProcess
+                ? $"{installation.Game.DisplayName} is running. Close it, then restore the regulation."
+                : why.Message);
+        }
 
         var game = GameOf(installation);
 

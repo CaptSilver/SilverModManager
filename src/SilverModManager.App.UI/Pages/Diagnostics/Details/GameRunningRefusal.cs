@@ -19,9 +19,11 @@ internal static class GameRunningRefusal
     /// </summary>
     public static async Task<bool> RefuseIfRunning(IServiceProvider serviceProvider, GameInstallation installation, string context)
     {
-        if (!serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation)) return false;
+        if (serviceProvider.GetRequiredService<IGameLaunchSession>().Describe(installation) is not { } why) return false;
 
-        var refusal = new ExecutableInUseException(string.Format(Language.ErrorGameAlreadyRunning_Description, installation.Game.DisplayName));
+        var refusal = new ExecutableInUseException(why is RunningInThisProcess
+            ? string.Format(Language.ErrorGameAlreadyRunning_Description, installation.Game.DisplayName)
+            : why.Message);
         await serviceProvider.GetRequiredService<IErrorPresenter>().Report(refusal, context);
         return true;
     }

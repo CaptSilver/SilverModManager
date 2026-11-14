@@ -123,11 +123,24 @@ public sealed class RegulationRestoreTests : IDisposable
     public void RestoreRefusesWhileTheGameIsRunningAndChangesNothing()
     {
         var game = ModdedInstallWithBaseline();
-        _session.IsRunning(Arg.Any<GameInstallation>()).Returns(true);
+        _session.Describe(Arg.Any<GameInstallation>()).Returns(new RunningInThisProcess("running", LaunchPhase.Running));
 
         var act = () => Restorer(new ListedFiles(Vanilla)).Restore(game, null);
 
         act.Should().Throw<RegulationRestoreRefusedException>().WithMessage("*running*");
+        File.ReadAllBytes(RegulationOnDisk).Should().Equal(Modded);
+        Directory.Exists(SetAsideFolder).Should().BeFalse();
+    }
+
+    [Fact]
+    public void RestoreRefusesWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        var game = ModdedInstallWithBaseline();
+        _session.Describe(Arg.Any<GameInstallation>()).Returns(new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty));
+
+        var act = () => Restorer(new ListedFiles(Vanilla)).Restore(game, null);
+
+        act.Should().Throw<RegulationRestoreRefusedException>().WithMessage("Game.exe is running (pid 777). Quit it first.");
         File.ReadAllBytes(RegulationOnDisk).Should().Equal(Modded);
         Directory.Exists(SetAsideFolder).Should().BeFalse();
     }

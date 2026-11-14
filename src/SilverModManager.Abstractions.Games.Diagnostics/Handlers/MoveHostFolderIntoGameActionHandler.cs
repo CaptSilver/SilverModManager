@@ -32,8 +32,12 @@ public sealed class MoveHostFolderIntoGameActionHandler(IServiceProvider service
         if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
 
         var installation = loadout.InstallationInstance;
-        if (serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation))
-            throw new HostFolderMoveRefusedException($"It looks like {installation.Game.DisplayName} is already running.\nTo apply changes or launch the game again, please close the game first.");
+        if (serviceProvider.GetRequiredService<IGameLaunchSession>().Describe(installation) is { } why)
+        {
+            throw new HostFolderMoveRefusedException(why is RunningInThisProcess
+                ? $"It looks like {installation.Game.DisplayName} is already running.\nTo apply changes or launch the game again, please close the game first."
+                : why.Message);
+        }
 
         await Task.Run(() => HostFolderMove.Run(hostPath, prefixPath, trash));
         await diagnosticManager.RefreshAsync(loadoutId);

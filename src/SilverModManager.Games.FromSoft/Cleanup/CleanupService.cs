@@ -91,8 +91,8 @@ public sealed class CleanupService(
     public async Task<CleanupResult> ApplyAsync(Loadout.ReadOnly loadout, CleanupPlan confirmed, CancellationToken cancellationToken = default)
     {
         var installation = loadout.InstallationInstance;
-        if (launchSession.IsRunning(installation))
-            return Refused($"{installation.Game.DisplayName} is running or being launched, so its launch lock is held. Close it and try again.");
+        if (launchSession.Describe(installation) is { } why)
+            return Refused(RefusalFor(installation, why));
 
         var current = Plan(loadout);
         if (!current.SameSteps(confirmed))
@@ -142,8 +142,8 @@ public sealed class CleanupService(
     public async Task<CleanupFixOutcome> FixAsync(Loadout.ReadOnly loadout, CleanupPlan confirmed, ManualCommandPrompt askUserToRun, CancellationToken cancellationToken = default)
     {
         var installation = loadout.InstallationInstance;
-        if (launchSession.IsRunning(installation))
-            return new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: $"{installation.Game.DisplayName} is running or being launched, so its launch lock is held. Close it and try again.");
+        if (launchSession.Describe(installation) is { } why)
+            return new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: RefusalFor(installation, why));
 
         var gameFolder = GameFolderOf(loadout);
         var cleared = new HashSet<string>(StringComparer.Ordinal);
@@ -196,6 +196,10 @@ public sealed class CleanupService(
     }
 
     private static CleanupResult Refused(string reason) => new([], reason);
+
+    private static string RefusalFor(GameInstallation installation, RunningGame why) => why is RunningInThisProcess
+        ? $"{installation.Game.DisplayName} is running or being launched, so its launch lock is held. Close it and try again."
+        : why.Message;
 
     private static IFromSoftGame GameOf(GameInstallation installation)
         => installation.Game as IFromSoftGame

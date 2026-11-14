@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -51,6 +52,22 @@ public class RunningGameGuardTests(ITestOutputHelper helper) : ACyberpunkIsolate
         var thrown = await act.Should().ThrowAsync<ExecutableInUseException>();
         thrown.Which.Message.Should().Contain(GameInstallation.Game.DisplayName).And.Contain("Guarded Apply");
         LastSynced().Should().Be(active.LoadoutId, "the game synchronizer must not run");
+        GameFolderFiles().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task Synchronize_ThrowsWhenTheGameRunsOutsideTheApp()
+    {
+        var active = await LoadoutManager.CreateLoadout(GameInstallation, "Active Loadout");
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, "Guarded Apply");
+        var before = GameFolderFiles();
+        LaunchSession.Described = new RunningOutsideApp("Cyberpunk2077.exe is running (pid 777). Quit it before applying, deleting or removing.", RunningProcesses.Empty);
+
+        var act = () => SynchronizerService.Synchronize(loadout.LoadoutId);
+
+        var thrown = await act.Should().ThrowAsync<ExecutableInUseException>();
+        thrown.Which.Message.Should().Be("Cyberpunk2077.exe is running (pid 777). Quit it before applying, deleting or removing.");
+        LastSynced().Should().Be(active.LoadoutId);
         GameFolderFiles().Should().Equal(before);
     }
 

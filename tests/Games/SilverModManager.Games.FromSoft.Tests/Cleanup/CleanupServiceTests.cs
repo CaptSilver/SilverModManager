@@ -259,13 +259,37 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
     public async Task ApplyRefusesWhileTheInstallationLockIsHeld()
     {
         var loadout = await CreateLoadout();
-        LaunchSession.IsRunning(Arg.Any<GameInstallation>()).Returns(true);
+        LaunchSession.Describe(Arg.Any<GameInstallation>()).Returns(new RunningInThisProcess("running", LaunchPhase.Running));
         var before = SnapshotOfGameFolder();
 
         var result = await Service.ApplyAsync(loadout, Service.Plan(loadout));
 
         result.Failure.Should().Contain("running");
         SnapshotOfGameFolder().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task ApplyRefusesWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        var loadout = await CreateLoadout();
+        LaunchSession.Describe(Arg.Any<GameInstallation>()).Returns(new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty));
+        var before = SnapshotOfGameFolder();
+
+        var result = await Service.ApplyAsync(loadout, Service.Plan(loadout));
+
+        result.Failure.Should().Be("Game.exe is running (pid 777). Quit it first.");
+        SnapshotOfGameFolder().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task ApplyGoesAheadWhenNothingHasTheGame()
+    {
+        var loadout = await CreateLoadout();
+        LaunchSession.Describe(Arg.Any<GameInstallation>()).Returns((RunningGame?)null);
+
+        var result = await Service.ApplyAsync(loadout, Service.Plan(loadout));
+
+        result.Failure.Should().NotContain("running");
     }
 
     [Fact]

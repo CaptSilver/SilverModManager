@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using System.Collections.Frozen;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -117,6 +118,19 @@ public class CollectionOrderReapplyTests(ITestOutputHelper helper) : ACyberpunkI
 
         (await act.Should().ThrowAsync<CollectionOrderReapplyRefusedException>()).Which.Message.Should().Contain("running");
         Rows(loadout.LoadoutId, group).Should().HaveCount(5);
+        Names(group).Should().Equal(expected.Reverse());
+    }
+
+    [Fact]
+    public async Task ReapplyingRefusesWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        var (loadout, group, expected) = await InstallCollection();
+        await Scramble(loadout, group);
+        ServiceProvider.GetRequiredService<FakeGameLaunchSession>().Described = new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty);
+
+        var act = async () => await CollectionOrderReapply.Reapply(ServiceProvider, group);
+
+        (await act.Should().ThrowAsync<CollectionOrderReapplyRefusedException>()).Which.Message.Should().Be("Game.exe is running (pid 777). Quit it first.");
         Names(group).Should().Equal(expected.Reverse());
     }
 

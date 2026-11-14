@@ -89,7 +89,7 @@ public sealed class DeploymentCommand(
 
         var name = installation.Game.DisplayName;
         // Asking the chain writes probe files into the game folders, so a running game is refused up front.
-        if (launchSession.IsRunning(installation)) return await Fail(renderer, RunningMessage(name));
+        if (launchSession.Describe(installation) is { } running) return await Fail(renderer, running is RunningInThisProcess ? RunningMessage(name) : running.Message);
 
         var plan = plans.Load(connection.Db, metadata.GameInstallMetadataId);
         var known = plan.Roots.Select(r => r.Root).Concat(plan.MissingRoots(installation.Locations)).Distinct().ToArray();

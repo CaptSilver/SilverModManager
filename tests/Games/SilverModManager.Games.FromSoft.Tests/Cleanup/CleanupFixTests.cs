@@ -308,12 +308,27 @@ public class CleanupFixTests(ITestOutputHelper helper) : AEldenRingTest<CleanupF
         var loadout = await CreateLoadout();
         Probe.Immutable = true;
         var confirmed = Service.Plan(loadout);
-        LaunchSession.IsRunning(Arg.Any<SilverModManager.Sdk.Games.GameInstallation>()).Returns(true);
+        LaunchSession.Describe(Arg.Any<SilverModManager.Sdk.Games.GameInstallation>()).Returns(new RunningInThisProcess("running", LaunchPhase.Running));
 
         var outcome = await Service.FixAsync(loadout, confirmed, NoPrompt);
 
         outcome.Status.Should().Be(CleanupFixStatus.Cancelled);
         outcome.Message.Should().Contain("running");
+        Process.Commands.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AGameRunningOutsideTheAppStopsTheFixWithTheReason()
+    {
+        var loadout = await CreateLoadout();
+        Probe.Immutable = true;
+        var confirmed = Service.Plan(loadout);
+        LaunchSession.Describe(Arg.Any<SilverModManager.Sdk.Games.GameInstallation>()).Returns(new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", SilverModManager.Sdk.Games.RunningProcesses.Empty));
+
+        var outcome = await Service.FixAsync(loadout, confirmed, NoPrompt);
+
+        outcome.Status.Should().Be(CleanupFixStatus.Cancelled);
+        outcome.Message.Should().Be("Game.exe is running (pid 777). Quit it first.");
         Process.Commands.Should().BeEmpty();
     }
 

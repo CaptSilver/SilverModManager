@@ -7,7 +7,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.DataModel.Synchronizer;
 
 /// <summary>
-/// Refuses the three writers (apply, delete a loadout, unmanage a game) while a launch from this app is running.
+/// Refuses the three writers (apply, delete a loadout, unmanage a game) while the game is running, from this app or not.
 /// </summary>
 internal static class RunningGameGuard
 {
@@ -19,11 +19,13 @@ internal static class RunningGameGuard
         // Resolved per call: the registry lives in the platform project, and hosts that never launch a game
         // (and never write) shouldn't have to register one to build the data model.
         var launches = serviceProvider.GetRequiredService<IGameLaunchSession>();
-        if (!launches.IsRunning(installation)) return;
+        if (launches.Describe(installation) is not { } why) return;
 
         // The game has exited by then and a retry in a moment works, so don't tell the person to quit it.
-        if (launches.IsFinishing(installation))
+        if (why is RunningInThisProcess { Phase: LaunchPhase.Finishing })
             throw new ExecutableInUseException($"{installation.Game.DisplayName} is being finished after its last session in SilverModManager. Wait a moment, then try again.");
+
+        if (why is not RunningInThisProcess) throw new ExecutableInUseException(why.Message);
 
         var which = loadoutName is null ? "" : $" (loadout {loadoutName})";
         throw new ExecutableInUseException(

@@ -261,6 +261,19 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task RefusedWithTheReasonWhenTheGameRunsOutsideTheApp()
+    {
+        await ApplyLoadoutWithFile();
+        ServiceProvider.GetRequiredService<FakeGameLaunchSession>().Described = new RunningOutsideApp("Game.exe is running (pid 777). Quit it first.", RunningProcesses.Empty);
+
+        var (exitCode, output) = await Run(use: "hardlink");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        output.Text.Should().Contain("Game.exe is running (pid 777). Quit it first.");
+        Plan().Roots.Should().OnlyContain(r => r.Backend == DeploymentBackendId.Copy);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task ExactlyOneOfUseAndRecommendedIsRequired()
     {
         await ApplyLoadoutWithFile();
