@@ -60,6 +60,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private readonly string _soname;
     private readonly int _fuseVersion;
     private readonly string _realMountPoint;
+    private (string Parent, string Leaf)? _lookupName;
     private readonly string _fileSystemType;
 
     private readonly ConcurrentDictionary<ulong, VfsOpenFile> _files = new();
@@ -181,10 +182,18 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         _loopThread.Start();
     }
 
+    // The kernel lists the mount point either by its parent's real path and its own name, or fully resolved
+    // when the name itself is a link.
+    private bool IsListed()
+    {
+        var (parent, leaf) = _lookupName ??= MountTable.SplitForLookup(_options.MountPoint.ToString());
+        return MountTable.IsMounted(parent, leaf, _fileSystemType) || MountTable.IsMounted(_realMountPoint, _fileSystemType);
+    }
+
     private async Task WaitUntilMounted()
     {
         var deadline = DateTime.UtcNow + MountTimeout;
-        while (!MountTable.IsMounted(_realMountPoint, _fileSystemType))
+        while (!IsListed())
         {
             if (_completion.Task.IsCompleted)
                 throw new IOException($"The FUSE session for `{_realMountPoint}` ended before the mount appeared in {MountTable.Path} (session loop returned {_exitCode}).");

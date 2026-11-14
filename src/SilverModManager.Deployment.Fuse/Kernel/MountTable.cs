@@ -1,4 +1,5 @@
 using System.Text;
+using SilverModManager.Deployment.Fuse.Native;
 
 namespace SilverModManager.Deployment.Fuse.Kernel;
 
@@ -11,6 +12,29 @@ internal static class MountTable
     /// <param name="fileSystemType">e.g. <c>fuse.silvermod</c>.</param>
     internal static bool IsMounted(string realMountPoint, string fileSystemType) =>
         File.ReadLines(Path).Any(line => Matches(line, realMountPoint, fileSystemType));
+
+    /// <summary>
+    /// For a mount point given as its parent's real path and its own name. Resolving only the parent keeps the
+    /// name as the kernel lists it; resolving the whole path would swap a mount point that is itself a link for
+    /// its target.
+    /// </summary>
+    internal static bool IsMounted(string parentRealPath, string leaf, string fileSystemType) =>
+        File.ReadLines(Path).Any(line => Matches(line, parentRealPath, leaf, fileSystemType));
+
+    internal static bool Matches(string line, string parentRealPath, string leaf, string fileSystemType) =>
+        Matches(line, Join(parentRealPath, leaf), fileSystemType);
+
+    /// <summary>The real path of the parent and the name of the last component, which is kept verbatim.</summary>
+    internal static (string Parent, string Leaf) SplitForLookup(string mountPoint)
+    {
+        var trimmed = mountPoint.Length > 1 ? mountPoint.TrimEnd('/') : mountPoint;
+        var split = trimmed.LastIndexOf('/');
+        if (split < 0) return (LibcProcess.RealPath("."), trimmed);
+        var parent = split == 0 ? "/" : trimmed[..split];
+        return (LibcProcess.RealPath(parent), trimmed[(split + 1)..]);
+    }
+
+    private static string Join(string parent, string leaf) => parent == "/" ? "/" + leaf : $"{parent}/{leaf}";
 
     // id parent major:minor root mountpoint options [optional fields...] - fstype source superoptions
     internal static bool Matches(string line, string realMountPoint, string fileSystemType)
