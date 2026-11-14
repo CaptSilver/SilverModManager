@@ -50,6 +50,7 @@
     <PackageVersion Include="StrawberryShake.Server" Version="15.1.10" />
     <PackageVersion Include="System.Text.Json" Version="9.0.0" VersionOverride="9.0.0" />
     <PackageVersion Include="TextMateSharp.Grammars" Version="1.0.70" />
+    <PackageVersion Include="ppy.SDL3-CS" Version="2026.1002.1" />
     <PackageVersion Include="Polly.Core" Version="8.6.3" />
     <PackageVersion Include="Polly" Version="8.6.3" />
     <PackageVersion Include="Verify" Version="31.4.1" />

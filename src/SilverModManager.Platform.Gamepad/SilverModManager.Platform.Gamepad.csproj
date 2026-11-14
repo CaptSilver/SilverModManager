@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\SmmNativeRid.props" />
+
+    <PropertyGroup>
+        <!-- Without this the SDK treats a plain library as RID-agnostic and builds it without the app's -r, so SmmNativeRid would fall back to the build machine. -->
+        <IsRidAgnostic>false</IsRidAgnostic>
+    </PropertyGroup>
+
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.Platform.Gamepad.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ppy.SDL3-CS" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+    </ItemGroup>
+
+</Project>

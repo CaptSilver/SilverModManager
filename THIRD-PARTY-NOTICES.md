@@ -35,6 +35,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | Mutagen.Bethesda.* (Noggog) | GPL-3.0-only |
 | SteamKit2 | LGPL-2.1-only, linked dynamically as a NuGet assembly |
 | Avalonia and its Skia/Svg/Markdown add-ons | MIT |
+| SDL3 (libsdl-org, https://libsdl.org) and the ppy.SDL3-CS binding (ppy Pty Ltd) | zlib for SDL3, MIT for the binding; SDL3 is bundled as `libSDL3.so` for gamepad input |
 | Bannerlord.LauncherManager (BUTR Team) | MIT |
 | ooz (Powzix, https://github.com/powzix/ooz, `extern/ooz`) | GPL-3.0-or-later, built from source into `libooz.so` for Kraken decompression |
 | bc7e.ispc (Binomial LLC, https://github.com/richgel999/bc7enc_rdo, `extern/texenc`) | Apache-2.0, built into `libsmmtexenc.so` for BC7 encoding |
