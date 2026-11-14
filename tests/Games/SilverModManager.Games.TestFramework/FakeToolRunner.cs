@@ -23,7 +23,8 @@ public class FakeToolRunner : IToolRunner
         IReadOnlyDictionary<string, string>? Env,
         bool LogOutput,
         string? ExeContents,
-        ToolRunVia Via = ToolRunVia.Auto);
+        ToolRunVia Via = ToolRunVia.Auto,
+        AbsolutePath? WorkingDirectory = null);
 
     private readonly List<Call> _calls = [];
 
@@ -57,9 +58,9 @@ public class FakeToolRunner : IToolRunner
     public int ExitCode { get; set; }
 
     /// <inheritdoc />
-    public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
+    public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
         => CanRunTools
-            ? ToolRunPlan.Runnable("fake", [exe.ToString(), ..args], exe.Parent, env ?? new Dictionary<string, string>())
+            ? ToolRunPlan.Runnable("fake", [exe.ToString(), ..args], workingDirectory ?? exe.Parent, env ?? new Dictionary<string, string>())
             : ToolRunPlan.Failed(Diagnostic);
 
     /// <inheritdoc />
@@ -70,7 +71,8 @@ public class FakeToolRunner : IToolRunner
         IReadOnlyDictionary<string, string>? env,
         bool logOutput,
         CancellationToken cancellationToken,
-        ToolRunVia via = ToolRunVia.Auto)
+        ToolRunVia via = ToolRunVia.Auto,
+        AbsolutePath? workingDirectory = null)
     {
         if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
 
@@ -78,7 +80,7 @@ public class FakeToolRunner : IToolRunner
         // The real runner interrupts the program and throws once the token is cancelled.
         cancellationToken.ThrowIfCancellationRequested();
         var contents = exe.FileExists ? await exe.ReadAllTextAsync(cancellationToken) : null;
-        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via));
+        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via, workingDirectory));
         return new ToolRunResult(ExitCode);
     }
 

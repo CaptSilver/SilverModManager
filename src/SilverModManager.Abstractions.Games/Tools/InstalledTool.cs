@@ -12,4 +12,5 @@ namespace SilverModManager.Abstractions.Games.Tools;
 /// </param>
 /// <param name="RunVia">Forces how the program is started instead of the definition's choice.</param>
 /// <param name="OutputGroupName">Names the group the output is kept in instead of the definition's name.</param>
-public sealed record InstalledTool(AbsolutePath Exe, string? Arguments = null, ToolRunVia? RunVia = null, string? OutputGroupName = null);
+/// <param name="WorkingDirectory">The folder the program starts in; without it, the program's own folder.</param>
+public sealed record InstalledTool(AbsolutePath Exe, string? Arguments = null, ToolRunVia? RunVia = null, string? OutputGroupName = null, AbsolutePath? WorkingDirectory = null);

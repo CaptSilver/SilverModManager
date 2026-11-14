@@ -52,6 +52,11 @@ public partial class UserTool : IModelDefinition
     public static readonly StringAttribute OutputGroupName = new(Namespace, nameof(OutputGroupName)) { IsOptional = true };
 
     /// <summary>
+    /// The folder the program starts in, as a host path. Absent, it starts in its own folder.
+    /// </summary>
+    public static readonly StringAttribute WorkingDirectory = new(Namespace, nameof(WorkingDirectory)) { IsOptional = true };
+
+    /// <summary>
     /// Marks a program the catalogue does not know whose writes into the game folder are kept as a group of their own
     /// after each run. Absent, they stay in Overrides.
     /// </summary>

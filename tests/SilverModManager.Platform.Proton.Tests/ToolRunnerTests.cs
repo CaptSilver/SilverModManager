@@ -158,6 +158,26 @@ public class ToolRunnerTests : IDisposable
     }
 
     [Fact]
+    public void AWorkingDirectoryOnTheCommandWins()
+    {
+        var folder = _fs.FromUnsanitizedFullPath("/tools/xEdit/Data");
+
+        var plan = Runner().Plan(SteamGame(), Exe, [], null, workingDirectory: folder);
+
+        plan.WorkingDirectory.Should().Be(folder, "the program starts where the user said, not next to itself");
+    }
+
+    [Fact]
+    public async Task RunWindowsTool_StartsTheProgramInTheGivenWorkingDirectory()
+    {
+        var folder = _fs.FromUnsanitizedFullPath("/tools/xEdit/Data");
+
+        await Runner().RunWindowsTool(SteamGame(), Exe, [], null, logOutput: false, CancellationToken.None, workingDirectory: folder);
+
+        _commands.Should().ContainSingle().Which.WorkingDirPath.Should().Be(folder.ToString());
+    }
+
+    [Fact]
     public void SteamGame_AsksWineForErrorLines()
         => Runner().Plan(SteamGame(), Exe, [], null).Environment["WINEDEBUG"].Should().Be("-all,err+all");
 

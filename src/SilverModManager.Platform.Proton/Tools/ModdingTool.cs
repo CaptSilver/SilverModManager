@@ -89,6 +89,7 @@ public sealed class ModdingTool(
     internal async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         LastRun = null;
+        RefuseMissingStartFolder();
         var via = installed.RunVia ?? definition.RunVia;
         AbsolutePath? runFolder = definition.Output is ToolOutput.DeclaredFolder ? CreateRunFolder(loadout.InstallationInstance, via) : null;
         var started = false;
@@ -143,6 +144,13 @@ public sealed class ModdingTool(
         _ => output,
     };
 
+    // Checked before anything is created or started, so a typo in "Start in" costs nothing.
+    private void RefuseMissingStartFolder()
+    {
+        if (installed.WorkingDirectory is { } folder && !folder.DirectoryExists())
+            throw new ToolRefusedException($"Cannot run {Name}: its start folder {MarkdownText.Code(folder.ToString())} does not exist.");
+    }
+
     // The folder the tool writes to is in the prefix (see ToolRunFolder), so a tool that runs natively has none.
     // A definition without a catalogue id has no name to give the folder.
     private AbsolutePath CreateRunFolder(GameInstallation installation, ToolRunVia via)
@@ -177,21 +185,21 @@ public sealed class ModdingTool(
     {
         // Plan with the strategy that will run, not Auto: a forced strategy can run in a prefix Auto cannot.
         // Without a way to run, starting quietly would leave the user wondering why nothing happened.
-        var plan = toolRunner.Plan(installation, Exe, args, null, via);
+        var plan = toolRunner.Plan(installation, Exe, args, null, via, installed.WorkingDirectory);
         if (plan.IsRunnable is false)
             throw new ToolRefusedException($"Cannot run {Name} for {installation.Game.DisplayName}: {plan.Diagnostic}");
 
         await prefixSetup.Ensure(installation, Name, definition.Prefix, cancellationToken);
 
         onStart();
-        return await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via);
+        return await toolRunner.RunWindowsTool(installation, Exe, args, null, logOutput: true, cancellationToken, via, installed.WorkingDirectory);
     }
 
     private async Task<ToolRunResult> RunNative(IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
         var command = Cli.Wrap(Exe.ToString())
             .WithArguments(args)
-            .WithWorkingDirectory(Exe.Parent.ToString())
+            .WithWorkingDirectory((installed.WorkingDirectory ?? Exe.Parent).ToString())
             .WithValidation(CommandResultValidation.None);
         var result = await processRunner.RunAsync(command, logOutput: true, cancellationToken);
         return new ToolRunResult(result.ExitCode, result.RunTime, "Native");

@@ -2,8 +2,8 @@ using System.Text;
 
 namespace SilverModManager.Wabbajack.Mapping;
 
-/// <summary>A tool MO2 lists in its toolbar. Its working directory is not kept: the app launches tools from their own folder.</summary>
-public readonly record struct Mo2Executable(string Title, string Binary, string Arguments);
+/// <summary>A tool MO2 lists in its toolbar. <c>WorkingDirectory</c> is MO2's "Start in", null when the entry leaves it empty.</summary>
+public readonly record struct Mo2Executable(string Title, string Binary, string Arguments, string? WorkingDirectory);
 
 /// <summary>The sections of a <c>ModOrganizer.ini</c>, with MO2's (Qt's) escaping already removed from the values.</summary>
 public sealed class Mo2IniDocument
@@ -72,7 +72,8 @@ public static class Mo2Ini
             .Select(entry => new Mo2Executable(
                 entry.GetValueOrDefault("title", ""),
                 entry.GetValueOrDefault("binary", ""),
-                entry.GetValueOrDefault("arguments", "")))
+                entry.GetValueOrDefault("arguments", ""),
+                entry.GetValueOrDefault("workingDirectory") is { Length: > 0 } startIn ? startIn : null))
             .Where(executable => executable.Binary.Length > 0)
             .ToList();
     }

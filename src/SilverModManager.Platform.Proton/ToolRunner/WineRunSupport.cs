@@ -32,9 +32,9 @@ internal static class WineRunSupport
         => command.IsVerb ? command.Args : command.Args.Select(arg => WindowsPathTranslator.Translate(arg, prefix.ToString()));
 
     /// <summary>
-    /// An executable starts next to itself, a verb in the prefix.
+    /// A command's own start folder wins; otherwise an executable starts next to itself, a verb in the prefix.
     /// </summary>
-    public static AbsolutePath WorkingDirectory(PrefixCommand command, ResolvedPrefix prefix) => command.Exe?.Parent ?? prefix.Path;
+    public static AbsolutePath WorkingDirectory(PrefixCommand command, ResolvedPrefix prefix) => command.WorkingDirectory ?? command.Exe?.Parent ?? prefix.Path;
 
     /// <summary>
     /// Error lines on every channel and nothing else. Proton sets -all for game performance, which a tool

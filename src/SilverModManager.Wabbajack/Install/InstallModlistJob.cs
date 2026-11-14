@@ -1929,6 +1929,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
                 Arguments = tool.Arguments,
                 RunVia = ToolRunVia.Auto,
             };
+            if (tool.WorkingDirectory is { } startIn) tx.Add(row.Id, UserTool.WorkingDirectory, startIn);
             // The row keeps the list's own arguments: a line on the row wins over the definition's, so only the
             // catalogue's prefix setup and output capture are added.
             var match = ToolDetector.Match(game, FileSystem.Shared.FromUnsanitizedFullPath(tool.Exe)).FirstOrDefault();

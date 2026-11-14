@@ -103,6 +103,35 @@ public class ModdingToolTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AStartFolderOnTheInstalledToolIsPassedToTheRunner()
+    {
+        StubRunners();
+        var loadout = await CreateLoadout();
+        var startIn = GameFolder.Combine("My Mods");
+        startIn.CreateDirectory();
+
+        await Tool(Editor(), new InstalledTool(Exe, WorkingDirectory: startIn)).Execute(loadout, CancellationToken.None);
+
+        await _toolRunner.Received(1).RunWindowsTool(
+            Arg.Any<GameInstallation>(), Exe, Arg.Any<IReadOnlyList<string>>(), null, true, Arg.Any<CancellationToken>(), ToolRunVia.Auto, startIn);
+    }
+
+    [Fact]
+    public async Task AMissingStartFolderIsARefusal()
+    {
+        StubRunners();
+        var loadout = await CreateLoadout();
+        var missing = GameFolder.Combine("no such folder");
+
+        var act = () => Tool(Editor(), new InstalledTool(Exe, WorkingDirectory: missing)).Execute(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<ToolRefusedException>()).Which.Message
+            .Should().Contain("xEdit").And.Contain("start folder").And.Contain(missing.ToString()).And.Contain("does not exist");
+        await _toolRunner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default, default);
+        _commands.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task TheDefinitionsRunVia_IsUsedWhenTheUserSetsNone()
     {
         StubRunners();

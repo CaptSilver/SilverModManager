@@ -33,13 +33,19 @@ public sealed record PrefixCommand
     public IReadOnlyDictionary<string, string>? Env { get; }
 
     /// <summary>
+    /// The folder the program starts in, or null for the executable's own folder (a verb's is the prefix).
+    /// </summary>
+    public AbsolutePath? WorkingDirectory { get; }
+
+    /// <summary>
     /// Whether this is a Wine verb rather than an executable.
     /// </summary>
     public bool IsVerb => Exe is null;
 
-    private PrefixCommand(string program, AbsolutePath? exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env)
+    private PrefixCommand(string program, AbsolutePath? exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, AbsolutePath? workingDirectory = null)
     {
         Program = program;
+        WorkingDirectory = workingDirectory;
         Exe = exe;
         Args = args;
         Env = env;
@@ -48,8 +54,8 @@ public sealed record PrefixCommand
     /// <summary>
     /// A command that runs the executable at <paramref name="exe"/>.
     /// </summary>
-    public static PrefixCommand ForExe(AbsolutePath exe, IReadOnlyList<string>? args = null, IReadOnlyDictionary<string, string>? env = null)
-        => new(exe.ToString(), exe, args ?? [], env);
+    public static PrefixCommand ForExe(AbsolutePath exe, IReadOnlyList<string>? args = null, IReadOnlyDictionary<string, string>? env = null, AbsolutePath? workingDirectory = null)
+        => new(exe.ToString(), exe, args ?? [], env, workingDirectory);
 
     /// <summary>
     /// A command that runs a Wine verb, a bare program name that Wine resolves inside the prefix.

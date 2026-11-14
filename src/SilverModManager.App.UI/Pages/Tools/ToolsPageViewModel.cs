@@ -372,6 +372,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
             RunVia = draft.RunVia,
         };
         if (draft.KeepsOutput) tx.Add(row.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
+        if (StartFolder(draft) is { } startIn) tx.Add(row.Id, UserTool.WorkingDirectory, startIn);
         await tx.Commit();
         Refresh();
     }
@@ -387,6 +388,8 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         tx.Add(tool.Id, UserTool.Exe, draft.Exe);
         tx.Add(tool.Id, UserTool.Arguments, draft.Arguments);
         tx.Add(tool.Id, UserTool.RunVia, draft.RunVia);
+        if (StartFolder(draft) is { } startIn) tx.Add(tool.Id, UserTool.WorkingDirectory, startIn);
+        else if (UserTool.Load(_conn.Db, tool.Id).WorkingDirectory is { HasValue: true } previous) tx.Retract(tool.Id, UserTool.WorkingDirectory, previous.Value);
         var keeps = UserTool.CapturesGameFolderOutput.Contains(UserTool.Load(_conn.Db, tool.Id));
         if (draft.KeepsOutput && !keeps) tx.Add(tool.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
         else if (!draft.KeepsOutput && keeps) tx.Retract(tool.Id, UserTool.CapturesGameFolderOutput, Null.Instance);
@@ -402,10 +405,15 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         Refresh();
     }
 
+    // A blank "Start in" means the program's own folder, so nothing is stored for it.
+    private static string? StartFolder(UserToolDraft draft) => string.IsNullOrWhiteSpace(draft.WorkingDirectory) ? null : draft.WorkingDirectory.Trim();
+
     private static void Validate(UserToolDraft draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name)) throw new ArgumentException("A tool needs a name.", nameof(draft));
         if (!System.IO.Path.IsPathRooted(draft.Exe)) throw new ArgumentException($"'{draft.Exe}' is not an absolute path to a program.", nameof(draft));
+        if (StartFolder(draft) is { } startIn && !System.IO.Path.IsPathRooted(startIn))
+            throw new ArgumentException($"'{startIn}' is not an absolute path to a folder to start in.", nameof(draft));
     }
 }
 

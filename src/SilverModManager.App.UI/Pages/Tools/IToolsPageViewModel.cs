@@ -136,7 +136,7 @@ public interface IToolsPageViewModel : IPageViewModelInterface
 /// <param name="Arguments">Arguments as typed; spaces separate and double quotes group.</param>
 /// <param name="RunVia">How to start the program.</param>
 /// <param name="KeepsOutput">Keep what the program writes into the game folder as a group of its own after each run.</param>
-public sealed record UserToolDraft(string Name, string Exe, string Arguments, ToolRunVia RunVia, bool KeepsOutput = false);
+public sealed record UserToolDraft(string Name, string Exe, string Arguments, ToolRunVia RunVia, bool KeepsOutput = false, string? WorkingDirectory = null);
 
 /// <summary>
 /// A catalogue tool on the page: the tool, the saved row it came from, and what its prefix still lacks.

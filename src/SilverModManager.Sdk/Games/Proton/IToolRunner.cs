@@ -14,14 +14,16 @@ public interface IToolRunner
     /// Builds the command line for running <paramref name="exe"/> with the game's prefix and runner. Host
     /// paths in <paramref name="args"/> are rewritten to Windows paths. When nothing can run the program the
     /// plan carries the reason instead. A <paramref name="via"/> other than <see cref="ToolRunVia.Auto"/> forces
-    /// that strategy over the one the prefix would pick, and is a diagnostic when it cannot run.
+    /// that strategy over the one the prefix would pick, and is a diagnostic when it cannot run. The program starts in
+    /// <paramref name="workingDirectory"/>, or next to itself when that is null.
     /// </summary>
     ToolRunPlan Plan(
         GameInstallation installation,
         AbsolutePath exe,
         IReadOnlyList<string> args,
         IReadOnlyDictionary<string, string>? env,
-        ToolRunVia via = ToolRunVia.Auto);
+        ToolRunVia via = ToolRunVia.Auto,
+        AbsolutePath? workingDirectory = null);
 
     /// <summary>
     /// Runs the plan from <see cref="Plan"/> and waits for the program to exit.
@@ -36,7 +38,8 @@ public interface IToolRunner
         IReadOnlyDictionary<string, string>? env,
         bool logOutput,
         CancellationToken cancellationToken,
-        ToolRunVia via = ToolRunVia.Auto);
+        ToolRunVia via = ToolRunVia.Auto,
+        AbsolutePath? workingDirectory = null);
 
     /// <summary>
     /// Runs a Wine verb or an installer inside the game's prefix with the runner the prefix would pick, waits

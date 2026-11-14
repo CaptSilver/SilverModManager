@@ -90,6 +90,82 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     }
 
     [Fact]
+    public void AWorkingDirectoryIsSubstitutedLikeTheBinary()
+    {
+        const string entries =
+            "[customExecutables]\n4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n4\\title=SSEEdit\n" +
+            "4\\workingDirectory={--||MO2_PATH_MAGIC_DOUBLE_BACK||--}\\\\xEdit\n" +
+            "5\\arguments=\n5\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n5\\title=Plain\n5\\workingDirectory=\n";
+        var extras = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-extras");
+        var game = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-game");
+
+        var found = ModlistTools.Find(entries, extras, game, "SkyrimSE.exe", relative => $"{extras}/{relative}", _ => null);
+
+        found.Tools.Select(t => t.Name).Should().Equal("SSEEdit", "Plain");
+        found.Tools[0].WorkingDirectory.Should().Be($"{extras}/xEdit");
+        found.Tools[1].WorkingDirectory.Should().BeNull();
+    }
+
+    [Fact]
+    public void AStartFolderInAStockGameFolderIsTheGameFolder()
+    {
+        // Yggdrasil's SKSE entry: its stock-game folder is never created under the tools folder.
+        const string entries =
+            "[customExecutables]\n1\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/Game Root/sksevr_loader.exe\n1\\title=SKSE\n" +
+            "1\\workingDirectory={--||MO2_PATH_MAGIC_FORWARD||--}/Game Root\n";
+        var extras = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-extras");
+        var game = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-game");
+
+        var found = ModlistTools.Find(entries, extras, game, "SkyrimVR.exe",
+            relative => relative == "Game Root/sksevr_loader.exe" ? $"{game}/sksevr_loader.exe" : null, _ => null,
+            stockGameFolders: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Game Root" });
+
+        found.Tools.Should().ContainSingle().Which.WorkingDirectory.Should().Be(game.ToString());
+    }
+
+    [Fact]
+    public void AStartFolderHoldingADeployedBinaryMovesWithIt()
+    {
+        // Yggdrasil's Nemesis entry: the mod's files are only on disk where Apply puts them.
+        const string entries =
+            "[customExecutables]\n1\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/mods/Nemesis/Nemesis_Engine/Nemesis.exe\n1\\title=Nemesis\n" +
+            "1\\workingDirectory={--||MO2_PATH_MAGIC_DOUBLE_BACK||--}\\\\mods\\\\Nemesis\\\\Nemesis_Engine\\\\\n";
+        var extras = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-extras");
+        var game = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-game");
+
+        var found = ModlistTools.Find(entries, extras, game, "SkyrimVR.exe",
+            relative => relative == "mods/Nemesis/Nemesis_Engine/Nemesis.exe" ? $"{game}/Data/Nemesis_Engine/Nemesis.exe" : null, _ => null);
+
+        found.Tools.Should().ContainSingle().Which.WorkingDirectory.Should().Be($"{game}/Data/Nemesis_Engine");
+    }
+
+    [Fact]
+    public void AStartFolderThatIsNotAHostPathIsLeftOut()
+    {
+        const string entries =
+            "[customExecutables]\n1\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n1\\title=SSEEdit\n" +
+            "1\\workingDirectory=C:\\\\Modding\\\\xEdit\n";
+        var extras = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-extras");
+        var game = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/tmp/modlist-tools-game");
+
+        var found = ModlistTools.Find(entries, extras, game, "SkyrimSE.exe", relative => $"{extras}/{relative}", _ => null);
+
+        found.Tools.Should().ContainSingle().Which.WorkingDirectory.Should().BeNull("a folder on the author's Windows machine means nothing here");
+    }
+
+    [Fact]
+    public async Task AListToolsWorkingDirectoryIsStoredOnItsRow()
+    {
+        const string entry =
+            "4\\arguments=\n4\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit/SSEEdit.exe\n4\\title=SSEEdit\n" +
+            "4\\workingDirectory={--||MO2_PATH_MAGIC_FORWARD||--}/xEdit\n";
+        var (loadout, group, _) = await InstallList(ListWith(DefaultExecutables + entry));
+
+        var tool = ToolsOf(loadout).Should().ContainSingle().Subject;
+        tool.WorkingDirectory.Value.Should().Be($"{ExtrasOf(group)}/xEdit");
+    }
+
+    [Fact]
     public async Task AToolFileWhoseBytesAlreadyMatchIsNotRewritten()
     {
         var loadout = await CreateLoadout();

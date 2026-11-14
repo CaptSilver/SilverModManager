@@ -44,12 +44,13 @@ public sealed class ToolRunner(
         AbsolutePath exe,
         IReadOnlyList<string> args,
         IReadOnlyDictionary<string, string>? env,
-        ToolRunVia via = ToolRunVia.Auto)
+        ToolRunVia via = ToolRunVia.Auto,
+        AbsolutePath? workingDirectory = null)
     {
         if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic, out var cannotRunX86_64, out var fallbackReason))
             return ToolRunPlan.Failed(diagnostic, cannotRunX86_64);
 
-        return WithLaunchRoots(installation, WithFallbackReason(strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)), fallbackReason));
+        return WithLaunchRoots(installation, WithFallbackReason(strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env, workingDirectory)), fallbackReason));
     }
 
     /// <summary>
@@ -105,9 +106,10 @@ public sealed class ToolRunner(
         IReadOnlyDictionary<string, string>? env,
         bool logOutput,
         CancellationToken cancellationToken,
-        ToolRunVia via = ToolRunVia.Auto)
+        ToolRunVia via = ToolRunVia.Auto,
+        AbsolutePath? workingDirectory = null)
     {
-        var plan = Plan(installation, exe, args, env, via);
+        var plan = Plan(installation, exe, args, env, via, workingDirectory);
         if (!plan.IsRunnable) throw Refusal(plan.Diagnostic, plan.CannotRunX86_64);
         LogFallback(installation, plan);
 

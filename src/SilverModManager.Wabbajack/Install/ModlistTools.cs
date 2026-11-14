@@ -5,7 +5,7 @@ using SilverModManager.Wabbajack.Mapping;
 namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>A program from a list's ModOrganizer.ini, ready to be stored as a <c>UserTool</c>: host paths only.</summary>
-public sealed record ModlistTool(string Name, string Exe, string Arguments);
+public sealed record ModlistTool(string Name, string Exe, string Arguments, string? WorkingDirectory);
 
 /// <summary>
 /// Picks the programs of a list's <c>[customExecutables]</c> that can be run as tools: the ones whose binary is a file in
@@ -62,7 +62,8 @@ public static class ModlistTools
                 continue;
             }
 
-            tools.Add(new ModlistTool(entry.Title, exe, PathMarkers.Substitute(entry.Arguments, argumentValues, nativeSpelling: true)));
+            var startIn = entry.WorkingDirectory is { } folder ? StartFolder(PathMarkers.Substitute(folder, argumentValues, nativeSpelling: true), binary, exe) : null;
+            tools.Add(new ModlistTool(entry.Title, exe, PathMarkers.Substitute(entry.Arguments, argumentValues, nativeSpelling: true), startIn));
         }
         return new Result(tools, unregistered);
     }
@@ -72,6 +73,24 @@ public static class ModlistTools
         => File.Exists(binary)
             ? "which exists but lies outside the list's tools folder and the game folder"
             : "which does not exist";
+
+    /// <summary>
+    /// Where a tool starts, given its substituted start folder, its binary as the ini names it and the file it runs.
+    /// A folder that holds the binary moves with it: a binary under <c>mods/</c> is only on disk where Apply puts it, so
+    /// the folder the ini names under the tools folder never exists. A stock-game folder already became the game folder
+    /// in the substitution. A path that is not a host path (a <c>C:\</c> folder on the author's machine) is dropped, and
+    /// the tool starts in its own folder.
+    /// </summary>
+    private static string? StartFolder(string folder, string binary, string exe)
+    {
+        if (!folder.StartsWith('/')) return null;
+        var trimmed = folder.TrimEnd('/');
+        if (trimmed.Length == 0) return folder;
+        if (!binary.StartsWith(trimmed + "/", StringComparison.OrdinalIgnoreCase)) return trimmed;
+
+        var tail = binary[trimmed.Length..];
+        return exe.EndsWith(tail, StringComparison.OrdinalIgnoreCase) ? exe[..^tail.Length] : trimmed;
+    }
 
     private static string? Deployed(string binary, AbsolutePath extrasRoot, Func<string, string?> appliedPath)
     {

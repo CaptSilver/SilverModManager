@@ -37,6 +37,21 @@ public class Mo2IniTests
     }
 
     [Fact]
+    public void CustomExecutablesCarryTheWorkingDirectory()
+    {
+        // Spelled as in Yggdrasil's ini, which sets some entries' start folder and leaves the others empty.
+        var document = Mo2Ini.Parse(
+            "[customExecutables]\n1\\binary={--||MO2_PATH_MAGIC_FORWARD||--}/Game Root/a.exe\n1\\title=A\n1\\workingDirectory={--||MO2_PATH_MAGIC_FORWARD||--}/Game Root\n" +
+            "2\\binary=b.exe\n2\\title=B\n2\\workingDirectory=\n3\\binary=c.exe\n3\\title=C\n");
+
+        var executables = Mo2Ini.CustomExecutables(document);
+
+        executables[0].WorkingDirectory.Should().Be("{--||MO2_PATH_MAGIC_FORWARD||--}/Game Root");
+        executables[1].WorkingDirectory.Should().BeNull("an empty value means MO2 starts the program in its own folder");
+        executables[2].WorkingDirectory.Should().BeNull("an entry without the key has none either");
+    }
+
+    [Fact]
     public void AnIniWithoutAProfileOrTools_GivesNothing()
     {
         var document = Mo2Ini.Parse("[General]\ngameName=Skyrim\n");

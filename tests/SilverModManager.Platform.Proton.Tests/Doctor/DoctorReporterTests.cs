@@ -676,12 +676,12 @@ public class DoctorReporterTests : IDisposable
 
         public static FakeToolRunner Refusing(string reason) => new(reason);
 
-        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
+        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
             => _refusal is not null
                 ? ToolRunPlan.Failed(_refusal)
                 : ToolRunPlan.Runnable("SteamProton", [Proton9.Launcher.ToString(), "run", exe.ToString()], exe.Parent, new Dictionary<string, string>());
 
-        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto)
+        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
             => throw new NotSupportedException("the doctor never runs anything");
 
         public Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)

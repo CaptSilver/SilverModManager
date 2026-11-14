@@ -302,6 +302,39 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task TheStartInFieldIsSavedOnTheRow()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        await vm.AddUserTool(new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto, WorkingDirectory: "/tools/start"));
+        await vm.AddUserTool(new UserToolDraft("Plain", TempExe("Plain.exe"), "", ToolRunVia.Auto, WorkingDirectory: "  "));
+
+        vm.UserTools.Single(t => t.Name == "Patcher").WorkingDirectory.Value.Should().Be("/tools/start");
+        vm.UserTools.Single(t => t.Name == "Plain").WorkingDirectory.HasValue.Should().BeFalse("a blank field means the program's own folder");
+
+        await vm.UpdateUserTool(vm.UserTools.Single(t => t.Name == "Patcher"), new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto, WorkingDirectory: "/tools/other"));
+        vm.UserTools.Single(t => t.Name == "Patcher").WorkingDirectory.Value.Should().Be("/tools/other");
+
+        await vm.UpdateUserTool(vm.UserTools.Single(t => t.Name == "Patcher"), new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto));
+        vm.UserTools.Single(t => t.Name == "Patcher").WorkingDirectory.HasValue.Should().BeFalse("clearing the field removes it");
+    }
+
+    [Fact]
+    public async Task AStartInThatIsNotAnAbsolutePathIsRefused()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        var act = () => vm.AddUserTool(new UserToolDraft("Patcher", TempExe("Patcher.exe"), "", ToolRunVia.Auto, WorkingDirectory: "tools/start"));
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        vm.UserTools.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task UpdateUserTool_ReplacesItsFields()
     {
         var loadout = await CreateLoadout();
@@ -798,12 +831,12 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         public string Strategy { get; init; } = "fake";
         public string? FallbackReason { get; init; }
 
-        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
+        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
             => Diagnostic is null
                 ? ToolRunPlan.Runnable(Strategy, [exe.ToString()], exe.Parent, new Dictionary<string, string>(), FallbackReason)
                 : ToolRunPlan.Failed(Diagnostic);
 
-        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto)
+        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto, AbsolutePath? workingDirectory = null)
         {
             if (Diagnostic is not null) throw new InvalidOperationException(Diagnostic);
             Calls.Add(new Call(installation, exe));

@@ -238,6 +238,7 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         UserToolNameBox.Text = tool.Name;
         UserToolExeBox.Text = tool.Exe;
         UserToolArgumentsBox.Text = tool.Arguments;
+        UserToolStartInBox.Text = tool.WorkingDirectory.ValueOrDefault();
         UserToolRunViaBox.SelectedItem = tool.RunVia;
         UserToolKeepsOutputBox.IsChecked = UserTool.CapturesGameFolderOutput.Contains(tool);
         SaveUserToolButton.Text = "Save changes";
@@ -250,6 +251,7 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
         UserToolNameBox.Text = "";
         UserToolExeBox.Text = "";
         UserToolArgumentsBox.Text = "";
+        UserToolStartInBox.Text = "";
         UserToolRunViaBox.SelectedItem = ToolRunVia.Auto;
         UserToolKeepsOutputBox.IsChecked = false;
         SaveUserToolButton.Text = "Add program";
@@ -272,7 +274,8 @@ public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>
             UserToolExeBox.Text?.Trim() ?? "",
             UserToolArgumentsBox.Text ?? "",
             UserToolRunViaBox.SelectedItem is ToolRunVia via ? via : ToolRunVia.Auto,
-            UserToolKeepsOutputBox.IsChecked == true);
+            UserToolKeepsOutputBox.IsChecked == true,
+            UserToolStartInBox.Text?.Trim());
 
         var editing = _editing;
         await Guarded(async () =>
