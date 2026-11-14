@@ -4,16 +4,21 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
+using SilverModManager.Deployment.Vfs;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Native;
 using SilverModManager.Sdk.ProxyConsole;
 using NSubstitute;
@@ -64,10 +69,41 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
         public ValueTask ClearAsync() => ValueTask.CompletedTask;
     }
 
+    // Registers like a backend of its own, and never accepts a root.
+    private sealed class RefusingBackend : IDeploymentBackend
+    {
+        public static readonly DeploymentBackendId BackendId = new("test-refusing");
+
+        public DeploymentBackendId Id => BackendId;
+
+        public bool UsesLooseStaging => false;
+
+        public DeploymentPreflight Preflight(GameInstallation installation, GamePath root) => DeploymentPreflight.Refuse("the test backend never accepts a root");
+
+        public IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root) => [];
+
+        public Task Backup(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public void Ingest(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public Task AdaptLoadout(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public IReadOnlyCollection<GamePath> Delete(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public Task Extract(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public void AddReifiedDeletes(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => throw new NotSupportedException();
+
+        public void CleanDirectories(DeploymentContext context, IReadOnlyCollection<GamePath> directoriesWithDeletions, Entities<DiskStateEntry.ReadOnly> newDiskState) => throw new NotSupportedException();
+    }
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         services.AddSingleton<SteerableSelector>();
-        return base.AddServices(services).AddSingleton<IDeploymentBackendSelector>(s => s.GetRequiredService<SteerableSelector>());
+        services.AddSingleton<IDeploymentBackend, RefusingBackend>();
+        return base.AddServices(services).AddUsableFuseProbe().AddSingleton<IDeploymentBackendSelector>(s => s.GetRequiredService<SteerableSelector>());
     }
 
     private SteerableSelector Selector => ServiceProvider.GetRequiredService<SteerableSelector>();
@@ -95,7 +131,7 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
 
     private DeploymentPlanRoot Row(GamePath root) => Plan().Roots.Single(r => r.Root == root);
 
-    private async Task ApplyLoadoutWithFile()
+    private async Task<Loadout.ReadOnly> ApplyLoadoutWithFile()
     {
         await LoadoutManager.ManageInstallation(GameInstallation);
         var loadout = await CreateLoadout();
@@ -108,7 +144,24 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
             await tx.Commit();
         }
 
-        await Synchronizer.Synchronize(loadout);
+        return await Synchronizer.Synchronize(loadout);
+    }
+
+    // A mod file under Data, deployed by copy, and a file the synchronizer never tracks or deletes (a shader cache), which
+    // stands in for the game's own files: it keeps Data in place once the move takes the mod file off disk.
+    private async Task ApplyLoadoutWithADataMod()
+    {
+        var loadout = await ApplyLoadoutWithFile();
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "Data mod");
+            AddFile(tx, loadout.LoadoutId, group, DataMod, "mod bytes", out var hash, out var size);
+            await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(DataMod.FileName, new MemoryStream(Encoding.UTF8.GetBytes("mod bytes"))), hash, size)]);
+            await tx.Commit();
+        }
+        await Synchronizer.Synchronize(Refresh(loadout));
+        File.Exists(OnDisk(DataMod).ToString()).Should().BeTrue("copy deploys the mod file into Data");
+        await OnDisk(VanillaFile).WriteAllTextAsync("the game's own file");
     }
 
     private LibcStat.Buffer Stat(GamePath path)
@@ -268,5 +321,105 @@ public class DeploymentVerbsTests(ITestOutputHelper helper) : AStubbedGameIsolat
         moved.GetProperty("after").GetString().Should().Be("hardlink");
         moved.GetProperty("outcome").GetString().Should().Be("moved");
         root.GetProperty("deployment").EnumerateArray().Should().Contain(d => d.GetProperty("root").GetString() == "Game" && d.GetProperty("backend").GetString() == "hardlink");
+    }
+
+    // The mount root is a folder of the game, not a plan root: the plan names whole locations until a mounting backend is picked.
+    private static readonly GamePath DataRoot = new(LocationId.Game, "Data");
+    private static readonly GamePath DataMod = DataRoot / "mod.esp";
+    private static readonly GamePath VanillaFile = DataRoot / "game.dxvk-cache";
+
+    private AbsolutePath OnDisk(GamePath path) => GameInstallation.Locations.ToAbsolutePath(path);
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseFuse_OnSaves_RefusesAndWritesNoRow()
+    {
+        await ApplyLoadoutWithFile();
+
+        var (exitCode, output) = await Run(root: "Saves", use: "fuse");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        output.Text.Should().Contain("does not declare Saves as a folder that can be mounted; mountable: Game/Data");
+        Plan().Roots.Should().OnlyContain(r => r.Backend == DeploymentBackendId.Copy);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseFuse_OnAFolderTheGameDoesNotDeclare_Refuses()
+    {
+        await ApplyLoadoutWithFile();
+
+        var (exitCode, output) = await Run(root: "Game", use: "fuse");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        output.Text.Should().Contain("does not declare Game as a folder that can be mounted");
+        Row(GameRoot).Backend.Should().Be(DeploymentBackendId.Copy);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseFuse_WithoutARoot_RefusesNamingTheMountableRoots()
+    {
+        await ApplyLoadoutWithFile();
+
+        var (exitCode, output) = await Run(use: "fuse");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        output.Text.Should().Contain("--use fuse needs --root <mountable root>; mountable: Game/Data");
+        Plan().Roots.Should().OnlyContain(r => r.Backend == DeploymentBackendId.Copy);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseFuse_OnGameData_RecordsAChosenRowAndLeavesTheRealFolderVanilla()
+    {
+        await ApplyLoadoutWithADataMod();
+
+        var (exitCode, output) = await Run(root: "Game/Data", use: "fuse");
+
+        exitCode.Should().Be(0, output.Text);
+        Row(DataRoot).Should().Match<DeploymentPlanRoot>(r => r.Backend == DeploymentBackendId.Fuse && r.Chosen);
+        File.Exists(OnDisk(DataMod).ToString()).Should().BeFalse("the mod is served by the mount, not written into the folder");
+        Directory.EnumerateFileSystemEntries(OnDisk(DataRoot).ToString()).Select(Path.GetFileName).Should().Equal("game.dxvk-cache");
+        File.ReadAllText(OnDisk(VanillaFile).ToString()).Should().Be("the game's own file");
+        MountedFileEntry.FindByInstallation(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId)
+            .Select(r => (GamePath)r.Path).Should().Equal(DataMod);
+        output.Text.Should().Contain("Game/Data: copy -> fuse");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseFuse_UnderAChosenGameRoot_StillRoutesByLongestPrefix()
+    {
+        await ApplyLoadoutWithADataMod();
+        (await Run(root: "Game", use: "copy")).ExitCode.Should().Be(0);
+
+        var (exitCode, output) = await Run(root: "Game/Data", use: "fuse");
+
+        exitCode.Should().Be(0, output.Text);
+        Plan().BackendFor(DataRoot / "mod.esp").Should().Be(DeploymentBackendId.Fuse);
+        Plan().BackendFor(FileA).Should().Be(DeploymentBackendId.Copy);
+        Row(GameRoot).Chosen.Should().BeTrue();
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task MovingGameLater_LeavesGameDataOnFuse()
+    {
+        await ApplyLoadoutWithADataMod();
+        (await Run(root: "Game/Data", use: "fuse")).ExitCode.Should().Be(0);
+
+        var (exitCode, output) = await Run(root: "Game", use: "hardlink");
+
+        exitCode.Should().Be(0, output.Text);
+        Row(DataRoot).Backend.Should().Be(DeploymentBackendId.Fuse);
+        Row(GameRoot).Backend.Should().Be(DeploymentBackendId.Hardlink);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task UseABackendThatRefusesTheRoot_WritesNoRowAndLeavesTheFilesDeployed()
+    {
+        await ApplyLoadoutWithFile();
+
+        var (exitCode, output) = await Run(root: "Game", use: RefusingBackend.BackendId.Value);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        output.Text.Should().Contain("the test backend never accepts a root");
+        Row(GameRoot).Backend.Should().Be(DeploymentBackendId.Copy);
+        File.ReadAllText(OnDisk(FileA).GetFullPath()).Should().Be("a content", "the refusal came before the reset");
     }
 }

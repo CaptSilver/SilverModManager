@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Deployment.Fuse.Availability;
+using SilverModManager.Deployment.Fuse.Backend;
 using SilverModManager.Deployment.Fuse.Kernel;
 using SilverModManager.Deployment.Fuse.Mount;
 using SilverModManager.Deployment.Vfs;
@@ -12,11 +13,12 @@ namespace SilverModManager.Deployment.Fuse.Tests;
 public class ServicesTests
 {
     [Fact]
-    public void AddFuseDeployment_RegistersTheKernelAndNoBackend()
+    public void AddFuseDeployment_RegistersTheBackendAndTheKernel()
     {
         var services = new ServiceCollection().AddFuseDeployment();
 
-        services.Should().NotContain(d => d.ServiceType == typeof(IDeploymentBackend));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IDeploymentBackend))
+            .Which.ImplementationType.Should().Be(typeof(FuseDeploymentBackend));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IFuseKernel))
             .Which.ImplementationType.Should().Be(typeof(LibFuseLowLevelKernel));
     }

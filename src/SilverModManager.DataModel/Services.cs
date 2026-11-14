@@ -24,6 +24,7 @@ using SilverModManager.DataModel.Sorting;
 using SilverModManager.DataModel.Synchronizer;
 using SilverModManager.DataModel.Synchronizer.DbFunctions;
 using SilverModManager.DataModel.Undo;
+using SilverModManager.Deployment.Fuse;
 using SilverModManager.Deployment.Links;
 using SilverModManager.Deployment.Staging;
 using SilverModManager.Deployment.Vfs;
@@ -129,6 +130,7 @@ public static class Services
         coll.AddLooseStagingStore();
         coll.AddLinkDeploymentBackends();
         coll.AddVfsCore();
+        coll.AddFuseDeployment();
         
         
         coll.AddPersistedDbResourceModel();

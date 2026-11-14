@@ -93,10 +93,32 @@ public sealed class DeploymentCommand(
 
         var plan = plans.Load(connection.Db, metadata.GameInstallMetadataId);
         var known = plan.Roots.Select(r => r.Root).Concat(plan.MissingRoots(installation.Locations)).Distinct().ToArray();
-        var targets = root is null ? known : known.Where(r => string.Equals(DoctorDeploymentRoot.Describe(r), root.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+        // A folder inside a location that a game offers to a mounting backend can be named too. Naming none moves
+        // the plan's roots only, so a bare --use hardlink does not start routing a nested folder.
+        var mountable = (installation.Game as IMountableGame)?.MountRoots(installation) ?? [];
+        var nameable = known.Concat(mountable).Distinct().ToArray();
+        var targets = root is null ? known : nameable.Where(r => string.Equals(DoctorDeploymentRoot.Describe(r), root.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
         if (targets.Length == 0)
         {
-            return await Fail(renderer, $"{name} has no root '{root}'. Roots: {string.Join(", ", known.Select(DoctorDeploymentRoot.Describe))}.");
+            return await Fail(renderer, $"{name} has no root '{root}'. Roots: {string.Join(", ", nameable.Select(DoctorDeploymentRoot.Describe))}.");
+        }
+
+        if (wanted is { } picked)
+        {
+            var backend = backends.First(b => b.Id == picked);
+            // A mounting backend serves one folder, so moving every root to it cannot mean anything.
+            if (root is null && backend is IMountingDeploymentBackend)
+                return await Fail(renderer, $"--use {picked.Value} needs --root <mountable root>; mountable: {(mountable.Count == 0 ? "none" : string.Join(", ", mountable.Select(DoctorDeploymentRoot.Describe)))}");
+
+            // Before anything is reset: a root the backend cannot take would otherwise be found out by the apply that
+            // follows the reset, with the files already gone. A link backend's probe writes into the store directory, which
+            // a sweep must not meet half way, as in Choose.
+            using var _ = store.Hold();
+            foreach (var target in targets.Where(t => plan.BackendFor(t) != picked))
+            {
+                var preflight = backend.Preflight(installation, target);
+                if (!preflight.Accepted) return await Fail(renderer, preflight.Reason);
+            }
         }
 
         var results = new List<DeploymentRootResult>();

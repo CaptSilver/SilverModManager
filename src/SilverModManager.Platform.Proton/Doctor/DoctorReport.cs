@@ -2,6 +2,7 @@ using SilverModManager.Abstractions.Cli;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 
@@ -200,7 +201,5 @@ public sealed record DoctorDeploymentRoot(string Root, string Backend, bool Reco
     /// <summary>
     /// A root as <c>Location</c> or <c>Location/path</c>.
     /// </summary>
-    internal static string Describe(GamePath root) => root.Path == RelativePath.Empty
-        ? root.LocationId.ToString()
-        : $"{root.LocationId}/{root.Path}";
+    internal static string Describe(GamePath root) => DeploymentRootNames.Describe(root);
 }

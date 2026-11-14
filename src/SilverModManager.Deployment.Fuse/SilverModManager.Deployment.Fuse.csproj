@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
         <ProjectReference Include="..\SilverModManager.Deployment.Vfs\SilverModManager.Deployment.Vfs.csproj" />
     </ItemGroup>
 

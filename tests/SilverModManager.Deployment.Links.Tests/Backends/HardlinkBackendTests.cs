@@ -435,7 +435,7 @@ public class HardlinkAcrossDevicesTests(ITestOutputHelper helper)
         await RecordGameRoot(DeploymentBackendId.Hardlink);
         var act = () => Synchronizer.Synchronize(loadout);
 
-        (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which.Message.Should().Contain("EXDEV").And.Contain("--recommended");
+        (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which.Message.Should().Contain("EXDEV").And.Contain("--root Game --use ");
         OnDisk("a/x.txt").FileExists.Should().BeFalse();
 
         var moved = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GamePathOf(""), DeploymentBackendId.Copy, chosen: true);

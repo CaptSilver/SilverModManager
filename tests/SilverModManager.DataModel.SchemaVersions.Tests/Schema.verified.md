@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x988B4B0EFECCD2E6
-   - Total attributes: 434
-   - Total namespaces: 115
+   - Fingerprint: 0xDC81BF414AB763DD
+   - Total attributes: 442
+   - Total namespaces: 116
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -90,6 +90,14 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.DataModel.SchemaVersions.MigrationLogItem/WasRun                         | UInt8                   | False   | False | False     | 
 | SilverModManager.DataModel.Settings/Name                                                  | Utf8                    | True    | False | False     | 
 | SilverModManager.DataModel.Settings/Value                                                 | Utf8                    | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/BackingIdentity                              | Blob                    | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Hidden                                       | UInt8                   | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Identity                                     | Blob                    | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Installation                                 | Reference               | True    | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/MTime                                        | Int64                   | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Path                                         | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Root                                         | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| SilverModManager.Deployment.MountedFileEntry/Size                                         | UInt64                  | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/CTime                                         | Int64                   | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Device                                        | UInt64                  | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Hash                                          | UInt64                  | False   | False | False     | 

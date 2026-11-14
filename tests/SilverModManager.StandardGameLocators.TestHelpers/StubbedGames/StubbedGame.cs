@@ -17,7 +17,7 @@ using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-public class StubbedGame : IGame, IGameData<StubbedGame>
+public class StubbedGame : IGame, IGameData<StubbedGame>, IMountableGame
 {
     public static GameId GameId { get; } = GameId.From("StubbedGame");
     public static string DisplayName => "Stubbed Game";
@@ -42,6 +42,11 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
     }
 
     public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, "");
+
+    /// <summary>The one folder of the stub a mount can serve.</summary>
+    public static readonly GamePath MountableFolder = new(LocationId.Game, "Data");
+
+    public IReadOnlyList<GamePath> MountRoots(GameInstallation installation) => [MountableFolder];
 
     /// <summary>A location only this game names, so a test can tell the game's name from a registered one.</summary>
     public const string NamedLocationId = "SyncTestsGameDocuments";

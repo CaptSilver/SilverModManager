@@ -19,12 +19,12 @@ namespace SilverModManager.DataModel.Tests.Deployment;
 public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGameIsolatedTest<CopyDeploymentBackendTests>(helper)
 {
     [Fact]
-    public void RegisteredBackendsAreCopyReflinkHardlinkAndSymlink()
+    public void RegisteredBackendsAreCopyReflinkHardlinkSymlinkAndFuse()
     {
         var backends = ServiceProvider.GetServices<IDeploymentBackend>().ToArray();
 
         backends.Select(b => b.Id).Should().BeEquivalentTo(
-            [DeploymentBackendId.Copy, DeploymentBackendId.Reflink, DeploymentBackendId.Hardlink, DeploymentBackendId.Symlink]);
+            [DeploymentBackendId.Copy, DeploymentBackendId.Reflink, DeploymentBackendId.Hardlink, DeploymentBackendId.Symlink, DeploymentBackendId.Fuse]);
         backends.Single(b => b.Id == DeploymentBackendId.Copy).UsesLooseStaging.Should().BeFalse();
         backends.Where(b => b.Id != DeploymentBackendId.Copy).Should().OnlyContain(b => b.UsesLooseStaging);
     }

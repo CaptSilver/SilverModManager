@@ -10,6 +10,7 @@
         <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
         <ProjectReference Include="..\SilverModManager.App.GarbageCollection.DataModel\SilverModManager.App.GarbageCollection.DataModel.csproj" />
         <ProjectReference Include="..\SilverModManager.DataModel.SchemaVersions\SilverModManager.DataModel.SchemaVersions.csproj" />
+        <ProjectReference Include="..\SilverModManager.Deployment.Fuse\SilverModManager.Deployment.Fuse.csproj" />
         <ProjectReference Include="..\SilverModManager.Deployment.Links\SilverModManager.Deployment.Links.csproj" />
         <ProjectReference Include="..\SilverModManager.Deployment.Staging\SilverModManager.Deployment.Staging.csproj" />
         <ProjectReference Include="..\SilverModManager.Deployment.Vfs\SilverModManager.Deployment.Vfs.csproj" />

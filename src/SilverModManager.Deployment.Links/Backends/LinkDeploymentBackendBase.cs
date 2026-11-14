@@ -241,7 +241,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         var stores = new StoreLookup(this, context);
         var storeFiles = new Dictionary<ILooseStagingStore, Dictionary<FileIdentity, AbsolutePath>>();
         foreach (var group in extract.GroupBy(x => stores.For(x.Key)))
-            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Identity).Distinct());
+            storeFiles[group.Key] = await StagedFiles.EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Identity).Distinct(), logger);
 
         // Unlink first: whatever is at a target may be a link to a staged file, which must neither be written
         // through nor counted as a link this apply still holds.
@@ -312,38 +312,6 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         // The copy backend replaces its target rather than truncating it, so a path that is still a link to a
         // staged file is safe, and an intrinsic file can read the previous version while it renders.
         await copy.WriteIntrinsics(context, nodes);
-    }
-
-    /// <summary>
-    /// Stages every hash and returns the staged paths. A file that was staged before this call is hashed
-    /// first, and a file whose bytes no longer match its name is released and staged again.
-    /// </summary>
-    private async Task<Dictionary<FileIdentity, AbsolutePath>> EnsureVerified(DeploymentContext context, ILooseStagingStore store, IEnumerable<FileIdentity> identities)
-    {
-        var installation = context.MetadataId;
-        var storeFiles = new Dictionary<FileIdentity, AbsolutePath>();
-        var reused = new List<FileIdentity>();
-        foreach (var identity in identities)
-        {
-            if (store.Contains(installation, identity)) reused.Add(identity);
-            storeFiles[identity] = await store.Ensure(installation, identity);
-        }
-
-        // A file Ensure just extracted is trusted. Only one that was already there can have been written through.
-        await Parallel.ForEachAsync(reused, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (identity, token) =>
-        {
-            var actual = FileIdentity.XxHash3(await FileHashing.XxHash3(storeFiles[identity], token));
-            if (actual.Equals(identity)) return;
-
-            logger.LogWarning(
-                "Staged file {StoreFile} holds {Actual} instead of {Hash}, something wrote through a link to it. Staging it again",
-                storeFiles[identity], actual, identity
-            );
-            store.Release(installation, identity);
-            await store.Ensure(installation, identity, token);
-        });
-
-        return storeFiles;
     }
 
     /// <summary>

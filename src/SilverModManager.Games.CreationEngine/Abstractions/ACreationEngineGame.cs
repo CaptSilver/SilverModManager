@@ -34,7 +34,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements, IToolVariableSource, IToolPluginSource
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements, IToolVariableSource, IToolPluginSource, IMountableGame
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -102,6 +102,11 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
                            && directories.Any(directory => (directory / name).FileExists))
             .ToList();
     }
+
+    /// <summary>
+    /// The data folder is the one place mods are deployed; the plugin list, the inis and the saves live elsewhere.
+    /// </summary>
+    public IReadOnlyList<GamePath> MountRoots(GameInstallation installation) => [DataPath];
 
     public virtual IReadOnlyList<AbsolutePath> PluginDirectories(GameInstallation installation) =>
         [installation.Locations.ToAbsolutePath(DataPath)];

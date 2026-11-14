@@ -246,7 +246,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
         }
 
-        MergeStates(latestDiskState, previousDiskState, syncTree);
+        var manifests = MountManifests(loadout.Installation.Id);
+        MergeStates(OverlayMountManifests(manifests, latestDiskState), OverlayMountManifests(manifests, previousDiskState), syncTree);
         MarkPlayerDeletions(syncTree, loadout);
         TreatRetractedModFilesAsNew(syncTree, loadout);
         var resolver = _identityResolver.Scoped(IdentitiesToResolve(syncTree));
@@ -532,6 +533,35 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Vortex puts a marker in every folder it deploys to, so one per mod folder is routine, not something gone wrong.
         var level = _foreignDeploymentSources.Any(source => source.IsFolderMarker(gamePath)) ? LogLevel.Debug : LogLevel.Warning;
         Logger.Log(level, "Skipping `{Path}` from `{Group}`: the synchronizer ignores this path", gamePath, group);
+    }
+
+    /// <summary>
+    /// The manifest of every root the plan routes to a mounting backend. A mounting backend writes nothing under its
+    /// root, so a sync tree built without them would compare the loadout with files that are not there.
+    /// </summary>
+    private IReadOnlyList<MountManifestView> MountManifests(GameInstallMetadataId id)
+    {
+        var db = Connection.Db;
+        List<MountManifestView>? views = null;
+        foreach (var root in _planStore.Load(db, id).Roots)
+        {
+            if (_backends.GetValueOrDefault(root.Backend) is not IMountingDeploymentBackend mounting) continue;
+            (views ??= []).Add(mounting.Manifest(id, root.Root, db));
+        }
+        return views ?? [];
+    }
+
+    /// <summary>
+    /// Lays <paramref name="manifests"/> over <paramref name="state"/>.
+    /// </summary>
+    /// <remarks>
+    /// Only for state that goes into a sync tree. The state handed to the index is what is really on disk: a row whose
+    /// file is not there would read as a removed file.
+    /// </remarks>
+    private static IEnumerable<PathPartPair> OverlayMountManifests(IReadOnlyList<MountManifestView> manifests, IEnumerable<PathPartPair> state)
+    {
+        foreach (var manifest in manifests) state = manifest.Overlay(state);
+        return state;
     }
 
     /// <inheritdoc />
@@ -1391,9 +1421,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var preflight = _backends[root.Backend].Preflight(installation, root.Root);
             if (preflight.Accepted) continue;
 
+            // --recommended only moves roots nobody picked, and a root recorded by hand stays put, so the message names the
+            // move that does work for this one.
+            var rootName = DeploymentRootNames.Describe(root.Root);
+            var pick = _backendSelector.Choose(installation, root.Root).Backend;
             throw new SynchronizerPreflightException(
-                $"{installation.Game.DisplayName} is set to deploy '{root.Root}' with {root.Backend}, which does not work there any more: {preflight.Reason}. " +
-                $"Nothing was changed. Run 'silvermodmanager deployment --game \"{installation.Game.DisplayName}\" --recommended' to move it to a backend that works, then apply again."
+                $"{installation.Game.DisplayName} is set to deploy '{rootName}' with {root.Backend}, which does not work there any more: {preflight.Reason}. " +
+                $"Nothing was changed. Run 'silvermodmanager deployment --game \"{installation.Game.DisplayName}\" --root {rootName} --use {pick.Value}' to move it, then apply again."
             );
         }
 
@@ -1781,6 +1815,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Refuse before the locator ids are updated and the game folder is re-indexed: both write to the
         // database, and neither can mean anything when the prefix they read from is gone.
         await Preflight(loadout.InstallationInstance);
+        ThrowIfMounted(loadout.InstallationInstance);
         _ = MetadataOf(loadout);
         EnsureNoInstallInto(loadout.LoadoutId);
 
@@ -2152,8 +2187,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// </summary>
     public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfMounted(installation);
         using var _ = await _lock.LockAsync();
         return await ReindexStateCore(installation, job, cancellationToken);
+    }
+
+    // A scan through a live mount reads served mod files as files somebody put there.
+    private void ThrowIfMounted(GameInstallation installation)
+    {
+        if (!_gameRegistry.TryGetMetadata(installation, out var metadata)) return;
+        StaleMountGuard.ThrowIfMounted(_backends, _planStore.Load(Connection.Db, metadata.GameInstallMetadataId), installation);
     }
 
     /// <summary><see cref="ReindexState"/> for a caller that already holds the lock.</summary>
@@ -2726,7 +2769,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Merge the states into a tree. Passing in the current state as the current and previous state. 
         // This fakes the synchronizer into thinking that there are no changes on disk and we only want to do a
         // hard reset to the desired state.
-        MergeStates(diskState, diskState, desiredState);
+        var onDisk = OverlayMountManifests(MountManifests(metadata.Id), diskState).ToList();
+        MergeStates(onDisk, onDisk, desiredState);
         
         // Process the tree
         ProcessSyncTree(desiredState);

@@ -19,6 +19,7 @@ using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.DataModel.Sorting;
@@ -375,7 +376,9 @@ internal partial class LoadoutManager : ILoadoutManager
 
     public async ValueTask DeleteLoadout(LoadoutId loadoutId, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.DoNotRun, bool deactivateIfActive = true, CancellationToken cancellationToken = default)
     {
-        RunningGameGuard.ThrowIfRunning(_serviceProvider, Loadout.Load(_connection.Db, loadoutId));
+        var loadoutToDelete = Loadout.Load(_connection.Db, loadoutId);
+        RunningGameGuard.ThrowIfRunning(_serviceProvider, loadoutToDelete);
+        StaleMountGuard.ThrowIfMounted(_serviceProvider, loadoutToDelete.InstallationInstance);
         await DeleteLoadoutRows(loadoutId, gcRunMode, deactivateIfActive, cancellationToken);
     }
 
@@ -557,6 +560,7 @@ internal partial class LoadoutManager : ILoadoutManager
         return _jobMonitor.Begin(new UnmanageGameJob(installation), async ctx =>
         {
             RunningGameGuard.ThrowIfRunning(_serviceProvider, installation);
+            StaleMountGuard.ThrowIfMounted(_serviceProvider, installation);
 
             var metadata = _gameRegistry.ForceGetMetadata(installation);
 
