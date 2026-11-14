@@ -27,3 +27,9 @@ public interface IPadBinding
 
     void Execute(GamepadEvent e, FocusContext ctx);
 }
+
+/// <summary>A binding whose label depends on state that changes between pad events; the hint bar redraws when it fires.</summary>
+public interface IHintSource
+{
+    event Action? HintsChanged;
+}

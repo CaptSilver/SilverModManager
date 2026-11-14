@@ -177,13 +177,12 @@ public class FileConflictsCollectionTests(IServiceProvider provider) : AUiTest(p
     }
 
     [Fact]
-    public async Task MovingACollectionDownSwapsItsWholeSelfWithTheRowAboveIt()
+    public async Task MovingACollectionDownStepsPastTheModsOfItsOwnAndLandsOverTheRowBelowThem()
     {
         var s = await Seed("Move Collection", ("Solo 1", null), ("Coll 1", "Pack"), ("Coll 2", "Pack"), ("Solo 2", null));
         var loadouts = MovesAllowed();
-        var neighbours = new FileConflictsComponents.NeighbourIds(s.Rows["Solo 1"].Value, s.Rows["Solo 2"].Value);
 
-        await Page(s, loadouts).Move(s.Collections["Pack"], neighbours, ListSortDirection.Ascending, moveUp: false);
+        await Page(s, loadouts).Reorderable.MoveBy(s.Collections["Pack"], +1, CancellationToken.None);
 
         await loadouts.Received(1).ResolveFileConflicts(
             Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["Coll 1"], s.Rows["Coll 2"] })),
@@ -191,32 +190,129 @@ public class FileConflictsCollectionTests(IServiceProvider provider) : AUiTest(p
     }
 
     [Fact]
-    public async Task MovingACollectionUpPastAnotherCollectionMovesThatWholeCollectionBelowIt()
+    public async Task MovingACollectionUpPastAnotherCollectionPassesTheWholeOfIt()
     {
         var s = await Seed("Move Past Collection", ("A 1", "Pack A"), ("A 2", "Pack A"), ("B 1", "Pack B"));
         var loadouts = MovesAllowed();
-        // The row under Pack B is Pack A's top mod, but what swaps places with Pack B is the whole of Pack A.
-        var neighbours = new FileConflictsComponents.NeighbourIds(s.Rows["A 2"].Value, EntityId.From(0));
 
-        await Page(s, loadouts).Move(s.Collections["Pack B"], neighbours, ListSortDirection.Ascending, moveUp: true);
+        await Page(s, loadouts).Reorderable.MoveBy(s.Collections["Pack B"], -1, CancellationToken.None);
 
-        await loadouts.Received(1).ResolveFileConflicts(
-            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["A 1"], s.Rows["A 2"] })),
-            s.Rows["B 1"]);
+        // Pack B ends below all of Pack A, which is the bottom of the priority order.
+        await loadouts.Received(1).LoseAllFileConflicts(
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["B 1"] })));
     }
 
     [Fact]
-    public async Task MovingAModStillSwapsOnlyThatMod()
+    public async Task MovingAModStillMovesOnlyThatMod()
     {
         var s = await Seed("Move Mod", ("Coll 1", "Pack"), ("Coll 2", "Pack"), ("Solo", null));
         var loadouts = MovesAllowed();
-        var neighbours = new FileConflictsComponents.NeighbourIds(s.Rows["Coll 2"].Value, EntityId.From(0));
 
-        await Page(s, loadouts).Move(s.Rows["Solo"].Value, neighbours, ListSortDirection.Ascending, moveUp: true);
+        await Page(s, loadouts).Reorderable.MoveBy(s.Rows["Solo"].Value, -1, CancellationToken.None);
+
+        // Solo goes between the two mods of Pack: over Coll 1, under Coll 2.
+        await loadouts.Received(1).ResolveFileConflicts(
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["Solo"] })),
+            s.Rows["Coll 1"]);
+    }
+
+    [Fact]
+    public async Task MoveByTwoDownMakesTheMovedUnitWinOverTheRowTwoBelow()
+    {
+        var s = await Seed("Move By Two", ("A", null), ("B", null), ("C", null), ("D", null), ("E", null));
+        var loadouts = MovesAllowed();
+
+        await Page(s, loadouts).Reorderable.MoveBy(s.Rows["B"].Value, +2, CancellationToken.None);
+
+        // Down the screen is toward the winning end of an ascending list, so B lands over D.
+        await loadouts.Received(1).ResolveFileConflicts(
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["B"] })),
+            s.Rows["D"]);
+    }
+
+    [Fact]
+    public async Task MovingPastTheEndLandsAtTheWinningBottom()
+    {
+        var s = await Seed("Move Past Bottom", ("A", null), ("B", null), ("C", null));
+        var loadouts = MovesAllowed();
+
+        await Page(s, loadouts).Reorderable.MoveBy(s.Rows["A"].Value, +10, CancellationToken.None);
 
         await loadouts.Received(1).ResolveFileConflicts(
-            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["Coll 2"] })),
-            s.Rows["Solo"]);
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["A"] })),
+            s.Rows["C"]);
+    }
+
+    [Fact]
+    public async Task MovingPastTheTopLosesEveryConflict()
+    {
+        var s = await Seed("Move Past Top", ("A", null), ("B", null), ("C", null));
+        var loadouts = MovesAllowed();
+
+        await Page(s, loadouts).Reorderable.MoveBy(s.Rows["C"].Value, -10, CancellationToken.None);
+
+        await loadouts.Received(1).LoseAllFileConflicts(
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["C"] })));
+    }
+
+    [Fact]
+    public async Task OnADescendingPageDownTheScreenIsTowardTheLowestPriority()
+    {
+        var s = await Seed("Move Descending", ("A", null), ("B", null), ("C", null));
+        var loadouts = MovesAllowed();
+        var page = Page(s, loadouts);
+        page.SwitchSortDirectionCommand.Execute(R3.Unit.Default);
+
+        // The page shows C, B, A: B moves down past A, to the bottom of the priority order.
+        await page.Reorderable.MoveBy(s.Rows["B"].Value, +1, CancellationToken.None);
+
+        await loadouts.Received(1).LoseAllFileConflicts(
+            Arg.Is<LoadoutItemGroupPriorityId[]>(ids => ids.SequenceEqual(new[] { s.Rows["B"] })));
+    }
+
+    [Fact]
+    public async Task IndexAndCountAreInDisplayedOrder()
+    {
+        var s = await Seed("Displayed Index", ("A", null), ("B", null), ("C", null), ("D", "Pack"), ("E", "Pack"));
+        var page = Page(s, MovesAllowed());
+
+        page.Reorderable.IndexOf(s.Rows["B"].Value).Should().Be(1);
+        page.Reorderable.CountFor(s.Rows["B"].Value).Should().Be(5, "every mod is a row to move among");
+        page.Reorderable.IndexOf(s.Collections["Pack"]).Should().Be(3, "a collection moves among the loose mods and other collections");
+        page.Reorderable.CountFor(s.Collections["Pack"]).Should().Be(4);
+
+        page.SwitchSortDirectionCommand.Execute(R3.Unit.Default);
+
+        page.Reorderable.IndexOf(s.Rows["B"].Value).Should().Be(3);
+        page.Reorderable.IndexOf(s.Collections["Pack"]).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AMoveARuleStopsIsNotAppliedAndTheCallerIsTold()
+    {
+        var s = await Seed("Move Refused", ("A", null), ("B", null));
+        var rule = await StoreRule(s.Loadout.LoadoutId, s.Groups["A"], s.Groups["B"]);
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>())
+            .Returns(new ValueTask<ConflictMoveResult>(ConflictMoveResult.RuleViolation(rule)));
+        var page = Page(s, loadouts, WindowsAnswering(ButtonDefinitionId.Cancel, []));
+
+        var move = () => page.Reorderable.MoveBy(s.Rows["A"].Value, +1, CancellationToken.None);
+
+        await move.Should().ThrowAsync<InvalidOperationException>();
+        (await page.Reorderable.TryMoveBy(s.Rows["A"].Value, +1, CancellationToken.None)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARowThatIsNotInThePriorityOrderCannotBeMoved()
+    {
+        var s = await Seed("Move Stale", ("A", null), ("B", null));
+        var loadouts = MovesAllowed();
+
+        var move = () => Page(s, loadouts).Reorderable.MoveBy(EntityId.From(999999), +1, CancellationToken.None);
+
+        await move.Should().ThrowAsync<InvalidOperationException>();
+        await loadouts.DidNotReceiveWithAnyArgs().ResolveFileConflicts(default!, default);
     }
 
     [Fact]

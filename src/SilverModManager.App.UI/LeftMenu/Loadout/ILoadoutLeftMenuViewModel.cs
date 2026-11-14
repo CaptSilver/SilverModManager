@@ -1,10 +1,15 @@
 using System.Collections.ObjectModel;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.App.UI.LeftMenu.Items;
 
 namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
 {
+    /// <summary>Moves a collection by places, for the pad; null on a view model that cannot reorder.</summary>
+    IReorderable<CollectionGroupId>? Reorderable => null;
+
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; }
     
     /// <summary>

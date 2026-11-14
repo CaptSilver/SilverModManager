@@ -31,6 +31,7 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.UI.Sdk;
@@ -57,6 +58,11 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     private readonly ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems;
     private readonly ISettingsManager _settingsManager;
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems => _loadoutSpineItems;
+
+    /// <summary>Moves a loadout's icon by places; the icon menu's Move up and Move down and the pad go through it.</summary>
+    internal SpineReorderable Reorderable { get; }
+
+    IReorderable<LoadoutId> ISpineViewModel.Reorderable => Reorderable;
     public IIconButtonViewModel Home { get; }
     public IIconButtonViewModel AddLoadout { get; }
     public ISpineDownloadButtonViewModel Downloads { get; }
@@ -81,6 +87,7 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         _serviceProvider = serviceProvider;
         _logger = logger;
         _loadoutSpineItems = new ReadOnlyObservableCollection<IImageButtonViewModel>(_loadoutSpineList);
+        Reorderable = new SpineReorderable(() => _loadoutSpineItems.Select(LoadoutIdOf).ToList(), MoveLoadout);
         _windowManager = windowManager;
         _conn = conn;
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
@@ -138,8 +145,8 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                             vm.WorkspaceContext = new LoadoutContext { LoadoutId = loadout.LoadoutId };
                             vm.Click = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(loadout.LoadoutId));
                             vm.ChangeLoadout = ReactiveCommand.Create(() => NavigateToLoadoutsOf(loadout.InstallationId));
-                            vm.MoveUp = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, -1));
-                            vm.MoveDown = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, 1));
+                            vm.MoveUp = ReactiveCommand.Create(() => Reorderable.MoveNow(loadout.LoadoutId, -1));
+                            vm.MoveDown = ReactiveCommand.Create(() => Reorderable.MoveNow(loadout.LoadoutId, 1));
                             vm.IsActive = false;
 
                             if (workspaceController.ActiveWorkspace.Context is LoadoutContext activeLoadoutContext &&
@@ -380,14 +387,6 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         {
             LoadoutIds = moved.Select(id => id.Value.Value).ToImmutableList(),
         });
-    }
-
-    private void MoveLoadoutBy(LoadoutId loadoutId, int offset)
-    {
-        var index = _loadoutSpineItems.ToList().FindIndex(item => LoadoutIdOf(item) == loadoutId);
-        var target = index + offset;
-        if (index < 0 || target < 0 || target >= _loadoutSpineItems.Count) return;
-        MoveLoadout(index, target);
     }
 
     // Every loadout icon gets its badge in the transform above, so a missing one is a bug, not an empty slot.

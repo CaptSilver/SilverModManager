@@ -19,9 +19,13 @@ public static class HintBarItems
         {
             if (!binding.CanExecute(context)) continue;
 
+            // A binding with no label is there to swallow presses, not to be offered.
+            var label = binding.Hint(context);
+            if (label.Length == 0) continue;
+
             var glyph = GamepadGlyphs.For(padType, binding.Button);
             if (!seen.Add(glyph)) continue;
-            items.Add(new HintItem(glyph, binding.Hint(context)));
+            items.Add(new HintItem(glyph, label));
         }
 
         return items;

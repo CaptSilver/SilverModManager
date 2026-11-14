@@ -165,6 +165,80 @@ public class SpineLoadoutOrderTests(IServiceProvider provider) : AUiTest(provide
     }
 
     [Fact]
+    public async Task MoveByTwoReordersTheSpineSettingInOneUpdate()
+    {
+        var a = await SeedLoadoutRow(GameStore.Steam, "a");
+        var b = await SeedLoadoutRow(GameStore.Steam, "b");
+        var c = await SeedLoadoutRow(GameStore.Steam, "c");
+        SaveOrder(a.LoadoutId, b.LoadoutId, c.LoadoutId);
+        var mine = new[] { a, b, c }.Select(l => l.LoadoutId.Value.Value).ToHashSet();
+
+        var (spine, activation) = await CreateSpine();
+        using (activation)
+        {
+            await ItemsOf(spine, a, b, c);
+            var updates = 0;
+            using var counting = R3.ObservableExtensions.AsSystemObservable(Provider.GetRequiredService<ISettingsManager>().GetChanges<LoadoutSpineOrderSettings>()).Subscribe(_ => Interlocked.Increment(ref updates));
+
+            await OnUi(() => spine.Reorderable.MoveBy(a.LoadoutId, 2, CancellationToken.None));
+
+            (await ItemsOf(spine, a, b, c)).Should().Equal(b.LoadoutId, c.LoadoutId, a.LoadoutId);
+            updates.Should().Be(1);
+        }
+
+        SavedOrder().LoadoutIds.Where(id => mine.Contains(id)).Should().Equal(b.LoadoutId.Value.Value, c.LoadoutId.Value.Value, a.LoadoutId.Value.Value);
+    }
+
+    [Fact]
+    public async Task MovingPastTheEndOfTheSpineLandsOnTheLastIcon()
+    {
+        var a = await SeedLoadoutRow(GameStore.Steam, "a");
+        var b = await SeedLoadoutRow(GameStore.Steam, "b");
+        var c = await SeedLoadoutRow(GameStore.Steam, "c");
+        SaveOrder(a.LoadoutId, b.LoadoutId, c.LoadoutId);
+
+        var (spine, activation) = await CreateSpine();
+        using (activation)
+        {
+            await ItemsOf(spine, a, b, c);
+
+            await OnUi(() => spine.Reorderable.MoveBy(b.LoadoutId, 50, CancellationToken.None));
+            await OnUi(() => spine.Reorderable.MoveBy(a.LoadoutId, -50, CancellationToken.None));
+
+            (await ItemsOf(spine, a, b, c)).Should().Equal(a.LoadoutId, c.LoadoutId, b.LoadoutId);
+            await OnUi(() =>
+            {
+                spine.Reorderable.IndexOf(a.LoadoutId).Should().Be(0);
+                spine.Reorderable.CountFor(a.LoadoutId).Should().Be(spine.LoadoutSpineItems.Count);
+                return Task.CompletedTask;
+            });
+        }
+    }
+
+    [Fact]
+    public async Task TheSpineContextMenuMoveUpStillMovesByOne()
+    {
+        var a = await SeedLoadoutRow(GameStore.Steam, "a");
+        var b = await SeedLoadoutRow(GameStore.Steam, "b");
+        var c = await SeedLoadoutRow(GameStore.Steam, "c");
+        SaveOrder(a.LoadoutId, b.LoadoutId, c.LoadoutId);
+
+        var (spine, activation) = await CreateSpine();
+        using (activation)
+        {
+            await ItemsOf(spine, a, b, c);
+
+            await OnUi(() =>
+            {
+                spine.LoadoutSpineItems.Single(item => item.LoadoutBadgeViewModel!.LoadoutValue.Value.LoadoutId == c.LoadoutId).MoveUp.Execute().Subscribe();
+                return Task.CompletedTask;
+            });
+
+            (await ItemsOf(spine, a, b, c)).Should().Equal(a.LoadoutId, c.LoadoutId, b.LoadoutId);
+        }
+    }
+
+    [Fact]
     public async Task IdsOfDeletedLoadoutsAreIgnoredAndPrunedOnNextSave()
     {
         var a = await SeedLoadoutRow(GameStore.Steam, "a");

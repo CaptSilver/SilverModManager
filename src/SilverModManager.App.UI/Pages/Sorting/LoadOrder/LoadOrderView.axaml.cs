@@ -4,6 +4,7 @@ using Avalonia.ReactiveUI;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 using SilverModManager.UI.Sdk;
@@ -25,6 +26,10 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
 
         this.WhenActivated(disposables =>
             {
+                // The pad picks rows up through the page's reorderable.
+                ReorderSources.SetSource(this, ViewModel?.Reorderable is { } reorderable ? new ReorderSource<ISortItemKey>(reorderable, ReorderRows.InGrid<ISortItemKey>(), TimeProvider.System) : null);
+                Disposable.Create(() => ReorderSources.SetSource(this, null)).DisposeWith(disposables);
+
                 // TreeDataGrid Source
                 this.OneWayBind(ViewModel,
                         vm => vm.Adapter.Source.Value,

@@ -2,13 +2,18 @@ using System.Collections.ObjectModel;
 using SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 using SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
 using SilverModManager.App.UI.Controls.Spine.Buttons.Image;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.App.UI.LeftMenu;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 
 namespace SilverModManager.App.UI.Controls.Spine;
 
 public interface ISpineViewModel : IViewModelInterface
 {
+    /// <summary>Moves a loadout's icon by places, for the pad; null on a view model that cannot reorder.</summary>
+    IReorderable<LoadoutId>? Reorderable => null;
+
     /// <summary>
     /// Gets the left menu view model.
     /// </summary>

@@ -323,6 +323,58 @@ public class LoadoutCollectionOrderTests(IServiceProvider provider) : AUiTest(pr
     }
 
     [Fact]
+    public async Task ACollectionMovedPastTheEndStopsAtTheLastMovableItem()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "order past end");
+        await AddCollection(loadout, "My Mods");
+        var a = await AddCollection(loadout, "A");
+        await AddCollection(loadout, "B");
+        var c = await AddCollection(loadout, "C");
+        using var open = await Open(loadout);
+        await OnUi(() => open.Extra.AddOrUpdate(NotACollection("Downloading one")));
+        await ShowsEventually(open, "My Mods", "A", "B", "C", "Downloading one");
+
+        await OnUi(() => open.List.Reorderable.MoveBy(a, 10, CancellationToken.None));
+        await ShowsEventually(open, "My Mods", "B", "C", "A", "Downloading one");
+
+        await OnUi(() => open.List.Reorderable.MoveBy(c, -10, CancellationToken.None));
+        await ShowsEventually(open, "My Mods", "C", "B", "A", "Downloading one");
+    }
+
+    [Fact]
+    public async Task CollectionsAreCountedAmongTheMovableOnesOnly()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "order index");
+        await AddCollection(loadout, "My Mods");
+        var a = await AddCollection(loadout, "A");
+        var b = await AddCollection(loadout, "B");
+        using var open = await Open(loadout);
+        await OnUi(() => open.Extra.AddOrUpdate(NotACollection("Downloading one")));
+        await ShowsEventually(open, "My Mods", "A", "B", "Downloading one");
+
+        await OnUi(() =>
+        {
+            open.List.Reorderable.IndexOf(a).Should().Be(0);
+            open.List.Reorderable.IndexOf(b).Should().Be(1);
+            open.List.Reorderable.CountFor(a).Should().Be(2);
+        });
+    }
+
+    [Fact]
+    public async Task MovingTheDefaultCollectionIsRefused()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "order default");
+        var mine = await AddCollection(loadout, "My Mods");
+        await AddCollection(loadout, "A");
+        using var open = await Open(loadout);
+        await ShowsEventually(open, "My Mods", "A");
+
+        var move = () => OnUi(() => open.List.Reorderable.MoveBy(mine, 1, CancellationToken.None));
+
+        await move.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task MoveUpOnTheFirstMovableCollection_AndMoveDownOnTheLast_DoNothing()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "order menu ends");

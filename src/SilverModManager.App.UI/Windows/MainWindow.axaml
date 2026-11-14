@@ -28,6 +28,11 @@
     </Design.DataContext>
 
     <reactiveUi:ReactiveWindow.Styles>
+        <!-- A row picked up with the pad to be moved. -->
+        <Style Selector="Control.Lifted">
+            <Setter Property="Effect" Value="drop-shadow(0 6 14 #B0000000)" />
+            <Setter Property="Opacity" Value="0.92" />
+        </Style>
         <Style Selector="Border#DropCaption > TextBlock">
             <Setter Property="Foreground" Value="{StaticResource PrimaryStrongBrush}" />
         </Style>

@@ -3,6 +3,7 @@ using System.Reactive;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
@@ -14,6 +15,9 @@ public interface ILoadOrderViewModel : IViewModelInterface
     /// The variety of the sort order being represented
     /// </summary>
     ISortOrderVariety SortOrderVariety { get; }
+
+    /// <summary>Moves a row by places on the screen, for the pad; null on a view model that cannot reorder.</summary>
+    IReorderable<ISortItemKey>? Reorderable => null;
     
     /// <summary>
     /// TreeDataGridAdapter for the Load Order, for setting up the TreeDataGrid

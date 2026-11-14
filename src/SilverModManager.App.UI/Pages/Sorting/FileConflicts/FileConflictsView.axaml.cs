@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Avalonia.Controls;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.UI.Sdk;
 using R3;
@@ -23,6 +24,10 @@ public partial class FileConflictsView : R3UserControl<IFileConflictsViewModel>
 
         this.WhenActivated(disposables =>
         {
+            // The pad picks rows up through the page's reorderable.
+            ReorderSources.SetSource(this, BindableViewModel.Value?.Reorderable is { } reorderable ? new ReorderSource<EntityId>(reorderable, ReorderRows.InGrid<EntityId>(), TimeProvider.System) : null);
+            Disposable.Create(() => ReorderSources.SetSource(this, null)).AddTo(disposables);
+
             // TreeDataGrid Source
             this.OneWayR3Bind(view => view.BindableViewModel, vm => vm.TreeDataGridAdapter.Source, 
                     static (view, source) => view.FileConflictsTreeDataGrid.Source = source)

@@ -13,6 +13,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Input.Reorder;
 using R3;
 using SilverModManager.App.UI.Controls.Alerts;
 using SilverModManager.App.UI.Dialog;
@@ -76,6 +77,11 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
     private readonly ISortOrderVariety _variety;
     private readonly SortOrderId _sortOrderId;
 
+    /// <summary>Moves a row by places on the screen; the arrow buttons and the pad both go through it.</summary>
+    public LoadOrderReorderable Reorderable { get; }
+
+    IReorderable<ISortItemKey> ILoadOrderViewModel.Reorderable => Reorderable;
+
     /// <summary>
     /// Runs a change to the order. A row can be listed before it is stored (a plugin that joined the loadout since
     /// the last sync), so the change fails; the user sees the error in the panel the LOOT sort uses, instead of it
@@ -136,6 +142,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
             throw new InvalidOperationException($"No sort order found for loadout {loadoutId} and variety {sortOrderVariety.SortOrderVarietyId}");
         var sortOrderId = optionalSortOrderId.Value;
         _sortOrderId = sortOrderId;
+        Reorderable = new LoadOrderReorderable(sortOrderVariety, sortOrderId, () => SortDirectionCurrent);
         
         SortOrderName = sortOrderVariety.SortOrderUiMetadata.SortOrderName;
         InfoAlertTitle = sortOrderVariety.SortOrderUiMetadata.OverrideInfoTitle;
@@ -312,20 +319,13 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                 adapter.MessageSubject
                     .SubscribeAwait(async (payload, cancellationToken) =>
                         {
+                            // Up and down are places on the screen; the reorderable turns them into the stored direction.
                             var (key, delta) = payload.Match(
-                                moveUpPayload =>
-                                {
-                                    var deltaUp = SortDirectionCurrent == ListSortDirection.Ascending ? -1 : +1;
-                                    return (moveUpPayload.Item.Key, deltaUp);
-                                },
-                                moveDownPayload =>
-                                {
-                                    var deltaDown = SortDirectionCurrent == ListSortDirection.Ascending ? +1 : -1;
-                                    return (moveDownPayload.Item.Key, deltaDown);
-                                }
+                                moveUpPayload => (moveUpPayload.Item.Key, -1),
+                                moveDownPayload => (moveDownPayload.Item.Key, +1)
                             );
-                            
-                            await RunEdit(() => sortOrderVariety.MoveItemDelta(sortOrderId, key, delta, token: cancellationToken));
+
+                            await RunEdit(() => Reorderable.MoveBy(key, delta, cancellationToken));
                         })
                     .DisposeWith(d);
 

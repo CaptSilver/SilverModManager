@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using SilverModManager.App.UI.Input.Reorder;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media.Imaging;
@@ -55,6 +56,11 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 
     public R3.ReactiveCommand SwitchSortDirectionCommand { get; }
 
+    /// <summary>Moves a row by places on the screen; the arrow buttons and the pad both go through it.</summary>
+    internal FileConflictsReorderable Reorderable { get; }
+
+    IReorderable<EntityId> IFileConflictsViewModel.Reorderable => Reorderable;
+
     public FileConflictsViewModel(IServiceProvider serviceProvider, IWindowManager windowManager, LoadoutId loadoutId)
     {
         var connection = serviceProvider.GetRequiredService<IConnection>();
@@ -72,6 +78,10 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         _mergeSource = serviceProvider.GetService<IMergeIndexSource>();
 
         _sortDirectionCurrent = new BindableReactiveProperty<ListSortDirection>(ListSortDirection.Ascending);
+        Reorderable = new FileConflictsReorderable(
+            () => PriorityUnits.Load(connection.Db, loadoutId),
+            () => _sortDirectionCurrent.Value,
+            Drop);
         var isLoadOrder = _mergeSource?.ProvidesIndex(loadout) == true;
         OrderHint = _sortDirectionCurrent.Select(direction => OrderHintFor(isLoadOrder, direction)).ToBindableReactiveProperty(OrderHintFor(isLoadOrder, ListSortDirection.Ascending));
         IsAscending = _sortDirectionCurrent.Select(direction => direction == ListSortDirection.Ascending).ToBindableReactiveProperty();
@@ -95,8 +105,8 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
                 await msg.Match<Task>(
                     ViewConflicts,
                     OpenRules,
-                    moveUp => Move(moveUp.Item.Key, moveUp.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: true), 
-                    moveDown => Move(moveDown.Item.Key, moveDown.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: false)
+                    moveUp => Reorderable.TryMoveBy(moveUp.Item.Key, -1, cancellationToken),
+                    moveDown => Reorderable.TryMoveBy(moveDown.Item.Key, +1, cancellationToken)
                 );
             }).AddTo(disposables);
 
@@ -145,54 +155,29 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
     /// <param name="movedKeys">The keys of the dragged rows: a mod's priority row, or a collection.</param>
     /// <param name="target">The key of the row dropped on.</param>
     /// <param name="visuallyAbove">Whether the drop is above the target as the list is drawn.</param>
-    internal async Task Drop(EntityId[] movedKeys, EntityId target, bool visuallyAbove)
+    internal async Task<bool> Drop(EntityId[] movedKeys, EntityId target, bool visuallyAbove)
     {
         var rows = PriorityUnits.Load(_serviceProvider.GetRequiredService<IConnection>().Db, _loadoutId);
         var moved = PriorityUnits.Expand(rows, movedKeys);
-        if (moved.Length == 0) return;
+        if (moved.Length == 0) return false;
 
         var aboveInPriority = PriorityUnits.IsAboveInPriority(_sortDirectionCurrent.Value, visuallyAbove);
         if (!PriorityUnits.TryFindLoser(rows, moved, target, aboveInPriority, out var loser))
         {
             _logger.LogWarning("Ignored a drop on {Target}: it is not in the priority order of loadout {Loadout}", target, _loadoutId);
-            return;
+            return false;
         }
 
-        await RunMove(() => loser is { } loserId
+        return await RunMove(() => loser is { } loserId
             ? _loadoutManager.ResolveFileConflicts(moved, loserId)
             : _loadoutManager.LoseAllFileConflicts(moved));
     }
 
-    internal async Task Move(EntityId toMove, FileConflictsComponents.NeighbourIds neighbourIds, ListSortDirection sortDirection, bool moveUp)
-    {
-        var (winnerId, loserId) = (sortDirection, moveUp) switch
-        {
-            (ListSortDirection.Ascending, moveUp: false) => (toMove, neighbourIds.Next.Value),
-            (ListSortDirection.Ascending, moveUp: true) => (neighbourIds.Prev.Value, toMove),
-            (ListSortDirection.Descending, moveUp: false) => (neighbourIds.Prev.Value, toMove),
-            (ListSortDirection.Descending, moveUp: true) => (toMove, neighbourIds.Next.Value),
-        };
-
-        var rows = PriorityUnits.Load(_serviceProvider.GetRequiredService<IConnection>().Db, _loadoutId);
-
-        // The neighbours of a collection row are the rows beside its mods. What it swaps places with is the whole
-        // collection when that row is a mod of one, not the single mod.
-        if (PriorityUnits.IsCollection(rows, toMove))
-        {
-            if (winnerId == toMove) loserId = PriorityUnits.UnitOf(rows, loserId);
-            else winnerId = PriorityUnits.UnitOf(rows, winnerId);
-        }
-
-        var winners = PriorityUnits.Expand(rows, [winnerId]);
-        var loser = PriorityUnits.TopRow(rows, loserId);
-        await RunMove(() => _loadoutManager.ResolveFileConflicts(winnerIds: winners, loser));
-    }
-
     /// <summary>
     /// Runs a priority move. One that a group rule stops is not applied: the player either cancels, or has the rule
-    /// removed and the move repeated. Every way of moving a mod goes through here.
+    /// removed and the move repeated. Every way of moving a mod goes through here. False when the move was left undone.
     /// </summary>
-    internal async Task RunMove(Func<ValueTask<ConflictMoveResult>> move)
+    internal async Task<bool> RunMove(Func<ValueTask<ConflictMoveResult>> move)
     {
         var result = await move();
 
@@ -200,11 +185,13 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         while (result.IsRuleViolation)
         {
             var rule = result.Rule;
-            if (!await AskToRemoveRule(rule)) return;
+            if (!await AskToRemoveRule(rule)) return false;
 
             await _loadoutManager.RemoveGroupRule(rule.LoadoutGroupRuleId);
             result = await move();
         }
+
+        return true;
     }
 
     private async Task<bool> AskToRemoveRule(LoadoutGroupRule.ReadOnly rule)

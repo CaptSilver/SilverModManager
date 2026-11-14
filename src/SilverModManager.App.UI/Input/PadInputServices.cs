@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI.Input.Bindings;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.Platform.Gamepad;
@@ -27,7 +28,17 @@ public static class PadInputServices
                 return source;
             })
             .AddSingleton<IInputModeService, InputModeService>()
+            .AddSingleton<ReorderState>()
             .AddSingleton(_ => new KeyOwnershipFilter(new GamepadPresence(TimeProvider.System), new GamepadPresence(TimeProvider.System)))
+            // Before everything else: while a row is lifted these take its buttons, and the guard takes the rest.
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.Drop, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.Cancel, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.Up, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.Down, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.PageUp, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.PageDown, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderBinding(ReorderStep.PickUp, provider.GetRequiredService<ReorderState>()))
+            .AddSingleton<IPadBinding>(provider => new ReorderGuardBinding(provider.GetRequiredService<ReorderState>()))
             .AddSingleton<IPadBinding, MenuBinding>(_ => new MenuBinding())
             .AddSingleton<IPadBinding>(_ => new SpineCycleBinding(forward: true))
             .AddSingleton<IPadBinding>(_ => new SpineCycleBinding(forward: false))

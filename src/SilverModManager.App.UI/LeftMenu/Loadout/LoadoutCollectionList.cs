@@ -84,8 +84,7 @@ internal sealed class LoadoutCollectionList
             .Where(LoadoutCollectionOrder.IsMovable)
             .Select(item => item.CollectionGroupId.Value.Value)
             .ToList();
-        var firstMovable = _list.TakeWhile(item => !LoadoutCollectionOrder.IsMovable(item)).Count();
-        var moved = LoadoutSpineOrder.Move(displayed, fromIndex - firstMovable, toIndex - firstMovable);
+        var moved = LoadoutSpineOrder.Move(displayed, fromIndex - FirstMovableIndex, toIndex - FirstMovableIndex);
 
         _settingsManager.Update<LoadoutCollectionOrderSettings>(settings => settings with
         {
@@ -93,12 +92,28 @@ internal sealed class LoadoutCollectionList
         });
     }
 
-    /// <summary>Moves the collection one place up (negative <paramref name="offset"/>) or down; at the end of the movable ones it does nothing.</summary>
+    /// <summary>The collections the user can move, in the order they are listed.</summary>
+    internal List<CollectionGroupId> MovableCollections() => _list
+        .OfType<CollectionLeftMenuItemViewModel>()
+        .Where(LoadoutCollectionOrder.IsMovable)
+        .Select(item => item.CollectionGroupId)
+        .ToList();
+
+    /// <summary>Where the first movable collection sits in <see cref="Items"/>; the default collection goes before it.</summary>
+    internal int FirstMovableIndex => _list.TakeWhile(item => !LoadoutCollectionOrder.IsMovable(item)).Count();
+
+    /// <summary>Moves collections by places; the context menu's Move up and Move down and the pad go through it.</summary>
+    internal CollectionReorderable Reorderable => _reorderable ??= new CollectionReorderable(this);
+
+    private CollectionReorderable? _reorderable;
+
+    /// <summary>
+    /// Moves the collection one place up (negative <paramref name="offset"/>) or down; at either end of the movable ones it
+    /// stays where it is, and so does a collection that cannot be moved.
+    /// </summary>
     public void MoveBy(CollectionGroupId collectionId, int offset)
     {
-        var index = _list.ToList().FindIndex(item => item is CollectionLeftMenuItemViewModel collection && collection.CollectionGroupId == collectionId);
-        var target = index + offset;
-        if (!IsMovable(index) || !IsMovable(target)) return;
-        Move(index, target);
+        if (!MovableCollections().Contains(collectionId)) return;
+        Reorderable.MoveNow(collectionId, offset);
     }
 }

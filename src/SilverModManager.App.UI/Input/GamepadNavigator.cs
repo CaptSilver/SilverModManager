@@ -40,6 +40,7 @@ public sealed class GamepadNavigator : IDisposable
         _ownership = ownership;
         _bindings = bindings.ToList();
         _isWindowActive = isWindowActive;
+        foreach (var hinting in _bindings.OfType<IHintSource>()) hinting.HintsChanged += OnHintsChanged;
         _overlays = overlays;
         // The source reports on its own thread; bindings touch controls.
         _subscription = source.Events.Subscribe(e => Dispatcher.UIThread.Post(() => Handle(e)));
@@ -117,6 +118,7 @@ public sealed class GamepadNavigator : IDisposable
     {
         _subscription.Dispose();
         _modeSubscription.Dispose();
+        foreach (var hinting in _bindings.OfType<IHintSource>()) hinting.HintsChanged -= OnHintsChanged;
         if (_overlays is INotifyPropertyChanged observable) observable.PropertyChanged -= OnOverlaysChanged;
         _contextChanged.Dispose();
     }
@@ -130,6 +132,8 @@ public sealed class GamepadNavigator : IDisposable
         if (_root is null) return;
         XYFocus.SetNavigationModes(_root, _mode.UsesOverlayPopups ? XYFocusNavigationModes.Enabled : XYFocusNavigationModes.Gamepad);
     }
+
+    private void OnHintsChanged() => Dispatcher.UIThread.Post(() => _contextChanged.OnNext(Unit.Default));
 
     private void OnGotFocus(object? sender, RoutedEventArgs e) => _contextChanged.OnNext(Unit.Default);
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.UI.Sdk;
 using R3;
 
@@ -9,6 +10,9 @@ public interface IFileConflictsViewModel : IViewModelInterface
     R3.ReactiveCommand SwitchSortDirectionCommand { get; }
     
     FileConflictsTreeDataGridAdapter TreeDataGridAdapter { get; }
+
+    /// <summary>Moves a row by places on the screen, for the pad; null on a view model that cannot reorder.</summary>
+    SilverModManager.App.UI.Input.Reorder.IReorderable<EntityId>? Reorderable => null;
 
     IReadOnlyBindableReactiveProperty<ListSortDirection> SortDirectionCurrent { get; }
 

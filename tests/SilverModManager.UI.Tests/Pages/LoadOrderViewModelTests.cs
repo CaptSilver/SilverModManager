@@ -128,7 +128,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     }
 
     /// <summary>A variety whose rows reach the page through the change set, the way the real ones do.</summary>
-    private sealed class ListedVariety(params IReactiveSortItem[] items) : FakeVariety(items), IToggleableSortOrderVariety
+    internal sealed class ListedVariety(params IReactiveSortItem[] items) : FakeVariety(items), IToggleableSortOrderVariety
     {
         public Task SetEnabled(SortOrderId sortOrderId, ISortItemKey item, bool enabled, CancellationToken token = default) => Task.CompletedTask;
 
@@ -164,7 +164,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         return (new LoadOrderViewModel(new WindowManagerProvider(Provider, windows), variety, LoadoutId.From(1)), windows);
     }
 
-    private sealed class FakeItem(bool isEnabled, bool isLocked, string key = "a.esp") : IReactiveSortItem, ISortItemDetails, IGroundcoverSortItem
+    internal sealed class FakeItem(bool isEnabled, bool isLocked, string key = "a.esp") : IReactiveSortItem, ISortItemDetails, IGroundcoverSortItem
     {
         public ISortItemKey Key { get; } = new SortItemKey<string>(key);
         public int SortIndex { get; set; }
@@ -261,6 +261,22 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     [Fact]
     public async Task APageWhereTheLargerIndexWinsNumbersItsRowsByLoadPositionFromTheTop()
         => (await PositionsTopToBottom(new FakeVariety { IndexOverrideBehavior = IndexOverrideBehavior.GreaterIndexWins }, 3)).Should().Equal("1st", "2nd", "3rd");
+
+    [Fact]
+    public async Task TheUpAndDownButtonsMoveByOneThroughTheReorderableOnAnAscendingPage()
+    {
+        var variety = new FakeVariety { RecordsMoves = true };
+        var vm = NewViewModel(variety);
+        using var _ = vm.Activator.Activate();
+        var adapter = (LoadOrderTreeDataGridAdapter)vm.Adapter;
+
+        adapter.MessageSubject.OnNext(new LoadOrderTreeDataGridAdapter.MoveUpCommandPayload(new CompositeItemModel<ISortItemKey>(PluginKey)));
+        await WaitUntil(() => variety.Deltas.Count == 1);
+        adapter.MessageSubject.OnNext(new LoadOrderTreeDataGridAdapter.MoveDownCommandPayload(new CompositeItemModel<ISortItemKey>(PluginKey)));
+        await WaitUntil(() => variety.Deltas.Count == 2);
+
+        variety.Deltas.Should().Equal(-1, +1);
+    }
 
     [Fact]
     public async Task OnTheRedModPageMovingARowUpGivesItALaterModlistLineAndDownAnEarlierOne()

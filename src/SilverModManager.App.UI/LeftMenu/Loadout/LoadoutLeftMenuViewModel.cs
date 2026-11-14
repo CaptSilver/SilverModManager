@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Controls;
@@ -278,6 +279,8 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
 
     /// <inheritdoc/>
     public void MoveCollection(int fromIndex, int toIndex) => _collectionList.Move(fromIndex, toIndex);
+
+    IReorderable<CollectionGroupId> ILoadoutLeftMenuViewModel.Reorderable => _collectionList.Reorderable;
 
     /// <inheritdoc/>
     public bool IsCollectionMovable(int index) => _collectionList.IsMovable(index);

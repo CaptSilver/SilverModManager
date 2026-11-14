@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Input.Reorder;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
 using ReactiveUI;
@@ -19,6 +20,10 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
 
         this.WhenActivated(disposables =>
         {
+            // The pad picks collections up through the menu's reorderable.
+            ReorderSources.SetSource(this, ViewModel?.Reorderable is { } reorderable ? new ReorderSource<SilverModManager.Abstractions.Loadouts.CollectionGroupId>(reorderable, ReorderRows.InCollections, TimeProvider.System) : null);
+            Disposable.Create(() => ReorderSources.SetSource(this, null)).DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.ApplyControlViewModel, view => view.ApplyControlViewHost.ViewModel)
                 .DisposeWith(disposables);
             

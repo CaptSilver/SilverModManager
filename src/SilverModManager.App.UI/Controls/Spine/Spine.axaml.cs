@@ -10,6 +10,7 @@ using Avalonia.Media.Transformation;
 using Avalonia.ReactiveUI;
 using Avalonia.VisualTree;
 using ReactiveUI;
+using SilverModManager.App.UI.Input.Reorder;
 
 namespace SilverModManager.App.UI.Controls.Spine;
 
@@ -61,6 +62,10 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
 
         this.WhenActivated(disposables =>
         {
+            // The pad picks loadout icons up through the spine's reorderable.
+            ReorderSources.SetSource(this, ViewModel?.Reorderable is { } reorderable ? new ReorderSource<SilverModManager.Sdk.Loadouts.LoadoutId>(reorderable, ReorderRows.InSpine, TimeProvider.System) : null);
+            Disposable.Create(() => ReorderSources.SetSource(this, null)).DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.Home, v => v.Home.ViewModel)
                 .DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.LoadoutSpineItems, v => v.Loadouts.ItemsSource)

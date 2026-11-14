@@ -30,7 +30,22 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         public object GetRequiredKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetRequiredKeyedService(serviceType, serviceKey);
     }
 
-    private static readonly FileConflictsComponents.NeighbourIds Neighbours = new(EntityId.From(9), EntityId.From(11));
+    /// <summary>Two mods in the priority order of <paramref name="loadoutId"/>; the first is the one the tests move down over the second.</summary>
+    private async Task<EntityId> SeedMods(LoadoutId loadoutId)
+    {
+        using var tx = Connection.BeginTransaction();
+        var rows = new[] { "Mover", "Other" }.Select((name, i) =>
+        {
+            var group = new LoadoutItemGroup.New(tx, out var id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadoutId, Name = name },
+            };
+            return new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadoutId, TargetId = group.Id, Priority = ConflictPriority.From((ulong)i + 1) }.Id;
+        }).ToArray();
+        var result = await tx.Commit();
+        return result[rows[0]];
+    }
 
     private static StandardDialogResult Pressed(ButtonDefinitionId id) => new() { ButtonId = id };
 
@@ -55,7 +70,7 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         var shown = new List<Dialog>();
         var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Cancel, shown), loadout.LoadoutId);
 
-        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+        await vm.Reorderable.TryMoveBy(await SeedMods(loadout.LoadoutId), +1, CancellationToken.None);
 
         var dialog = shown.Should().ContainSingle().Subject;
         dialog.ViewModel.WindowTitle.Should().Be(Language.FileConflicts_Refused_Title);
@@ -78,7 +93,7 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         var shown = new List<Dialog>();
         var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Cancel, shown), loadout.LoadoutId);
 
-        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+        await vm.Reorderable.TryMoveBy(await SeedMods(loadout.LoadoutId), +1, CancellationToken.None);
 
         var body = PresenterRig.Body(shown.Should().ContainSingle().Subject.ViewModel);
         body.Should().Contain(MarkdownText.Inline(winner)).And.Contain(MarkdownText.Inline(loser)).And.NotContain("](");
@@ -96,7 +111,7 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         var shown = new List<Dialog>();
         var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Accept, shown), loadout.LoadoutId);
 
-        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+        await vm.Reorderable.TryMoveBy(await SeedMods(loadout.LoadoutId), +1, CancellationToken.None);
 
         shown.Should().ContainSingle();
         await loadouts.Received(1).RemoveGroupRule(rule.LoadoutGroupRuleId);
@@ -132,8 +147,7 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         var windows = Substitute.For<IWindowManager>();
         var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), windows, loadout.LoadoutId);
 
-        await vm.Move(EntityId.From(10), new FileConflictsComponents.NeighbourIds(EntityId.From(9), EntityId.From(11)),
-            System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+        await vm.Reorderable.TryMoveBy(await SeedMods(loadout.LoadoutId), +1, CancellationToken.None);
 
         await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
     }
