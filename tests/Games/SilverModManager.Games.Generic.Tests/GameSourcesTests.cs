@@ -77,4 +77,29 @@ public class GameSourcesTests
         support!.GameBananaGameId.Should().Be(297);
         support.GameBananaSections.Should().Equal(GameBananaSection.Mod);
     }
+
+    [Fact]
+    public void ADefinitionsWorkshopSideReachesTheGameClass()
+    {
+        var support = new SteamWorkshopSupport(268500, HasOrderFile: true);
+        var game = GameWith(new GameSources(SteamWorkshop: support));
+
+        SteamWorkshopGame.For(game).Should().BeSameAs(support);
+        GameBananaGame.For(game).Should().BeNull("a Workshop game is not on GameBanana because of it");
+    }
+
+    [Fact]
+    public void ADefinitionWithoutWorkshopItemsAndAnUnrelatedTypeAreNotServedByIt()
+    {
+        SteamWorkshopGame.For(GameWith(GameSources.None)).Should().BeNull();
+        SteamWorkshopGame.For(Substitute.For<IGameData>()).Should().BeNull();
+    }
+
+    [Fact]
+    public void AHandWrittenGameImplementsTheWorkshopMarkerItself()
+    {
+        var game = Substitute.For<IGameData, ISteamWorkshopGame>();
+
+        SteamWorkshopGame.For(game).Should().BeSameAs(game);
+    }
 }

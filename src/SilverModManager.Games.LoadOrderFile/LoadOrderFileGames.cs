@@ -92,6 +92,9 @@ public static class LoadOrderFileGames
     // Vortex (game-xcom2) keeps the Workshop mods the options file names.
     private static readonly SteamWorkshopModSource XCom2Workshop = new(268500, new FileStemNamer(new Extension(".XComMod")));
 
+    // Both games share the base game's Workshop.
+    private static readonly SteamWorkshopSupport XCom2WorkshopSupport = new(268500, HasOrderFile: true);
+
     /// <summary>Vortex (game-xcom2), with the executable as its extension spells it.</summary>
     public static readonly LoadOrderFileGameDefinition XCom2 = new()
     {
@@ -106,6 +109,7 @@ public static class LoadOrderFileGames
         OrderFile = OrderFileLocation.GameFolder("XComGame/Config/DefaultModOptions.ini"),
         Format = new XComModOptionsIniFormat(),
         ExternalMods = [XCom2Workshop, XCom2Folders("XComGame/Mods")],
+        Sources = new GameSources(SteamWorkshop: XCom2WorkshopSupport),
         NativeBuildFiles = XCom2NativeBuildFiles,
     };
 
@@ -127,6 +131,7 @@ public static class LoadOrderFileGames
         Format = new XComModOptionsIniFormat(),
         IdentifyingFiles = [XCom2WarOfTheChosenFolder / "XComGame/CookedPCConsole/3DUIBP.upk"],
         ExternalMods = [XCom2Workshop, XCom2Folders(XCom2WarOfTheChosenFolder / "XComGame/Mods")],
+        Sources = new GameSources(SteamWorkshop: XCom2WorkshopSupport),
         NativeBuildFiles = XCom2NativeBuildFiles,
     };
 
@@ -168,6 +173,7 @@ public static class LoadOrderFileGames
             new SteamWorkshopModSource(294100, new ManifestNamer(RimWorldManifests)),
             new ModFolderModSource("Mods", new ManifestNamer(RimWorldManifests), ExternalListing.WhenListed),
         ],
+        Sources = new GameSources(SteamWorkshop: new SteamWorkshopSupport(294100, HasOrderFile: true)),
         LocationNames = new Dictionary<string, string> { ["Simple.LocalAppDataLow"] = "Config folder" }.ToImmutableDictionary(),
         LocationSentenceNames = new Dictionary<string, string> { ["Simple.LocalAppDataLow"] = "the game's config folder" }.ToImmutableDictionary(),
     };

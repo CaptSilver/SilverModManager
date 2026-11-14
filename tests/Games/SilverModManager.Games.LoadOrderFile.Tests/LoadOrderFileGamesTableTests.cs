@@ -18,6 +18,19 @@ public class LoadOrderFileGamesTableTests
             LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen, LoadOrderFileGames.RimWorld, LoadOrderFileGames.Starsector);
     }
 
+    [Fact]
+    public void TheGamesThatReadSteamWorkshopFoldersDeclareThemAndHaveAnOrderFile()
+    {
+        var withWorkshop = LoadOrderFileGames.All.Where(game => game.Sources.SteamWorkshop is not null).ToArray();
+
+        withWorkshop.Should().Equal(LoadOrderFileGames.XCom2, LoadOrderFileGames.XCom2WarOfTheChosen, LoadOrderFileGames.RimWorld);
+        foreach (var game in withWorkshop)
+        {
+            game.Sources.SteamWorkshop!.SteamWorkshopAppId.Should().Be(game.SteamAppIds.Single(), $"{game.DisplayName} files its Workshop items under its own app");
+            game.Sources.SteamWorkshop.HasOrderFile.Should().BeTrue($"{game.DisplayName} writes the game's own mod list");
+        }
+    }
+
     // Steam ids, GOG ids and executables from each app's Steam launch entry (api.steamcmd.net), the Mod Organizer 2
     // basic_games plugins and the Vortex extension; Nexus ids from games.json by domain. A launch entry is a
     // case-insensitive Windows path, so its casing says nothing about the file's: Steam's own entries for one game
