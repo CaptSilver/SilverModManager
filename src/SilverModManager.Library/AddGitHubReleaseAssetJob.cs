@@ -205,7 +205,9 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
     private async ValueTask<Release> FetchRelease(CancellationToken cancellationToken)
     {
         Release? release;
-        if (Repository.Id is { } id)
+        // A name can pass to another owner after a rename or a delete, so a repository whose id is already known is
+        // fetched by that id: the download comes from the repository the update check looked at.
+        if ((Repository.Id ?? KnownRepositoryId) is { } id)
         {
             release = Tag is null
                 ? await Api.FetchLatestReleaseById(checked((long)id), cancellationToken)

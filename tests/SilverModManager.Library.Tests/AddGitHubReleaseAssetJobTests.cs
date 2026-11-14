@@ -259,6 +259,21 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
     }
 
     [Fact]
+    public async Task AKnownRepositoryIdFetchesTheReleaseByIdNotByName()
+    {
+        // The name can change hands after a rename or a delete; the id the update check used cannot.
+        var api = new StubApi(ReleaseWith("v11", Digest(PayloadDigest)));
+
+        await AddGitHubReleaseAssetJob.Create(
+            serviceProvider, api, new HttpClient(new PayloadHandler(Payload)),
+            GitHubRepositoryRef.FromName("o", "r"), tag: "v11", suffix: ".tar.gz", acquisition: UnassignedAcquisition.Instance, nameHint: "linux",
+            expectedSha256: null, knownRepositoryId: 42UL
+        );
+
+        api.Requested.Should().Be("tag #42 v11");
+    }
+
+    [Fact]
     public async Task AReleaseWithoutAMatchingAssetFails()
     {
         var api = new StubApi(ReleaseWith("v4", null));
