@@ -48,7 +48,7 @@ public class LaunchSessionRequestStopTests : IDisposable
             _events.Add("terminate");
             _exit.TrySetResult(new GameProcessResult(137, null));
         });
-        _processes.Start(Arg.Any<GameProcessSpec>(), Arg.Any<GameInstallation>()).Returns(_ =>
+        _processes.Start(Arg.Any<GameProcessSpec>(), Arg.Any<GameInstallation>(), Arg.Any<IReadOnlySet<int>?>()).Returns(_ =>
         {
             _events.Add("start");
             _gameStarted.TrySetResult();

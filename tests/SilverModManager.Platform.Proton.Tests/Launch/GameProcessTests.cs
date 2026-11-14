@@ -13,6 +13,9 @@ public class GameProcessTests : IDisposable
 {
     private static readonly TimeSpan Grace = TimeSpan.FromMilliseconds(400);
 
+    // Short, so the tests that wait for the game to be gone do not each sit out Steam's settle period.
+    private static readonly TimeSpan Settle = TimeSpan.FromMilliseconds(50);
+
     private readonly string _dir = Directory.CreateTempSubdirectory("silvermod-gameprocess-").FullName;
     private readonly List<int> _spawned = [];
 
@@ -77,13 +80,19 @@ public class GameProcessTests : IDisposable
         File.Exists(path).Should().BeTrue($"{path} should have been written");
     }
 
+    private static async Task WaitForChildExit(GameProcess process)
+    {
+        for (var i = 0; i < 200 && IsAlive(process.Pid); i++) await Task.Delay(25);
+        IsAlive(process.Pid).Should().BeFalse("the child should have exited");
+    }
+
     [DllImport("libc", EntryPoint = "kill")]
     private static extern int Kill(int pid, int signal);
 
     private static readonly RunningGameDetector NoDetector = TestDetectors.Over(Substitute.For<IProcessTracker>());
 
     private GameProcess Start(GameProcessSpec spec, IProcessTracker? tracker = null) =>
-        GameProcess.Start(spec, tracker is null ? NoDetector : TestDetectors.Over(tracker), Installation(), BasicEnvironment, Grace);
+        GameProcess.Start(spec, tracker is null ? NoDetector : TestDetectors.Over(tracker), Installation(), BasicEnvironment, Grace, settle: Settle);
 
     [Theory]
     [InlineData(0)]
@@ -166,7 +175,7 @@ public class GameProcessTests : IDisposable
             """;
         // Stands in for the owner that stops the child itself. Without a handler the signal would end the test host.
         using var owner = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => context.Cancel = true);
-        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), BasicEnvironment, Grace, forwardTermination: false);
+        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), BasicEnvironment, Grace, forwardTermination: false, settle: Settle);
         await WaitForFile(File_("ready"));
 
         var wait = process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
@@ -224,12 +233,100 @@ public class GameProcessTests : IDisposable
         result.ExitCode.Should().Be(128 + 9);
     }
 
+    /// <summary>A tracker that answers from a script, one entry per scan, repeating the last.</summary>
+    private static IProcessTracker Scripted(Func<int, TrackedProcess[]> scan)
+    {
+        var scans = 0;
+        var tracker = Substitute.For<IProcessTracker>();
+        tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns(_ => scan(Interlocked.Increment(ref scans) - 1));
+        return tracker;
+    }
+
+    [Fact]
+    public async Task WaitAsync_AfterTheChildExits_WaitsForTheGameToAppearAndLeaveBeforeSweeping()
+    {
+        // A launcher that hands over to the game: the child exits, the table is empty for a few scans, then the game shows up.
+        var pidFile = File_("game");
+        var done = File_("done");
+        var script = $"( sleep 0.5; echo ok > '{done}' ) >/dev/null 2>&1 </dev/null & echo $! > '{pidFile}'; exit 0";
+        var alive = TrackerFor(pidFile);
+        var tracker = Scripted(scan => scan < 3 ? [] : alive.FindGameProcesses(null!).ToArray());
+        using var process = GameProcess.Start(Sh(script), TestDetectors.Over(tracker), Installation(), BasicEnvironment, Grace, settle: TimeSpan.FromMilliseconds(150));
+
+        var result = await process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+
+        File.Exists(done).Should().BeTrue("the game was left to finish by itself instead of being swept after the first empty scan");
+        result.KillFailed.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task WaitAsync_AfterAForwardedSigterm_SweepsEvenThoughTheTrackerNeverEmpties()
+    {
+        var pidFile = File_("deaf");
+        // The game ignores SIGTERM, and the tracker keeps listing it until it is dead.
+        var script = $"""
+            ( trap '' TERM; exec sleep 60 ) >/dev/null 2>&1 </dev/null &
+            echo $! > '{pidFile}'
+            echo ready > '{File_("ready")}'
+            wait
+            """;
+        using var process = Start(Sh(script), TrackerFor(pidFile));
+        await WaitForFile(File_("ready"));
+
+        var wait = process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+        Kill(Environment.ProcessId, 15);
+        var result = await wait;
+
+        result.KillFailed.Should().BeNull();
+        IsAlive(int.Parse((await File.ReadAllTextAsync(pidFile)).Trim())).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Terminate_SetsTheStopSoTheWaitEnds()
+    {
+        var pidFile = File_("stuck");
+        var script = $"""
+            ( trap '' TERM; exec sleep 60 ) >/dev/null 2>&1 </dev/null &
+            echo $! > '{pidFile}'
+            echo ready > '{File_("ready")}'
+            wait
+            """;
+        using var process = Start(Sh(script), TrackerFor(pidFile));
+        await WaitForFile(File_("ready"));
+
+        process.Terminate();
+        var result = await process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+
+        result.KillFailed.Should().BeNull();
+        IsAlive(int.Parse((await File.ReadAllTextAsync(pidFile)).Trim())).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task WaitAsync_NeitherWaitsForNorSignalsAProtectedProcess()
+    {
+        // Stands in for the run process that forwarded the launch: it carries the game's prefix, so the tracker lists
+        // it for as long as it lives, and it must outlive the game to be told the exit.
+        using var client = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("sleep", "60") { UseShellExecute = false })!;
+        _spawned.Add(client.Id);
+        var tracker = Substitute.For<IProcessTracker>();
+        tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(client.Id, "silvermodmanager")]);
+        using var process = GameProcess.Start(Sh("exit 0"), TestDetectors.Over(tracker), Installation(), BasicEnvironment, Grace,
+            protectedPids: new HashSet<int> { client.Id }, settle: Settle);
+
+        var result = await process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+
+        result.KillFailed.Should().BeNull();
+        IsAlive(client.Id).Should().BeTrue();
+    }
+
     [Fact]
     public async Task AStragglerTheTrackerReportsIsTerminatedAfterTheChildExits()
     {
         var pidFile = File_("straggler");
         var script = $"sleep 60 >/dev/null 2>&1 </dev/null & echo $! > '{pidFile}'; exit 3";
         using var process = Start(Sh(script), TrackerFor(pidFile));
+        await WaitForChildExit(process);
+        process.Terminate();
 
         var result = await process.WaitAsync();
 
@@ -245,6 +342,8 @@ public class GameProcessTests : IDisposable
         var pidFile = File_("stubborn");
         var script = $"trap '' TERM; sleep 60 >/dev/null 2>&1 </dev/null & echo $! > '{pidFile}'; exit 0";
         using var process = Start(Sh(script), TrackerFor(pidFile));
+        await WaitForChildExit(process);
+        process.Terminate();
 
         var result = await process.WaitAsync();
 
@@ -260,6 +359,8 @@ public class GameProcessTests : IDisposable
         var tracker = Substitute.For<IProcessTracker>();
         tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(2147483000, "stuck")]);
         using var process = Start(Sh("exit 0"), tracker);
+        await WaitForChildExit(process);
+        process.Terminate();
 
         var result = await process.WaitAsync();
 
@@ -280,7 +381,7 @@ public class GameProcessTests : IDisposable
             ["SteamGameId"] = "1091500",
         };
         var script = $"env > '{File_("env")}'";
-        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), env, Grace, isInstalledSteamAppId: id => id == "1091500");
+        using var process = GameProcess.Start(Sh(script), NoDetector, Installation(), env, Grace, isInstalledSteamAppId: id => id == "1091500", settle: Settle);
         await process.WaitAsync();
 
         var lines = await File.ReadAllLinesAsync(File_("env"));
@@ -294,7 +395,7 @@ public class GameProcessTests : IDisposable
     public async Task PressureVesselIsUntouchedForAnEmptyRootList()
     {
         var env = new Dictionary<string, string>(BasicEnvironment) { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/a" };
-        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: []), NoDetector, Installation(), env, Grace);
+        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: []), NoDetector, Installation(), env, Grace, settle: Settle);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("PRESSURE_VESSEL_FILESYSTEMS_RW=/a");
@@ -313,7 +414,7 @@ public class GameProcessTests : IDisposable
     public async Task PressureVesselMergesRootsKeepingExistingEntriesAndDroppingDuplicates()
     {
         var env = new Dictionary<string, string>(BasicEnvironment) { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/a:/b" };
-        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: ["/b", "/c", "/c"]), NoDetector, Installation(), env, Grace);
+        using var process = GameProcess.Start(Sh($"env > '{File_("env")}'", roots: ["/b", "/c", "/c"]), NoDetector, Installation(), env, Grace, settle: Settle);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("PRESSURE_VESSEL_FILESYSTEMS_RW=/a:/b:/c");
@@ -354,7 +455,7 @@ public class GameProcessTests : IDisposable
             };
             var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = forwarded };
 
-            using var process = GameProcess.Start(spec, NoDetector, Installation(), grace: Grace);
+            using var process = GameProcess.Start(spec, NoDetector, Installation(), grace: Grace, settle: Settle);
             await process.WaitAsync();
 
             var lines = await File.ReadAllLinesAsync(File_("env"));
@@ -374,7 +475,7 @@ public class GameProcessTests : IDisposable
         var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "spec" } };
         var argument = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "argument" };
 
-        using var process = GameProcess.Start(spec, NoDetector, Installation(), argument, Grace);
+        using var process = GameProcess.Start(spec, NoDetector, Installation(), argument, Grace, settle: Settle);
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WHO=argument");
@@ -384,7 +485,7 @@ public class GameProcessTests : IDisposable
 
     private async Task<string[]> EnvironmentOf(GameProcessSpec spec, IReadOnlyDictionary<string, string> inherited)
     {
-        using var process = GameProcess.Start(spec, NoDetector, Installation(), inherited, Grace);
+        using var process = GameProcess.Start(spec, NoDetector, Installation(), inherited, Grace, settle: Settle);
         await process.WaitAsync();
         return await File.ReadAllLinesAsync(File_("env"));
     }

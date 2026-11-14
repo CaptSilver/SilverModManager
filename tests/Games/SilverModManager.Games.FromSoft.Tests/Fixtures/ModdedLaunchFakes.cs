@@ -97,14 +97,14 @@ public sealed class RecordingProcessFactory : IGameProcessFactory
     public List<GameProcessSpec> Started { get; } = [];
     public Action? OnStart { get; set; }
 
-    public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
+    public IGameProcess Start(GameProcessSpec spec, GameInstallation installation, IReadOnlySet<int>? protectedPids = null)
     {
         lock (Started) Started.Add(spec);
         OnStart?.Invoke();
         return new FinishedProcess();
     }
 
-    public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken) => Task.FromResult<TrackedProcess?>(null);
+    public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, IReadOnlySet<int>? protectedPids, CancellationToken cancellationToken) => Task.FromResult<TrackedProcess?>(null);
 
     public sealed class FinishedProcess : IGameProcess
     {

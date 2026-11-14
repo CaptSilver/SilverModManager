@@ -824,6 +824,22 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task TheSessionHandsTheContextsProtectedPidsToTheProcessFactory()
+    {
+        await NewSession().RunAsync(_context with { ProtectedPids = new HashSet<int> { 4242 } }, () => new GameProcessSpec(["game.exe"]));
+
+        _processes.StartedWith.Should().BeEquivalentTo(new[] { 4242 });
+    }
+
+    [Fact]
+    public async Task TheSessionHandsTheContextsProtectedPidsToTheShutdownOfAnExternalLaunch()
+    {
+        await NewSession().RunExternalAsync(_context with { ProtectedPids = new HashSet<int> { 4242 } }, _ => Task.CompletedTask);
+
+        _processes.ShutDownWith.Should().BeEquivalentTo(new[] { 4242 });
+    }
+
+    [Fact]
     public async Task AnExternalLaunch_IsMarkedRunningBeforeTheCallbackAndShutsTheGameDownAfterIt()
     {
         AddGate("a");
@@ -1366,16 +1382,20 @@ public class LaunchSessionTests : IDisposable
         public LaunchPhase? PhaseAtStart { get; private set; }
 
         public TrackedProcess? Survivor { get; set; }
+        public IReadOnlySet<int>? StartedWith { get; private set; }
+        public IReadOnlySet<int>? ShutDownWith { get; private set; }
 
-        public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
+        public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, IReadOnlySet<int>? protectedPids, CancellationToken cancellationToken)
         {
+            ShutDownWith = protectedPids;
             events.Add("shutdown");
             return Task.FromResult(Survivor);
         }
 
-        public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
+        public IGameProcess Start(GameProcessSpec spec, GameInstallation installation, IReadOnlySet<int>? protectedPids = null)
         {
             if (StartFailure is not null) throw StartFailure;
+            StartedWith = protectedPids;
             events.Add("start");
             Started = true;
             LogCountAtStart = log.Entries.Count;

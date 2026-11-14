@@ -114,7 +114,7 @@ public static class LaunchRun
     public static async Task<ForwardedLaunchExit> RunForwardedAsync(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, ForwardedLaunch launch, CancellationToken stop)
     {
         var wineDllOverrides = WineDllOverrideRequirements.For(installation.Game, loadout);
-        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides, LaunchEnvironment: HdrLaunchEnvironment.For(loadout));
+        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides, LaunchEnvironment: HdrLaunchEnvironment.For(loadout), ProtectedPids: ProtectedPidsOf(launch));
 
         var session = services.GetRequiredService<LaunchSession>();
         try
@@ -137,11 +137,13 @@ public static class LaunchRun
             {
                 BaseEnvironment = launch.Environment,
                 WorkingDirectory = plan.Process.WorkingDirectory ?? launch.WorkingDirectory,
-                // The run process that forwarded this launch is alive until the game's exit is reported to it, and
-                // carries the game's prefix in its environment. The sweep after the game must not signal it.
-                ExcludedPids = launch.ClientPid > 0 ? new HashSet<int> { launch.ClientPid } : null,
             },
         };
+
+    // The run process that forwarded this launch is alive until the game's exit is reported to it, and carries the
+    // game's prefix in its environment. No check, wait or sweep may take it for the game or signal it.
+    internal static IReadOnlySet<int>? ProtectedPidsOf(ForwardedLaunch launch)
+        => launch.ClientPid > 0 ? new HashSet<int> { launch.ClientPid } : null;
 
     private static LaunchPlan PlanFor(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, IReadOnlyList<string> command, IReadOnlyList<WineDllOverride> wineDllOverrides)
     {

@@ -28,10 +28,6 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// The environment to inherit instead of this process's own, for a launch that runs here on behalf of another
 /// process (<c>run</c> handing Steam's variables to the window). Null inherits ours.
 /// </param>
-/// <param name="ExcludedPids">
-/// Processes the sweep after the game exits must leave alone, with their ancestors: the <c>run</c> process that
-/// forwarded the launch, which is still waiting for the game's exit to be reported.
-/// </param>
 public sealed record GameProcessSpec(
     IReadOnlyList<string> Argv,
     string? WorkingDirectory = null,
@@ -39,7 +35,6 @@ public sealed record GameProcessSpec(
     IReadOnlyList<string>? FilesystemRoots = null,
     IReadOnlyList<WineDllOverride>? WineDllOverrides = null,
     IReadOnlyDictionary<string, string>? BaseEnvironment = null,
-    IReadOnlySet<int>? ExcludedPids = null,
     IReadOnlyList<KeyValuePair<string, string>>? DefaultEnvironment = null);
 
 /// <summary>
@@ -69,21 +64,24 @@ public sealed partial class GameProcess : IGameProcess
     private readonly IRunningGameDetector? _detector;
     private readonly GameInstallation? _installation;
     private readonly TimeSpan _grace;
+    private readonly TimeSpan _settle;
+    private readonly StopRequest _stop = new();
     private readonly bool _forwardTermination;
     private readonly bool _leaveSignalsAlone;
-    private readonly IReadOnlySet<int> _excludedPids;
+    private readonly IReadOnlySet<int>? _protectedPids;
     private readonly ILogger? _logger;
 
-    private GameProcess(Process process, IRunningGameDetector? detector, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? excludedPids, ILogger? logger)
+    private GameProcess(Process process, IRunningGameDetector? detector, GameInstallation? installation, TimeSpan grace, TimeSpan settle, bool forwardTermination, bool leaveSignalsAlone, IReadOnlySet<int>? protectedPids, ILogger? logger)
     {
         _logger = logger;
-        _excludedPids = excludedPids ?? new HashSet<int>();
+        _protectedPids = protectedPids;
         _forwardTermination = forwardTermination;
         _leaveSignalsAlone = leaveSignalsAlone;
         _process = process;
         _detector = detector;
         _installation = installation;
         _grace = grace;
+        _settle = settle;
     }
 
     /// <summary>The child's process id.</summary>
@@ -95,10 +93,15 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     /// <param name="baseEnvironment">The environment to inherit; defaults to ours.</param>
     /// <param name="grace">Overrides <see cref="DefaultGrace"/>.</param>
+    /// <param name="settle">
+    /// How long the game's processes must stay gone before <see cref="WaitAsync"/> ends. Defaults to
+    /// <see cref="SettlePeriods.Steam"/>, because the headless command runs under Steam's reaper.
+    /// </param>
     /// <param name="forwardTermination">
     /// Whether <see cref="WaitAsync"/> passes SIGTERM and SIGHUP on to the child. Turn it off when the owner
     /// already stops the child on those signals, or the child would get each of them twice.
     /// </param>
+    /// <param name="protectedPids">Processes the wait and the sweep ignore and never signal, with their ancestors.</param>
     /// <param name="leaveSignalsAlone">
     /// Whether <see cref="WaitAsync"/> registers no signal handling at all. For the window, whose own shutdown must
     /// not be swallowed while a game runs; it stops the child through the launch session instead.
@@ -112,9 +115,11 @@ public sealed partial class GameProcess : IGameProcess
         bool forwardTermination = true,
         bool leaveSignalsAlone = false,
         ILogger? logger = null,
-        Func<string, bool>? isInstalledSteamAppId = null)
+        Func<string, bool>? isInstalledSteamAppId = null,
+        IReadOnlySet<int>? protectedPids = null,
+        TimeSpan? settle = null)
     {
-        return Spawn(spec, detector, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger, isInstalledSteamAppId);
+        return Spawn(spec, detector, installation, protectedPids, baseEnvironment, grace, settle, forwardTermination, leaveSignalsAlone, logger, isInstalledSteamAppId);
     }
 
     /// <summary>
@@ -124,15 +129,17 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(spec, detector: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null, isInstalledSteamAppId: null);
+        return Spawn(spec, detector: null, installation: null, protectedPids: null, baseEnvironment, grace: null, settle: null, forwardTermination: true, leaveSignalsAlone: false, logger: null, isInstalledSteamAppId: null);
     }
 
     private static GameProcess Spawn(
         GameProcessSpec spec,
         IRunningGameDetector? detector,
         GameInstallation? installation,
+        IReadOnlySet<int>? protectedPids,
         IReadOnlyDictionary<string, string>? baseEnvironment,
         TimeSpan? grace,
+        TimeSpan? settle,
         bool forwardTermination,
         bool leaveSignalsAlone,
         ILogger? logger,
@@ -149,7 +156,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, detector, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone, spec.ExcludedPids, logger);
+        return new GameProcess(process, detector, installation, grace ?? DefaultGrace, settle ?? SettlePeriods.Steam, forwardTermination, leaveSignalsAlone, protectedPids, logger);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -264,10 +271,10 @@ public sealed partial class GameProcess : IGameProcess
         // killing us. SIGTERM and SIGHUP are sent to one pid, so those are passed on.
         // An owner that stops the child itself leaves these two out, or the child would get each signal twice.
         using var term = _forwardTermination && !_leaveSignalsAlone
-            ? PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Signal(SigTerm); })
+            ? PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; _stop.Set(); Signal(SigTerm); })
             : null;
         using var hup = _forwardTermination && !_leaveSignalsAlone
-            ? PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => { context.Cancel = true; Signal(SigHup); })
+            ? PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => { context.Cancel = true; _stop.Set(); Signal(SigHup); })
             : null;
         using var interrupt = _leaveSignalsAlone ? null : PosixSignalRegistration.Create(PosixSignal.SIGINT, context => context.Cancel = true);
         using var quit = _leaveSignalsAlone ? null : PosixSignalRegistration.Create(PosixSignal.SIGQUIT, context => context.Cancel = true);
@@ -275,17 +282,27 @@ public sealed partial class GameProcess : IGameProcess
         await _process.WaitForExitAsync(cancellationToken);
         var exitCode = _process.ExitCode;
 
-        var survivor = _detector is { } detector && _installation is { } installation
-            ? await ShutDownStragglersAsync(detector, installation, cancellationToken)
-            : null;
+        TrackedProcess? survivor = null;
+        if (_detector is { } detector && _installation is { } installation)
+        {
+            // The child is often only the launcher: it exits while the game is still starting, or hands over to a
+            // new process. Sweeping on the first empty scan would kill a game that is alive a moment later, so
+            // the sweep waits for the game to stay gone, unless a stop was asked for. A stop that the game
+            // ignores must not leave the wait polling for ever.
+            var left = await detector.WaitUntilGone(installation, new GoneWait(_settle, _protectedPids, _stop), cancellationToken);
+            if (left.Any) survivor = await ShutDownStragglersAsync(detector, installation, cancellationToken);
+        }
         return new GameProcessResult(exitCode, survivor);
     }
 
     /// <summary>
-    /// Asks the child to stop with SIGTERM and kills it with SIGKILL when it is still there after the grace.
+    /// Asks the child to stop with SIGTERM and kills it with SIGKILL when it is still there after the grace, and
+    /// makes <see cref="WaitAsync"/> sweep what is left of the game without waiting for it to leave.
     /// </summary>
     public void Terminate()
     {
+        // Also when the child is already gone: the game's other processes are then swept without waiting for them.
+        _stop.Set();
         if (_process.HasExited) return;
 
         Signal(SigTerm);
@@ -312,7 +329,7 @@ public sealed partial class GameProcess : IGameProcess
     /// to leave on their own, then SIGTERM, then SIGKILL.
     /// </summary>
     private Task<TrackedProcess?> ShutDownStragglersAsync(IRunningGameDetector detector, GameInstallation installation, CancellationToken cancellationToken)
-        => StragglerShutdown.RunAsync(detector, installation, _grace, cancellationToken, _excludedPids, logger: _logger);
+        => StragglerShutdown.RunAsync(detector, installation, _grace, cancellationToken, _protectedPids, logger: _logger);
 
     /// <inheritdoc />
     public void Dispose() => _process.Dispose();

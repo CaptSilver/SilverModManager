@@ -386,7 +386,7 @@ public sealed class LaunchSession
                     {
                         await WriteMarker(context, prepared);
                         heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context), context.LaunchEnvironment);
-                        using var process = _processFactory.Start(plan.Process, context.Installation);
+                        using var process = _processFactory.Start(plan.Process, context.Installation, context.ProtectedPids);
                         AttachProcess(process);
                         try
                         {
@@ -416,7 +416,7 @@ public sealed class LaunchSession
                     finally
                     {
                         // Whatever happened, the game must not be left running into the ingest.
-                        var leftover = await _processFactory.ShutDownGameAsync(context.Installation, CancellationToken.None);
+                        var leftover = await _processFactory.ShutDownGameAsync(context.Installation, context.ProtectedPids, CancellationToken.None);
                         exit = new GameProcessResult(0, leftover);
                     }
                 }

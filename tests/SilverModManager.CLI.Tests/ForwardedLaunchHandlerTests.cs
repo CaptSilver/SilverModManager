@@ -87,20 +87,19 @@ public class ForwardedLaunchHandlerTests
     }
 
     [Fact]
-    public void TheGameOfAForwardedLaunchIsSweptWithoutTheForwardingProcess()
+    public void TheForwardingClientIsProtectedOnTheLaunchContext()
     {
         var launch = new ForwardedLaunch("L", null, ["game.exe"], new Dictionary<string, string>(), null, ClientPid: 4242);
-        var plan = new LaunchPlan(new GameProcessSpec(["game.exe"]));
 
-        LaunchRun.InForwardedEnvironment(plan, launch).Process.ExcludedPids.Should().BeEquivalentTo(new[] { 4242 });
+        LaunchRun.ProtectedPidsOf(launch).Should().BeEquivalentTo(new[] { 4242 });
     }
 
     [Fact]
-    public void ALaunchFromAnOlderClientThatSentNoPidExcludesNobody()
+    public void ALaunchFromAnOlderClientThatSentNoPidProtectsNobody()
     {
         var launch = new ForwardedLaunch("L", null, ["game.exe"], new Dictionary<string, string>(), null);
 
-        LaunchRun.InForwardedEnvironment(new LaunchPlan(new GameProcessSpec(["game.exe"])), launch).Process.ExcludedPids.Should().BeNull();
+        LaunchRun.ProtectedPidsOf(launch).Should().BeNull();
     }
 
     [Theory]

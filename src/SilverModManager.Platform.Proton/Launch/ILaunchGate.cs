@@ -31,7 +31,12 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// Variables the loadout adds to the launch unless it already has them, such as the ones its HDR setting asks for.
 /// Like the overrides they go into the state file for a joining Steam wrapper. Null for none.
 /// </param>
-public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null, Guid SessionId = default, bool EndSeen = true, IReadOnlyList<KeyValuePair<string, string>>? LaunchEnvironment = null);
+/// <param name="ProtectedPids">
+/// Processes no check, wait or sweep may count as the game or signal, with their ancestors: the <c>run</c> process
+/// that forwarded this launch, which carries the game's prefix in its environment and is still waiting for the exit
+/// to be reported. Null for none.
+/// </param>
+public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null, Guid SessionId = default, bool EndSeen = true, IReadOnlyList<KeyValuePair<string, string>>? LaunchEnvironment = null, IReadOnlySet<int>? ProtectedPids = null);
 
 /// <summary>
 /// A gate's reason for refusing a launch.
