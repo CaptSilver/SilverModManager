@@ -72,8 +72,7 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
         AbsolutePath runner,
         PrefixCommand command)
     {
-        // Proton wants the directory that holds pfx, and Heroic records either that directory or pfx itself.
-        var compatData = prefix.Path.FileName == "pfx" ? prefix.Path.Parent : prefix.Path;
+        var compatData = ProtonCompatData.CompatDataOf(prefix.Path);
         var defaults = new Dictionary<string, string>
         {
             ["STEAM_COMPAT_DATA_PATH"] = compatData.ToString(),

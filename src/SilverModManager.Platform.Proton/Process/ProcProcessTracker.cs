@@ -17,12 +17,7 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
     public IReadOnlyList<TrackedProcess> FindGameProcesses(GameInstallation installation)
     {
         var gameDir = RealPath(installation.Locations[LocationId.Game].Path.ToString());
-        var prefixes = PrefixesOf(installation.LocatorResult);
-        var compatDataDirs = prefixes
-            .Where(p => Path.GetFileName(p) == "pfx")
-            .Select(Path.GetDirectoryName)
-            .OfType<string>()
-            .ToHashSet();
+        var (prefixes, compatDataDirs) = PrefixesOf(installation.LocatorResult);
 
         return Scan().Where(p => RunsFromGameDir(p) || UsesPrefix(p) || WineRunsFromGameDir(p)).Select(p => p.Process).ToList();
 
@@ -48,16 +43,16 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
     /// <inheritdoc />
     public IReadOnlyList<TrackedProcess> FindByPrefix(AbsolutePath prefix)
     {
-        var wanted = RealPath(prefix.ToString());
-        var compatData = Path.GetFileName(wanted) == "pfx" ? Path.GetDirectoryName(wanted) : null;
+        var recorded = RealPath(prefix.ToString());
+        var (compatData, rewritten) = ProtonCompatData.Of(recorded);
 
         return Scan().Where(UsesPrefix).Select(p => p.Process).ToList();
 
         bool UsesPrefix(Candidate p)
         {
             var environment = p.Environment();
-            return (environment.TryGetValue("WINEPREFIX", out var wine) && RealPath(wine) == wanted)
-                   || (compatData is not null && environment.TryGetValue("STEAM_COMPAT_DATA_PATH", out var compat) && RealPath(compat) == compatData);
+            return (environment.TryGetValue("WINEPREFIX", out var wine) && RealPath(wine) is var path && (path == recorded || path == rewritten))
+                   || (environment.TryGetValue("STEAM_COMPAT_DATA_PATH", out var compat) && RealPath(compat) == compatData);
         }
     }
 
@@ -133,13 +128,25 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
         }
     }
 
-    private static HashSet<string> PrefixesOf(GameLocatorResult result)
+    // Steam records the pfx folder, Heroic the folder above it, and Proton rewrites WINEPREFIX to pfx, so each
+    // recorded path stands for both spellings.
+    private static (HashSet<string> Prefixes, HashSet<string> CompatData) PrefixesOf(GameLocatorResult result)
     {
         var prefixes = new HashSet<string>();
-        if (result.WinePrefixPath is { } wine) prefixes.Add(RealPath(wine.ToString()));
-        if (result.Compatibility is { } layer) prefixes.Add(RealPath(layer.Prefix.ToString()));
-        if (result.LinuxCompatabilityDataProvider is { } provider) prefixes.Add(RealPath(provider.WinePrefixDirectoryPath.ToString()));
-        return prefixes;
+        var compatData = new HashSet<string>();
+        if (result.WinePrefixPath is { } wine) Add(wine.ToString());
+        if (result.Compatibility is { } layer) Add(layer.Prefix.ToString());
+        if (result.LinuxCompatabilityDataProvider is { } provider) Add(provider.WinePrefixDirectoryPath.ToString());
+        return (prefixes, compatData);
+
+        void Add(string recorded)
+        {
+            var real = RealPath(recorded);
+            var (compat, prefix) = ProtonCompatData.Of(real);
+            compatData.Add(compat);
+            prefixes.Add(real);
+            prefixes.Add(prefix);
+        }
     }
 
     private static string? HostPathOfZDrive(string argument)

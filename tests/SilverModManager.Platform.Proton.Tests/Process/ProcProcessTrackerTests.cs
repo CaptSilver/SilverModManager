@@ -68,6 +68,47 @@ public class ProcProcessTrackerTests : IDisposable
 
     private int[] PrefixPids(string prefix) => Tracker.FindByPrefix(FileSystem.Shared.FromUnsanitizedFullPath(prefix)).Select(p => p.Pid).Order().ToArray();
 
+    private string HeroicPrefix => Path.Combine(_root, "heroic", "Prefixes", "game");
+
+    private GameInstallation HeroicInstallation()
+    {
+        var installation = Installation();
+        var recorded = installation.LocatorResult;
+        var result = new GameLocatorResult
+        {
+            Game = recorded.Game,
+            Path = recorded.Path,
+            Store = recorded.Store,
+            StoreIdentifier = recorded.StoreIdentifier,
+            LocatorIds = recorded.LocatorIds,
+            Locator = recorded.Locator,
+            Platform = recorded.Platform,
+            WinePrefixPath = FileSystem.Shared.FromUnsanitizedFullPath(HeroicPrefix),
+        };
+        return new GameInstallation(result, installation.Locations);
+    }
+
+    [Fact]
+    public void FindGameProcesses_MatchesHeroicProtonProcessesWhoseRecordedPrefixLacksPfx()
+    {
+        // The wrapper keeps Heroic's own environment; the preloader has the WINEPREFIX Proton rewrote.
+        AddProcess(10, "umu-run", environ: [$"STEAM_COMPAT_DATA_PATH={HeroicPrefix}", $"WINEPREFIX={HeroicPrefix}"]);
+        AddProcess(11, "wine64-preloader", environ: [$"WINEPREFIX={HeroicPrefix}/pfx", $"STEAM_COMPAT_DATA_PATH={HeroicPrefix}"]);
+        AddProcess(12, "bash", environ: ["HOME=/x"]);
+
+        Tracker.FindGameProcesses(HeroicInstallation()).Select(p => p.Pid).Order().Should().Equal(10, 11);
+    }
+
+    [Fact]
+    public void FindByPrefix_MatchesTheRewrittenPfxOfARecordedPrefixWithoutOne()
+    {
+        AddProcess(10, "umu-run", environ: [$"STEAM_COMPAT_DATA_PATH={HeroicPrefix}", $"WINEPREFIX={HeroicPrefix}"]);
+        AddProcess(11, "wine64-preloader", environ: [$"WINEPREFIX={HeroicPrefix}/pfx", $"STEAM_COMPAT_DATA_PATH={HeroicPrefix}"]);
+        AddProcess(12, "bash", environ: ["HOME=/x"]);
+
+        PrefixPids(HeroicPrefix).Should().Equal(10, 11);
+    }
+
     [Fact]
     public void ParentOf_ReadsThePpidFieldOfStat()
     {
