@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.Networking.Steam.CLI;
 using SilverModManager.Networking.Steam.Migration;
 using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.Networking.Steam;
 
@@ -39,6 +40,9 @@ public static class Services
         services.AddSecretKeys(SteamSecretKeys.Auth);
         services.AddSingleton<IAuthStorage, SecretStoreAuthStorage>();
         services.AddSingleton<ISecretMigrationStep, SteamAuthFileMigration>();
+        services.AddSettings<SteamDepotSettings>();
+        services.AddSingleton<SteamDepotAccount>();
+        services.AddSingleton<ISecretPrimable>(sp => sp.GetRequiredService<SteamDepotAccount>());
         return services;
     }
     

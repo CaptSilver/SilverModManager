@@ -46,4 +46,11 @@ public interface IGitHubApi
     /// Fetches the release with the given tag from the repository with the given numeric id.
     /// </summary>
     ValueTask<Release?> FetchReleaseByTagById(long repositoryId, string tag, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Asks GitHub whether <paramref name="token"/> is accepted, with that token alone: neither the instance's header
+    /// nor the stored token takes part. False when GitHub refuses it (401).
+    /// </summary>
+    /// <exception cref="HttpRequestException">GitHub could not be reached or answered with anything but success or 401, which says nothing about the token.</exception>
+    ValueTask<bool> ValidateToken(string token, CancellationToken cancellationToken = default);
 }

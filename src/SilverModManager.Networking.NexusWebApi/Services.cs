@@ -51,6 +51,7 @@ public static class Services
             .AddSingleton<ISecretMigrationStep, NexusApiKeyMigration>()
             .AddSingleton<ISecretMigrationStep, NexusOAuthTokenMigration>()
             .AddSingleton<NexusCredentialCache>()
+            .AddSingleton<NexusModsAccount>()
             .AddSingleton<ISecretPrimable>(sp => sp.GetRequiredService<NexusCredentialCache>())
             .AddSingleton<INexusCredentialSummary>(sp => sp.GetRequiredService<NexusCredentialCache>());
         collection.AddSingleton(TimeProvider.System);

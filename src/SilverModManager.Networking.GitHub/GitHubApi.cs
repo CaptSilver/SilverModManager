@@ -94,6 +94,18 @@ internal class GitHubApi : IGitHubApi
         return (response, authenticated);
     }
 
+    public async ValueTask<bool> ValidateToken(string token, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"{BaseUrl}/user"));
+        request.Headers.Add(HeaderApiVersion, ApiVersion);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) return false;
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
     public async ValueTask<Release[]?> FetchReleases(string organization, string repository, CancellationToken cancellationToken = default)
     {
         var uri = new Uri($"{BaseUrl}/repos/{organization}/{repository}/releases");

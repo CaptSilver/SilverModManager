@@ -42,6 +42,8 @@ public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvi
 
         public ValueTask<Release[]?> FetchReleases(string organization, string repository, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public ValueTask<bool> ValidateToken(string token, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public ValueTask<Release?> FetchLatestRelease(string organization, string repository, IComparer<Release>? comparer = null, CancellationToken cancellationToken = default)
         {
             Requested = $"highest tag {organization}/{repository}";
