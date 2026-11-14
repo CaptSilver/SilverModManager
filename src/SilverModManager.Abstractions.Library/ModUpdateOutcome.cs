@@ -21,7 +21,7 @@ public sealed record ModUpdateRequest(IReadOnlyList<ModUpdate> Updates, bool Rep
 /// <param name="Replacements">One per old item swapped for a new one, with how the swap went.</param>
 /// <param name="DownloadFailures">The downloads that failed, each narrowed to the part of the update that failed.</param>
 /// <param name="OpenedInBrowser">The links the app handed to the browser (a free Nexus Mods account downloads there).</param>
-/// <param name="AccountCannotDownload">The source could have applied updates only by opening the browser, and was not allowed to.</param>
+/// <param name="AccountCannotDownload">The source could have applied updates only by opening the browser, because of a free account or the source's terms, and was not allowed to.</param>
 public sealed record ModUpdateOutcome(
     IReadOnlyList<LibraryItem.ReadOnly> Downloaded,
     IReadOnlyList<ModUpdateReplacement> Replacements,
