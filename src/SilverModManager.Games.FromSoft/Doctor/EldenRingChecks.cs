@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.Games.FromSoft.Overlay;

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 

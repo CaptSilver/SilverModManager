@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.Overlay;

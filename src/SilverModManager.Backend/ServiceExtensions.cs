@@ -86,6 +86,7 @@ public static class ServiceExtensions
         return serviceCollection
             .AddSingleton(os)
             .AddSingleton<IProcessRunner, ProcessRunner>()
+            .AddSingleton<IExecutableLocator, PathExecutableLocator>()
             .AddSingleton<IOSInterop, LinuxInterop>();
     }
 

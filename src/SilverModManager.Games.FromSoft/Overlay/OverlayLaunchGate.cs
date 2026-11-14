@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;

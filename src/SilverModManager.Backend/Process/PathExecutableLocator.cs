@@ -1,19 +1,14 @@
 using NexusMods.Paths;
+using SilverModManager.Sdk;
 
-namespace SilverModManager.Games.FromSoft.Overlay;
+namespace SilverModManager.Backend.Process;
 
-/// <summary>Finds a program the way a shell would, so a test can say where (or whether) it is.</summary>
-public interface IExecutableLocator
-{
-    /// <summary>The first executable called <paramref name="name"/> on <c>PATH</c>, or null.</summary>
-    AbsolutePath? Find(string name);
-}
-
-internal sealed class PathExecutableLocator(IFileSystem fileSystem) : IExecutableLocator
+/// <summary>Looks a program up on <c>PATH</c>. The variable is injectable so a test needs no process-wide change.</summary>
+internal sealed class PathExecutableLocator(IFileSystem fileSystem, Func<string?>? pathVariable = null) : IExecutableLocator
 {
     public AbsolutePath? Find(string name)
     {
-        var path = Environment.GetEnvironmentVariable("PATH");
+        var path = pathVariable is null ? Environment.GetEnvironmentVariable("PATH") : pathVariable();
         if (string.IsNullOrEmpty(path)) return null;
 
         foreach (var folder in path.Split(':', StringSplitOptions.RemoveEmptyEntries))

@@ -175,8 +175,7 @@ public static class Services
             .AddModule("fromsoft vanilla", "The vanilla regulations the app keeps");
 
         // Launch gates, in run order
-        services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
-            .AddSingleton<ISandboxProbe, BwrapSandboxProbe>()
+        services.AddSingleton<ISandboxProbe, BwrapSandboxProbe>()
             .AddSingleton<IUserIds, LibcUserIds>()
             .AddSingleton<ILaunchGate, OverlayLaunchGate>()
             .AddSingleton<ILaunchGate, VanillaSaveGate>()

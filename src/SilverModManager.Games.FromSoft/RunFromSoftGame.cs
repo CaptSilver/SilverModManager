@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;

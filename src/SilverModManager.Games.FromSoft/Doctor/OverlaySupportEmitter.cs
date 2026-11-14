@@ -1,3 +1,4 @@
+using SilverModManager.Sdk;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
