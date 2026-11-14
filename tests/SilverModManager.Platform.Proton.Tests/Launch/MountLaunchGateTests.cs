@@ -30,8 +30,13 @@ public class MountLaunchGateTests(ITestOutputHelper helper) : AStubbedGameIsolat
         ServiceProvider.GetRequiredService<IDeploymentPlanStore>(),
         ServiceProvider.GetServices<IDeploymentBackend>(),
         Connection,
+        GameRegistry,
         ServiceProvider.GetRequiredService<IDeploymentBackendSelector>(),
+        ServiceProvider.GetRequiredService<HeldMounts>(),
+        Findings,
         NullLogger<MountLaunchGate>.Instance);
+
+    private readonly MountRecoveryFindings Findings = new();
 
     private async Task<LaunchContext> ContextWith(bool mountingRoot)
     {
@@ -142,5 +147,136 @@ public class MountLaunchGateTests(ITestOutputHelper helper) : AStubbedGameIsolat
 
         Mounting.Calls.Should().NotContain(c => c.Phase == "Finish");
         await gate.Finish(context);
+    }
+
+    [Fact]
+    public async Task FinishWithoutASeenEndRecoversIntoTheMarkersLoadout()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false };
+
+        await NewGate().Finish(context);
+
+        Mounting.Recoveries.Should().Equal((DataRoot, (LoadoutId?)context.LoadoutId));
+    }
+
+    [Fact]
+    public async Task FinishWithoutASeenEndAndNoLoadoutRecoversWithoutATarget()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false, LoadoutId = default };
+
+        await NewGate().Finish(context);
+
+        Mounting.Recoveries.Should().Equal((DataRoot, (LoadoutId?)null));
+    }
+
+    [Fact]
+    public async Task FinishWithoutASeenEndLeavesARootThisProcessServesAlone()
+    {
+        var context = await ContextWith(mountingRoot: true);
+        var gate = NewGate();
+        await gate.Prepare(context, CancellationToken.None);
+
+        // Another session's dead finish: the mount up now belongs to a run that is still going.
+        await gate.Finish(context with { SessionId = Guid.NewGuid(), EndSeen = false });
+
+        Mounting.Recoveries.Should().BeEmpty("a mount this process serves is not left over from anything");
+        await gate.Finish(context);
+    }
+
+    [Fact]
+    public async Task FinishAfterASeenEndWithNoScopeRecoversNothing()
+    {
+        var context = await ContextWith(mountingRoot: true);
+
+        await NewGate().Finish(context);
+
+        Mounting.Recoveries.Should().BeEmpty("a launch that mounted nothing has nothing to clean up");
+    }
+
+    [Fact]
+    public async Task FinishWithoutASeenEndOnAPlanWithoutAMountingRootRecoversNothing()
+    {
+        var context = await ContextWith(mountingRoot: false) with { EndSeen = false };
+
+        await NewGate().Finish(context);
+
+        Mounting.Recoveries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ANeedsTargetReportIsKeptForTheHealthCheckUntilALaterRecoveryFindsNothing()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false, LoadoutId = default };
+        var id = GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId;
+        Mounting.RecoveryReports[DataRoot] = new MountRecoveryReport(MountRecoveryStatus.NeedsTarget, WasMounted: true, Staging: FileSystem.GetKnownPath(KnownPath.TempDirectory));
+        var gate = NewGate();
+
+        await gate.Finish(context);
+
+        Findings.For(id).Should().ContainSingle().Which.Report.Status.Should().Be(MountRecoveryStatus.NeedsTarget);
+
+        Mounting.RecoveryReports.Remove(DataRoot);
+        await gate.Finish(context);
+
+        Findings.For(id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ABlockedReportIsKeptForTheHealthCheck()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false };
+        var id = GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId;
+        Mounting.RecoveryReports[DataRoot] = new MountRecoveryReport(MountRecoveryStatus.Blocked, WasMounted: false, Recovery: FileSystem.GetKnownPath(KnownPath.TempDirectory));
+
+        await NewGate().Finish(context);
+
+        Findings.For(id).Should().ContainSingle().Which.Report.Status.Should().Be(MountRecoveryStatus.Blocked);
+    }
+
+    [Fact]
+    public async Task AnOverCapReportIsKeptForTheHealthCheck()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false };
+        var id = GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId;
+        Mounting.RecoveryReports[DataRoot] = new MountRecoveryReport(MountRecoveryStatus.OverCap, WasMounted: false, Staging: FileSystem.GetKnownPath(KnownPath.TempDirectory));
+
+        await NewGate().Finish(context);
+
+        Findings.For(id).Should().ContainSingle().Which.Report.Status.Should().Be(MountRecoveryStatus.OverCap);
+    }
+
+    [Fact]
+    public async Task AStillRunningReportIsNotKept()
+    {
+        var context = await ContextWith(mountingRoot: true) with { EndSeen = false };
+        var id = GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId;
+        Mounting.RecoveryReports[DataRoot] = new MountRecoveryReport(MountRecoveryStatus.StillRunning, WasMounted: false);
+
+        await NewGate().Finish(context);
+
+        Findings.For(id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HasStaleMountSeesAMountOfTheDeclaredRootThatNothingHere_Holds()
+    {
+        var context = await ContextWith(mountingRoot: true);
+        var gate = NewGate();
+        gate.HasStaleMount(GameInstallation).Should().BeFalse();
+
+        Mounting.Mounted = true;
+        gate.HasStaleMount(GameInstallation).Should().BeTrue();
+
+        await gate.Prepare(context, CancellationToken.None);
+        gate.HasStaleMount(GameInstallation).Should().BeFalse("this process is serving that mount");
+    }
+
+    [Fact]
+    public async Task HasStaleMountIgnoresAPlanWithoutAMountingRoot()
+    {
+        await ContextWith(mountingRoot: false);
+        Mounting.Mounted = true;
+
+        NewGate().HasStaleMount(GameInstallation).Should().BeFalse();
     }
 }

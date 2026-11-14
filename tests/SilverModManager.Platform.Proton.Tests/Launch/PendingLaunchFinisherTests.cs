@@ -80,10 +80,10 @@ public class PendingLaunchFinisherTests : IDisposable
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
     }
 
-    private PendingLaunchFinisher NewFinisher(OwnProcessFamily? family = null, StartedTools? tools = null)
+    private PendingLaunchFinisher NewFinisher(OwnProcessFamily? family = null, StartedTools? tools = null, params ILaunchGate[] extraGates)
     {
         var finish = new LaunchFinish(_synchronizer, _markers, NullLogger<LaunchFinish>.Instance);
-        var finisher = new PendingLaunchFinisher(Substitute.For<IConnection>(), _markers, _locks, _tracker, TestDetectors.Over(_tracker, family, tools, ownPid: OwnPid), _sessions, [_gateA, _gateB], finish,
+        var finisher = new PendingLaunchFinisher(Substitute.For<IConnection>(), _markers, _locks, _tracker, TestDetectors.Over(_tracker, family, tools, ownPid: OwnPid), _sessions, [_gateA, _gateB, ..extraGates], finish,
             NullLogger<PendingLaunchFinisher>.Instance, _ => []);
         finisher.Reports.Subscribe(_reports.Add);
         return finisher;
@@ -134,6 +134,48 @@ public class PendingLaunchFinisherTests : IDisposable
         _locks.ReceivedCalls().Should().BeEmpty();
         _tracker.ReceivedCalls().Should().BeEmpty();
         _reports.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FinishIfPending_AMountedDeclaredRootWithNoMarkerAndNoLiveGame_RecoversWithoutALoadoutOrAnIngest()
+    {
+        LeaveAbandonedState();
+        var stale = new StaleMountGate(_events) { Stale = true };
+
+        var report = await NewFinisher(extraGates: stale).FinishIfPending(_installation);
+
+        stale.ContextsSeen.Should().Equal((Guid.Empty, false));
+        stale.LoadoutsSeen.Should().Equal(default(LoadoutId));
+        _events.Should().Equal("finish:StaleMountGate");
+        _synchronizer.Calls.Should().Be(0, "no loadout is known, so there is nothing to ingest into");
+        _gateA.ContextsSeen.Should().BeEmpty("only the gate that holds the mount is run");
+        report.Outcome.Should().Be(LaunchFinishOutcome.Finished);
+        File.Exists(new InstallationLock(LockPath).StatePath).Should().BeFalse();
+        _sessions.IsRunning(_installation).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task FinishIfPending_AMountedRootWithALiveGame_IsReportedGameRunningAndTouchesNothing()
+    {
+        _tracker.FindGameProcesses(Arg.Any<GameInstallation>()).Returns([new TrackedProcess(GamePid, "game.exe")]);
+        var stale = new StaleMountGate(_events) { Stale = true };
+
+        var report = await NewFinisher(extraGates: stale).FinishIfPending(_installation);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.GameRunning);
+        stale.ContextsSeen.Should().BeEmpty();
+        _locks.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FinishIfPending_NoMarkerAndNoMountedRoot_StaysNothingPending()
+    {
+        var stale = new StaleMountGate(_events) { Stale = false };
+
+        var report = await NewFinisher(extraGates: stale).FinishIfPending(_installation);
+
+        report.Outcome.Should().Be(LaunchFinishOutcome.NothingPending);
+        stale.ContextsSeen.Should().BeEmpty();
     }
 
     [Fact]
@@ -510,6 +552,7 @@ public class PendingLaunchFinisherTests : IDisposable
     private abstract class RecordingGate(List<string> events) : ILaunchGate
     {
         public List<(Guid SessionId, bool EndSeen)> ContextsSeen { get; } = [];
+        public List<LoadoutId> LoadoutsSeen { get; } = [];
         public Veto? Check(LaunchContext context) => null;
         public Task Prepare(LaunchContext context, CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -517,6 +560,7 @@ public class PendingLaunchFinisherTests : IDisposable
         {
             lock (events) events.Add($"finish:{GetType().Name}");
             ContextsSeen.Add((context.SessionId, context.EndSeen));
+            LoadoutsSeen.Add(context.LoadoutId);
             return Task.CompletedTask;
         }
     }
@@ -524,4 +568,10 @@ public class PendingLaunchFinisherTests : IDisposable
     private sealed class GateA(List<string> events) : RecordingGate(events);
 
     private sealed class GateB(List<string> events) : RecordingGate(events);
+
+    private sealed class StaleMountGate(List<string> events) : RecordingGate(events), IStaleMountSource
+    {
+        public bool Stale { get; set; }
+        public bool HasStaleMount(GameInstallation installation) => Stale;
+    }
 }

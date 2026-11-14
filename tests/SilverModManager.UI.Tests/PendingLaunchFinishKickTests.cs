@@ -7,6 +7,7 @@ using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App.UI;
+using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
@@ -30,6 +31,7 @@ public class PendingLaunchFinishKickTests
 
     public PendingLaunchFinishKickTests()
     {
+        _managed.List().Returns([]);
         _registry.LocateGameInstallations().Returns([_marked, _unmarked]);
         _finisher.Reports.Returns(_reports);
         _finisher.FinishIfPending(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>())
@@ -56,7 +58,9 @@ public class PendingLaunchFinishKickTests
 
     private static PendingLaunchFinish Marker() => new(LoadoutId.From(1), "Loadout", Guid.NewGuid(), ["Gate"], PendingLaunchFinishState.Pending);
 
-    private PendingLaunchFinishKick NewKick() => new(_finisher, _markers, _registry, _sessions, _toasts, NullLogger<PendingLaunchFinishKick>.Instance);
+    private readonly IManagedInstallations _managed = Substitute.For<IManagedInstallations>();
+
+    private PendingLaunchFinishKick NewKick() => new(_finisher, _markers, _registry, _sessions, new StaleMountSweep(_managed, _finisher), _toasts, NullLogger<PendingLaunchFinishKick>.Instance);
 
     private static async Task Eventually(Func<bool> condition)
     {
@@ -82,6 +86,40 @@ public class PendingLaunchFinishKickTests
         await Eventually(() => FinishCalls(_marked) == 1);
         await Task.Delay(100);
         FinishCalls(_unmarked).Should().Be(0);
+    }
+
+    [Fact(Timeout = 30000)]
+    public async Task Start_SweepsForLeftMounts_AndToastsWhatTheSweepReleased()
+    {
+        // The finisher publishes while the sweep is still running, so a sweep that ran before the kick subscribed would lose it.
+        _managed.List().Returns([new ManagedInstallation(_unmarked, [])]);
+        _finisher.FinishIfPending(_unmarked, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            var report = new LaunchFinishReport(LaunchFinishOutcome.Finished, _unmarked, "Test Game 2 closed with a folder still mounted. The mount is released now.");
+            _reports.OnNext(report);
+            return report;
+        });
+        using var kick = NewKick();
+
+        kick.Start();
+
+        await Eventually(() => _toasts.ReceivedCalls().Any());
+        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game 2 closed with a folder still mounted. The mount is released now."), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+    }
+
+    [Fact(Timeout = 30000)]
+    public async Task Start_DoesNotSweepAnInstallationWhoseMarkerTheKickFinishes()
+    {
+        // The marker stays (the game was still running), so a second finish would repeat its failure toast.
+        _markers.Read(_marked).Returns(Marker());
+        _managed.List().Returns([new ManagedInstallation(_marked, []), new ManagedInstallation(_unmarked, [])]);
+        using var kick = NewKick();
+
+        kick.Start();
+
+        await Eventually(() => FinishCalls(_unmarked) == 1);
+        await Task.Delay(100);
+        FinishCalls(_marked).Should().Be(1);
     }
 
     [Fact(Timeout = 30000)]

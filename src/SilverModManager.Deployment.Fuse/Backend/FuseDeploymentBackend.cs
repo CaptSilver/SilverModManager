@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -6,6 +7,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Deployment.Fuse.Availability;
 using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Mount;
 using SilverModManager.Deployment.Vfs;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
@@ -38,6 +40,9 @@ public sealed class FuseDeploymentBackend(
     IFuseEnvironmentProbe probe,
     IDeploymentPlanStore plans,
     IConnection connection,
+    IFuseUnmounter unmounter,
+    StagingPromoterFactory promoters,
+    IServiceProvider services,
     ILogger<FuseDeploymentBackend> logger) : IMountingDeploymentBackend
 {
     // FuseMountOptions.Subtype, which the kernel lists as fuse.<subtype>. Recovery finds a dead session's mount by it.
@@ -149,8 +154,22 @@ public sealed class FuseDeploymentBackend(
     }
 
     /// <inheritdoc />
-    public Task<MountRecoveryReport> Recover(GameInstallation installation, GamePath root, LoadoutId? target, CancellationToken token) =>
-        throw new NotSupportedException("mounting is not wired yet");
+    public async Task<MountRecoveryReport> Recover(GameInstallation installation, GamePath root, LoadoutId? target, CancellationToken token)
+    {
+        if (!games.TryGetMetadata(installation, out var metadata)) return new MountRecoveryReport(MountRecoveryStatus.Nothing, WasMounted: false);
+
+        var id = metadata.GameInstallMetadataId;
+        var folder = installation.Locations.ToAbsolutePath(root);
+        var mountPoint = FusePreflight.RealDirectory(folder) ?? folder;
+
+        // The tracker is looked up here: the data model builds this backend in hosts that never launch a game and so
+        // never register one.
+        var recovery = new MountRecovery(services.GetRequiredService<IProcessTracker>(), unmounter, logger);
+
+        // The dead mount is what the guard refuses on, and the work below is what removes it.
+        using var _ = StaleMountGuard.Suspend();
+        return await recovery.Run(installation, mountPoint, IsMounted(installation, root), sessions.StagingFor(id), promoters.For(id, root), target, token);
+    }
 
     /// <inheritdoc />
     public Task Backup(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => copy.Backup(context, nodes);

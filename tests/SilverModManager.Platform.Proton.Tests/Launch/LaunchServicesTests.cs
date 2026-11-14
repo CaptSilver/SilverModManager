@@ -218,5 +218,6 @@ public class LaunchServicesTests
         // What the direct and process starters run the game with.
         services.AddSingleton(Substitute.For<IToolRunner>());
         services.AddSingleton(Substitute.For<IPrefixResolver>());
+        services.AddSingleton<HeldMounts>();
     }
 }

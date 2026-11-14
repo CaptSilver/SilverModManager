@@ -135,6 +135,10 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
 
         if (markers.Read(installation) is not { } marker)
         {
+            // A session that died while preparing never wrote a marker, but its mount can still be up.
+            if (gates.OfType<IStaleMountSource>().Any(g => g.HasStaleMount(installation)))
+                return await RunStaleMount(installation, heldLock, callerReports);
+
             logger.LogTrace("No pending finish marker on {Game}", game);
             return Report(LaunchFinishOutcome.NothingPending);
         }
@@ -195,34 +199,8 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
                 $"Close {tool.Name} ({tool.Pid}); it is open in {game}'s prefix, and the changes from your last session are taken into '{name}' once it is.");
         }
 
-        var ownLock = heldLock is null;
-        var lockToUse = heldLock;
-        IDisposable? registration = null;
-        try
+        return await WithInstallationLock(installation, heldLock, callerReports, $"{game} closed before its changes were taken back into '{name}'", async lockToUse =>
         {
-            if (lockToUse is null)
-            {
-                try
-                {
-                    lockToUse = locks.Create(installation.LocatorResult.Store.Value.ToLowerInvariant(), installation.LocatorResult.StoreIdentifier);
-                    if (!lockToUse.TryAcquire())
-                    {
-                        logger.LogDebug("Another holder has the launch lock for {Game}; its pending finish waits", game);
-                        return Report(LaunchFinishOutcome.SkippedHeld);
-                    }
-                }
-                catch (Exception e) when (e is IOException or InvalidOperationException)
-                {
-                    logger.LogWarning(e, "Taking the launch lock for {Game} to finish a launch failed", game);
-                    return Report(LaunchFinishOutcome.Failed, $"{game} closed before its changes were taken back into '{name}', and the launch lock is unavailable: {e.Message}", e);
-                }
-
-                // Not a launch: the window re-kicks when a launch ends, and must not answer this finish's own end.
-                registration = sessions.RegisterFinish(installation);
-            }
-
-            sessions.ReportPhase(installation, LaunchPhase.Finishing);
-
             var named = marker.GateNames.ToHashSet();
             var chosen = gates.Where(g => named.Contains(g.GetType().Name)).ToList();
             foreach (var unknown in named.Except(chosen.Select(g => g.GetType().Name)))
@@ -239,6 +217,76 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
 
             logger.LogInformation("Took the changes from the last session of {Game} back into '{Loadout}'", game, name);
             return Report(LaunchFinishOutcome.Finished, $"{game} closed before its changes were taken back into '{name}'. That is done now.");
+        });
+    }
+
+    /// <summary>
+    /// Cleans up a mount a dead session left behind when no marker says which loadout it served. Runs the gates that
+    /// hold mounts and nothing else: no loadout is known, so nothing is ingested, and staged files that need one are
+    /// left for the person to place.
+    /// </summary>
+    private async Task<LaunchFinishReport> RunStaleMount(GameInstallation installation, InstallationLock? heldLock, bool callerReports)
+    {
+        var game = installation.Game.DisplayName;
+
+        var running = detector.Running(installation);
+        if (running.Game.Count > 0 || running.Tools.Count > 0)
+        {
+            logger.LogWarning("{Game} still has processes running ({Processes}); the mount it left waits", game, string.Join(", ", running.Game.Concat(running.Tools).Select(p => $"{p.Name}:{p.Pid}")));
+            return new LaunchFinishReport(LaunchFinishOutcome.GameRunning, installation,
+                $"{game} is still running and its folder is still mounted. Quit the game; the app releases the mount the next time it starts or launches.");
+        }
+
+        return await WithInstallationLock(installation, heldLock, callerReports, $"{game} closed with a folder still mounted", async lockToUse =>
+        {
+            var chosen = gates.OfType<IStaleMountSource>().Where(g => g.HasStaleMount(installation)).Cast<ILaunchGate>().ToList();
+            logger.LogInformation("{Game} has a mount left by a session that never finished; recovering it", game);
+
+            var context = new LaunchContext(installation, default, "", [], EndSeen: false);
+            var failure = await finish.RunAsync(context, chosen, lockToUse, callerReports, ingest: false);
+            if (failure is not null)
+            {
+                logger.LogWarning(failure.Cause, "Recovering the mount {Game} left failed: {Message}", game, failure.Message);
+                return new LaunchFinishReport(LaunchFinishOutcome.Failed, installation, failure.Message, failure.Cause, failure.LoadoutStillApplied);
+            }
+
+            return new LaunchFinishReport(LaunchFinishOutcome.Finished, installation, $"{game} closed with a folder still mounted. The mount is released now.");
+        });
+    }
+
+    // Takes the installation lock unless the caller holds it, shows the Finishing phase while the body runs, and
+    // puts the state file, the lock and the registration back in the order a launch session releases them.
+    private async Task<LaunchFinishReport> WithInstallationLock(GameInstallation installation, InstallationLock? heldLock, bool callerReports, string lockFailureLead, Func<InstallationLock, Task<LaunchFinishReport>> body)
+    {
+        var game = installation.Game.DisplayName;
+        var ownLock = heldLock is null;
+        var lockToUse = heldLock;
+        IDisposable? registration = null;
+        try
+        {
+            if (lockToUse is null)
+            {
+                try
+                {
+                    lockToUse = locks.Create(installation.LocatorResult.Store.Value.ToLowerInvariant(), installation.LocatorResult.StoreIdentifier);
+                    if (!lockToUse.TryAcquire())
+                    {
+                        logger.LogDebug("Another holder has the launch lock for {Game}; its pending finish waits", game);
+                        return new LaunchFinishReport(LaunchFinishOutcome.SkippedHeld, installation);
+                    }
+                }
+                catch (Exception e) when (e is IOException or InvalidOperationException)
+                {
+                    logger.LogWarning(e, "Taking the launch lock for {Game} to finish a launch failed", game);
+                    return new LaunchFinishReport(LaunchFinishOutcome.Failed, installation, $"{lockFailureLead}, and the launch lock is unavailable: {e.Message}", e);
+                }
+
+                // Not a launch: the window re-kicks when a launch ends, and must not answer this finish's own end.
+                registration = sessions.RegisterFinish(installation);
+            }
+
+            sessions.ReportPhase(installation, LaunchPhase.Finishing);
+            return await body(lockToUse);
         }
         finally
         {

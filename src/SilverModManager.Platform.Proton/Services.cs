@@ -61,6 +61,8 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, BuiltInDxgiOverrideEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
+        // Runs through the finisher the headless launch services register, which the doctor verb and the app start both have.
+        services.TryAddSingleton<StaleMountSweep>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
         return services.AddDoctorVerbs().AddDeploymentVerbs().AddPrefixVerbs().AddSelftestVerbs().AddToolRunVerbs();
     }

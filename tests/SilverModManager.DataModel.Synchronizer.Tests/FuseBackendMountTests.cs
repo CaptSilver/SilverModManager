@@ -32,7 +32,7 @@ public class FuseBackendMountTests(ITestOutputHelper helper) : AStubbedGameTest<
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        base.AddServices(services).AddUsableFuseProbe();
+        base.AddServices(services).AddUsableFuseProbe().AddFakeProcessTracker();
         services.Replace(ServiceDescriptor.Singleton<IFuseKernel>(_kernel));
         return services;
     }
@@ -101,5 +101,24 @@ public class FuseBackendMountTests(ITestOutputHelper helper) : AStubbedGameTest<
         result.Files.Select(f => f.ToString()).Should().Equal("saved.txt");
         LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath()
             .Select(f => (GamePath)f.TargetPath).Should().Contain(DataRoot / "saved.txt");
+    }
+
+    [Fact]
+    public async Task RecoverPromotesWhatADeadSessionLeftStagedIntoTheTarget()
+    {
+        var loadout = await NewLoadoutOnFuse();
+        // Where the backend's own session would have staged the game's write before the process died.
+        var staged = ServiceProvider.GetRequiredService<VfsSessionFactory>().StagingFor(MetadataId).PathFor(RelativePath.FromUnsanitizedInput("saved.txt"));
+        staged.Parent.CreateDirectory();
+        await File.WriteAllTextAsync(staged.ToString(), "written before the crash");
+
+        var report = await Backend.Recover(GameInstallation, DataRoot, loadout.LoadoutId, CancellationToken.None);
+
+        report.Status.Should().Be(MountRecoveryStatus.Promoted);
+        report.WasMounted.Should().BeFalse();
+        report.PromotedFiles.Should().Be(1);
+        LoadoutItem.FindByLoadout(Connection.Db, loadout.LoadoutId).OfTypeLoadoutItemWithTargetPath()
+            .Select(f => (GamePath)f.TargetPath).Should().Contain(DataRoot / "saved.txt");
+        (await Backend.Recover(GameInstallation, DataRoot, loadout.LoadoutId, CancellationToken.None)).Status.Should().Be(MountRecoveryStatus.Nothing);
     }
 }

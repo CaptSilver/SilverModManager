@@ -40,6 +40,8 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<ILooseStagingStore>());
         services.AddSingleton<DeploymentLaunchRoots>();
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
+        // The stale-mount sweep the doctor verb runs goes through the finisher that headless launch registers.
+        services.AddSingleton(Substitute.For<IPendingLaunchFinisher>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddSingleton(Substitute.For<IToolManager>());
         services.AddSingleton(Substitute.For<SilverModManager.Sdk.Jobs.IJobMonitor>());

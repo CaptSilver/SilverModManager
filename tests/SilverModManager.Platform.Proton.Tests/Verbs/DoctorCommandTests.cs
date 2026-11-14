@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using FluentAssertions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Tests.Launch;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Verbs;
 using SilverModManager.Sdk;
@@ -37,7 +39,16 @@ public class DoctorCommandTests : IDisposable
         return environment;
     }
 
-    private DoctorCommand Command(params GameLocatorProblem[] problems)
+    private DoctorCommand Command(params GameLocatorProblem[] problems) => Command(StaleMounts(Substitute.For<IPendingLaunchFinisher>()), problems);
+
+    private static StaleMountSweep StaleMounts(IPendingLaunchFinisher finisher)
+    {
+        var listed = Substitute.For<IManagedInstallations>();
+        listed.List().Returns([]);
+        return new StaleMountSweep(listed, finisher);
+    }
+
+    private DoctorCommand Command(StaleMountSweep sweep, params GameLocatorProblem[] problems)
     {
         var installations = Substitute.For<IManagedInstallations>();
         installations.List().Returns([]);
@@ -52,7 +63,28 @@ public class DoctorCommandTests : IDisposable
         registry.Problems.Returns(_ => located ? [..problems] : ImmutableArray<GameLocatorProblem>.Empty);
 
         var reporter = new DoctorReporter(Substitute.For<IPrefixResolver>(), Substitute.For<IProtonResolver>(), Substitute.For<IToolRunner>(), new InstallationLockFactory(Environment()));
-        return new DoctorCommand(installations, reporter, registry);
+        return new DoctorCommand(installations, reporter, registry, sweep);
+    }
+
+    [Fact]
+    public async Task ReleasesAStaleMountBeforeItPrintsTheReport()
+    {
+        var game = StaleMountSweepTests.Game("Test Game");
+        var listed = Substitute.For<IManagedInstallations>();
+        listed.List().Returns([new ManagedInstallation(game, [])]);
+        var renderer = new RecordingRenderer();
+        var order = new List<string>();
+        var finisher = Substitute.For<IPendingLaunchFinisher>();
+        finisher.FinishIfPending(game, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            order.Add(renderer.Lines.Count == 0 ? "sweep before the report" : "sweep after the report");
+            return new LaunchFinishReport(LaunchFinishOutcome.NothingPending, game);
+        });
+
+        await Command(new StaleMountSweep(listed, finisher)).RunAsync(renderer, json: true);
+
+        order.Should().Equal("sweep before the report");
+        renderer.Lines.Should().NotBeEmpty();
     }
 
     [Fact]

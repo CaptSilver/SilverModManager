@@ -14,10 +14,11 @@ namespace SilverModManager.App.UI;
 /// Finishes launches whose process went away after the game started, from the window's side: once when the window
 /// opens, and again for an installation whenever a launch in this process ends with its marker still set (the
 /// game was still running when the finisher last looked, or Steam was updating it). A finish the kick or the sync
-/// hook ran itself does not count as a launch ending. Each result is toasted.
+/// hook ran itself does not count as a launch ending. When the window opens it also releases mounts a dead session
+/// left on games with no marker. Each result is toasted.
 /// </summary>
 public sealed class PendingLaunchFinishKick(IPendingLaunchFinisher finisher, ILaunchFinishMarkers markers, IGameRegistry registry,
-    ActiveLaunchSessions sessions, IWindowNotificationService toasts, ILogger<PendingLaunchFinishKick> logger) : IDisposable
+    ActiveLaunchSessions sessions, StaleMountSweep staleMounts, IWindowNotificationService toasts, ILogger<PendingLaunchFinishKick> logger) : IDisposable
 {
     private static readonly TimeSpan LongToast = TimeSpan.FromSeconds(15);
 
@@ -33,7 +34,7 @@ public sealed class PendingLaunchFinishKick(IPendingLaunchFinisher finisher, ILa
         _ = Task.Run(StartKicking);
     }
 
-    private void StartKicking()
+    private async Task StartKicking()
     {
         try
         {
@@ -49,6 +50,17 @@ public sealed class PendingLaunchFinishKick(IPendingLaunchFinisher finisher, ILa
         catch (Exception e)
         {
             logger.LogWarning(e, "Could not look for unfinished launches");
+        }
+
+        // After the subscriptions above: the finisher publishes what it released while the sweep runs, and a report
+        // published before the toast subscription is lost.
+        try
+        {
+            await staleMounts.Run(installation => markers.Read(installation) is null, CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "Could not look for mounts left by an earlier run");
         }
     }
 

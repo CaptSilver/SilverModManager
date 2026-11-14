@@ -141,6 +141,12 @@ public sealed class RecordingMountingDeploymentBackend(CopyDeploymentBackend inn
     /// <summary>What a mount's <c>Finish</c> returns by root. A root with no entry finishes with nothing to do.</summary>
     public Dictionary<GamePath, MountFinishResult> FinishResults { get; } = [];
 
+    /// <summary>What <see cref="Recover"/> returns by root. A root with no entry has nothing to recover.</summary>
+    public Dictionary<GamePath, MountRecoveryReport> RecoveryReports { get; } = [];
+
+    /// <summary>The roots <see cref="Recover"/> was asked about, with the loadout it was given.</summary>
+    public List<(GamePath Root, LoadoutId? Target)> Recoveries { get; } = [];
+
     public List<(string Phase, GamePath Path)> Calls { get; } = [];
 
     /// <summary>When set, <see cref="Preflight"/> refuses every root with this reason.</summary>
@@ -166,7 +172,8 @@ public sealed class RecordingMountingDeploymentBackend(CopyDeploymentBackend inn
     public Task<MountRecoveryReport> Recover(GameInstallation installation, GamePath root, LoadoutId? target, CancellationToken token)
     {
         Calls.Add((nameof(Recover), root));
-        return Task.FromResult(new MountRecoveryReport(MountRecoveryStatus.Nothing, WasMounted: false));
+        Recoveries.Add((root, target));
+        return Task.FromResult(RecoveryReports.TryGetValue(root, out var report) ? report : new MountRecoveryReport(MountRecoveryStatus.Nothing, WasMounted: false));
     }
 
     private void Record(string phase, Actions flag, IReadOnlyDictionary<GamePath, SyncNode> nodes)

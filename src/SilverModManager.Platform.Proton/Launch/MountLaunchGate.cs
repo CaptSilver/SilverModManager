@@ -17,8 +17,11 @@ public sealed class MountLaunchGate(
     IDeploymentPlanStore plans,
     IEnumerable<IDeploymentBackend> backends,
     IConnection connection,
+    IGameRegistry registry,
     IDeploymentBackendSelector selector,
-    ILogger<MountLaunchGate> logger) : ILaunchGate
+    HeldMounts held,
+    MountRecoveryFindings findings,
+    ILogger<MountLaunchGate> logger) : ILaunchGate, IStaleMountSource
 {
     private readonly Dictionary<DeploymentBackendId, IMountingDeploymentBackend> _mounting = backends.OfType<IMountingDeploymentBackend>().ToDictionary(static b => b.Id);
 
@@ -69,7 +72,12 @@ public sealed class MountLaunchGate(
     /// <inheritdoc />
     public async Task Finish(LaunchContext context)
     {
-        if (!_scopes.TryRemove(context.SessionId, out var scope)) return;
+        if (!_scopes.TryRemove(context.SessionId, out var scope))
+        {
+            // No scope here and the end was not watched: the session that mounted died, so what it left is cleaned up.
+            if (!context.EndSeen) await RecoverLeftovers(context);
+            return;
+        }
 
         await using (scope)
         {
@@ -82,11 +90,61 @@ public sealed class MountLaunchGate(
         }
     }
 
-    // The roots of the loadout's recorded plan that a mounting backend serves, in plan order.
-    private IEnumerable<(GamePath Root, IMountingDeploymentBackend Backend)> MountingRoots(LaunchContext context)
+    /// <inheritdoc />
+    public bool HasStaleMount(GameInstallation installation) =>
+        MountingRoots(installation).Any(r => !ServedHere(installation, r.Root) && r.Backend.IsMounted(installation, r.Root));
+
+    // A root a run in this process still holds (a tool, or another launch) is live whatever else has died.
+    private bool ServedHere(GameInstallation installation, GamePath root) =>
+        held.Current.Any(h => h.Root == root && h.Installation.Equals(installation));
+
+    // The target is the loadout the run served. A finish with no marker has none, and recovery asks for one rather than guessing.
+    private async Task RecoverLeftovers(LaunchContext context)
     {
-        var installation = Loadout.Load(connection.Db, context.LoadoutId).InstallationId;
-        foreach (var row in plans.Load(connection.Db, installation).Roots)
+        LoadoutId? target = context.LoadoutId == default ? null : context.LoadoutId;
+        var game = context.Installation.Game.DisplayName;
+        var installation = registry.TryGetMetadata(context.Installation, out var metadata) ? metadata.GameInstallMetadataId : default;
+
+        foreach (var (root, backend) in MountingRoots(context.Installation))
+        {
+            var described = DeploymentRootNames.Describe(root);
+            if (ServedHere(context.Installation, root))
+            {
+                logger.LogDebug("{Root} of {Game} is mounted by a run in this process; it is not recovered", described, game);
+                continue;
+            }
+
+            var report = await backend.Recover(context.Installation, root, target, CancellationToken.None);
+            if (installation != default) findings.Record(installation, root, report);
+
+            switch (report.Status)
+            {
+                case MountRecoveryStatus.NeedsTarget:
+                    logger.LogWarning("{Game}'s files staged under {Root} were left in {Staging}: no loadout is known to take them", game, described, report.Staging);
+                    break;
+                case MountRecoveryStatus.Blocked:
+                    logger.LogWarning("{Game}'s files staged under {Root} were set aside in {Recovery} because they changed while being promoted", game, described, report.Recovery);
+                    break;
+                case MountRecoveryStatus.OverCap:
+                    logger.LogWarning("{Game}'s files staged under {Root} were left in {Staging}: they are more than the promotion size cap", game, described, report.Staging);
+                    break;
+                case MountRecoveryStatus.Nothing:
+                    break;
+                default:
+                    logger.LogInformation("Recovered {Root} of {Game}: {Status}, {Files} files promoted", described, game, report.Status, report.PromotedFiles);
+                    break;
+            }
+        }
+    }
+
+    // The roots of the loadout's recorded plan that a mounting backend serves, in plan order.
+    private IEnumerable<(GamePath Root, IMountingDeploymentBackend Backend)> MountingRoots(LaunchContext context) => MountingRoots(context.Installation);
+
+    private IEnumerable<(GamePath Root, IMountingDeploymentBackend Backend)> MountingRoots(GameInstallation installation)
+    {
+        if (!registry.TryGetMetadata(installation, out var metadata)) yield break;
+
+        foreach (var row in plans.Load(connection.Db, metadata.GameInstallMetadataId).Roots)
         {
             if (_mounting.TryGetValue(row.Backend, out var backend)) yield return (row.Root, backend);
         }

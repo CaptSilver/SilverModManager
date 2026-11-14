@@ -197,6 +197,7 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton<DeploymentLaunchRoots>();
         services.AddSingleton(Substitute.For<IToolRunner>());
         services.AddSingleton(Substitute.For<IPrefixResolver>());
+        services.AddSingleton<HeldMounts>();
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

@@ -15,7 +15,11 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
     /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. The pending-finish
     /// marker is cleared last, whether or not the ingest worked. Returns the first failure.
     /// </summary>
-    internal async Task<LaunchFailure?> RunAsync(LaunchContext context, IReadOnlyList<ILaunchGate> gates, InstallationLock heldLock, bool callerReports)
+    /// <param name="ingest">
+    /// False for a finish that has no loadout to take the changes into (a mount left by a session that died before it
+    /// wrote a marker): only the gates run, and the state file and marker are left alone.
+    /// </param>
+    internal async Task<LaunchFailure?> RunAsync(LaunchContext context, IReadOnlyList<ILaunchGate> gates, InstallationLock heldLock, bool callerReports, bool ingest = true)
     {
         LaunchFailure? failure = null;
         void Record(Exception e, string what)
@@ -30,10 +34,11 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
                 return;
             }
 
-            // The mount outlived the game; the message already says what happens next, so it is not wrapped in a failure.
-            if (e is MountStillInUseException)
+            // The mount outlived the game, or a dead one could not be released; the message already says what happens next,
+            // so it is not wrapped in a failure.
+            if (e is MountStillInUseException or MountDetachFailedException)
             {
-                logger.Log(LogLevel.Warning, e, "A mount of {Loadout} was still in use when the game exited", context.LoadoutName);
+                logger.Log(LogLevel.Warning, e, "A mount of {Loadout} was still in use when the game exited, or could not be released", context.LoadoutName);
                 failure ??= new LaunchFailure(e.Message, Cause: e, LoadoutStillApplied: true);
                 return;
             }
@@ -51,13 +56,16 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
                 Cause: e, LoadoutStillApplied: true);
         }
 
-        try
+        if (ingest)
         {
-            heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, LaunchSession.WineOverridesOf(context), LaunchSession.RecordedLaunchOf(context), context.LaunchEnvironment);
-        }
-        catch (Exception e)
-        {
-            Record(e, "recording the launch state");
+            try
+            {
+                heldLock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, LaunchSession.WineOverridesOf(context), LaunchSession.RecordedLaunchOf(context), context.LaunchEnvironment);
+            }
+            catch (Exception e)
+            {
+                Record(e, "recording the launch state");
+            }
         }
 
         foreach (var gate in gates)
@@ -71,6 +79,8 @@ public sealed class LaunchFinish(ILaunchSynchronizer synchronizer, ILaunchFinish
                 Record(e, $"cleaning up after the game ({gate.GetType().Name})");
             }
         }
+
+        if (!ingest) return failure;
 
         try
         {

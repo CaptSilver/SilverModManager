@@ -57,6 +57,10 @@ public enum MountFinishStatus { Promoted, NothingToDo, StillInUse, Blocked, Over
 /// <param name="Recovery">Where unpromoted files were kept, when they were.</param>
 public sealed record MountFinishResult(MountFinishStatus Status, IReadOnlyList<RelativePath> Files, AbsolutePath? Recovery = null);
 
-public enum MountRecoveryStatus { Nothing, Detached, Promoted, StillRunning, NeedsTarget, Blocked }
+/// <summary>
+/// What a recovery did. <see cref="OverCap"/>: the staged files add up to more than the promotion size cap, so all of
+/// them are still in <see cref="MountRecoveryReport.Staging"/>.
+/// </summary>
+public enum MountRecoveryStatus { Nothing, Detached, Promoted, StillRunning, NeedsTarget, Blocked, OverCap }
 
 public sealed record MountRecoveryReport(MountRecoveryStatus Status, bool WasMounted, AbsolutePath? Staging = null, AbsolutePath? Recovery = null, int PromotedFiles = 0);
