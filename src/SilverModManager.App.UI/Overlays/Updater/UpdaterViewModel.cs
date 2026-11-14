@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using System.Runtime.InteropServices;
 using SilverModManager.Sdk.Errors;
 using System.Diagnostics;
@@ -122,6 +123,14 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
     {
         if (State != UpdateState.ReadyToRestart || _inAppUpdate?.AppImagePath is not { } appImagePath) return;
 
+        // An update installed before the game started still must not restart the app from under its mount. The state
+        // stays ready, so the button works again once the game has quit.
+        if (_inAppUpdate.Installer.MountedRefusal("Restarting") is { } mounted)
+        {
+            StatusMessage = mounted;
+            return;
+        }
+
         try
         {
             _inAppUpdate.Restarter.Restart(appImagePath);
@@ -155,7 +164,7 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
         if (installationMethod is InstallationMethod.AppImage && releaseAsset is not null)
         {
             var logger = serviceProvider.GetRequiredService<ILogger<AppImageUpdateInstaller>>();
-            var installer = new AppImageUpdateInstaller(logger, (source, destination, progress, token) =>
+            var installer = new AppImageUpdateInstaller(logger, serviceProvider.GetRequiredService<HeldMounts>(), (source, destination, progress, token) =>
                 DownloadAsync(serviceProvider, source, new Uri(release.HtmlUrl), destination, progress, token));
             var appImagePath = Environment.GetEnvironmentVariable("APPIMAGE");
             inAppUpdate = new InAppUpdate(installer, releaseAsset, appImagePath, new ProcessAppRestarter(serviceProvider.GetRequiredService<ILogger<ProcessAppRestarter>>()), logger);

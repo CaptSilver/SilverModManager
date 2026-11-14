@@ -29,7 +29,7 @@ public class ShutdownExplainerWindowTests(IServiceProvider provider) : AUiTest(p
             var explainer = new ShutdownExplainer(Substitute.For<IHostApplicationLifetime>(), Substitute.For<IJobMonitor>(), log);
             var topBar = new TopBarView { ViewModel = new TopBarDesignViewModel() };
             var window = Track(new Window { Content = topBar });
-            explainer.Watch(window);
+            explainer.Watch(window, new SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment.HeldMounts(), _ => Task.CompletedTask);
             ShowRendered(window);
 
             topBar.FindControl<Button>("CloseButton")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
@@ -46,7 +46,7 @@ public class ShutdownExplainerWindowTests(IServiceProvider provider) : AUiTest(p
             var log = new Entries();
             var explainer = new ShutdownExplainer(Substitute.For<IHostApplicationLifetime>(), Substitute.For<IJobMonitor>(), log);
             var window = Track(new Window());
-            explainer.Watch(window);
+            explainer.Watch(window, new SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment.HeldMounts(), _ => Task.CompletedTask);
             ShowRendered(window);
 
             window.Close();

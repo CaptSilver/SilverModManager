@@ -35,7 +35,7 @@ public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider)
         var digest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(NewBytes));
         var asset = new Asset("https://api.example.com/asset", 1, "SilverModManager.AppImage", "application/octet-stream", "uploaded", NewBytes.Length, 0,
             DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, "https://example.com/SilverModManager.AppImage", digest);
-        var installer = new AppImageUpdateInstaller(NullLogger.Instance, (_, destination, _, token) => File.WriteAllBytesAsync(destination, NewBytes, token));
+        var installer = new AppImageUpdateInstaller(NullLogger.Instance, new SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment.HeldMounts(), (_, destination, _, token) => File.WriteAllBytesAsync(destination, NewBytes, token));
 
         return new UpdaterViewModel(Substitute.For<IOSInterop>(), InstallationMethod.AppImage, new Version("1.0.0"), new Version("2.0.0"),
             new Uri("https://example.com"), new Uri("https://example.com/SilverModManager.AppImage"),

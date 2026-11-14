@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.App.UI.Overlays.Updater;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Jobs;
 
@@ -56,14 +58,32 @@ public sealed class ShutdownExplainer(IHostApplicationLifetime hostLifetime, IJo
         desktop.Exit += (_, e) => logger.LogInformation("The desktop lifetime exited with code {ExitCode}", e.ApplicationExitCode);
     }
 
-    /// <summary>Logs why <paramref name="window"/> is closing.</summary>
-    public void Watch(Window window) =>
+    /// <summary>
+    /// Logs why <paramref name="window"/> is closing, and keeps it open while <paramref name="held"/> has a mount: closing
+    /// ends the process that serves the folder a game is reading.
+    /// </summary>
+    /// <param name="showDialog">Tells the player why the window stayed open.</param>
+    public void Watch(Window window, HeldMounts held, Func<string, Task> showDialog) =>
         window.Closing += (_, e) =>
         {
             var description = DescribeWindowClose(e.CloseReason, e.IsProgrammatic, UserWindowClose.WasRequested(window));
+            if (CanRefuseClose(e.CloseReason) && MountedGameRefusal.Describe(held, "Closing") is { } refusal)
+            {
+                e.Cancel = true;
+                logger.LogInformation("The {Window} stayed open ({Description}): {Refusal}", window.GetType().Name, description, refusal);
+                _ = showDialog(refusal);
+                return;
+            }
+
             Note(description);
             logger.LogInformation("The {Window} is closing: {Description}", window.GetType().Name, description);
         };
+
+    /// <summary>
+    /// Whether a close can be turned down. A host stop and a logout go ahead whatever is mounted: refusing them would hang
+    /// the shutdown instead of ending it, and the next start recovers the mount.
+    /// </summary>
+    public static bool CanRefuseClose(WindowCloseReason reason) => reason is WindowCloseReason.Undefined or WindowCloseReason.WindowClosing;
 
     /// <summary>
     /// The close reason wins over the programmatic flag: the desktop lifetime and the operating system close windows

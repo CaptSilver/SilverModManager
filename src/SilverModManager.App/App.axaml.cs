@@ -5,7 +5,9 @@ using Avalonia.Markup.Xaml;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI;
+using SilverModManager.App.UI.Overlays.Updater;
 using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Settings;
@@ -71,7 +73,9 @@ public class App : Application
             if (_provider.GetService<ShutdownExplainer>() is { } explainer)
             {
                 explainer.Attach(desktop);
-                explainer.Watch(reactiveWindow);
+                var errors = _provider.GetRequiredService<IErrorPresenter>();
+                explainer.Watch(reactiveWindow, _provider.GetRequiredService<HeldMounts>(),
+                    message => errors.Report(new MountedGameException(message), "closing the window"));
             }
 
             var watchdog = _provider.GetRequiredService<UiStallWatchdog>();

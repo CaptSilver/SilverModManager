@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
 using Microsoft.Extensions.Logging;
@@ -33,13 +34,20 @@ internal sealed class AppImageUpdateException(string message) : UserFacingExcept
 /// running executable be replaced by rename, the old inode lives on until the process exits. The CPU check does not
 /// depend on the asset name, so a release that lists the wrong CPU's AppImage first cannot replace the app with it.
 /// </remarks>
-internal sealed class AppImageUpdateInstaller(ILogger logger, UpdateDownload download)
+internal sealed class AppImageUpdateInstaller(ILogger logger, HeldMounts heldMounts, UpdateDownload download)
 {
     private const UnixFileMode ExecuteBits = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+
+    /// <summary>Why the app must not end now, or null when no game is running from a mount it serves.</summary>
+    /// <param name="verb">What was asked, as the start of a sentence: <c>Updating</c> or <c>Restarting</c>.</param>
+    public string? MountedRefusal(string verb) => MountedGameRefusal.Describe(heldMounts, verb);
 
     public async Task InstallAsync(Asset asset, string? appImagePath, Architecture expectedArchitecture, Action<double> progress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        // Replacing the binary is followed by a restart, which would take the mount away from a game that is reading it.
+        if (MountedRefusal("Updating") is { } mounted) throw new AppImageUpdateException(mounted);
 
         if (string.IsNullOrEmpty(appImagePath))
             throw new AppImageUpdateException("The app was not started from an AppImage ($APPIMAGE is not set), so it cannot update itself. Download the update in the browser instead.");

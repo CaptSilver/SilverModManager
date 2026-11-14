@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using FluentAssertions;
+using SilverModManager.Sdk.Games;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Overlays.Updater;
 using SilverModManager.Networking.GitHub.DTOs;
 
@@ -43,9 +45,11 @@ public class AppImageUpdateInstallerTests : IDisposable
 
     private List<string> DownloadDestinations { get; } = [];
 
+    private HeldMounts Held { get; } = new();
+
     private AppImageUpdateInstaller MakeInstaller(byte[]? payload = null, Func<string, CancellationToken, Task>? beforeWrite = null)
     {
-        return new AppImageUpdateInstaller(NullLogger.Instance, async (uri, destination, progress, cancellationToken) =>
+        return new AppImageUpdateInstaller(NullLogger.Instance, Held, async (uri, destination, progress, cancellationToken) =>
         {
             uri.Should().Be(new Uri("https://example.com/SilverModManager.AppImage"));
             DownloadDestinations.Add(destination);
@@ -56,6 +60,20 @@ public class AppImageUpdateInstallerTests : IDisposable
     }
 
     private string[] Files() => Directory.GetFiles(_directory);
+
+    [Fact]
+    public async Task TheUpdaterRefusesWhileAMountIsHeld()
+    {
+        Held.Hold(MountedGameRefusalTests.Installation("Skyrim"), new GamePath(LocationId.Game, "Data"));
+        var downloaded = false;
+        var installer = new AppImageUpdateInstaller(NullLogger.Instance, Held, (_, _, _, _) => { downloaded = true; return Task.CompletedTask; });
+
+        var act = () => installer.InstallAsync(MakeAsset(DigestOf(NewBytes)), _target, Cpu, _ => { }, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<AppImageUpdateException>()).Which.Message.Should().Be("Skyrim is running from a mounted folder. Updating SilverModManager now would crash it. Quit the game first.");
+        downloaded.Should().BeFalse();
+        File.ReadAllBytes(_target).Should().Equal(OldBytes);
+    }
 
     [Fact]
     public async Task Test_Install_ReplacesTheTargetWithTheVerifiedDownload()

@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Overlays.Updater;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Networking.GitHub.DTOs;
 using SilverModManager.Sdk;
 
@@ -13,6 +15,7 @@ public class UpdaterViewModelTests : IDisposable
 
     private readonly string _directory = Directory.CreateTempSubdirectory("updater-vm-").FullName;
     private readonly RecordingRestarter _restarter = new();
+    private readonly HeldMounts _held = new();
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
@@ -30,7 +33,7 @@ public class UpdaterViewModelTests : IDisposable
 
     private UpdaterViewModel Create(string? appImagePath, string digest, InstallationMethod method = InstallationMethod.AppImage)
     {
-        var installer = new AppImageUpdateInstaller(NullLogger.Instance, async (_, destination, progress, token) =>
+        var installer = new AppImageUpdateInstaller(NullLogger.Instance, _held, async (_, destination, progress, token) =>
         {
             progress(0.5);
             await File.WriteAllBytesAsync(destination, NewBytes, token);
@@ -86,6 +89,26 @@ public class UpdaterViewModelTests : IDisposable
         File.ReadAllText(target).Should().Be("old");
         vm.RestartNow();
         _restarter.Restarted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Test_RestartNow_WhileAMountIsHeld_StaysReadyAndSaysWhy()
+    {
+        var target = CreateTarget();
+        var vm = Create(target, DigestOf(NewBytes));
+        await vm.UpdateNowAsync();
+
+        // The update went in before the game started; the restart is what would end the process serving its folder.
+        using var hold = _held.Hold(MountedGameRefusalTests.Installation("Skyrim"), new GamePath(LocationId.Game, "Data"));
+        vm.RestartNow();
+
+        _restarter.Restarted.Should().BeEmpty();
+        vm.State.Should().Be(UpdateState.ReadyToRestart);
+        vm.StatusMessage.Should().Be("Skyrim is running from a mounted folder. Restarting SilverModManager now would crash it. Quit the game first.");
+
+        hold.Dispose();
+        vm.RestartNow();
+        _restarter.Restarted.Should().Equal(target);
     }
 
     [Fact]
