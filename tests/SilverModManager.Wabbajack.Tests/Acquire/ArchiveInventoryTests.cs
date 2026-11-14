@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Games.TestFramework.Helpers;
 using NSubstitute;
 using FluentAssertions;
@@ -33,7 +34,8 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         FileStore,
         ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileIdentityResolver>(),
         ServiceProvider.GetRequiredService<IFileHashesService>(),
-        forums ?? Fakes.Forums());
+        forums ?? Fakes.Forums(),
+        ServiceProvider.GetRequiredService<UrlDownloaders>());
 
     private async Task<ArchivePlanRow> RowFor(ArchiveEntry archive, bool premium = false, IForumLoginState? forums = null)
     {

@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Wabbajack.Acquire.Hosts;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
@@ -73,7 +75,11 @@ public static class Services
             .AddSingleton<IModlistPlanner>(provider => provider.GetRequiredService<ModlistPlanner>())
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
-            .AddSingleton<HostThrottle>()
+            .AddSingleton<IUrlDownloader, MediaFireHost>()
+            .AddSingleton<IUrlDownloader, ModDbHost>()
+            .AddSingleton<IUrlDownloader, MegaHost>()
+            .AddSingleton<IUrlDownloader, GoogleDriveHost>()
+            .AddUrlDownloading()
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()
             .AddSingleton<IArchiveAcquirer>(provider => new ArchiveAcquirer(
                 provider.GetRequiredService<ILibraryService>(),

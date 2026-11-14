@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using System.Net;
 using System.Text;
 using FluentAssertions;

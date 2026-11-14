@@ -354,6 +354,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SilverModManager.Abstractio
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SilverModManager.Abstractions.Accounts.Tests", "tests\Abstractions\SilverModManager.Abstractions.Accounts.Tests\SilverModManager.Abstractions.Accounts.Tests.csproj", "{8B4D6F32-5C9E-4DA0-B3E7-2F1A0C4D9E62}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SilverModManager.Abstractions.Downloads.Tests", "tests\Abstractions\SilverModManager.Abstractions.Downloads.Tests\SilverModManager.Abstractions.Downloads.Tests.csproj", "{F4567E8E-474A-4FC5-8E74-A38A6F977E41}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -964,6 +966,10 @@ Global
 		{8B4D6F32-5C9E-4DA0-B3E7-2F1A0C4D9E62}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B4D6F32-5C9E-4DA0-B3E7-2F1A0C4D9E62}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B4D6F32-5C9E-4DA0-B3E7-2F1A0C4D9E62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4567E8E-474A-4FC5-8E74-A38A6F977E41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4567E8E-474A-4FC5-8E74-A38A6F977E41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4567E8E-474A-4FC5-8E74-A38A6F977E41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4567E8E-474A-4FC5-8E74-A38A6F977E41}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1132,6 +1138,7 @@ Global
 		{7E1069A8-61E9-4946-B4D7-5586D0354ECE} = {05B06AC1-7F2B-492F-983E-5BC63CDBF20D}
 		{7A3C5E21-4B8D-4C9F-A2D6-1E0F9B3C8D51} = {D7E9D8F5-8AC8-4ADA-B219-C549084AD84C}
 		{8B4D6F32-5C9E-4DA0-B3E7-2F1A0C4D9E62} = {77FD7E0D-2180-4518-82E5-B3D0FDFD76C5}
+		{F4567E8E-474A-4FC5-8E74-A38A6F977E41} = {77FD7E0D-2180-4518-82E5-B3D0FDFD76C5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9F9F8352-34DD-42C0-8564-EE9AF34A3501}

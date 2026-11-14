@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Wabbajack.Acquire.Hosts;
 
 namespace SilverModManager.Wabbajack.Tests.Acquire.Hosts;
@@ -6,6 +7,8 @@ namespace SilverModManager.Wabbajack.Tests.Acquire.Hosts;
 /// <summary>Which host's job takes an address a list gives, judged from the address alone.</summary>
 public class HostDownloadersTests
 {
+    private static readonly UrlDownloaders Hosts = new([new MediaFireHost(), new ModDbHost(), new MegaHost(), new GoogleDriveHost()]);
+
     [Theory]
     [InlineData("https://www.mediafire.com/file/abc123xyz/Some_Mod.7z/file", "MediaFire")]
     [InlineData("https://www.mediafire.com/file/abc123xyz", "MediaFire")]
@@ -25,7 +28,7 @@ public class HostDownloadersTests
     [InlineData("https://drive.usercontent.google.com/download?id=1AbCdEfGhIjKlMnOp&export=download", "Google Drive")]
     public void AnAddressAHostCanFetchGoesToThatHost(string address, string host)
     {
-        var found = HostDownloaders.For(new Uri(address));
+        var found = Hosts.For(new Uri(address));
 
         found.Should().NotBeNull();
         found.Name.Should().Be(host);
@@ -50,12 +53,12 @@ public class HostDownloadersTests
     [InlineData("https://example.invalid/file")]
     public void AnAddressNoHostCanFetchGoesNowhere(string address)
     {
-        HostDownloaders.For(new Uri(address)).Should().BeNull();
+        Hosts.For(new Uri(address)).Should().BeNull();
     }
 
     [Fact]
     public void EveryHostHasItsOwnName()
     {
-        HostDownloaders.All.Select(h => h.Name).Should().OnlyHaveUniqueItems().And.BeEquivalentTo("MediaFire", "ModDB", "MEGA", "Google Drive");
+        Hosts.All.Select(h => h.Name).Should().OnlyHaveUniqueItems().And.BeEquivalentTo("MediaFire", "ModDB", "MEGA", "Google Drive");
     }
 }

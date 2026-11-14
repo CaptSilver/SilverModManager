@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using FluentAssertions;
 using SilverModManager.Wabbajack.Acquire;
 

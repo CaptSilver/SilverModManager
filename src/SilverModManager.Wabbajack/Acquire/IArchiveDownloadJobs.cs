@@ -23,7 +23,7 @@ public interface IArchiveDownloadJobs
     Task<IJobTask<IDownloadJob, AbsolutePath>> Create(ArchivePlanRow row, AbsolutePath destination, CancellationToken cancellationToken);
 }
 
-public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibrary nexusModsLibrary, IGameDomainToGameIdMappingCache mappingCache, ForumFilesClient forumFiles) : IArchiveDownloadJobs
+public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibrary nexusModsLibrary, IGameDomainToGameIdMappingCache mappingCache, ForumFilesClient forumFiles, UrlDownloaders urlDownloaders) : IArchiveDownloadJobs
 {
     public async Task<IJobTask<IDownloadJob, AbsolutePath>> Create(ArchivePlanRow row, AbsolutePath destination, CancellationToken cancellationToken)
     {
@@ -39,19 +39,19 @@ public sealed class ArchiveDownloadJobs(IServiceProvider provider, NexusModsLibr
                 return WabbajackCdnDownloadJob.Create(provider, cdn.Url, destination, row.Archive.Name);
 
             case MegaState mega:
-                return HostDownloaders.Mega.Create(provider, mega.Url, row.Archive.Name, destination);
+                return MegaDownloadJob.Create(provider, mega.Url, row.Archive.Name, destination);
 
             case GoogleDriveState drive:
                 return GoogleDriveDownloadJob.Create(provider, drive.Id, row.Archive.Name, destination);
 
             case MediaFireState mediaFire:
-                return HostDownloaders.MediaFire.Create(provider, mediaFire.Url, row.Archive.Name, destination);
+                return MediaFireDownloadJob.Create(provider, mediaFire.Url, row.Archive.Name, destination);
 
             case ModDbState modDb:
-                return HostDownloaders.ModDb.Create(provider, modDb.Url, row.Archive.Name, destination);
+                return ModDbDownloadJob.Create(provider, modDb.Url, row.Archive.Name, destination);
 
             // A list often gives a host's file through the Manual downloader; the address says which host's job to use.
-            case ManualState manual when HostDownloaders.For(manual.Url) is { } host:
+            case ManualState manual when urlDownloaders.For(manual.Url) is { } host:
                 return host.Create(provider, manual.Url, row.Archive.Name, destination);
 
             case LoversLabState { IsAttachment: false, FileId: { } id, FileName: { } name } loversLab:

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -33,7 +34,8 @@ public sealed class ArchiveInventory(
     IFileStore fileStore,
     IFileIdentityResolver identityResolver,
     IFileHashesService fileHashes,
-    IForumLoginState forums)
+    IForumLoginState forums,
+    UrlDownloaders urlDownloaders)
 {
     /// <summary>The reader of the loadout's game files that <see cref="Build"/> checked the list against.</summary>
     public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, identityResolver, fileHashes);
@@ -212,9 +214,9 @@ public sealed class ArchiveInventory(
             HttpState => Row(archive, ArchiveState.Automatic),
             WabbajackCdnState => Row(archive, ArchiveState.Automatic),
             // The prompt stays on the archive's state for when the host's job fails and the user has to follow it.
-            ManualState manual when HostDownloaders.For(manual.Url) is not null => Row(archive, ArchiveState.Automatic, page: manual.Url),
+            ManualState manual when urlDownloaders.For(manual.Url) is not null => Row(archive, ArchiveState.Automatic, page: manual.Url),
             ManualState manual => Row(archive, ArchiveState.Manual, manual.Prompt, manual.Url),
-            MegaState mega when !HostDownloaders.Mega.CanFetch(mega.Url) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
+            MegaState mega when !MegaLink.TryParse(mega.Url, out _) => Row(archive, ArchiveState.Manual, "the MEGA link is not a file link this app can read; download it in your browser", mega.Url),
             MegaState or GoogleDriveState or MediaFireState or ModDbState => Row(archive, ArchiveState.Automatic),
             LoversLabState loversLab => ClassifyForum(archive, ForumSite.LoversLab, loversLab.Url, loversLab.FileId, loversLab.FileName, loversLab.IsAttachment),
             VectorPlexusState vectorPlexus => ClassifyForum(archive, ForumSite.VectorPlexus, vectorPlexus.Url, vectorPlexus.FileId, vectorPlexus.FileName, vectorPlexus.IsAttachment),

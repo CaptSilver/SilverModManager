@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;

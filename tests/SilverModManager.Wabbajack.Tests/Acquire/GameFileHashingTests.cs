@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Downloads;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
@@ -38,7 +39,8 @@ public class GameFileHashingTests(ITestOutputHelper helper) : AcquireTestBase<Ga
         FileStore,
         ServiceProvider.GetRequiredService<IFileIdentityResolver>(),
         ServiceProvider.GetRequiredService<IFileHashesService>(),
-        Fakes.Forums());
+        Fakes.Forums(),
+        ServiceProvider.GetRequiredService<UrlDownloaders>());
 
     private GameFileSourceLookup Lookup(Loadout.ReadOnly loadout, Func<AbsolutePath, Stream> open)
         => new(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileIdentityResolver>(), ServiceProvider.GetRequiredService<IFileHashesService>())

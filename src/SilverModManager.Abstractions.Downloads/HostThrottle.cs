@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace SilverModManager.Wabbajack.Acquire;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Caps how many transfers run against one host at once. File hosts rate-limit and ban clients that open many
