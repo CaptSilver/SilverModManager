@@ -24,6 +24,13 @@ public interface IGameLaunchSession
     bool IsFinishing(GameInstallation installation);
 
     /// <summary>
+    /// Why a write to <paramref name="installation"/> must wait, or null when nothing has the game. Unlike
+    /// <see cref="IsRunning"/> it also reads the launch lock other SilverModManager processes hold and the
+    /// process table, so it is for the writers that refuse, once per user action, and not for anything that polls.
+    /// </summary>
+    RunningGame? Describe(GameInstallation installation);
+
+    /// <summary>
     /// Prepares a launch of <paramref name="loadout"/>. Nothing happens until <see cref="IGameLaunch.RunAsync"/>.
     /// The caller disposes the launch once it is done with it, which releases the installation lock.
     /// </summary>
@@ -35,6 +42,27 @@ public interface IGameLaunchSession
     /// </param>
     IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null);
 }
+
+/// <summary>
+/// What has the game, as <see cref="IGameLaunchSession.Describe"/> found it. <see cref="Message"/> is written for the player.
+/// </summary>
+/// <param name="Message">The refusal, naming what has the game and what to do.</param>
+public abstract record RunningGame(string Message);
+
+/// <summary>A launch in this process holds the installation. Writers keep their own wording for it.</summary>
+/// <param name="Message">The default wording.</param>
+/// <param name="Phase">Where the launch is; a finishing launch needs a retry in a moment, not a quit.</param>
+public sealed record RunningInThisProcess(string Message, LaunchPhase Phase) : RunningGame(Message);
+
+/// <summary>Another SilverModManager process holds the installation's launch lock.</summary>
+/// <param name="Message">Names the holder and its loadout when its state file could be read.</param>
+/// <param name="Pid">The holder's process id, or null when its state file was missing or unreadable.</param>
+public sealed record HeldByOtherProcess(string Message, int? Pid) : RunningGame(Message);
+
+/// <summary>The game, or a tool the app started in its prefix, runs without any launch of ours holding the game.</summary>
+/// <param name="Message">Names the first process and says to quit it.</param>
+/// <param name="Processes">What the process table showed.</param>
+public sealed record RunningOutsideApp(string Message, RunningProcesses Processes) : RunningGame(Message);
 
 /// <summary>
 /// One launch whose game is started by the caller. The session takes the installation lock, applies the loadout

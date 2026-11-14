@@ -22,6 +22,12 @@ public class FakeGameLaunchSession : IGameLaunchSession
     public bool Finishing { get; set; }
 
     /// <summary>
+    /// What <see cref="Describe"/> returns for every installation. When null, it follows <see cref="Running"/> and
+    /// <see cref="Finishing"/>: a launch in this process, or nothing.
+    /// </summary>
+    public RunningGame? Described { get; set; }
+
+    /// <summary>
     /// What the launches this fake hands out did, in order: <c>lock</c>, <c>running</c>, <c>finish</c>, <c>release</c>.
     /// </summary>
     public List<string> Events { get; } = [];
@@ -51,6 +57,15 @@ public class FakeGameLaunchSession : IGameLaunchSession
 
     /// <inheritdoc />
     public bool IsFinishing(GameInstallation installation) => Finishing;
+
+    /// <inheritdoc />
+    public RunningGame? Describe(GameInstallation installation)
+    {
+        if (Described is not null) return Described;
+        if (!Running) return null;
+        var phase = Finishing ? LaunchPhase.Finishing : LaunchPhase.Running;
+        return new RunningInThisProcess($"{installation.Game.DisplayName} is running from SilverModManager.", phase);
+    }
 
     /// <inheritdoc />
     public IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null)

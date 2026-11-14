@@ -303,7 +303,7 @@ public sealed class LaunchSession
         {
             heldLock = _lockFactory.Create(context.Installation.LocatorResult.Store.Value.ToLowerInvariant(), context.Installation.LocatorResult.StoreIdentifier);
             _lock = heldLock;
-            if (!heldLock.TryAcquire()) return new LaunchFailure(DescribeHolder(game, heldLock), Refused: true);
+            if (!heldLock.TryAcquire()) return new LaunchFailure(LockHolderDescription.Of(game, heldLock), Refused: true);
         }
         catch (Exception e) when (e is IOException or InvalidOperationException)
         {
@@ -649,26 +649,6 @@ public sealed class LaunchSession
             process.Terminate();
             throw;
         }
-    }
-
-    private static string DescribeHolder(string game, InstallationLock installationLock)
-    {
-        InstallationLockState? state = null;
-        try
-        {
-            state = installationLock.ReadState();
-        }
-        catch (InvalidDataException)
-        {
-            // A half-written or foreign state file only costs the details.
-        }
-
-        if (state is { Phase: LaunchPhase.Finishing })
-            return $"{game} is being finished after its last session by SilverModManager process {state.Pid} (loadout '{state.Loadout}').";
-
-        return state is null
-            ? $"{game} is already being launched by another SilverModManager process."
-            : $"{game} is already being launched by SilverModManager process {state.Pid} (loadout '{state.Loadout}', {state.Phase.ToString().ToLowerInvariant()}).";
     }
 
     /// <summary>

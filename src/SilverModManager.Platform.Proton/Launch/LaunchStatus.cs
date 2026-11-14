@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Cli;
 using System.Globalization;
 using System.Text;

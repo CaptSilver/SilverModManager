@@ -240,4 +240,111 @@ public class ActiveLaunchSessionsTests
 
         ended.Should().Be(1);
     }
+
+    private sealed class DirectoryLocks(string runtimeDir) : IInstallationLockFactory
+    {
+        public InstallationLock Create(string store, string storeId) => new(InstallationLock.PathFor(runtimeDir, store, storeId));
+    }
+
+    private static string LockPathOf(string runtimeDir, GameInstallation installation)
+        => InstallationLock.PathFor(runtimeDir, installation.LocatorResult.Store.Value.ToLowerInvariant(), installation.LocatorResult.StoreIdentifier);
+
+    private static ActiveLaunchSessions SessionsOver(string runtimeDir, IRunningGameDetector? detector = null)
+        => new(locks: new DirectoryLocks(runtimeDir), detector: detector);
+
+    private static IRunningGameDetector DetectorSeeing(RunningProcesses processes)
+    {
+        var detector = Substitute.For<IRunningGameDetector>();
+        detector.Running(Arg.Any<GameInstallation>(), Arg.Any<IReadOnlySet<int>?>()).Returns(processes);
+        return detector;
+    }
+
+    [Fact]
+    public void Describe_IsNullWhenNothingHasTheGame()
+    {
+        using var runtime = new TempRuntimeDir();
+        SessionsOver(runtime.Path, DetectorSeeing(RunningProcesses.Empty)).Describe(Installation("1")).Should().BeNull();
+    }
+
+    [Fact]
+    public void Describe_IsNullWithoutALockFactoryOrDetector()
+    {
+        new ActiveLaunchSessions().Describe(Installation("1")).Should().BeNull();
+    }
+
+    [Fact]
+    public void Describe_ReportsThisProcessWithTheRunningWording()
+    {
+        using var runtime = new TempRuntimeDir();
+        var sessions = SessionsOver(runtime.Path, DetectorSeeing(RunningProcesses.Empty));
+        var installation = Installation("1");
+        using var registration = sessions.Register(installation);
+
+        var why = sessions.Describe(installation).Should().BeOfType<RunningInThisProcess>().Subject;
+        why.Message.Should().Be("Test Game is running from SilverModManager. Quit the game before applying, deleting or removing.");
+        why.Phase.Should().Be(LaunchPhase.Running);
+
+        sessions.ReportPhase(installation, LaunchPhase.Finishing);
+        var finishing = (RunningInThisProcess)sessions.Describe(installation)!;
+        finishing.Phase.Should().Be(LaunchPhase.Finishing);
+        finishing.Message.Should().Be("Test Game is being finished after its last session in SilverModManager. Wait a moment, then try again.");
+    }
+
+    [Fact]
+    public void Describe_ReportsAnotherProcessHoldingTheLock()
+    {
+        using var runtime = new TempRuntimeDir();
+        var installation = Installation("1");
+        using var holder = TestHost.StartHolder(LockPathOf(runtime.Path, installation), seconds: 30);
+        try
+        {
+            var why = SessionsOver(runtime.Path, DetectorSeeing(RunningProcesses.Empty)).Describe(installation).Should().BeOfType<HeldByOtherProcess>().Subject;
+            why.Message.Should().Contain($"SilverModManager process {holder.Id}").And.Contain("test-loadout");
+            why.Pid.Should().Be(holder.Id);
+        }
+        finally
+        {
+            holder.Kill();
+            holder.WaitForExit();
+        }
+    }
+
+    [Fact]
+    public void Describe_ReportsAForeignProcessWithItsNameAndPid()
+    {
+        using var runtime = new TempRuntimeDir();
+        var detector = DetectorSeeing(new RunningProcesses([new TrackedProcess(777, "Game.exe")], []));
+
+        var why = SessionsOver(runtime.Path, detector).Describe(Installation("1")).Should().BeOfType<RunningOutsideApp>().Subject;
+
+        why.Message.Should().Be("Test Game is running (Game.exe, pid 777). Quit it before applying, deleting or removing.");
+        why.Processes.Game.Should().ContainSingle().Which.Pid.Should().Be(777);
+    }
+
+    [Fact]
+    public void Describe_NamesAToolTheAppStartedWhenOnlyAToolIsOpen()
+    {
+        using var runtime = new TempRuntimeDir();
+        var detector = DetectorSeeing(new RunningProcesses([], [new TrackedProcess(900, "xedit.exe")]));
+
+        var why = SessionsOver(runtime.Path, detector).Describe(Installation("1"));
+
+        why.Should().BeOfType<RunningOutsideApp>().Which.Message.Should().Be("xedit.exe (pid 900) is open in Test Game's prefix. Close it first.");
+    }
+
+    [Fact]
+    public void IsRunning_StaysFalseForAForeignProcess()
+    {
+        using var runtime = new TempRuntimeDir();
+        var detector = DetectorSeeing(new RunningProcesses([new TrackedProcess(777, "Game.exe")], []));
+
+        SessionsOver(runtime.Path, detector).IsRunning(Installation("1")).Should().BeFalse();
+    }
+
+    private sealed class TempRuntimeDir : IDisposable
+    {
+        public string Path { get; } = Directory.CreateTempSubdirectory("silvermod-describe-").FullName;
+
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
 }

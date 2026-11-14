@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.SingleProcess;
 using SilverModManager.SingleProcess.Exceptions;

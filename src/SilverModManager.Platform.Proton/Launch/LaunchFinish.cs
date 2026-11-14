@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;

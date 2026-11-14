@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk;
 
 namespace SilverModManager.Platform.Proton.Launch;

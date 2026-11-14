@@ -1,4 +1,4 @@
-namespace SilverModManager.Platform.Proton.Launch;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Where a launch is, as recorded next to the installation lock.

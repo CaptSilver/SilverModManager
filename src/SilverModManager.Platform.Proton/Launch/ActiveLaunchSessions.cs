@@ -19,6 +19,8 @@ namespace SilverModManager.Platform.Proton.Launch;
 public sealed class ActiveLaunchSessions : IGameLaunchSession
 {
     private readonly IServiceProvider? _services;
+    private readonly IInstallationLockFactory? _locks;
+    private readonly IRunningGameDetector? _detector;
     private readonly object _lock = new();
     private readonly Dictionary<(GameStore Store, string StoreId), int> _counts = new();
 
@@ -38,7 +40,14 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     /// Builds the sessions <see cref="BeginSession"/> hands out. Resolved lazily because a session depends on this
     /// registry. Null for a registry that only answers <see cref="IsRunning"/>.
     /// </param>
-    public ActiveLaunchSessions(IServiceProvider? services = null) => _services = services;
+    /// <param name="locks">Probes the launch lock another process may hold for <see cref="Describe"/>. Null skips that check.</param>
+    /// <param name="detector">Looks for the game in the process table for <see cref="Describe"/>. Null skips that check.</param>
+    public ActiveLaunchSessions(IServiceProvider? services = null, IInstallationLockFactory? locks = null, IRunningGameDetector? detector = null)
+    {
+        _services = services;
+        _locks = locks;
+        _detector = detector;
+    }
 
     /// <inheritdoc />
     public bool IsRunning(GameInstallation installation)
@@ -50,6 +59,57 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     public bool IsFinishing(GameInstallation installation)
     {
         lock (_lock) return _phases.TryGetValue(KeyOf(installation), out var phase) && phase == LaunchPhase.Finishing;
+    }
+
+    /// <inheritdoc />
+    public RunningGame? Describe(GameInstallation installation)
+    {
+        var game = installation.Game.DisplayName;
+        var key = KeyOf(installation);
+        LaunchPhase? phase = null;
+        lock (_lock)
+        {
+            // A registration without a session (a forwarded Steam launch) reports no phase and counts as running.
+            if (_counts.ContainsKey(key)) phase = _phases.GetValueOrDefault(key, LaunchPhase.Running);
+        }
+
+        if (phase is { } registered)
+        {
+            return registered == LaunchPhase.Finishing
+                ? new RunningInThisProcess($"{game} is being finished after its last session in SilverModManager. Wait a moment, then try again.", registered)
+                : new RunningInThisProcess($"{game} is running from SilverModManager. Quit the game before applying, deleting or removing.", registered);
+        }
+
+        if (HeldByAnotherProcess(installation) is { } holder) return holder;
+
+        if (_detector is null) return null;
+        var running = _detector.Running(installation);
+        if (!running.Any) return null;
+        return new RunningOutsideApp(running.Game.Count > 0 ? RunningGameWording.Outside(game, running) : RunningGameWording.ToolsOpen(game, running), running);
+    }
+
+    // Probing takes the flock for an instant, which is fine for a writer that only refuses on the answer.
+    private HeldByOtherProcess? HeldByAnotherProcess(GameInstallation installation)
+    {
+        if (_locks is null) return null;
+
+        InstallationLock probe;
+        try
+        {
+            probe = _locks.Create(installation.LocatorResult.Store.Value.ToLowerInvariant(), installation.LocatorResult.StoreIdentifier);
+        }
+        catch (InvalidOperationException)
+        {
+            // No runtime directory means no launch could have taken a lock, so nobody holds one.
+            return null;
+        }
+
+        using (probe)
+        {
+            if (!probe.Probe()) return null;
+            var state = LockHolderDescription.ReadState(probe);
+            return new HeldByOtherProcess(LockHolderDescription.Of(installation.Game.DisplayName, state), state?.Pid);
+        }
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using FluentAssertions;
 using SilverModManager.App;
 using SilverModManager.Platform.Proton.Launch;

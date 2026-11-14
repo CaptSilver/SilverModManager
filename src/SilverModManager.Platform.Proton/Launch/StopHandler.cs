@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
