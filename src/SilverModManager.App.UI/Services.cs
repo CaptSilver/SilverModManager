@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Accounts;
 using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Text.Json.Serialization;
@@ -127,6 +128,7 @@ public static class Services
             // Services
             .AddSingleton<IOverlayController, OverlayController>()
             .AddSingleton<IApiKeyPrompt, ApiKeyPrompt>()
+            .AddSingleton<ISecretPrompt, SecretPrompt>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
             .Replace(ServiceDescriptor.Singleton<IDesktopNotifier, InAppNotifier>())
             .AddSingleton<IErrorPresenter, ErrorPresenter>()

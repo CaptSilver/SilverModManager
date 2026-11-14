@@ -92,6 +92,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\SilverModManager.Abstractions.Accounts\SilverModManager.Abstractions.Accounts.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Logging\SilverModManager.Abstractions.Logging.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />

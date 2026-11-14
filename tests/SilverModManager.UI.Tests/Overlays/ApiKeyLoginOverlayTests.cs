@@ -13,7 +13,7 @@ public class ApiKeyLoginOverlayTests
 {
     private static ApiKeyLoginOverlayViewModel CreateViewModel(Func<string, CancellationToken, ValueTask<string?>>? validate = null)
     {
-        return new ApiKeyLoginOverlayViewModel(validate ?? ((_, _) => ValueTask.FromResult<string?>(null))) { Controller = Substitute.For<IOverlayController>() };
+        return new ApiKeyLoginOverlayViewModel(validate ?? ((_, _) => ValueTask.FromResult<string?>(null)), "Title", "Instructions", "Watermark") { Controller = Substitute.For<IOverlayController>() };
     }
 
     [Fact]

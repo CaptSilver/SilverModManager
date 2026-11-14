@@ -7,24 +7,30 @@ namespace SilverModManager.App.UI.Overlays.Login;
 
 public partial class ApiKeyLoginOverlayView : ReactiveUserControl<IApiKeyLoginOverlayViewModel>
 {
-    /// <summary>
-    /// The page on Nexus Mods where a personal API key is created.
-    /// </summary>
-    private const string KeyPageUrl = "https://www.nexusmods.com/users/myaccount?tab=api";
-
     public ApiKeyLoginOverlayView()
     {
         InitializeComponent();
 
-        TitleText.Text = Language.ApiKeyLoginOverlayView_Title;
-        DescriptionText.Text = Language.ApiKeyLoginOverlayView_Description;
-        KeyPageUrlText.Text = KeyPageUrl;
-        ApiKeyTextBox.Watermark = Language.ApiKeyLoginOverlayView_Watermark;
         ButtonCancel.Text = Language.ApiKeyLoginOverlayView_Cancel;
         ButtonSave.Text = Language.ApiKeyLoginOverlayView_Save;
 
         this.WhenActivated(disposables =>
         {
+            this.OneWayBind(ViewModel, vm => vm.Title.Value, view => view.TitleText.Text)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.Instructions.Value, view => view.DescriptionText.Text)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.KeyPageUrlText.Text)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.PageUrl.Value, view => view.KeyPageUrlText.IsVisible, url => !string.IsNullOrEmpty(url))
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.Watermark.Value, view => view.ApiKeyTextBox.Watermark)
+                .AddTo(disposables);
+
             this.Bind(ViewModel, vm => vm.ApiKey.Value, view => view.ApiKeyTextBox.Text)
                 .AddTo(disposables);
 
