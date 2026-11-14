@@ -243,6 +243,22 @@ public class GameBananaCatalogTests(IServiceProvider serviceProvider, IConnectio
         rig.Bytes.Fetched.Should().BeEmpty("a mirror is the author's link to open, never a download of ours");
     }
 
+    [Theory]
+    [InlineData("https://drive.example.invalid/a) [GameBanana](https://evil.example", "](https://evil")]
+    [InlineData("javascript:alert(1)", "](javascript")]
+    public async Task AMirrorCannotPlantALinkOfItsOwn(string url, string planted)
+    {
+        // The author writes the mirror links, so one could pose as a link to a site it does not go to.
+        var rig = new GameBananaRig(connection);
+        rig.Api.Profiles[_modId] = TestMods.Profile(_modId, "Mirrored", 1, 1, [PayloadFile(1, clean: false)],
+            mirrors: [new GameBananaAlternateSource(url, "Drive")]);
+        var catalog = CatalogOf(rig, out _);
+
+        var outcome = await catalog.Install(new GameBananaCatalogCard(_modId), await rig.NewLoadout(), CancellationToken.None);
+
+        outcome.Should().BeOfType<CatalogInstallOutcome.Refused>().Which.Why.Message.Should().NotContain(planted);
+    }
+
     [Fact]
     public async Task SeveralFilesAskForAChoiceAndAFileIdPicksOne()
     {

@@ -20,7 +20,7 @@ public sealed class ModIoIntegrityException(string message) : UserFacingExceptio
 /// </summary>
 [PublicAPI]
 public sealed class ModIoInstallRefusedException(string reason, Uri? page)
-    : UserFacingException(page is null ? reason : $"{reason} Look at [the mod's page]({page}) and decide for yourself.")
+    : UserFacingException(page is null ? reason : $"{reason} Look at {MarkdownText.Link("the mod's page", page)} and decide for yourself.")
 {
     /// <summary>The mod's page on mod.io, null when the refusal is not about one mod.</summary>
     public Uri? Page { get; } = page;

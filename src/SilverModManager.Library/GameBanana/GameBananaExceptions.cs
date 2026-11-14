@@ -37,12 +37,21 @@ public sealed class GameBananaRefusedException : UserFacingException
     // Mirrors are the author's own links. They are shown for the user to open; the app never fetches from them.
     private static string MessageOf(string reason, Uri? page, IReadOnlyList<GameBananaAlternateSource>? mirrors)
     {
-        var message = page is null ? reason : $"{reason} Look at [the mod's page]({page}) and decide for yourself.";
+        var message = page is null ? reason : $"{reason} Look at {MarkdownText.Link("the mod's page", page)} and decide for yourself.";
         if (mirrors is not { Count: > 0 }) return message;
 
-        var lines = mirrors.Select(mirror => string.IsNullOrWhiteSpace(mirror.Description) ? $"- {mirror.Url}" : $"- {MarkdownText.InlineMidLine(mirror.Description)}: {mirror.Url}");
+        var lines = mirrors.Select(mirror => string.IsNullOrWhiteSpace(mirror.Description)
+            ? $"- {MirrorLink(mirror.Url)}"
+            : $"- {MarkdownText.InlineMidLine(mirror.Description)}: {MirrorLink(mirror.Url)}");
         return $"{message}\n\nThe author also lists these links, which the app does not use:\n{string.Join('\n', lines)}";
     }
+
+    // The link shows its own address, so it cannot name one site and open another; anything that is not a web address
+    // is shown as text only.
+    private static string MirrorLink(string url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var target) && MarkdownText.LinkTarget(target) is not null
+            ? MarkdownText.Link(target.AbsoluteUri, target)
+            : MarkdownText.Code(url);
 }
 
 /// <summary>
@@ -61,6 +70,6 @@ public sealed class GameBananaChooseFileException(Uri page, IReadOnlyList<GameBa
     private static string MessageOf(Uri page, IReadOnlyList<GameBananaFile> files)
     {
         var lines = files.Select(file => $"- {file.Id}: {MarkdownText.InlineMidLine(file.FileName)}");
-        return $"[This mod]({page}) has several files. Say which one with --file and its id:\n{string.Join('\n', lines)}";
+        return $"{MarkdownText.Link("This mod", page)} has several files. Say which one with --file and its id:\n{string.Join('\n', lines)}";
     }
 }

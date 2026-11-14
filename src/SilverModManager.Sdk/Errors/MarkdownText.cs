@@ -124,6 +124,23 @@ public static partial class MarkdownText
         return digits > 0 && digits < clean.Length && clean[digits] is '.' or ')';
     }
 
+    /// <summary>
+    /// A link to a web page: the text is escaped as in <see cref="InlineMidLine"/> and the target is
+    /// <see cref="LinkTarget"/>. A target that is not an absolute http(s) address, or none, leaves the text alone.
+    /// </summary>
+    public static string Link(string text, Uri? target)
+        => LinkTarget(target) is { } address ? $"[{InlineMidLine(text)}]({address})" : InlineMidLine(text);
+
+    /// <summary>
+    /// <paramref name="target"/> for the inside of a link's parentheses, or null when it is not an absolute http(s)
+    /// address. Targets often come from a mod site, so the characters that would end the target early and start a link
+    /// of their own are percent-encoded.
+    /// </summary>
+    public static string? LinkTarget(Uri? target)
+        => target is { IsAbsoluteUri: true, Scheme: "https" or "http" }
+            ? target.AbsoluteUri.Replace("(", "%28").Replace(")", "%29").Replace(" ", "%20").Replace("<", "%3C").Replace(">", "%3E")
+            : null;
+
     /// <summary><see cref="Inline(string?)"/> for any value, such as a path or an id, through its <c>ToString()</c>.</summary>
     public static string Inline(object? value) => Inline(value?.ToString());
 

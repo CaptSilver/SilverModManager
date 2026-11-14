@@ -233,4 +233,34 @@ public class MarkdownTextTests
     [Fact]
     public void NoCommandForNamesWhatCannotBeShown()
         => MarkdownText.NoCommandFor("prefix folder").Should().Be("The prefix folder name has characters that can't be shown in a command, so none is suggested here.");
+
+    [Fact]
+    public void ALinkToAWebPageKeepsItsTarget()
+        => MarkdownText.Link("the mod's page", new Uri("https://gamebanana.com/mods/123")).Should().Be("[the mod's page](https://gamebanana.com/mods/123)");
+
+    [Fact]
+    public void ALinkTargetCannotEndTheLinkEarly()
+    {
+        // A target from a mod page could close the link and open one of its own with text that names a different site.
+        var link = MarkdownText.Link("mirror", new Uri("https://example.com/a) [safe site](https://evil.example"));
+
+        link.Should().StartWith("[mirror](https://example.com/a").And.EndWith(")");
+        link[1..^1].Should().NotContain(")[").And.NotContain("](https://evil");
+        link.Count(c => c == '(').Should().Be(1);
+        link.Count(c => c == ')').Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("file:///home/user/.ssh/id_rsa")]
+    [InlineData("javascript:alert(1)")]
+    public void ALinkToAnythingButAWebPageIsPlainText(string target)
+        => MarkdownText.Link("click", new Uri(target)).Should().Be("click");
+
+    [Fact]
+    public void LinkTextIsEscaped()
+        => MarkdownText.Link("a ](x) b", new Uri("https://example.com")).Should().Be($"[{MarkdownText.InlineMidLine("a ](x) b")}](https://example.com/)");
+
+    [Fact]
+    public void ALinkWithoutATargetIsPlainText()
+        => MarkdownText.Link("the mod's page", null).Should().Be("the mod's page");
 }
