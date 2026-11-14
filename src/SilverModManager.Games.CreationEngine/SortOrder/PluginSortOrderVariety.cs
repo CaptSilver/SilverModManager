@@ -17,7 +17,6 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
-using SilverModManager.Sdk.Settings;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using OneOf;
@@ -276,12 +275,12 @@ public class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<string>, Plu
     }
 
     /// <summary>
-    /// Downloads a newer masterlist when the store keeps downloaded copies and the user has not turned that off.
+    /// Downloads a newer masterlist when the store keeps downloaded copies. Always on: a stale masterlist sorts worse,
+    /// the request carries nothing but the file path, and a failed download keeps the copy already in use.
     /// </summary>
     private Func<LootGame, CancellationToken, Task>? MasterlistRefresh(IMasterlistStore store)
     {
         if (store is not CachingMasterlistStore caching) return null;
-        if (!_serviceProvider.GetRequiredService<ISettingsManager>().Get<LootMasterlistSettings>().LootMasterlistRefresh) return null;
 
         var client = _serviceProvider.GetRequiredService<HttpClient>();
         return async (game, token) =>

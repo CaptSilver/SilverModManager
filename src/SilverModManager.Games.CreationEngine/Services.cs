@@ -45,7 +45,6 @@ public static class Services
         services.AddCreationEngineTools();
         services.AddSkyrimGeneratedCaches();
 
-        services.AddSettings<LootMasterlistSettings>();
         services.AddSingleton(s => new LootDataDirectory(
             s.GetRequiredService<IFileSystem>().GetKnownPath(KnownPath.XDG_DATA_HOME) / ApplicationConstants.DataDirectoryName));
         services.AddSingleton<IMasterlistStore>(s => new CachingMasterlistStore(
