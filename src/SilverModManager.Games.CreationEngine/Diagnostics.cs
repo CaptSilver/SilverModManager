@@ -329,22 +329,7 @@ These plugins are marked as groundcover in the load order, so they are written a
         )
         .Finish();
 
-    [DiagnosticTemplate]
-    [UsedImplicitly]
-    internal static IDiagnosticTemplate OpenMwUnregisteredArchive = DiagnosticTemplateBuilder
-        .Start()
-        .WithId(new DiagnosticId(Source, number: 16))
-        .WithTitle("OpenMW does not load these archives")
-        .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("{Names} are deployed but openmw.cfg has no fallback-archive= line for them, so OpenMW loads nothing from them")
-        .WithDetails("""
-OpenMW only reads the archives its config names. Add a `fallback-archive=` line for each one to openmw.cfg, or register them in the OpenMW launcher's Data Files tab.
-""")
-        .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<string>("Names")
-        )
-        .Finish();
-
+    // Number 16 belonged to the unregistered-archive diagnostic, which is gone now that the archives are registered; it stays unused.
     [DiagnosticTemplate]
     [UsedImplicitly]
     internal static IDiagnosticTemplate MorrowindOpenMwRetired = DiagnosticTemplateBuilder

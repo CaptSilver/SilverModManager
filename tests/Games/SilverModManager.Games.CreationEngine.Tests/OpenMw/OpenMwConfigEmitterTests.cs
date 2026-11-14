@@ -17,7 +17,7 @@ public class OpenMwConfigEmitterTests(ITestOutputHelper helper) : AOpenMwGameTes
     private async Task<List<Diagnostic>> OpenMwDiagnostics()
     {
         var loadout = await CreateLoadout();
-        return (await Game.Diagnose(Refresh(loadout))).Where(d => d.Id.Source == Source && (d.Id.Number == 14 || d.Id.Number == 16)).ToList();
+        return (await Game.Diagnose(Refresh(loadout))).Where(d => d.Id.Source == Source && d.Id.Number == 14).ToList();
     }
 
     [Fact]
@@ -30,32 +30,6 @@ public class OpenMwConfigEmitterTests(ITestOutputHelper helper) : AOpenMwGameTes
         summary.Should().Contain("Gone.esp").And.Contain("Grass.esp").And.NotContain("Elsewhere.esp").And.NotContain("Local.esp").And.NotContain("builtin.omwscripts");
         dangling.FormatDetails(new PlainDiagnosticWriter()).Should().Contain(Config.GetFullPath());
     }
-
-    [Fact]
-    public async Task ADeployedBsaWithoutAFallbackArchiveLineWarns()
-    {
-        var loadout = await CreateLoadout();
-        var archive = await CreateTestArchive(new Dictionary<NexusMods.Paths.RelativePath, byte[]> { { "Data Files/Meshes.bsa", "bsa"u8.ToArray() } });
-        var library = await RegisterLocalArchive(archive.Path);
-        await LoadoutManager.InstallItem(library.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId);
-
-        var unregistered = (await Game.Diagnose(Refresh(loadout))).Should().ContainSingle(d => d.Id.Source == Source && d.Id.Number == 16).Subject;
-
-        unregistered.Severity.Should().Be(DiagnosticSeverity.Warning);
-        unregistered.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("Meshes.bsa");
-    }
-
-    [Fact]
-    public async Task ADeployedBsaThatIsRegisteredIsNotReported()
-    {
-        Roots.WriteConfig(0, ConfigText + "fallback-archive=meshes.BSA\n");
-        var loadout = await CreateLoadout();
-        var archive = await CreateTestArchive(new Dictionary<NexusMods.Paths.RelativePath, byte[]> { { "Data Files/Meshes.bsa", "bsa"u8.ToArray() } });
-        var library = await RegisterLocalArchive(archive.Path);
-        await LoadoutManager.InstallItem(library.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId);
-
-        (await Game.Diagnose(Refresh(loadout))).Should().NotContain(d => d.Id.Source == Source && d.Id.Number == 16);
-    }
 }
 
 public class OpenMwStockConfigEmitterTests(ITestOutputHelper helper) : AOpenMwGameTest<OpenMwStockConfigEmitterTests>(helper)
@@ -65,6 +39,6 @@ public class OpenMwStockConfigEmitterTests(ITestOutputHelper helper) : AOpenMwGa
     {
         var loadout = await CreateLoadout();
 
-        (await Game.Diagnose(Refresh(loadout))).Should().NotContain(d => d.Id.Source == "SilverModManager.Games.CreationEngine" && (d.Id.Number == 14 || d.Id.Number == 16));
+        (await Game.Diagnose(Refresh(loadout))).Should().NotContain(d => d.Id.Source == "SilverModManager.Games.CreationEngine" && d.Id.Number == 14);
     }
 }

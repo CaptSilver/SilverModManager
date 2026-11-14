@@ -121,7 +121,13 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
         var (existing, bom) = _codec.RewritesExisting ? await ReadExisting(installation) : ("", []);
 
         var dataPlugins = syncTree.Keys.Where(IsPluginPath).Select(path => path.FileName.ToString()).ToHashSet(PluginNameComparer.Instance);
-        var text = _codec.Render(listed, new PluginListTarget(existing, dataPlugins));
+        var archives = syncTree.Where(entry => IsArchivePath(entry.Key) && (entry.Value.HaveLoadout || IsAdoptedFromDisk(entry.Value)))
+            .Select(entry => entry.Key.FileName.ToString())
+            .Distinct(PluginNameComparer.Instance)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var dataArchives = syncTree.Keys.Where(IsArchivePath).Select(path => path.FileName.ToString()).ToHashSet(PluginNameComparer.Instance);
+        var text = _codec.Render(listed, new PluginListTarget(existing, dataPlugins) { Archives = archives, DataArchives = dataArchives });
 
         return (bom, Encode(text, listed));
     }
@@ -163,6 +169,8 @@ public class PluginsFile : IIntrinsicFileWithReset, IIntrinsicFileRenderedFromLo
     /// </summary>
     private static bool IsAdoptedFromDisk(SyncNode node) =>
         !node.HaveLoadout && node.HaveDisk && node.Actions.HasFlag(Actions.IngestFromDisk);
+
+    private bool IsArchivePath(GamePath path) => path.Parent == _game.DataPath && path.Extension == KnownCEExtensions.BSA;
 
     private bool IsPluginPath(GamePath path) =>
         path.Parent == _game.DataPath && (KnownCEExtensions.PluginFiles.Contains(path.Extension) || _game.PluginExtensions.Contains(path.Extension));

@@ -1,7 +1,7 @@
 namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
-/// Rewrites the <c>content=</c> and <c>groundcover=</c> lines of an openmw.cfg that belong to files under Data Files
+/// Rewrites the <c>content=</c>, <c>groundcover=</c> and <c>fallback-archive=</c> lines of an openmw.cfg that belong to files under Data Files
 /// and leaves every other byte alone: comments, blank lines, <c>data=</c> and <c>fallback=</c> lines, the line
 /// endings, and lines for files the app never deploys (<c>builtin.omwscripts</c>, plugins from the user's own
 /// <c>data=</c> folders).
@@ -9,13 +9,14 @@ namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 /// <remarks>
 /// OpenMW loads plugins in the order of their <c>content=</c> lines, so the owned lines are rendered in the order
 /// the app gives, as one block after the last line the app does not own. The block moves rather than the unowned
-/// lines: those stay exactly where the user put them. <c>groundcover=</c> lines follow the same rule on their own,
-/// and a name is never in both keys.
+/// lines: those stay exactly where the user put them. <c>groundcover=</c> and <c>fallback-archive=</c> lines follow
+/// the same rule on their own, and a plugin name is never in both plugin keys.
 /// </remarks>
 public static class OpenMwContentWriter
 {
     private const string ContentPrefix = "content=";
     private const string GroundcoverPrefix = "groundcover=";
+    private const string ArchivePrefix = "fallback-archive=";
 
     /// <summary>Rewrites the lines for a list with no groundcover: an owned <c>groundcover=</c> line is removed.</summary>
     public static string Rewrite(string existing, IReadOnlyList<string> ordered, IReadOnlySet<string> owned) =>
@@ -26,7 +27,13 @@ public static class OpenMwContentWriter
     /// <param name="groundcover">The plugin file names to load as groundcover, in load order. A name here is owned too.</param>
     /// <param name="owned">Every plugin file name the app deploys, loaded or not. A line for one of these that is
     /// in neither list is removed; a line for any other name is not touched.</param>
-    public static string Rewrite(string existing, IReadOnlyList<string> ordered, IReadOnlyList<string> groundcover, IReadOnlySet<string> owned)
+    public static string Rewrite(string existing, IReadOnlyList<string> ordered, IReadOnlyList<string> groundcover, IReadOnlySet<string> owned) =>
+        Rewrite(existing, ordered, groundcover, [], owned);
+
+    /// <param name="archives">The archive file names to register with <c>fallback-archive=</c>, in the order OpenMW should
+    /// read them. A name here is owned too.</param>
+    /// <param name="owned">Every file name the app deploys, plugin or archive, loaded or not.</param>
+    public static string Rewrite(string existing, IReadOnlyList<string> ordered, IReadOnlyList<string> groundcover, IReadOnlyList<string> archives, IReadOnlySet<string> owned)
     {
         var lineEnding = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var groundcoverNames = groundcover.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -36,11 +43,14 @@ public static class OpenMwContentWriter
         var ownedNames = new HashSet<string>(owned, StringComparer.OrdinalIgnoreCase);
         ownedNames.UnionWith(orderedNames);
         ownedNames.UnionWith(groundcoverNames);
+        var archiveNames = archives.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        ownedNames.UnionWith(archiveNames);
 
         // Each line keeps its own terminator, so nothing but the lines we drop or add can differ.
         var lines = SplitKeepingTerminators(existing).ToList();
         lines = ReplaceOwnedBlock(lines, ContentPrefix, orderedNames, ownedNames, lineEnding);
         lines = ReplaceOwnedBlock(lines, GroundcoverPrefix, groundcoverNames, ownedNames, lineEnding);
+        lines = ReplaceOwnedBlock(lines, ArchivePrefix, archiveNames, ownedNames, lineEnding);
         return string.Concat(lines);
     }
 

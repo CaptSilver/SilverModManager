@@ -41,15 +41,6 @@ public class OpenMwConfigEmitter(OpenMw game) : ILoadoutDiagnosticEmitter
             .ToList();
         if (dangling.Count > 0)
             yield return Diagnostics.CreateOpenMwDanglingContent(string.Join(", ", dangling), file.GetFullPath());
-
-        var registered = OpenMwConfigValues.Values(text, "fallback-archive").ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var unregistered = DeployedArchives(loadout)
-            .Where(name => !registered.Contains(name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (unregistered.Count > 0)
-            yield return Diagnostics.CreateOpenMwUnregisteredArchive(string.Join(", ", unregistered));
     }
 
     private Diagnostic? GroundcoverOff(Loadout.ReadOnly loadout)
@@ -63,12 +54,4 @@ public class OpenMwConfigEmitter(OpenMw game) : ILoadoutDiagnosticEmitter
 
         return Diagnostics.CreateOpenMwGroundcoverOff(string.Join(", ", groundcover), settings.GetFullPath());
     }
-
-    private IEnumerable<string> DeployedArchives(Loadout.ReadOnly loadout) => LoadoutItem.FindByLoadout(loadout.Db, loadout.LoadoutId)
-        .OfTypeLoadoutItemWithTargetPath()
-        .OfTypeLoadoutFile()
-        .Where(item => item.AsLoadoutItemWithTargetPath().AsLoadoutItem().IsEnabled())
-        .Select(item => (GamePath)item.AsLoadoutItemWithTargetPath().TargetPath)
-        .Where(path => path.Parent == game.DataPath && path.Extension == KnownCEExtensions.BSA)
-        .Select(path => path.FileName.ToString());
 }

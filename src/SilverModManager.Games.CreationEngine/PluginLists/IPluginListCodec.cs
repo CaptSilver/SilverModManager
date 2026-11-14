@@ -7,7 +7,14 @@ namespace SilverModManager.Games.CreationEngine.PluginLists;
 /// <summary>What a codec may need to know about the file it is replacing.</summary>
 /// <param name="Existing">The text the file has on disk now, empty when there is none. Only filled for a codec that <see cref="IPluginListCodec.RewritesExisting"/>.</param>
 /// <param name="DataPlugins">The name of every plugin file in the game's Data folder, whether or not the loadout provides it.</param>
-public readonly record struct PluginListTarget(string Existing, IReadOnlySet<string> DataPlugins);
+public readonly record struct PluginListTarget(string Existing, IReadOnlySet<string> DataPlugins)
+{
+    /// <summary>The archives the app deploys into the data folder and wants loaded, in load order.</summary>
+    public IReadOnlyList<string> Archives { get; init; } = [];
+
+    /// <summary>Every archive the app deploys into the data folder, wanted or not.</summary>
+    public IReadOnlySet<string> DataArchives { get; init; } = new HashSet<string>();
+}
 
 /// <summary>The text of one plugin list file: how a list of plugins is written and how the game's copy is read.</summary>
 public interface IPluginListCodec
@@ -78,7 +85,7 @@ public sealed class MorrowindIniFormat : IPluginListCodec
         MorrowindIniGameFiles.Parse(text).Select(name => new PluginListEntry(name, true)).ToList();
 }
 
-/// <summary>The <c>content=</c> and <c>groundcover=</c> lines of openmw.cfg for the plugins the app deploys.</summary>
+/// <summary>The <c>content=</c>, <c>groundcover=</c> and <c>fallback-archive=</c> lines of openmw.cfg for the files the app deploys.</summary>
 public sealed class OpenMwConfigFormat : IPluginListCodec
 {
     public const string FileName = "openmw.cfg";
@@ -106,7 +113,8 @@ public sealed class OpenMwConfigFormat : IPluginListCodec
             target.Existing,
             entries.Where(e => e.Active && !e.IsEarlyLoader && !e.Groundcover).Select(e => e.Name).ToList(),
             entries.Where(e => e.Active && !e.IsEarlyLoader && e.Groundcover).Select(e => e.Name).ToList(),
-            target.DataPlugins);
+            target.Archives,
+            target.DataPlugins.Concat(target.DataArchives).ToHashSet(PluginNameComparer.Instance));
 
     public IReadOnlyList<PluginListEntry> Parse(string text)
     {

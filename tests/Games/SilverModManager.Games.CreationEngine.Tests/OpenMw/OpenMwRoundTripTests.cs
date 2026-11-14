@@ -51,6 +51,58 @@ public class OpenMwRoundTripTests(ITestOutputHelper helper) : AOpenMwGameTest<Op
         (await Config.ReadAllTextAsync()).Should().StartWith(DataLine);
     }
 
+    private async Task<LoadoutItemGroup.ReadOnly> InstallArchive(Loadout.ReadOnly loadout, string fileName)
+    {
+        var archive = await CreateTestArchive(new Dictionary<RelativePath, byte[]> { { $"Data Files/{fileName}", "bsa"u8.ToArray() } });
+        var library = await RegisterLocalArchive(archive.Path);
+        return (await LoadoutManager.InstallItem(library.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId)).LoadoutItemGroup!.Value;
+    }
+
+    private async Task<string[]> ArchiveLines() =>
+        (await Config.ReadAllTextAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries).Where(l => l.StartsWith("fallback-archive=")).ToArray();
+
+    [Fact]
+    public async Task ADeployedBsaGetsAFallbackArchiveLine()
+    {
+        var loadout = await CreateLoadout();
+        await InstallArchive(loadout, "Meshes.bsa");
+        await Apply(loadout);
+
+        (DataLocal / "Meshes.bsa").FileExists.Should().BeTrue();
+        (await ArchiveLines()).Should().Equal("fallback-archive=Meshes.bsa");
+        (await ContentLines()).Should().Equal(Stock);
+
+        // A second Apply with nothing changed must not double the line.
+        await Apply(loadout);
+        (await ArchiveLines()).Should().Equal("fallback-archive=Meshes.bsa");
+    }
+
+    [Fact]
+    public async Task AnUndeployedBsaLosesItsLine()
+    {
+        var loadout = await CreateLoadout();
+        var group = await InstallArchive(loadout, "Meshes.bsa");
+        await Apply(loadout);
+        (await ArchiveLines()).Should().Equal("fallback-archive=Meshes.bsa");
+
+        await LoadoutManager.RemoveItems([group.LoadoutItemGroupId]);
+        await Apply(loadout);
+
+        (DataLocal / "Meshes.bsa").FileExists.Should().BeFalse();
+        (await ArchiveLines()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheUsersOwnFallbackArchiveLinesStay()
+    {
+        Roots.WriteConfig(0, "fallback-archive=Morrowind.bsa\n" + ConfigText);
+        var loadout = await CreateLoadout();
+        await InstallArchive(loadout, "Meshes.bsa");
+        await Apply(loadout);
+
+        (await ArchiveLines()).Should().Equal("fallback-archive=Morrowind.bsa", "fallback-archive=Meshes.bsa");
+    }
+
     [Fact]
     public async Task TheAppsPluginOrderDecidesTheOrderOfTheLines()
     {

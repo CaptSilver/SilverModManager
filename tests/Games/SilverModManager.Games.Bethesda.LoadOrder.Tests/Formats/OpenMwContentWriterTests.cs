@@ -199,4 +199,42 @@ public class OpenMwContentWriterTests
 
         rewritten.Should().Be(launcher);
     }
+
+    [Fact]
+    public void ADeployedArchiveGetsAFallbackArchiveLineAfterTheUsersOwn()
+    {
+        var text = "fallback-archive=Morrowind.bsa\nfallback-archive=Theirs.bsa\ncontent=Morrowind.esm\n";
+
+        var result = OpenMwContentWriter.Rewrite(text, ["Morrowind.esm"], [], ["Meshes.bsa", "Textures.bsa"], Names("Morrowind.esm", "Meshes.bsa", "Textures.bsa"));
+
+        result.Should().Be("fallback-archive=Morrowind.bsa\nfallback-archive=Theirs.bsa\nfallback-archive=Meshes.bsa\nfallback-archive=Textures.bsa\ncontent=Morrowind.esm\n");
+    }
+
+    [Fact]
+    public void AnArchiveThatIsNoLongerDeployedLosesItsLineAndNoOtherLineMoves()
+    {
+        var text = "fallback-archive=Theirs.bsa\nfallback-archive=meshes.BSA\ncontent=Morrowind.esm\n";
+
+        var result = OpenMwContentWriter.Rewrite(text, ["Morrowind.esm"], [], [], Names("Morrowind.esm", "Meshes.bsa"));
+
+        result.Should().Be("fallback-archive=Theirs.bsa\ncontent=Morrowind.esm\n");
+    }
+
+    [Fact]
+    public void AnArchiveLineDifferingOnlyInCaseIsKeptOnceAndNeverDoubled()
+    {
+        var text = "fallback-archive=meshes.BSA\n";
+
+        var result = OpenMwContentWriter.Rewrite(text, [], [], ["Meshes.bsa"], Names("Meshes.bsa"));
+
+        result.Should().Be("fallback-archive=Meshes.bsa\n");
+    }
+
+    [Fact]
+    public void ArchiveLinesAreWrittenWithTheFilesOwnLineEndings()
+    {
+        var result = OpenMwContentWriter.Rewrite("content=Morrowind.esm\r\n", ["Morrowind.esm"], [], ["Meshes.bsa"], Names("Morrowind.esm", "Meshes.bsa"));
+
+        result.Should().Be("content=Morrowind.esm\r\nfallback-archive=Meshes.bsa\r\n");
+    }
 }
