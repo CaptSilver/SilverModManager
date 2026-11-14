@@ -1,0 +1,48 @@
+<reactiveUi:ReactiveUserControl
+    d:DesignHeight="520"
+    d:DesignWidth="600"
+    mc:Ignorable="d"
+    x:Class="SilverModManager.App.UI.Overlays.SteamQr.QrSignInOverlayView"
+    x:TypeArguments="steamQr:IQrSignInOverlayViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:steamQr="clr-namespace:SilverModManager.App.UI.Overlays.SteamQr"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:progressRing="clr-namespace:SilverModManager.App.UI.Controls.ProgressRing"
+    ClipToBounds="False">
+
+    <Design.DataContext>
+        <steamQr:QrSignInOverlayDesignerViewModel />
+    </Design.DataContext>
+
+    <Border Classes="Rounded-lg Low"
+            BorderBrush="{StaticResource StrokeTranslucentWeakBrush}"
+            BorderThickness="2"
+            BoxShadow="{StaticResource DropShadowMD}">
+        <StackPanel Margin="24" Orientation="Vertical" Width="552" Spacing="16">
+            <TextBlock x:Name="HeadingTextBlock"
+                       HorizontalAlignment="Left"
+                       Theme="{StaticResource HeadingXSSemiTheme}" />
+            <TextBlock x:Name="InstructionsTextBlock"
+                       TextWrapping="Wrap"
+                       Theme="{StaticResource BodyMDNormalTheme}" />
+            <!-- The code stays dark on white whatever the theme: a phone camera reads it that way. -->
+            <Border Background="White" Padding="12" HorizontalAlignment="Center" CornerRadius="8">
+                <Image x:Name="QrImage" Width="256" Height="256" />
+            </Border>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Classes="Spacing-2">
+                <progressRing:ProgressRing />
+                <TextBlock x:Name="WaitingTextBlock" VerticalAlignment="Center" />
+            </StackPanel>
+            <controls:StandardButton x:Name="HideButton"
+                                     HorizontalAlignment="Center"
+                                     Type="Tertiary"
+                                     Fill="None" />
+        </StackPanel>
+    </Border>
+</reactiveUi:ReactiveUserControl>

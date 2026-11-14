@@ -32,4 +32,15 @@ public class LogonHandlingTests
         session.IsLoggedOn.Should().BeTrue();
         session.LoginFailure.Should().BeNull();
     }
+
+    [Fact]
+    public void LoggingOffEndsTheLogonSoTheNextConnectLogsInAgain()
+    {
+        var session = CreateSession();
+        session.HandleLogon(EResult.OK, EResult.OK);
+
+        session.LogOff();
+
+        session.IsLoggedOn.Should().BeFalse();
+    }
 }

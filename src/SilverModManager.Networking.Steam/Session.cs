@@ -238,6 +238,16 @@ public class Session : ISteamSession
         await ConnectedAsync(token);
     }
 
+    /// <inheritdoc />
+    public void LogOff()
+    {
+        if (!_isLoggedOn && !_isConnected) return;
+        _logger.LogInformation("Logging off Steam: the stored login was forgotten.");
+        _isLoggedOn = false;
+        _isConnected = false;
+        _steamClient.Disconnect();
+    }
+
     /// <summary>
     /// The handler that shows a QR code for the login in progress: the one its caller brought, else the registered one.
     /// </summary>

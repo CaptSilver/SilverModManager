@@ -47,6 +47,8 @@ using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel;
 using SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 using SilverModManager.App.UI.Overlays.Login;
+using SilverModManager.App.UI.Overlays.SteamQr;
+using SilverModManager.Abstractions.Steam;
 using SilverModManager.App.UI.Overlays.Updater;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.About;
@@ -160,6 +162,7 @@ public static class Services
             .AddViewModel<NexusLoginOverlayViewModel, INexusLoginOverlayViewModel>()
             .AddViewModel<ForumLoginOverlayViewModel, IForumLoginOverlayViewModel>()
             .AddViewModel<ApiKeyLoginOverlayViewModel, IApiKeyLoginOverlayViewModel>()
+            .AddViewModel<QrSignInOverlayViewModel, IQrSignInOverlayViewModel>()
             .AddViewModel<SpineViewModel, ISpineViewModel>()
             .AddViewModel<TopBarViewModel, ITopBarViewModel>()
             .AddViewModel<SpineDownloadButtonViewModel, ISpineDownloadButtonViewModel>()
@@ -188,6 +191,7 @@ public static class Services
             .AddView<NexusLoginOverlayView, INexusLoginOverlayViewModel>()
             .AddView<ForumLoginOverlayView, IForumLoginOverlayViewModel>()
             .AddView<ApiKeyLoginOverlayView, IApiKeyLoginOverlayViewModel>()
+            .AddView<QrSignInOverlayView, IQrSignInOverlayViewModel>()
             .AddView<Spine, ISpineViewModel>()
             .AddView<TopBarView, ITopBarViewModel>()
             .AddView<SpineDownloadButtonView, ISpineDownloadButtonViewModel>()
@@ -412,6 +416,8 @@ public static class Services
             // Overlay Helpers
             .AddHostedService<NexusLoginOverlayService>()
             .AddHostedService<ForumLoginOverlayService>()
+            // The window's own handler for Steam's QR sign-in; registered before the host's TryAdd of the logging one.
+            .AddSingleton<IAuthInterventionHandler, QrAuthInterventionHandler>()
             .AddSingleton<IForumSignInFlow, ForumSignInFlow>()
             .AddHostedService<OpenUriFailureService>()
 

@@ -20,6 +20,12 @@ public interface ISteamSession
     /// would otherwise show a code the person at the terminal never sees.
     /// </summary>
     public Task Connect(IAuthInterventionHandler handler, CancellationToken token);
+
+    /// <summary>
+    /// Ends the current logon, so the next <see cref="Connect(CancellationToken)"/> logs in again from whatever login is
+    /// stored then. Called when the stored login is forgotten: the session would otherwise stay logged on with it.
+    /// </summary>
+    public void LogOff();
     
     /// <summary>
     /// Get the product info for the specified app ID

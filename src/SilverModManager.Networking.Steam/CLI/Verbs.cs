@@ -39,6 +39,7 @@ public static class Verbs
     private static async Task<int> Logout(
         [Injected] IRenderer renderer,
         [Injected] IAuthStorage authStorage,
+        [Injected] ISteamSession steamSession,
         [Injected] CancellationToken token)
     {
         try
@@ -50,6 +51,9 @@ public static class Verbs
             await renderer.Text(ex.Message);
             return 1;
         }
+
+        // A verb forwarded to the window runs in its process, whose session would stay logged on with the forgotten login.
+        steamSession.LogOff();
 
         await renderer.Text("The stored Steam login was removed.");
         return 0;

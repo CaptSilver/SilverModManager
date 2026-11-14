@@ -22,7 +22,7 @@ public record SteamDepotSettings : ISettings
             {
                 Section = Sections.Accounts,
                 DisplayName = SteamDepotAccount.Name,
-                DescriptionFactory = _ => "Sign in from a terminal with `silvermodmanager steam login` to fetch game files from Steam.",
+                DescriptionFactory = _ => "Sign in with a QR code from the Steam mobile app (or `silvermodmanager steam login` in a terminal) to fetch game files from Steam.",
             }, new ActionButtonContainerOptions
             {
                 CreateSource = services => new AccountButton(services.GetRequiredService<SteamDepotAccount>()),
