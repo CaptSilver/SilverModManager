@@ -21,7 +21,7 @@ public sealed class TempOpenMwConfigRoots : IOpenMwConfigRoots
 
         Roots =
         [
-            new OpenMwConfigRoot(temp.CreateFolder("openmw-native").Path, temp.CreateFolder("openmw-native-data").Path, GameStore.OpenMW, () => NativeProgram),
+            new OpenMwConfigRoot(temp.CreateFolder("openmw-native").Path, temp.CreateFolder("openmw-native-data").Path, GameStore.OpenMW, () => NativeProgram, () => NativeGlobalConfig),
             new OpenMwConfigRoot(temp.CreateFolder("openmw-flatpak").Path, temp.CreateFolder("openmw-flatpak-data").Path, GameStore.OpenMWFlatpak, () => FlatpakProgram),
         ];
     }
@@ -32,6 +32,9 @@ public sealed class TempOpenMwConfigRoots : IOpenMwConfigRoots
     public AbsolutePath? NativeProgram { get; set; }
 
     public AbsolutePath? FlatpakProgram { get; set; }
+
+    /// <summary>The native install's global openmw.cfg, none until a test sets one.</summary>
+    public AbsolutePath? NativeGlobalConfig { get; set; }
 
     public AbsolutePath NativeConfig => Roots[0].ConfigFolder;
 

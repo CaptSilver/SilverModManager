@@ -32,6 +32,25 @@ public class OpenMwEarlyLoadingTests(ITestOutputHelper helper) : AOpenMwGameTest
     }
 
     [Fact]
+    public async Task GlobalConfigContentLoadsEarly()
+    {
+        var global = Roots.NativeConfig.Parent / "global-openmw.cfg";
+        await global.WriteAllTextAsync("data-local=\"?userdata?data\"\ncontent=DistroPatch.omwaddon\ncontent=builtin.omwscripts\n");
+        Roots.NativeGlobalConfig = global;
+
+        Game.EarlyLoadingPlugins(GameInstallation).Should()
+            .Equal("builtin.omwscripts", "DistroPatch.omwaddon", "Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm");
+    }
+
+    [Fact]
+    public void AMissingGlobalConfigAddsNothing()
+    {
+        Roots.NativeGlobalConfig = Roots.NativeConfig.Parent / "not-there.cfg";
+
+        Game.EarlyLoadingPlugins(GameInstallation).Should().Equal("builtin.omwscripts", "Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm");
+    }
+
+    [Fact]
     public void OnlyThePluginsSomeDirectoryHasCountAsInstalled() =>
         Game.InstalledEarlyLoadingPlugins(GameInstallation).Should().Equal("Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm");
 }

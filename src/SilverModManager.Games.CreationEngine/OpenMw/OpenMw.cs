@@ -87,13 +87,19 @@ public class OpenMw(IServiceProvider provider) : ACreationEngineGame<OpenMw>(pro
     /// </summary>
     /// <remarks>
     /// Any other <c>content=</c> line the app did not write, such as a plugin the user dropped into the Morrowind
-    /// folder by hand, stays where the user put it and is not a row. libloadorder also counts the content of the
-    /// configs loaded before the user's openmw.cfg, chiefly the system-wide one; that content is not read. A config
-    /// the user's file chains to with <c>config=</c> loads after it, so its content is not early either.
+    /// folder by hand, stays where the user put it and is not a row. The <c>content=</c> lines of the config that
+    /// loads before the user's (the install's own openmw.cfg) are early as well, whatever their flags: distro
+    /// packages can ship some. A config the user's file chains to with <c>config=</c> loads after it, so its content
+    /// is not early.
     /// </remarks>
     public override IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
     {
         var early = new List<string>(base.EarlyLoadingPlugins(installation)) { BuiltInScripts };
+        // The install's own config loads before the user's file, so its content comes ahead of the user's masters.
+        if (installation.Locations.ContainsKey(OpenMwConstants.OpenMwConfig) && RootOf(installation)?.GlobalConfig is { } global
+            && OpenMwPaths.ReadConfig(global) is { } globalText)
+            early.AddRange(OpenMwContentWriter.PlainContentNames(globalText));
+
         if (ReadConfig(installation) is { } config)
         {
             var dataLocal = installation.Locations.ToAbsolutePath(DataPath);

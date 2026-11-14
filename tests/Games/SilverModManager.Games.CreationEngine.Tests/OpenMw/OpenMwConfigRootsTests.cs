@@ -63,4 +63,42 @@ public class OpenMwConfigRootsTests
 
         Roots[1].ResolveProgram().Should().Be(_fs.FromUnsanitizedFullPath("/usr/bin/flatpak"));
     }
+
+    private AbsolutePath Touch(string path)
+    {
+        var file = _fs.FromUnsanitizedFullPath(path);
+        file.Parent.CreateDirectory();
+        file.WriteAllTextAsync("").GetAwaiter().GetResult();
+        return file;
+    }
+
+    [Fact]
+    public void TheNativeGlobalConfigIsNullWhenThereIsNone() =>
+        Roots[0].GlobalConfig.Should().BeNull();
+
+    [Fact]
+    public void TheNativeGlobalConfigIsTheSystemOne()
+    {
+        var system = Touch("/etc/openmw/openmw.cfg");
+
+        Roots[0].GlobalConfig.Should().Be(system);
+    }
+
+    [Fact]
+    public void AConfigNextToTheNativeBinaryWinsOverTheSystemOne()
+    {
+        Touch("/usr/games/openmw");
+        Touch("/etc/openmw/openmw.cfg");
+        var local = Touch("/usr/games/openmw.cfg");
+
+        Roots[0].GlobalConfig.Should().Be(local);
+    }
+
+    [Fact]
+    public void TheFlatpakHasNoGlobalConfig()
+    {
+        Touch("/var/lib/flatpak/app/org.openmw.OpenMW/current/active/files/etc/openmw/openmw.cfg");
+
+        Roots[1].GlobalConfig.Should().BeNull();
+    }
 }
