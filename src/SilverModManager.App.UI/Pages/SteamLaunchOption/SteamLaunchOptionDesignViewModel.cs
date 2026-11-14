@@ -13,6 +13,7 @@ public class SteamLaunchOptionDesignViewModel : AOverlayViewModel<ISteamLaunchOp
     public bool IsSteamRunning => true;
     public bool CanWrite => false;
     public bool CanCloseAndWrite => true;
+    public string? CloseSteamUnavailableReason => null;
     public bool IsWaitingForSteam => false;
     public string WriteNote => "Close Steam completely, including its tray icon, to write the launch option.";
     public string Message => "";

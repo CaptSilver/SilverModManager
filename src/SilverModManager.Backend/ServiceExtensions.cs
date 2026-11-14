@@ -75,6 +75,14 @@ public static class ServiceExtensions
     {
         os ??= OSInformation.Shared;
 
+        // Needs IEnvironmentReader and IProcessTracker, which AddHeadlessLaunch registers. TryAdd lets a test graph
+        // bring its own detector without those two.
+        serviceCollection.TryAddSingleton<IGameModeDetector>(s => new GamescopeSessionDetector(
+            s.GetRequiredService<IEnvironmentReader>(),
+            s.GetRequiredService<IProcessTracker>(),
+            Environment.ProcessId,
+            s.GetService<ILogger<GamescopeSessionDetector>>()));
+
         return serviceCollection
             .AddSingleton(os)
             .AddSingleton<IProcessRunner, ProcessRunner>()

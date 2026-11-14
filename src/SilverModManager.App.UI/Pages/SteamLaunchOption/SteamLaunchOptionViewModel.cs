@@ -29,8 +29,9 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
     private readonly Loadout.ReadOnly _loadout;
     private bool _replacementPending;
 
-    public SteamLaunchOptionViewModel(Loadout.ReadOnly loadout, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop, SteamCloseAndWrite closeAndWrite)
+    public SteamLaunchOptionViewModel(Loadout.ReadOnly loadout, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop, SteamCloseAndWrite closeAndWrite, string? closeSteamUnavailableReason = null)
     {
+        CloseSteamUnavailableReason = closeSteamUnavailableReason;
         _loadout = loadout;
         LoadoutName = loadout.Name;
         Installation = installation;
@@ -63,6 +64,7 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
     }
 
     public string LoadoutName { get; }
+    public string? CloseSteamUnavailableReason { get; }
     public GameInstallation Installation { get; }
     public string Line { get; }
     public string Warning { get; }
@@ -105,7 +107,7 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
         RefreshSteamState();
         if (IsSteamRunning)
         {
-            Message = CloseSteamText;
+            Message = CloseSteamUnavailableReason ?? CloseSteamText;
             return Task.CompletedTask;
         }
 
@@ -142,7 +144,7 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
     /// </summary>
     public async Task CloseAndWriteAsync()
     {
-        if (_isBusy) return;
+        if (_isBusy || CloseSteamUnavailableReason is not null) return;
 
         using var cts = new CancellationTokenSource();
         _waitForSteam = cts;
@@ -262,8 +264,8 @@ public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunch
         IsSteamRunning = running;
         // Closing Steam by hand mid-wait must not open a second write path next to the one already running.
         CanWrite = !running && !_isBusy;
-        CanCloseAndWrite = running && !_isBusy;
+        CanCloseAndWrite = running && !_isBusy && CloseSteamUnavailableReason is null;
         CanReplace = _replacementPending && !running && !_isBusy;
-        WriteNote = running ? CloseSteamText : "";
+        WriteNote = running ? CloseSteamUnavailableReason ?? CloseSteamText : "";
     }
 }

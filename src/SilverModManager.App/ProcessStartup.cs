@@ -375,7 +375,9 @@ public static class ProcessStartup
                 ForwardedLaunchOutcome.Unavailable unavailable => GuiUnavailableMessage(unavailable.Reason),
                 _ => throw new InvalidOperationException($"Unknown outcome {outcome}"),
             };
-            return Refuse(services, logger, steps, windowRefusal);
+
+            // A window that declined has shown its reason as a toast, so only a window that never answered needs the desktop told.
+            return Refuse(services, logger, steps, windowRefusal, notify: outcome is not ForwardedLaunchOutcome.Declined);
         }
         catch (NoMainProcessStarted)
         {
@@ -408,13 +410,13 @@ public static class ProcessStartup
         return false;
     }
 
-    private static int Refuse(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, string refusal)
+    private static int Refuse(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, string refusal, bool notify = true)
     {
         logger.LogWarning("Not launching: {Message}", refusal);
         steps.WriteError(refusal);
 
         // Steam starts a launch option without a terminal to print to.
-        steps.Notify(services, refusal);
+        if (notify) steps.Notify(services, refusal);
         return RunFailureExitCode;
     }
 

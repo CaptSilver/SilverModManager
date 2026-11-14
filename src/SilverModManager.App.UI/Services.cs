@@ -2,6 +2,7 @@ using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Pages.MyGames;
@@ -37,6 +38,7 @@ using SilverModManager.App.UI.LeftMenu.Home;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.LeftMenu.Loadout;
 using SilverModManager.App.UI.Notifications;
+using SilverModManager.Sdk;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel;
@@ -126,6 +128,7 @@ public static class Services
             .AddSingleton<IOverlayController, OverlayController>()
             .AddSingleton<IApiKeyPrompt, ApiKeyPrompt>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
+            .Replace(ServiceDescriptor.Singleton<IDesktopNotifier, InAppNotifier>())
             .AddSingleton<IErrorPresenter, ErrorPresenter>()
 
             // View Models

@@ -561,12 +561,12 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     [Fact]
     public async Task Test_VerifyingInSteamOpensTheValidateLinkOfTheApp()
     {
-        var os = Substitute.For<IOSInterop>();
-        var handler = new VerifyGameFilesInSteamActionHandler(os);
+        var steamUris = Substitute.For<ISteamUriLauncher>();
+        var handler = new VerifyGameFilesInSteamActionHandler(steamUris);
 
         await handler.ExecuteAsync(SomeLoadout, DiagnosticActions.VerifyGameFilesInSteam("1245620").Arguments);
 
-        os.Received(1).OpenUri(new Uri("steam://validate/1245620"));
+        steamUris.Received(1).Open(new Uri("steam://validate/1245620"));
     }
 
     [Theory]
@@ -575,12 +575,12 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     [InlineData("-1")]
     public async Task Test_VerifyingInSteamOpensNothingForAnArgumentThatIsNotAnAppId(string argument)
     {
-        var os = Substitute.For<IOSInterop>();
+        var steamUris = Substitute.For<ISteamUriLauncher>();
 
-        var act = () => new VerifyGameFilesInSteamActionHandler(os).ExecuteAsync(SomeLoadout, [argument]);
+        var act = () => new VerifyGameFilesInSteamActionHandler(steamUris).ExecuteAsync(SomeLoadout, [argument]);
 
         await act.Should().ThrowAsync<ArgumentException>();
-        os.DidNotReceiveWithAnyArgs().OpenUri(default!);
+        steamUris.DidNotReceiveWithAnyArgs().Open(default!);
     }
 
     #endregion

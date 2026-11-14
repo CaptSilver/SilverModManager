@@ -62,6 +62,23 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
     }
 
     /// <inheritdoc />
+    public int? ParentOf(int pid)
+    {
+        var stat = ReadText(Path.Combine(procRoot, pid.ToString(), "stat"));
+        if (stat is null) return null;
+
+        // comm sits in parentheses and may itself hold spaces and parentheses, so the fields start after the last one.
+        var end = stat.LastIndexOf(')');
+        if (end < 0) return null;
+
+        var fields = stat[(end + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return fields.Length > 1 && int.TryParse(fields[1], out var parent) ? parent : null;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> ArgumentsOf(int pid) => new Candidate(new TrackedProcess(pid, ""), Path.Combine(procRoot, pid.ToString())).Arguments();
+
+    /// <inheritdoc />
     public bool IsSteamRunning() => FindByName("steam").Count > 0;
 
     /// <inheritdoc />

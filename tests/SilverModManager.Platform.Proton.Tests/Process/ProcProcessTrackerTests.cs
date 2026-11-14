@@ -30,12 +30,13 @@ public class ProcProcessTrackerTests : IDisposable
     /// Writes one fake <c>/proc/&lt;pid&gt;</c> entry. Arguments and environment entries are NUL-terminated,
     /// like the kernel's files.
     /// </summary>
-    private void AddProcess(int pid, string comm, string? exe = null, string[]? argv = null, string[]? environ = null, string? cwd = null)
+    private void AddProcess(int pid, string comm, string? exe = null, string[]? argv = null, string[]? environ = null, string? cwd = null, int ppid = 1)
     {
         var dir = Directory.CreateDirectory(Path.Combine(_proc, pid.ToString())).FullName;
         File.WriteAllText(Path.Combine(dir, "comm"), comm + "\n");
         File.WriteAllBytes(Path.Combine(dir, "cmdline"), Encoding.UTF8.GetBytes(string.Concat((argv ?? [comm]).Select(a => a + "\0"))));
         File.WriteAllBytes(Path.Combine(dir, "environ"), Encoding.UTF8.GetBytes(string.Concat((environ ?? []).Select(e => e + "\0"))));
+        File.WriteAllText(Path.Combine(dir, "stat"), $"{pid} ({comm}) S {ppid} {pid} {pid} 0 -1 4194304 1 0 0 0\n");
         if (exe is not null) File.CreateSymbolicLink(Path.Combine(dir, "exe"), exe);
         if (cwd is not null) File.CreateSymbolicLink(Path.Combine(dir, "cwd"), cwd);
     }
@@ -66,6 +67,42 @@ public class ProcProcessTrackerTests : IDisposable
     private int[] GamePids() => Tracker.FindGameProcesses(Installation()).Select(p => p.Pid).Order().ToArray();
 
     private int[] PrefixPids(string prefix) => Tracker.FindByPrefix(FileSystem.Shared.FromUnsanitizedFullPath(prefix)).Select(p => p.Pid).Order().ToArray();
+
+    [Fact]
+    public void ParentOf_ReadsThePpidFieldOfStat()
+    {
+        AddProcess(200, "steam.sh", ppid: 100);
+
+        Tracker.ParentOf(200).Should().Be(100);
+    }
+
+    [Fact]
+    public void ParentOf_ParsesAfterTheLastParenthesisWhenCommHoldsSpacesAndParens()
+    {
+        AddProcess(201, "Web (Content) x", ppid: 7);
+
+        Tracker.ParentOf(201).Should().Be(7);
+    }
+
+    [Fact]
+    public void ParentOf_IsNullForAMissingProcess()
+    {
+        Tracker.ParentOf(999).Should().BeNull();
+    }
+
+    [Fact]
+    public void ArgumentsOf_ReturnsCmdlineEntries()
+    {
+        AddProcess(202, "bash", argv: ["/bin/bash", "/home/u/.steam/steam.sh", "-steampal"]);
+
+        Tracker.ArgumentsOf(202).Should().Equal("/bin/bash", "/home/u/.steam/steam.sh", "-steampal");
+    }
+
+    [Fact]
+    public void ArgumentsOf_IsEmptyForAMissingProcess()
+    {
+        Tracker.ArgumentsOf(999).Should().BeEmpty();
+    }
 
     [Fact]
     public void FindByPrefix_MatchesWinePrefixInTheEnvironment()

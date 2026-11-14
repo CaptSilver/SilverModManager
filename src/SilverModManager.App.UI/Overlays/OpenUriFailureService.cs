@@ -26,13 +26,18 @@ internal sealed class OpenUriFailureService(IOSInterop osInterop, IServiceProvid
         return Task.CompletedTask;
     }
 
-    private void OnOpenUriFailed(Uri uri) => Dispatcher.UIThread.Post(() => ShowAsync(uri).FireAndForget(logger));
+    private void OnOpenUriFailed(OpenUriFailure failure) => Dispatcher.UIThread.Post(() => ShowAsync(failure).FireAndForget(logger));
 
-    // The dialog's Copy button copies the markdown contents verbatim, so they hold the bare link.
-    internal Task ShowAsync(Uri uri) => MessageBoxOkViewModel.Show(
-        serviceProvider,
-        title: "Could not open the link",
-        description: "No browser could be started. Copy the link and open it yourself.",
-        markdown: uri.AbsoluteUri
-    );
+    // The dialog's Copy button copies the markdown contents verbatim, so they hold the bare link or path.
+    internal Task ShowAsync(OpenUriFailure failure) => failure.Uri.IsFile
+        ? MessageBoxOkViewModel.Show(
+            serviceProvider,
+            title: "Could not open the path",
+            description: $"{failure.Reason} Copy it and open it yourself.",
+            markdown: failure.Uri.LocalPath)
+        : MessageBoxOkViewModel.Show(
+            serviceProvider,
+            title: "Could not open the link",
+            description: $"{failure.Reason} Copy it and open it yourself.",
+            markdown: failure.Uri.AbsoluteUri);
 }

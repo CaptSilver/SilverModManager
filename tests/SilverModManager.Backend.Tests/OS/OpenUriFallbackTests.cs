@@ -20,11 +20,14 @@ public class OpenUriFallbackTests
     private static readonly Uri Link = new("https://example.com/releases/1");
 
     private readonly List<string> _commands = [];
-    private readonly List<Uri> _failures = [];
+    private readonly List<OpenUriFailure> _failures = [];
     private readonly RecordingLogger _logger = new();
 
-    private LinuxInterop CreateInterop(Func<Uri, Task<ResponseStatus>> portal, Func<Command, Task<CommandResult>> runner)
+    private LinuxInterop CreateInterop(Func<Uri, Task<ResponseStatus>> portal, Func<Command, Task<CommandResult>> runner, bool gameMode = false)
     {
+        var detector = Substitute.For<IGameModeDetector>();
+        detector.IsGameMode.Returns(gameMode);
+
         var processRunner = Substitute.For<IProcessRunner>();
         processRunner.RunAsync(Arg.Any<Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -36,6 +39,7 @@ public class OpenUriFallbackTests
         var services = new ServiceCollection()
             .AddSingleton<ILogger<LinuxInterop>>(_logger)
             .AddSingleton(processRunner)
+            .AddSingleton(detector)
             .AddSingleton<IFileSystem>(FileSystem.Shared)
             .AddSingleton(new XdgSettingsDependency(processRunner))
             .AddSingleton(new UpdateDesktopDatabaseDependency(processRunner))
@@ -78,7 +82,7 @@ public class OpenUriFallbackTests
 
         await interop.OpenUriAsync(Link);
 
-        _failures.Should().Equal(Link);
+        _failures.Should().Equal(new OpenUriFailure(Link, "No browser could be started."));
         _logger.Entries.Should().Contain(e => e.Message.Contains(Link.AbsoluteUri) && e.Message.Contains("xdg-open"));
         _logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Message.StartsWith("xdg-open"), "the link did not open at all");
     }
@@ -107,7 +111,7 @@ public class OpenUriFallbackTests
 
         await interop.OpenUriAsync(Link);
 
-        _failures.Should().Equal(Link);
+        _failures.Should().Equal(new OpenUriFailure(Link, "No browser could be started."));
     }
 
     [Fact]
@@ -139,7 +143,7 @@ public class OpenUriFallbackTests
 
         await interop.OpenUriAsync(Link);
 
-        _failures.Should().Equal(Link);
+        _failures.Should().Equal(new OpenUriFailure(Link, "No browser could be started."));
     }
 
     [Fact]
@@ -151,6 +155,95 @@ public class OpenUriFallbackTests
 
         _commands.Should().BeEmpty();
         _failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InGameModeALinkSkipsThePortalAndXdgOpenAndFailsWithTheGameModeReason()
+    {
+        var portalCalls = 0;
+        var interop = CreateInterop(_ => { portalCalls++; return Task.FromResult(ResponseStatus.Success); }, _ => Exit(0), gameMode: true);
+
+        await interop.OpenUriAsync(Link);
+
+        portalCalls.Should().Be(0);
+        _commands.Should().BeEmpty();
+        _failures.Should().Equal(new OpenUriFailure(Link, "There is no browser in Game Mode."));
+    }
+
+    [Fact]
+    public async Task InGameModeASteamLinkStillGoesThroughThePortal()
+    {
+        var portalCalls = 0;
+        var interop = CreateInterop(_ => { portalCalls++; return Task.FromResult(ResponseStatus.Success); }, _ => Exit(0), gameMode: true);
+
+        await interop.OpenUriAsync(new Uri("steam://run/1"));
+
+        portalCalls.Should().Be(1);
+        _failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void InGameModeOpenDirectoryRaisesAFileUriFailure()
+    {
+        var interop = CreateInterop(_ => Task.FromResult(ResponseStatus.Success), _ => Exit(0), gameMode: true);
+        var dir = Directory.CreateTempSubdirectory("silvermod-openuri-");
+        try
+        {
+            File.WriteAllText(Path.Combine(dir.FullName, "a.txt"), "x");
+
+            interop.OpenDirectory(FileSystem.Shared.FromUnsanitizedFullPath(dir.FullName));
+
+            var failure = _failures.Should().ContainSingle().Subject;
+            failure.Uri.Should().Be(new Uri(dir.FullName));
+            failure.Uri.IsFile.Should().BeTrue();
+            failure.Reason.Should().Be("There is no file manager in Game Mode.");
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void InGameModeAPathWithUriSpecialCharactersComesBackUnchanged()
+    {
+        var interop = CreateInterop(_ => Task.FromResult(ResponseStatus.Success), _ => Exit(0), gameMode: true);
+        var dir = Directory.CreateTempSubdirectory("silvermod-openuri-");
+        try
+        {
+            var odd = Directory.CreateDirectory(Path.Combine(dir.FullName, "Mod #2 100%41 ?x"));
+            File.WriteAllText(Path.Combine(odd.FullName, "a.txt"), "x");
+
+            interop.OpenDirectory(FileSystem.Shared.FromUnsanitizedFullPath(odd.FullName));
+
+            _failures.Should().ContainSingle().Which.Uri.LocalPath.Should().Be(odd.FullName);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void InGameModeOpenFileAndOpenFileInDirectoryRaiseAFileUriFailure()
+    {
+        var interop = CreateInterop(_ => Task.FromResult(ResponseStatus.Success), _ => Exit(0), gameMode: true);
+        var dir = Directory.CreateTempSubdirectory("silvermod-openuri-");
+        try
+        {
+            var file = Path.Combine(dir.FullName, "a.txt");
+            File.WriteAllText(file, "x");
+            var path = FileSystem.Shared.FromUnsanitizedFullPath(file);
+
+            interop.OpenFile(path);
+            interop.OpenFileInDirectory(path);
+
+            _failures.Should().HaveCount(2).And.OnlyContain(f => f.Uri == new Uri(file) && f.Reason == "There is no file manager in Game Mode.");
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
     }
 
     private sealed class RecordingLogger : ILogger<LinuxInterop>

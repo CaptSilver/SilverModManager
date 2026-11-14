@@ -30,6 +30,11 @@ public interface ISteamLaunchOptionViewModel : IOverlayViewModel<Unit>
     bool IsSteamRunning { get; }
 
     /// <summary>
+    /// Why Close Steam and write is off for good (Game Mode, where the app lives inside Steam), or null when it is offered.
+    /// </summary>
+    string? CloseSteamUnavailableReason { get; }
+
+    /// <summary>
     /// Whether Write can be pressed, which is whenever Steam is closed.
     /// </summary>
     bool CanWrite { get; }

@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -32,14 +33,13 @@ public sealed class ForwardedLaunchHandler(IServiceProvider services) : IForward
         var resolution = resolver.Resolve(args);
         if (!resolution.IsResolved)
         {
-            logger.LogWarning("Not running a forwarded launch: {Message}", resolution.Error);
-            return Task.FromResult(ForwardedLaunchAdmission.Declined(resolution.Error));
+            return Declined(services, logger, resolution.Error);
         }
 
         var installation = resolution.Installation;
         var game = installation.Game.DisplayName;
         if (services.GetRequiredService<ActiveLaunchSessions>().IsRunning(installation))
-            return Declined(logger, $"{game} is already running through SilverModManager.");
+            return Declined(services, logger, $"{game} is already running through SilverModManager.");
 
         var connection = services.GetRequiredService<IConnection>();
         var installationId = resolution.Loadout.Value.InstallationId;
@@ -48,7 +48,7 @@ public sealed class ForwardedLaunchHandler(IServiceProvider services) : IForward
                 var other = Loadout.Load(connection.Db, id);
                 return other.IsValid() && other.InstallationId == installationId;
             }))
-            return Declined(logger, $"SilverModManager is applying a loadout to {game}. Wait for it to finish, then press Play in Steam again.");
+            return Declined(services, logger, $"SilverModManager is applying a loadout to {game}. Wait for it to finish, then press Play in Steam again.");
 
         logger.LogInformation("Running {Loadout} for {Game} on behalf of a Steam launch", resolution.Loadout.Value.Name, game);
         return Task.FromResult(ForwardedLaunchAdmission.Accepted(stop => LaunchRun.RunForwardedAsync(services, resolution.Loadout.Value, installation, launch, stop)));
@@ -66,9 +66,12 @@ public sealed class ForwardedLaunchHandler(IServiceProvider services) : IForward
             job.Definition is SynchronizeLoadoutJob sync &&
             isOfInstallation(sync.LoadoutId));
 
-    private static Task<ForwardedLaunchAdmission> Declined(ILogger logger, string reason)
+    private static Task<ForwardedLaunchAdmission> Declined(IServiceProvider services, ILogger logger, string reason)
     {
         logger.LogWarning("Not running a forwarded launch: {Message}", reason);
+
+        // The launch came from Steam, which shows nothing of it; the reason has to appear where the user is looking.
+        services.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, reason);
         return Task.FromResult(ForwardedLaunchAdmission.Declined(reason));
     }
 }

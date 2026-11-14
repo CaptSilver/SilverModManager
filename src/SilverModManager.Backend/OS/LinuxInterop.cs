@@ -22,7 +22,13 @@ internal partial class LinuxInterop : IOSInterop
 
     private readonly Func<Uri, Task<ResponseStatus>> _portalOpenUri;
 
-    public event Action<Uri>? OpenUriFailed;
+    private readonly IGameModeDetector _gameMode;
+
+    internal const string DesktopNoBrowser = "No browser could be started.";
+    internal const string GameModeNoBrowser = "There is no browser in Game Mode.";
+    internal const string GameModeNoFileManager = "There is no file manager in Game Mode.";
+
+    public event Action<OpenUriFailure>? OpenUriFailed;
 
     public LinuxInterop(IServiceProvider serviceProvider) : this(serviceProvider, portalOpenUri: null) { }
 
@@ -33,6 +39,7 @@ internal partial class LinuxInterop : IOSInterop
         _logger = serviceProvider.GetRequiredService<ILogger<LinuxInterop>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+        _gameMode = serviceProvider.GetRequiredService<IGameModeDetector>();
 
         _portalWrapper = new DesktopPortalConnectionManagerWrapper();
         _xdgSettingsDependency = serviceProvider.GetRequiredService<XdgSettingsDependency>();
@@ -70,12 +77,14 @@ internal partial class LinuxInterop : IOSInterop
     public void OpenFile(AbsolutePath filePath)
     {
         if (!Helper.AssertIsFile(filePath, _logger)) return;
+        if (ShowPathInGameMode(filePath)) return;
         OpenFileImpl(filePath).FireAndForget(_logger);
     }
 
     public void OpenDirectory(AbsolutePath directoryPath)
     {
         if (!Helper.AssertIsDirectory(directoryPath, _logger)) return;
+        if (ShowPathInGameMode(directoryPath)) return;
 
         // NOTE(erri120): the XDG Desktop Portal API works off file descriptors
         // we can't open empty directories, we need at least one file
@@ -91,8 +100,23 @@ internal partial class LinuxInterop : IOSInterop
 
     public void OpenFileInDirectory(AbsolutePath filePath)
     {
+        if (ShowPathInGameMode(filePath)) return;
         OpenFileInDirectoryImpl(filePath).FireAndForget(_logger);
     }
+
+    // Game Mode has no file manager to hand a path to, so the user gets the path to copy instead.
+    private bool ShowPathInGameMode(AbsolutePath path)
+    {
+        if (!_gameMode.IsGameMode) return false;
+
+        OpenUriFailed?.Invoke(new OpenUriFailure(ToFileUri(path), GameModeNoFileManager));
+        return true;
+    }
+
+    // new Uri("/a/100%41") reads %41 as an escape and its LocalPath comes back as "/a/100A", so every segment is
+    // escaped first and LocalPath returns the path as it is on disk.
+    internal static Uri ToFileUri(AbsolutePath path)
+        => new("file://" + string.Join('/', path.ToString().Split('/').Select(Uri.EscapeDataString)));
 
     private async Task<ResponseStatus> OpenUriWithPortal(Uri uri)
     {
@@ -106,6 +130,13 @@ internal partial class LinuxInterop : IOSInterop
     /// </summary>
     internal async Task OpenUriAsync(Uri uri)
     {
+        // There is no browser to start in Game Mode; going through the portal would only hang or fail quietly.
+        if (_gameMode.IsGameMode && uri.Scheme is "http" or "https")
+        {
+            OpenUriFailed?.Invoke(new OpenUriFailure(uri, GameModeNoBrowser));
+            return;
+        }
+
         try
         {
             var status = await _portalOpenUri(uri);
@@ -148,7 +179,7 @@ internal partial class LinuxInterop : IOSInterop
             _logger.LogError(e, "xdg-open could not be run for `{Uri}`", uri.AbsoluteUri);
         }
 
-        OpenUriFailed?.Invoke(uri);
+        OpenUriFailed?.Invoke(new OpenUriFailure(uri, DesktopNoBrowser));
     }
  
     private async Task OpenFileImpl(AbsolutePath filePath)

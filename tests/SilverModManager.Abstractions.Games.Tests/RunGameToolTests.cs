@@ -25,8 +25,8 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     {
         // Registered after the base graph so the fake wins: nothing here may reach the real desktop.
         // Opening the URI cancels the run, which stops it before it starts polling the process table for Steam.
-        var osInterop = Substitute.For<IOSInterop>();
-        osInterop.When(x => x.OpenUri(Arg.Any<Uri>())).Do(call =>
+        var steamUris = Substitute.For<ISteamUriLauncher>();
+        steamUris.When(x => x.Open(Arg.Any<Uri>())).Do(call =>
         {
             _openedUris.Add(call.Arg<Uri>());
             lock (Session.Events) _eventsAtOpen.Add(Session.Events.ToArray());
@@ -45,7 +45,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
             {
                 LocatorIds = [LocatorId.From("3976631895")],
             })
-            .AddSingleton(osInterop)
+            .AddSingleton(steamUris)
             .AddSingleton(_processRunner)
             .ReplaceDesktopNotifier();
     }

@@ -33,6 +33,7 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
     protected RecordingProcessFactory Processes => Fakes.Processes;
     protected FakeVersionRunner Me3Version => Fakes.Me3Version;
     protected IOSInterop OsInterop => Fakes.OsInterop;
+    protected ISteamUriLauncher SteamUris => Fakes.SteamUris;
     protected string RuntimeDir => Fakes.RuntimeDir;
 
     protected override IServiceCollection AddServices(IServiceCollection services)

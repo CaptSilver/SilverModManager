@@ -278,7 +278,7 @@ public class GameProcessTests : IDisposable
             ["SteamGameId"] = "1091500",
         };
         var script = $"env > '{File_("env")}'";
-        using var process = GameProcess.Start(Sh(script), Substitute.For<IProcessTracker>(), Installation(), env, Grace);
+        using var process = GameProcess.Start(Sh(script), Substitute.For<IProcessTracker>(), Installation(), env, Grace, isInstalledSteamAppId: id => id == "1091500");
         await process.WaitAsync();
 
         var lines = await File.ReadAllLinesAsync(File_("env"));
@@ -430,6 +430,65 @@ public class GameProcessTests : IDisposable
         await process.WaitAsync();
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WINEDLLOVERRIDES=dxgi=n,b;winmm=n,b");
+    }
+
+    [Fact]
+    public void AShortcutsOwnSteamVariablesAreStrippedFromAGameItStarts()
+    {
+        var inherited = new Dictionary<string, string>
+        {
+            ["SteamAppId"] = "2975000000",
+            ["SteamGameId"] = "2975000000",
+            ["SteamOverlayGameId"] = "2975000000",
+            ["LD_PRELOAD"] = "/x/gameoverlayrenderer.so:/opt/keep.so",
+            ["UNRELATED"] = "kept",
+        };
+
+        var environment = GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]), _ => false);
+
+        environment.Keys.Should().NotContain(["SteamAppId", "SteamGameId", "SteamOverlayGameId"]);
+        environment.Should().Contain("LD_PRELOAD", "/opt/keep.so").And.Contain("UNRELATED", "kept");
+    }
+
+    [Fact]
+    public void AnOverlayOnlyPreloadIsRemovedAltogether()
+    {
+        var inherited = new Dictionary<string, string> { ["SteamAppId"] = "2975000000", ["LD_PRELOAD"] = "/home/u/.steam/ubuntu12_64/gameoverlayrenderer.so" };
+
+        GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]), _ => false).Keys.Should().NotContain("LD_PRELOAD");
+    }
+
+    [Fact]
+    public void AGamesOwnSteamVariablesAreKept()
+    {
+        var inherited = new Dictionary<string, string>
+        {
+            ["SteamAppId"] = "1091500",
+            ["SteamGameId"] = "1091500",
+            ["LD_PRELOAD"] = "/x/gameoverlayrenderer.so",
+        };
+
+        var environment = GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]), id => id == "1091500");
+
+        environment.Should().Contain("SteamAppId", "1091500").And.Contain("SteamGameId", "1091500").And.Contain("LD_PRELOAD", "/x/gameoverlayrenderer.so");
+    }
+
+    [Fact]
+    public void WithNoSteamAppIdNothingChanges()
+    {
+        var inherited = new Dictionary<string, string> { ["LD_PRELOAD"] = "/x/gameoverlayrenderer.so", ["SteamGameId"] = "7" };
+
+        var environment = GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]), _ => false);
+
+        environment.Should().Contain("LD_PRELOAD", "/x/gameoverlayrenderer.so").And.Contain("SteamGameId", "7");
+    }
+
+    [Fact]
+    public void WithoutAnInstalledGamePredicateNothingIsStripped()
+    {
+        var inherited = new Dictionary<string, string> { ["SteamAppId"] = "2975000000" };
+
+        GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"])).Should().Contain("SteamAppId", "2975000000");
     }
 
     [Theory]

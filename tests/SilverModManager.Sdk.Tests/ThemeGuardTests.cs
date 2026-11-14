@@ -85,4 +85,25 @@ public partial class ThemeGuardTests
         // taken from the palette ramps instead, so a literal in here is a leftover.
         HexLiteral().Matches(palette.Value).Select(match => match.Value).Should().BeEmpty();
     }
+
+    [GeneratedRegex("""Property="FontSize"\s+Value="\d""")]
+    private static partial Regex LiteralFontSize();
+
+    // A ControlTheme setter resolves a static resource when the theme loads, before a density dictionary can be
+    // merged over it, so the sizes have to be dynamic resources for Couch to reach them.
+    [Fact]
+    public void Test_TypographyThemesHaveNoLiteralFontSize()
+    {
+        var root = RepoScanGuard.FindRepoRoot();
+        var files = RepoScanGuard.TrackedFiles(root, ["src/SilverModManager.Themes.Silver/Resources/Typography/*.axaml"])
+            .Where(path => File.Exists(Path.Combine(root, path)))
+            .ToArray();
+        files.Should().NotBeEmpty("the scan finds the typography themes");
+
+        var hits = RepoScanGuard.FindLines(root, files, line => LiteralFontSize().IsMatch(line))
+            .Select(hit => $"{hit.File}: {hit.Line}")
+            .Order();
+
+        string.Join(Environment.NewLine, hits).Should().BeEmpty("font sizes are density tokens, see Resources/Palette/Fonts/FontSizes.axaml");
+    }
 }

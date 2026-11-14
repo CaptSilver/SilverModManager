@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
@@ -33,7 +34,7 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         public int ExitRequests { get; private set; }
         public int Starts { get; private set; }
 
-        public Fixture(Loadout.ReadOnly loadout, GameInstallation installation, bool steamRunning, string? shimWarning = null)
+        public Fixture(Loadout.ReadOnly loadout, GameInstallation installation, bool steamRunning, string? shimWarning = null, string? closeSteamUnavailableReason = null)
         {
             Seeded = loadout;
             Running = steamRunning;
@@ -57,14 +58,14 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(5),
                 TimeSpan.FromSeconds(5));
-            Vm = new SteamLaunchOptionViewModel(loadout, installation, Tracker, Writer, Interop, closeAndWrite);
+            Vm = new SteamLaunchOptionViewModel(loadout, installation, Tracker, Writer, Interop, closeAndWrite, closeSteamUnavailableReason);
         }
     }
 
-    private async Task<Fixture> NewFixture(bool steamRunning, string? shimWarning = null)
+    private async Task<Fixture> NewFixture(bool steamRunning, string? shimWarning = null, string? closeSteamUnavailableReason = null)
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Loadout A");
-        return new Fixture(loadout, Installation, steamRunning, shimWarning);
+        return new Fixture(loadout, Installation, steamRunning, shimWarning, closeSteamUnavailableReason);
     }
 
     private GameInstallation Installation => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
@@ -286,6 +287,21 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         f.Vm.RefreshSteamState();
         f.Vm.CanWrite.Should().BeTrue();
         f.Vm.WriteNote.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Test_WithACloseSteamUnavailableReasonTheCloseRouteIsOffAndTheReasonShown()
+    {
+        var f = await NewFixture(steamRunning: true, closeSteamUnavailableReason: GameModeWindowShell.CloseSteamUnavailableReason);
+
+        f.Vm.CanCloseAndWrite.Should().BeFalse();
+        f.Vm.CloseSteamUnavailableReason.Should().Be(GameModeWindowShell.CloseSteamUnavailableReason);
+        f.Vm.WriteNote.Should().Be(GameModeWindowShell.CloseSteamUnavailableReason);
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.ExitRequests.Should().Be(0, "the app lives inside Steam in Game Mode");
+        f.Writer.DidNotReceiveWithAnyArgs().Write(default!, default);
     }
 
     [Fact]

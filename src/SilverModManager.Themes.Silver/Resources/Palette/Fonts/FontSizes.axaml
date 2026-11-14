@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Type sizes and the row height and focus ring that scale with the density. Couch.axaml overrides these keys. -->
+
+    <x:Double x:Key="FontSizeHeading2XL">60</x:Double>
+    <x:Double x:Key="FontSizeHeadingXL">48</x:Double>
+    <x:Double x:Key="FontSizeHeadingLG">36</x:Double>
+    <x:Double x:Key="FontSizeHeadingMD">30</x:Double>
+    <x:Double x:Key="FontSizeHeadingSM">24</x:Double>
+    <x:Double x:Key="FontSizeHeadingXS">18</x:Double>
+    <x:Double x:Key="FontSizeBodyLG">16</x:Double>
+    <x:Double x:Key="FontSizeBodyMD">14</x:Double>
+    <x:Double x:Key="FontSizeBodySM">12</x:Double>
+    <x:Double x:Key="FontSizeTitleXS">10</x:Double>
+    <x:Double x:Key="RowMinHeight">44</x:Double>
+    <x:Double x:Key="FocusRingThickness">2</x:Double>
+
+</ResourceDictionary>

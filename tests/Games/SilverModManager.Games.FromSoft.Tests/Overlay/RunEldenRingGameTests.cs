@@ -140,7 +140,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         started.Argv[0].Should().Be("/fake/bin/bwrap");
         started.Argv.Should().Contain("--unshare-user").And.Contain(Me3.GetFullPath());
         ServiceProvider.GetRequiredService<FakeToolRunner>().Calls.Should().BeEmpty();
-        OsInterop.DidNotReceiveWithAnyArgs().OpenUri(default!);
+        SteamUris.DidNotReceiveWithAnyArgs().Open(default!);
     }
 
     [Fact]
@@ -268,11 +268,11 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
     {
         var loadout = await CreateLoadout();
         using var cancelOnOpen = new CancellationTokenSource();
-        OsInterop.When(x => x.OpenUri(Arg.Any<Uri>())).Do(_ => cancelOnOpen.Cancel());
+        SteamUris.When(x => x.Open(Arg.Any<Uri>())).Do(_ => cancelOnOpen.Cancel());
 
         await Tool.Execute(loadout, cancelOnOpen.Token, []);
 
-        OsInterop.Received(1).OpenUri(new Uri("steam://run/1245620"));
+        SteamUris.Received(1).Open(new Uri("steam://run/1245620"));
         Processes.Started.Should().BeEmpty();
         ServiceProvider.GetRequiredService<FakeToolRunner>().Calls.Should().BeEmpty();
     }

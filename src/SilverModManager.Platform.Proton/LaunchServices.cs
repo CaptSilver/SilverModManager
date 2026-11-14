@@ -18,7 +18,7 @@ public static class LaunchServices
     /// through the launch session.
     /// </summary>
     public static IServiceCollection LeaveSignalsToHost(this IServiceCollection services)
-        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true, logger: s.GetService<ILogger<GameProcessFactory>>())));
+        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true, logger: s.GetService<ILogger<GameProcessFactory>>(), registry: s.GetService<IGameRegistry>())));
 
     /// <summary>
     /// Registers the services that let a game launch run without the GUI.
@@ -28,6 +28,11 @@ public static class LaunchServices
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
+        services.TryAddSingleton<ISteamUriLauncher>(s => new SteamBinaryUriLauncher(
+            s.GetRequiredService<IProcessRunner>(),
+            s.GetRequiredService<IOSInterop>(),
+            s.GetRequiredService<IEnvironmentReader>(),
+            File.Exists));
         services.TryAddSingleton<ActiveLaunchSessions>();
         services.TryAddSingleton<IGameLaunchSession>(s => s.GetRequiredService<ActiveLaunchSessions>());
         services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();

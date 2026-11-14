@@ -10,6 +10,7 @@ using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Settings;
 using ReactiveUI;
 using Splat;
@@ -55,6 +56,11 @@ public class App : Application
         Locator.CurrentMutable.UseMicrosoftExtensionsLoggingWithWrappingFullLogger(loggerFactory);
         // Views are built by XAML and cannot take constructor arguments, so they reach the logger through the locator.
         Locator.CurrentMutable.RegisterConstant(loggerFactory);
+
+        // Before the first window exists, so every control resolves the sizes it will keep.
+        var density = DensityService.Resolve(_settingsManager.Get<GameModeSettings>().Density, _provider.GetRequiredService<IGameModeDetector>().IsGameMode);
+        logger.LogInformation("Using {Density} density", density);
+        DensityService.Apply(this, density);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

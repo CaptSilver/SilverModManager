@@ -25,6 +25,7 @@ public sealed class ModdedLaunchFakes : IDisposable
     /// <summary>Answers <c>me3 --version</c>: the me3 the fixtures deploy is not a program the machine can run.</summary>
     public FakeVersionRunner Me3Version { get; } = new();
     public IOSInterop OsInterop { get; } = Substitute.For<IOSInterop>();
+    public ISteamUriLauncher SteamUris { get; } = Substitute.For<ISteamUriLauncher>();
     public string RuntimeDir { get; } = Directory.CreateTempSubdirectory("silvermod-fromsoft-lock-").FullName;
 
     public void Register(IServiceCollection services)
@@ -34,6 +35,7 @@ public sealed class ModdedLaunchFakes : IDisposable
         services.Replace(ServiceDescriptor.Singleton<IUserIds>(new FixedUserIds(1000, 1001)));
         services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(Processes));
         services.Replace(ServiceDescriptor.Singleton<IOSInterop>(OsInterop));
+        services.Replace(ServiceDescriptor.Singleton<ISteamUriLauncher>(SteamUris));
         services.Replace(ServiceDescriptor.Singleton(new Me3VersionProbe(Me3Version)));
         services.Replace(ServiceDescriptor.Singleton<IInstallationLockFactory>(new TempLockFactory(RuntimeDir)));
         services.Replace(ServiceDescriptor.Singleton<ILaunchSynchronizer, NoSynchronizer>());

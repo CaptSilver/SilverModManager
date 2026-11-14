@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Desktop values times 4/3, rounded. Merged over FontSizes.axaml when the app runs in Game Mode or the user picks Couch. -->
+
+    <x:Double x:Key="FontSizeHeading2XL">80</x:Double>
+    <x:Double x:Key="FontSizeHeadingXL">64</x:Double>
+    <x:Double x:Key="FontSizeHeadingLG">48</x:Double>
+    <x:Double x:Key="FontSizeHeadingMD">40</x:Double>
+    <x:Double x:Key="FontSizeHeadingSM">32</x:Double>
+    <x:Double x:Key="FontSizeHeadingXS">24</x:Double>
+    <x:Double x:Key="FontSizeBodyLG">21</x:Double>
+    <x:Double x:Key="FontSizeBodyMD">19</x:Double>
+    <x:Double x:Key="FontSizeBodySM">16</x:Double>
+    <x:Double x:Key="FontSizeTitleXS">13</x:Double>
+    <x:Double x:Key="RowMinHeight">56</x:Double>
+    <x:Double x:Key="FocusRingThickness">3</x:Double>
+
+</ResourceDictionary>

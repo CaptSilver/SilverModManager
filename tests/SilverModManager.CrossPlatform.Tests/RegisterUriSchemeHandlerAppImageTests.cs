@@ -55,6 +55,7 @@ public class RegisterUriSchemeHandlerAppImageTests : IDisposable
         var services = new ServiceCollection()
             .AddSingleton<ILogger<LinuxInterop>>(new CapturingLogger(_logs))
             .AddSingleton(runner)
+            .AddSingleton(Substitute.For<IGameModeDetector>())
             .AddSingleton<IFileSystem>(fileSystem)
             .AddSingleton(new XdgSettingsDependency(runner))
             .AddSingleton(new UpdateDesktopDatabaseDependency(runner))

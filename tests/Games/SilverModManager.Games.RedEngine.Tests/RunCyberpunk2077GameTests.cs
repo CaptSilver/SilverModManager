@@ -24,8 +24,8 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
     {
         // Opening the URI cancels the run before it starts polling the process table for Steam,
         // and nothing here may reach the real desktop.
-        var osInterop = Substitute.For<IOSInterop>();
-        osInterop.When(x => x.OpenUri(Arg.Any<Uri>())).Do(call =>
+        var steamUris = Substitute.For<ISteamUriLauncher>();
+        steamUris.When(x => x.Open(Arg.Any<Uri>())).Do(call =>
         {
             _openedUris.Add(call.Arg<Uri>());
             _cts.Cancel();
@@ -46,7 +46,7 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
                 LocatorIds = [LocatorId.From("3976631895")],
             })
             .AddRedEngineGames()
-            .AddSingleton(osInterop)
+            .AddSingleton(steamUris)
             .AddSingleton(Substitute.For<IProcessRunner>());
     }
 

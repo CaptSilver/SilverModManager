@@ -7,9 +7,11 @@ using NSubstitute;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
 namespace SilverModManager.CLI.Tests;
 
@@ -138,5 +140,19 @@ public class ForwardedLaunchHandlerTests
         admission.IsAccepted.Should().BeFalse();
         admission.DeclineReason.Should().Contain("Missing Loadout");
         host.Services.GetRequiredService<LaunchSessionSlot>().Current.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ADeclinedLaunchIsAlsoShownThroughTheWindowsNotifier()
+    {
+        using var host = LaunchRunTests.BuildRunHost();
+        var handler = new ForwardedLaunchHandler(host.Services);
+
+        var admission = await handler.AdmitAsync(new ForwardedLaunch("Missing Loadout", null, ["game.exe"], new Dictionary<string, string>(), null));
+
+        var notifier = (RecordingDesktopNotifier)host.Services.GetRequiredService<IDesktopNotifier>();
+        var (summary, body) = notifier.Notifications.Should().ContainSingle().Subject;
+        summary.Should().Be("SilverModManager");
+        body.Should().Be(admission.DeclineReason);
     }
 }

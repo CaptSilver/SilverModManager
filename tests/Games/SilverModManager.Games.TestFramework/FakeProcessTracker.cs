@@ -45,6 +45,22 @@ public class FakeProcessTracker : IProcessTracker
     /// </summary>
     public Func<uint, bool> InstallStepForApp { get; set; } = _ => false;
 
+    /// <summary>
+    /// What <see cref="ParentOf"/> returns; every process is gone by default.
+    /// </summary>
+    public Func<int, int?> Parent { get; set; } = _ => null;
+
+    /// <summary>
+    /// What <see cref="ArgumentsOf"/> returns.
+    /// </summary>
+    public Func<int, IReadOnlyList<string>> Arguments { get; set; } = _ => [];
+
+    /// <inheritdoc />
+    public int? ParentOf(int pid) => Parent(pid);
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> ArgumentsOf(int pid) => Arguments(pid);
+
     /// <inheritdoc />
     public IReadOnlyList<TrackedProcess> FindGameProcesses(GameInstallation installation) => ForInstallation(installation);
 

@@ -21,10 +21,10 @@ public interface IOSInterop
     void OpenUri(Uri uri);
 
     /// <summary>
-    /// Raised when <see cref="OpenUri"/> could not hand the Uri to any handler, so the user can be given the link
-    /// to open by hand. May be raised from any thread.
+    /// Raised when a link, file or folder could not be opened, so the user can be given the link or path to open by
+    /// hand. A file or folder comes as a <c>file</c> Uri. May be raised from any thread.
     /// </summary>
-    event Action<Uri>? OpenUriFailed;
+    event Action<OpenUriFailure>? OpenUriFailed;
 
     /// <summary>
     /// Opens the file in the default application handler.
@@ -59,6 +59,14 @@ public interface IOSInterop
     /// <param name="setAsDefaultHandler">Whether to also make this app the default handler, not just a candidate.</param>
     ValueTask<UriSchemeRegistration> RegisterUriSchemeHandler(string scheme, UriSchemeClaim claim = UriSchemeClaim.Take, bool setAsDefaultHandler = true, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Something <see cref="IOSInterop"/> could not open.
+/// </summary>
+/// <param name="Uri">What was to be opened; a <c>file</c> Uri for a file or folder.</param>
+/// <param name="Reason">Why it could not be opened, as a sentence for the user.</param>
+[PublicAPI]
+public readonly record struct OpenUriFailure(Uri Uri, string Reason);
 
 /// <summary>
 /// How <see cref="IOSInterop.RegisterUriSchemeHandler"/> treats a scheme another app already holds.

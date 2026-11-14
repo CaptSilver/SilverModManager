@@ -82,8 +82,24 @@ public class Startup
         }
 
         var reactiveWindow = Provider.GetRequiredService<MainWindow>();
+        GameModeWindowShell.Apply(reactiveWindow, Provider.GetRequiredService<IGameModeDetector>().IsGameMode);
         reactiveWindow.ViewModel = Provider.GetRequiredService<MainWindowViewModel>();
         reactiveWindow.Show();
+    }
+
+    private static X11PlatformOptions CreateX11Options(bool isGameMode)
+    {
+        var options = new X11PlatformOptions
+        {
+            // NOTE(erri120): Prevents DBus exceptions for tooltips.
+            // For details see https://github.com/Nexus-Mods/NexusMods.App/issues/2799
+            UseDBusMenu = false,
+
+            // Must equal StartupWMClass in the desktop file or KDE under XWayland cannot match the window to its launcher.
+            WmClass = ApplicationConstants.ProductName,
+        };
+        GameModeWindowShell.Apply(options, isGameMode);
+        return options;
     }
 
     public static AppBuilder BuildAvaloniaApp(IServiceProvider serviceProvider)
@@ -95,15 +111,7 @@ public class Startup
         var app = AppBuilder
             .Configure(serviceProvider.GetRequiredService<App>)
             .UsePlatformDetect()
-            .With(new X11PlatformOptions
-            {
-                // NOTE(erri120): Prevents DBus exceptions for tooltips.
-                // For details see https://github.com/Nexus-Mods/NexusMods.App/issues/2799
-                UseDBusMenu = false,
-
-                // Must equal StartupWMClass in the desktop file or KDE under XWayland cannot match the window to its launcher.
-                WmClass = ApplicationConstants.ProductName,
-            })
+            .With(CreateX11Options(serviceProvider.GetRequiredService<IGameModeDetector>().IsGameMode))
             .With(new SkiaOptions
             {
                 // NOTE(insomnious): Opacity doesn't work on SVGs without this SkiaOptions set. It's needed for when we want to disable\fade SVG icons.

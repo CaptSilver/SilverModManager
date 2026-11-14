@@ -51,6 +51,7 @@ public class RunGameTool : IRunGameTool
     private readonly IToolRunner _toolRunner;
     private readonly IPrefixResolver _prefixResolver;
     private readonly IOSInterop _osInterop;
+    private readonly ISteamUriLauncher _steamUris;
     private readonly IProcessTracker _processTracker;
     private readonly IGameLaunchSession _launchSessions;
     private readonly IServiceProvider _serviceProvider;
@@ -116,6 +117,7 @@ public class RunGameTool : IRunGameTool
         _toolRunner = serviceProvider.GetRequiredService<IToolRunner>();
         _prefixResolver = serviceProvider.GetRequiredService<IPrefixResolver>();
         _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
+        _steamUris = serviceProvider.GetRequiredService<ISteamUriLauncher>();
         _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
         _launchSessions = serviceProvider.GetRequiredService<IGameLaunchSession>();
     }
@@ -316,7 +318,7 @@ public class RunGameTool : IRunGameTool
             // starts the game against a half-applied folder.
             await launch.RunAsync(async token =>
             {
-                _osInterop.OpenUri(new Uri(steamUrl));
+                _steamUris.Open(new Uri(steamUrl));
                 outcome = await WaitForSteamGame(launch, appId, token);
             }, cancellationToken);
         }

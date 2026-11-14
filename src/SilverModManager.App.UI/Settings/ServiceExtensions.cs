@@ -18,6 +18,7 @@ public static class ServiceExtensions
             .AddSettings<StoreSortSettings>()
             .AddSettings<BehaviorSettings>()
             .AddSettings<AppearanceSettings>()
+            .AddSettings<GameModeSettings>()
             .AddSettings<UpdaterSettings>()
             .AddSettings<WelcomeSettings>();
     }

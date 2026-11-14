@@ -111,9 +111,10 @@ public sealed partial class GameProcess : IGameProcess
         TimeSpan? grace = null,
         bool forwardTermination = true,
         bool leaveSignalsAlone = false,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        Func<string, bool>? isInstalledSteamAppId = null)
     {
-        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger);
+        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone, logger, isInstalledSteamAppId);
     }
 
     /// <summary>
@@ -123,7 +124,7 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null);
+        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false, logger: null, isInstalledSteamAppId: null);
     }
 
     private static GameProcess Spawn(
@@ -134,7 +135,8 @@ public sealed partial class GameProcess : IGameProcess
         TimeSpan? grace,
         bool forwardTermination,
         bool leaveSignalsAlone,
-        ILogger? logger)
+        ILogger? logger,
+        Func<string, bool>? isInstalledSteamAppId)
     {
         if (spec.Argv.Count == 0) throw new ArgumentException("The command has no program.", nameof(spec));
 
@@ -142,7 +144,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var arg in spec.Argv.Skip(1)) startInfo.ArgumentList.Add(arg);
         if (spec.WorkingDirectory is not null) startInfo.WorkingDirectory = spec.WorkingDirectory;
 
-        var environment = BuildEnvironment(baseEnvironment ?? spec.BaseEnvironment ?? CurrentEnvironment(), spec);
+        var environment = BuildEnvironment(baseEnvironment ?? spec.BaseEnvironment ?? CurrentEnvironment(), spec, isInstalledSteamAppId);
         startInfo.Environment.Clear();
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
@@ -166,16 +168,34 @@ public sealed partial class GameProcess : IGameProcess
     /// <summary>
     /// The environment the child gets. When we run from an AppImage its variables point into the mounted
     /// image, which would leak into Steam, Proton and the game and break their own library lookups.
-    /// <c>SteamAppId</c> and <c>SteamGameId</c> are deliberately not touched.
+    /// <c>SteamAppId</c> and <c>SteamGameId</c> are kept, unless they belong to the app itself running as a Steam
+    /// shortcut (see <paramref name="isInstalledSteamAppId"/>).
     /// </summary>
     /// <remarks>
     /// Our credential variables are removed too, so a key given to <c>run</c> through its environment does not
     /// reach the game. They go before the spec's own environment is applied: a launch option that sets one of
     /// them on purpose still gets it.
     /// </remarks>
-    internal static Dictionary<string, string> BuildEnvironment(IReadOnlyDictionary<string, string> inherited, GameProcessSpec spec)
+    /// <param name="inherited">The environment of the process starting the game.</param>
+    /// <param name="spec">What to start.</param>
+    /// <param name="isInstalledSteamAppId">
+    /// Whether an app id names a Steam game installed here. An inherited <c>SteamAppId</c> that names none is the
+    /// shortcut's own id, and it, <c>SteamGameId</c>, <c>SteamOverlayGameId</c> and Steam's overlay preload would make
+    /// Steam treat the game as part of the shortcut's session: ending the session, the overlay and the playtime
+    /// would be the shortcut's. Null never strips, which is what a <c>run</c> process started by a game's own launch
+    /// option needs.
+    /// </param>
+    internal static Dictionary<string, string> BuildEnvironment(IReadOnlyDictionary<string, string> inherited, GameProcessSpec spec, Func<string, bool>? isInstalledSteamAppId = null)
     {
         var result = new Dictionary<string, string>(inherited);
+        var stripShortcutIdentity = isInstalledSteamAppId is not null
+            && result.TryGetValue("SteamAppId", out var steamAppId)
+            && !isInstalledSteamAppId(steamAppId);
+        if (stripShortcutIdentity)
+        {
+            foreach (var name in SteamShortcutVariables) result.Remove(name);
+            DropOverlayPreload(result);
+        }
         result.TryGetValue("APPDIR", out var appDir);
 
         foreach (var name in new[] { "APPIMAGE", "APPDIR", "OWD" }) result.Remove(name);
@@ -212,6 +232,19 @@ public sealed partial class GameProcess : IGameProcess
         if (spec.FilesystemRoots is { } roots) PressureVesselFilesystems.Merge(result, roots);
 
         return result;
+    }
+
+    internal static readonly string[] SteamShortcutVariables = ["SteamAppId", "SteamGameId", "SteamOverlayGameId"];
+
+    private static void DropOverlayPreload(Dictionary<string, string> environment)
+    {
+        if (!environment.TryGetValue("LD_PRELOAD", out var value)) return;
+
+        var kept = value.Split(':', StringSplitOptions.RemoveEmptyEntries)
+            .Where(entry => !Path.GetFileName(entry).Contains("gameoverlayrenderer", StringComparison.Ordinal))
+            .ToArray();
+        if (kept.Length == 0) environment.Remove("LD_PRELOAD");
+        else environment["LD_PRELOAD"] = string.Join(':', kept);
     }
 
     private static bool IsUnder(string path, string folder)

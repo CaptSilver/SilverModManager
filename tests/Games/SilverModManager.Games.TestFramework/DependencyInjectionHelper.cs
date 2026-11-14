@@ -20,6 +20,7 @@ using SilverModManager.Library;
 using SilverModManager.Networking.HttpDownloader;
 using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
+using NSubstitute;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Settings;
@@ -74,12 +75,14 @@ public static class DependencyInjectionHelper
             .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
             .AddNexusWebApi()
             .AddNexusModsCollections()
+            .AddSingleton(Substitute.For<IGameModeDetector>())
             .AddOSInterop()
             .AddRuntimeDependencies()
             .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddInMemoryUserGameInstallStore()
             .AddFakeProcessTracker()
+            .AddSingleton(Substitute.For<ISteamUriLauncher>())
             .AddFakeGameLaunchSession()
             .AddFakeLoadoutInstallActivity()
             .AddFakeToolRunner()

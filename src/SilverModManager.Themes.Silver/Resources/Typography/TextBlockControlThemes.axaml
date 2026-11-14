@@ -88,7 +88,7 @@
     <ControlTheme x:Key="Heading2XLSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="60" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeading2XL}" />
         <Setter Property="LetterSpacing" Value="-1.4" />
         <Setter Property="LineHeight" Value="72" />
     </ControlTheme>
@@ -96,7 +96,7 @@
     <ControlTheme x:Key="HeadingXLSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="48" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingXL}" />
         <Setter Property="LetterSpacing" Value="-1.2" />
         <Setter Property="LineHeight" Value="57.6" />
     </ControlTheme>
@@ -104,7 +104,7 @@
     <ControlTheme x:Key="HeadingLGSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="36" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingLG}" />
         <Setter Property="LetterSpacing" Value="-0.9" />
         <Setter Property="LineHeight" Value="43.2" />
     </ControlTheme>
@@ -112,28 +112,28 @@
     <ControlTheme x:Key="HeadingMDSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingMD}" />
         <Setter Property="LineHeight" Value="37.5" />
     </ControlTheme>
 
     <ControlTheme x:Key="HeadingSMSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingSM}" />
         <Setter Property="LineHeight" Value="30" />
     </ControlTheme>
 
     <ControlTheme x:Key="HeadingXSSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingXS}" />
         <Setter Property="LineHeight" Value="22.5" />
     </ControlTheme>
 
     <ControlTheme x:Key="TitleMDSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyMD}" />
         <Setter Property="LetterSpacing" Value="1.4" />
         <Setter Property="LineHeight" Value="19.25" />
     </ControlTheme>
@@ -141,7 +141,7 @@
     <ControlTheme x:Key="TitleSMSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySM}" />
         <Setter Property="LetterSpacing" Value="1.2" />
         <Setter Property="LineHeight" Value="16.5" />
     </ControlTheme>
@@ -149,7 +149,7 @@
     <ControlTheme x:Key="TitleXSSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontHeadlinesSemiBold}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTitleXS}" />
         <Setter Property="LetterSpacing" Value="1" />
         <Setter Property="LineHeight" Value="15" />
     </ControlTheme>
@@ -157,49 +157,49 @@
     <ControlTheme x:Key="BodyXLBoldTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodySemi}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingXS}" />
         <Setter Property="LineHeight" Value="27" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodyXLNormalTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodyRegular}" />
         <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHeadingXS}" />
         <Setter Property="LineHeight" Value="27" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodyLGBoldTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodySemi}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLG}" />
         <Setter Property="LineHeight" Value="24" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodyLGNormalTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodyRegular}" />
         <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyLG}" />
         <Setter Property="LineHeight" Value="24" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodyMDSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodySemi}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyMD}" />
         <Setter Property="LineHeight" Value="21" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodyMDNormalTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodyRegular}" />
         <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodyMD}" />
         <Setter Property="LineHeight" Value="21" />
     </ControlTheme>
 
     <ControlTheme x:Key="BodySMSemiTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodySemi}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySM}" />
         <Setter Property="LetterSpacing" Value="0.3" />
         <Setter Property="LineHeight" Value="16.5" />
     </ControlTheme>
@@ -207,7 +207,7 @@
     <ControlTheme x:Key="BodySMMediumTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodyMedium}" />
         <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySM}" />
         <Setter Property="LetterSpacing" Value="0.3" />
         <Setter Property="LineHeight" Value="16.5" />
     </ControlTheme>
@@ -215,7 +215,7 @@
     <ControlTheme x:Key="BodySMNormalTheme" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontBodyRegular}" />
         <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySM}" />
         <Setter Property="LetterSpacing" Value="0.3" />
         <Setter Property="LineHeight" Value="16.5" />
     </ControlTheme>

@@ -11,6 +11,7 @@
         <MergeResourceInclude Source="/Resources/Palette/CornerRadiuses/ElementCornerRadius.axaml"/>
         <MergeResourceInclude Source="/Resources/Palette/Spacings/ElementSpacing.axaml"/>
         <MergeResourceInclude Source="/Resources/Palette/BoxShadows/BoxShadowsPalette.axaml"/>
+        <MergeResourceInclude Source="/Resources/Palette/Fonts/FontSizes.axaml"/>
         <MergeResourceInclude Source="/Resources/Typography/TextBlockControlThemes.axaml"/>
         <MergeResourceInclude Source="/Resources/Palette/Colors/ElementGradients.axaml"/>
         

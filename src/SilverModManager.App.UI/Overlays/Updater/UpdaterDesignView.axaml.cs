@@ -41,7 +41,7 @@ public partial class UpdaterDesignView : UserControl
     {
         private const string DesignTimeOnly = "design-time only";
 
-        public event Action<Uri>? OpenUriFailed
+        public event Action<OpenUriFailure>? OpenUriFailed
         {
             add => throw new NotSupportedException(DesignTimeOnly);
             remove => throw new NotSupportedException(DesignTimeOnly);

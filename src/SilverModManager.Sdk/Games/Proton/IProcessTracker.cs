@@ -57,4 +57,14 @@ public interface IProcessTracker
     /// under a reaper of its own before the game starts.
     /// </summary>
     bool IsInstallStepRunning(uint appId);
+
+    /// <summary>
+    /// The parent process id of <paramref name="pid"/>, or null when the process is gone or its status cannot be read.
+    /// </summary>
+    int? ParentOf(int pid);
+
+    /// <summary>
+    /// The command line of <paramref name="pid"/>, one entry per argument; empty when the process is gone.
+    /// </summary>
+    IReadOnlyList<string> ArgumentsOf(int pid);
 }

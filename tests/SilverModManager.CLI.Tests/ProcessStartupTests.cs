@@ -915,7 +915,7 @@ public class ProcessStartupTests
     }
 
     [Fact]
-    public void ALaunchTheWindowDeclinesIsRefusedWithItsReason_OnStderrAndTheDesktop()
+    public void ALaunchTheWindowDeclinesIsRefusedWithItsReason_OnStderrOnly()
     {
         var recorder = new Recorder
         {
@@ -928,8 +928,8 @@ public class ProcessStartupTests
         var expected = ProcessStartup.GuiDeclinedMessage("SilverModManager is applying a loadout to Test Game.");
         expected.Should().Contain("is applying a loadout to Test Game");
         recorder.Errors.Should().ContainSingle().Which.Should().Be(expected);
-        // Steam starts the launch option without a terminal, so the desktop has to hear about it too.
-        recorder.Notifications.Should().ContainSingle().Which.Should().Be(expected);
+        // The window already showed the reason, so a second notification would say it twice.
+        recorder.Notifications.Should().BeEmpty("the window already told the desktop");
         recorder.Calls.Should().NotContain(NothingStarted);
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk;
@@ -21,13 +22,12 @@ public static class SteamLaunchOptionDialog
         // A captured snapshot is stale after a rename, or once files the game's requirements depend on change.
         loadout = loadout.Rebase();
         var processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
-        var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
-        // The same steam:// URLs the app already hands to the OS to start a game through Steam.
+        var steamUris = serviceProvider.GetRequiredService<ISteamUriLauncher>();
         var closeAndWrite = SteamCloseAndWrite.Create(
             processTracker.IsSteamRunning,
             () => processTracker.FindByName("steamwebhelper").Count > 0,
-            () => osInterop.OpenUri(new Uri("steam://exit")),
-            () => osInterop.OpenUri(new Uri("steam://open/main"))
+            () => steamUris.Open(new Uri("steam://exit")),
+            () => steamUris.Open(new Uri("steam://open/main"))
         );
         var overlay = new SteamLaunchOptionViewModel(
             loadout,
@@ -35,7 +35,8 @@ public static class SteamLaunchOptionDialog
             processTracker,
             serviceProvider.GetRequiredService<ISteamLaunchOptionWriter>(),
             serviceProvider.GetRequiredService<IAvaloniaInterop>(),
-            closeAndWrite
+            closeAndWrite,
+            serviceProvider.GetRequiredService<IGameModeDetector>().IsGameMode ? GameModeWindowShell.CloseSteamUnavailableReason : null
         );
         await serviceProvider.GetRequiredService<IOverlayController>().EnqueueAndWait(overlay);
     }
