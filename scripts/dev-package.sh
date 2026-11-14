@@ -97,8 +97,33 @@ swap_runtime() {
     fi
 }
 
+# A bundled library that calls FreeType must name a library that brings it in (libfreetype or
+# libfontconfig). Desktop systems usually have FreeType loaded already, which hides the gap, but on
+# SteamOS the first call crashes the app at startup. SkiaSharp 3.119.0-3.119.2 shipped such an
+# arm64 build.
+check_freetype_links() {
+    local image="$1" offset dir lib undefined needed bad=""
+    offset="$(squashfs_offset "$image")"
+    dir="$(mktemp -d)"
+    unsquashfs -q -no-xattrs -o "$offset" -d "$dir/root" "$image" 'usr/bin/*.so*' >/dev/null
+    for lib in "$dir"/root/usr/bin/*.so*; do
+        readelf -h "$lib" >/dev/null 2>&1 || continue
+        undefined="$(readelf --dyn-syms -W "$lib" | awk '$7 == "UND" { print $8 }')"
+        grep -q '^FT_' <<<"$undefined" || continue
+        needed="$(readelf -d "$lib")"
+        grep -qE 'NEEDED.*\[lib(freetype|fontconfig)\.so' <<<"$needed" || bad+="  ${lib##*/}"$'\n'
+    done
+    rm -rf "$dir"
+    if [[ -n "$bad" ]]; then
+        echo "$image bundles libraries that call FreeType without loading it:" >&2
+        printf '%s' "$bad" >&2
+        exit 1
+    fi
+}
+
 # unsquashfs inspects the finished image, so fail before the build rather than after it.
 command -v unsquashfs >/dev/null || { echo "unsquashfs (squashfs-tools) is needed to inspect the AppImage" >&2; exit 1; }
+command -v readelf >/dev/null || { echo "readelf (binutils) is needed to inspect the AppImage" >&2; exit 1; }
 
 # Same pinned PupNet as CI.
 pupnet_repo=https://github.com/kuiperzone/PupNet-Deploy.git
@@ -136,4 +161,5 @@ image="$(ls -1 Deploy/OUT/*."$arch".AppImage)"
 check_runtimes "$image" "$arch"
 swap_runtime "$image" "$arch"
 check_runtimes "$image" "$arch"
+check_freetype_links "$image"
 echo "$image"
