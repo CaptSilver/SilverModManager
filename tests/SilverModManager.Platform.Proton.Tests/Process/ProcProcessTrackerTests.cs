@@ -240,6 +240,34 @@ public class ProcProcessTrackerTests : IDisposable
         GamePids().Should().Equal(100);
     }
 
+    [Theory]
+    [InlineData("steam-runtime-l", "steam-runtime-launch-client")]
+    [InlineData("steam-runtime-l", "steam-runtime-launcher-service")]
+    [InlineData("steam-runtime-s", "steam-runtime-supervisor")]
+    [InlineData("srt-bwrap", "srt-bwrap")]
+    [InlineData("pv-adverb", "pv-adverb")]
+    public void FindGameProcesses_SkipsSteamsLaunchHelpersThatCarryTheGamesPrefix(string comm, string exeName)
+    {
+        // Steam starts a game through these, with the game's environment, and keeps them alive beside it. They are
+        // never the game: taking one for it refused the launch that started it.
+        var compatData = Path.GetDirectoryName(_prefix)!;
+        AddProcess(100, comm, exe: "/steam/pressure-vessel/bin/" + exeName, environ: [$"STEAM_COMPAT_DATA_PATH={compatData}"]);
+        AddProcess(101, "wine64-preloader", environ: [$"STEAM_COMPAT_DATA_PATH={compatData}"]);
+
+        GamePids().Should().Equal(101);
+        PrefixPids(_prefix).Should().Equal(101);
+    }
+
+    [Fact]
+    public void FindGameProcesses_SkipsALaunchHelperWhoseExecutableCannotBeRead()
+    {
+        var compatData = Path.GetDirectoryName(_prefix)!;
+        AddProcess(100, "steam-runtime-l", environ: [$"STEAM_COMPAT_DATA_PATH={compatData}"]);
+        AddProcess(101, "wine64-preloader", environ: [$"STEAM_COMPAT_DATA_PATH={compatData}"]);
+
+        GamePids().Should().Equal(101);
+    }
+
     [Fact]
     public void FindGameProcesses_MatchesTheWinePrefixInTheEnvironment()
     {

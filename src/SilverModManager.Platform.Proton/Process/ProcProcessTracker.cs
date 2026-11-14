@@ -19,7 +19,7 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
         var gameDir = RealPath(installation.Locations[LocationId.Game].Path.ToString());
         var (prefixes, compatDataDirs) = PrefixesOf(installation.LocatorResult);
 
-        return Scan().Where(p => RunsFromGameDir(p) || UsesPrefix(p) || WineRunsFromGameDir(p)).Select(p => p.Process).ToList();
+        return Scan().Where(p => !IsSteamLaunchHelper(p) && (RunsFromGameDir(p) || UsesPrefix(p) || WineRunsFromGameDir(p))).Select(p => p.Process).ToList();
 
         bool RunsFromGameDir(Candidate p) => p.ExePath is { } exe && IsInFolder(exe, gameDir);
 
@@ -34,6 +34,23 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
         bool WineRunsFromGameDir(Candidate p) => p.Arguments().Any(a => HostPathOfZDrive(a) is { } host && IsInFolder(RealPath(host), gameDir));
     }
 
+    // Steam starts a game through these and keeps them alive beside it, with the game's environment and prefix. They
+    // are never the game: counting one refused the very launch that started it, and a sweep would signal it. Matched on
+    // the executable's file name, since the kernel cuts comm to 15 characters ("steam-runtime-l").
+    private static readonly HashSet<string> SteamLaunchHelpers = new(StringComparer.Ordinal)
+    {
+        "steam-runtime-launch-client", "steam-runtime-launcher-service", "steam-runtime-supervisor", "srt-bwrap", "pv-adverb",
+    };
+
+    // The 15-character comm of each, for a helper whose exe link cannot be read (it can sit in another mount namespace).
+    private static readonly HashSet<string> SteamLaunchHelperComms = new(StringComparer.Ordinal)
+    {
+        "steam-runtime-l", "steam-runtime-s", "srt-bwrap", "pv-adverb",
+    };
+
+    private static bool IsSteamLaunchHelper(Candidate p)
+        => p.ExePath is { } exe ? SteamLaunchHelpers.Contains(Path.GetFileName(exe)) : SteamLaunchHelperComms.Contains(p.Process.Name);
+
     /// <inheritdoc />
     public IReadOnlyList<TrackedProcess> FindByName(string name)
     {
@@ -46,7 +63,7 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
         var recorded = RealPath(prefix.ToString());
         var (compatData, rewritten) = ProtonCompatData.Of(recorded);
 
-        return Scan().Where(UsesPrefix).Select(p => p.Process).ToList();
+        return Scan().Where(p => !IsSteamLaunchHelper(p) && UsesPrefix(p)).Select(p => p.Process).ToList();
 
         bool UsesPrefix(Candidate p)
         {
