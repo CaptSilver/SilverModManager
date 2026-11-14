@@ -82,7 +82,7 @@ public class ProtonServicesTests
         ]);
         provider.GetServices<IToolRunStrategy>().OfType<ILastResortToolRunStrategy>().Should().ContainSingle()
             .Which.Should().BeOfType<ProtontricksStrategy>();
-        provider.GetServices<IDiagnosticEmitter>().Select(e => e.GetType()).Should().BeEquivalentTo([typeof(SteamLaunchOptionEmitter), typeof(BuiltInDxgiOverrideEmitter), typeof(MountDiagnosticEmitter)]);
+        provider.GetServices<IDiagnosticEmitter>().Select(e => e.GetType()).Should().BeEquivalentTo([typeof(SteamLaunchOptionEmitter), typeof(BuiltInDxgiOverrideEmitter), typeof(MountDiagnosticEmitter), typeof(UnfinishedLaunchEmitter)]);
         provider.GetServices<IDiagnosticActionHandler>().Select(h => h.ActionId).Should().Contain(DiagnosticActions.PromoteStagedFilesId);
         provider.GetServices<IRuntimeDependency>().Should().ContainSingle().Which.Should().BeOfType<AggregateProtontricksDependency>();
     }

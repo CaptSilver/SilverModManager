@@ -21,6 +21,10 @@ internal static class RunningGameWording
             ? $"{game} is running ({Game(running)}). Quit it, then press Play again."
             : $"{Tool(running)} is open in {game}'s prefix. Close it, then press Play again.";
 
+    /// <summary>For a pending finish held back because Steam is updating the game; the finisher and the Health Check say it alike.</summary>
+    public static string SteamUpdating(string game, string loadoutName)
+        => $"Steam is updating {game}, so the changes from your last session are not in '{loadoutName}' yet. The app finishes this after the update, the next time it applies or launches.";
+
     // The first process names the game; the rest would only lengthen a line the user reads once.
     private static string Game(RunningProcesses running)
     {

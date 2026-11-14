@@ -77,6 +77,17 @@ public static class DiagnosticActions
         => new(RestoreFolderFromBackupId, $"Restore {Path.GetFileName(backupPath)}", [linkPath, backupPath]);
 
     /// <summary>
+    /// Id of the action that stops a game left running after an unfinished launch and takes that launch's changes into the loadout.
+    /// </summary>
+    public const string StopGameAndFinishId = "stop-game-and-finish";
+
+    /// <summary>
+    /// Stops <paramref name="gameName"/>'s processes and finishes its last launch. The handler lists what it will stop and asks first.
+    /// </summary>
+    public static DiagnosticAction StopGameAndFinish(string gameName)
+        => new(StopGameAndFinishId, $"Stop {gameName} and finish", [], "Sends the game a terminate signal, then a kill after a few seconds, and takes the last session's changes into the loadout.");
+
+    /// <summary>
     /// Id of the action that installs missing components into the game's Wine prefix.
     /// </summary>
     public const string SetUpPrefixId = "set-up-prefix";

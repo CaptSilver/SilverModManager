@@ -179,8 +179,7 @@ public sealed class PendingLaunchFinisher : IPendingLaunchFinisher
         if (SteamIsUpdating(installation, tracker))
         {
             logger.LogWarning("Steam is updating {Game}; its pending finish waits", game);
-            return Report(LaunchFinishOutcome.WaitingForSteam,
-                $"Steam is updating {game}, so the changes from your last session are not in '{name}' yet. The app finishes this after the update, the next time it applies or launches.");
+            return Report(LaunchFinishOutcome.WaitingForSteam, RunningGameWording.SteamUpdating(game, name));
         }
 
         var running = detector.Running(installation);

@@ -65,6 +65,9 @@ public static class Services
         // The finding list is the one the launch gate fills, so the emitter and the promote action see what a recovery recorded.
         services.TryAddSingleton<MountRecoveryFindings>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MountDiagnosticEmitter>());
+        // The same marker store the launch writes, so the diagnostic reads what a headless launch left.
+        services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnfinishedLaunchEmitter>());
         services.AddDiagnosticActionHandler<PromoteStagedFilesActionHandler>();
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         // Runs through the finisher the headless launch services register, which the doctor verb and the app start both have.
