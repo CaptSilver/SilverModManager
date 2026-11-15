@@ -735,7 +735,7 @@ public class SynchronizerService : ISynchronizerService, IDisposable
         // restart) has no recorded version, so the first look compares.
         var waitsForArchive = 0;
         var versionAtLastLook = -1L; // not looked yet
-        var statusFailureLogged = 0;
+        var statusFailures = new StatusFailureLog();
 
         // An install writes thousands of files over minutes, one revision after another. A comparison made meanwhile
         // walks every file of the loadout and is out of date at the next commit, and it competes with the install for
@@ -846,13 +846,15 @@ public class SynchronizerService : ISynchronizerService, IDisposable
                 // An unhandled exception here would end the stream, and from there reach the UI thread
                 // and take the process down. Every later revision would fail the same way, so only the
                 // first failure is an error.
-                if (Interlocked.Exchange(ref statusFailureLogged, 1) == 0)
+                if (statusFailures.Failed() == LogLevel.Error)
                     _logger.LogError(e, "Failed to compute the status of loadout `{LoadoutName}` ({LoadoutId})", rev.Name, loadoutId);
                 else
                     _logger.LogDebug(e, "Status of loadout `{LoadoutName}` ({LoadoutId}) is still unavailable", rev.Name, loadoutId);
                 return LoadoutSynchronizerState.Unavailable;
             }
 
+            // A later failure is a new one, not a repeat of the one already logged.
+            statusFailures.Recovered();
             Volatile.Write(ref waitsForArchive, evaluation.WaitsForArchive ? 1 : 0);
             // The version is read before the comparison, so an archive that lands during it is looked at again.
             Volatile.Write(ref versionAtLastLook, versionNow);
