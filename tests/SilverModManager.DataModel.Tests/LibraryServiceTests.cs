@@ -4,6 +4,8 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.GC;
@@ -12,6 +14,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.Library;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
@@ -255,6 +258,64 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
 
         loadoutsWithNewItem2.Should().ContainSingle()
             .Which.loadout.LoadoutId.Should().Be(loadout1.LoadoutId);
+    }
+
+    private sealed class CapturingLogger : ILogger<LibraryService>
+    {
+        public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, exception));
+    }
+
+    [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_LogsTheFailure_AndKeepsLoadoutsAlreadyReplaced()
+    {
+        var loadout1 = await CreateTestLoadout("Loadout1");
+        var loadout2 = await CreateTestLoadout("Loadout2");
+        var collection1 = await CreateCollectionInLoadout(loadout1, "Test Collection 1");
+        var collection2 = await CreateCollectionInLoadout(loadout2, "Test Collection 2");
+
+        var archivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine("nested_archive.zip");
+        var replacementPath = CopyWithComment(archivePath, "replacement");
+        var oldItem = (await _libraryService.AddLocalFile(archivePath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+        await LoadoutManager.InstallItem(oldItem, loadout1.LoadoutId, parent: collection1.AsLoadoutItemGroup().LoadoutItemGroupId);
+        await LoadoutManager.InstallItem(oldItem, loadout2.LoadoutId, parent: collection2.AsLoadoutItemGroup().LoadoutItemGroupId);
+        var newItem = (await _libraryService.AddLocalFile(replacementPath, new GameAcquisition(GameInstallation.Game.GameId))).AsLibraryFile().AsLibraryItem();
+
+        // The first loadout's replacement goes through; the second one throws.
+        var failure = new InvalidOperationException("replace failed");
+        var calls = 0;
+        var loadoutManager = Substitute.For<ILoadoutManager>();
+        // NSubstitute can't return a non-generic ValueTask from a callback, so the real replacement is awaited synchronously.
+        loadoutManager
+            .When(manager => manager.ReplaceItems(Arg.Any<LoadoutId>(), Arg.Any<LoadoutItemGroupId[]>(), Arg.Any<LibraryItem.ReadOnly>(), Arg.Any<bool>()))
+            .Do(call =>
+            {
+                if (++calls > 1) throw failure;
+                LoadoutManager.ReplaceItems(call.Arg<LoadoutId>(), call.Arg<LoadoutItemGroupId[]>(), call.Arg<LibraryItem.ReadOnly>(), call.Arg<bool>()).AsTask().GetAwaiter().GetResult();
+            });
+
+        var logger = new CapturingLogger();
+        var services = new ServiceCollection()
+            .AddSingleton(loadoutManager)
+            .AddSingleton(ServiceProvider.GetRequiredService<IConnection>())
+            .AddSingleton(ServiceProvider.GetRequiredService<IGarbageCollectorRunner>())
+            .AddSingleton(ServiceProvider.GetRequiredService<ICollectionOwnership>())
+            .AddSingleton<ILogger<LibraryService>>(logger)
+            .BuildServiceProvider();
+        var service = new LibraryService(services);
+
+        var result = await service.ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, new ReplaceLibraryItemOptions { SkipLockedCollections = false });
+
+        result.Should().Be(LibraryItemReplacementResult.FailedUnknownReason);
+        logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, failure));
+        _libraryService.LoadoutsWithLibraryItem(newItem).Should().ContainSingle("the loadout replaced before the failure keeps its replacement");
+        _libraryService.LoadoutsWithLibraryItem(oldItem).Should().ContainSingle("the loadout that failed still has the old item");
     }
 
     private async Task<(Loadout.ReadOnly Loadout, LibraryItem.ReadOnly Item, LoadoutItemGroupId Group)> InstalledUnder(string collectionName, bool isReadOnly = false, string archive = "nested_archive.zip")

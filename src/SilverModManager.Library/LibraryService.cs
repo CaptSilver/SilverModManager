@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Library;
@@ -27,6 +28,7 @@ public sealed class LibraryService : ILibraryService
     private readonly IConnection _connection;
     private readonly IGarbageCollectorRunner _gcRunner;
     private readonly ICollectionOwnership _ownership;
+    private readonly ILogger<LibraryService> _logger;
 
     /// <summary>
     /// Constructor.
@@ -38,6 +40,7 @@ public sealed class LibraryService : ILibraryService
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _gcRunner = serviceProvider.GetRequiredService<IGarbageCollectorRunner>();
         _ownership = serviceProvider.GetRequiredService<ICollectionOwnership>();
+        _logger = serviceProvider.GetRequiredService<ILogger<LibraryService>>();
     }
 
     public IJobTask<IAddDownloadJob, LibraryFile.ReadOnly> AddDownload(IJobTask<IDownloadJob, AbsolutePath> downloadJob, IAcquisitionContext acquisition)
@@ -272,8 +275,10 @@ public sealed class LibraryService : ILibraryService
                 await _loadoutManager.ReplaceItems(loadoutId, groupIds, newItem, options.KeepPlace);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            // Loadouts are replaced and committed one at a time, so the ones before the failure stay replaced.
+            _logger.LogError(ex, "Replacing library item {OldItem} with {NewItem} failed", oldItem.Name, newItem.Name);
             return LibraryItemReplacementResult.FailedUnknownReason;
         }
 
