@@ -117,15 +117,5 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
 
     /// <summary>Read from the game's own executable; a launcher carries the anti-cheat's version, not the game's.</summary>
     public Optional<Version> GetLocalVersion(GameInstallation installation)
-    {
-        try
-        {
-            var executable = FromSoftPaths.GameFolder(Definition.Layout, installation) / Definition.Layout.GameExecutable;
-            return GameExecutableVersion.Read(executable);
-        }
-        catch (Exception)
-        {
-            return Optional<Version>.None;
-        }
-    }
+        => GameExecutableVersion.Read(installation, FromSoftPaths.InGameFolder(Definition.Layout, Definition.Layout.GameExecutable));
 }

@@ -1,5 +1,7 @@
 using FluentAssertions;
+using System.Collections.Immutable;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Sdk.Games.Versions;
 
@@ -23,6 +25,41 @@ public class GameExecutableVersionTests : IDisposable
         var path = Path.Combine(_folder, "game.exe");
         File.WriteAllBytes(path, NativeExecutable.WithVersionResource(fileVersionMs, fileVersionLs, productVersion));
         return FileSystem.Shared.FromUnsanitizedFullPath(path);
+    }
+
+    private GameInstallation InstallWithGameLocation()
+    {
+        var game = FileSystem.Shared.FromUnsanitizedFullPath(_folder);
+        var locations = GameLocations.Create(new Dictionary<LocationId, AbsolutePath> { [LocationId.Game] = game }.ToImmutableDictionary());
+        return new GameInstallation(new GameLocatorResult
+        {
+            Game = null!, Path = game, Store = GameStore.Steam, StoreIdentifier = "1", LocatorIds = [], Locator = null!,
+        }, locations);
+    }
+
+    [Fact]
+    public void Read_InstallWithoutTheLocation_IsNone()
+    {
+        Executable(0x0001_0004, 0x000F_0000);
+
+        GameExecutableVersion.Read(InstallWithGameLocation(), new GamePath(LocationId.From("Absent"), "game.exe")).HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Read_ResolvesTheGamePathInTheInstall()
+    {
+        Executable(0x0001_0004, 0x000F_0000);
+
+        var version = GameExecutableVersion.Read(InstallWithGameLocation(), new GamePath(LocationId.Game, "game.exe"));
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(new Version(1, 4, 15, 0));
+    }
+
+    [Fact]
+    public void Read_MissingFileUnderAPresentLocation_IsNone()
+    {
+        GameExecutableVersion.Read(InstallWithGameLocation(), new GamePath(LocationId.Game, "nothing.exe")).HasValue.Should().BeFalse();
     }
 
     [Fact]

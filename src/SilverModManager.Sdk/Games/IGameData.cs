@@ -104,16 +104,7 @@ public interface IGameData
     /// Returns a game specific version.
     /// </summary>
     Optional<Version> GetLocalVersion(GameInstallation installation)
-    {
-        try
-        {
-            return GameExecutableVersion.Read(installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)));
-        }
-        catch (Exception e)
-        {
-            return Optional<Version>.None;
-        }
-    }
+        => GameExecutableVersion.Read(installation, GetPrimaryFile(installation));
 
     /// <summary>
     /// Gets the fallback directory for mods in collections that don't have matching installers.

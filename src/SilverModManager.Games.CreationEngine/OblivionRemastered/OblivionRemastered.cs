@@ -110,15 +110,5 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
 
     // The version lives in the engine binary; the launcher at the root carries none of the game's.
     public override Optional<Version> GetLocalVersion(GameInstallation installation)
-    {
-        try
-        {
-            var exe = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, EngineExe));
-            return GameExecutableVersion.Read(exe);
-        }
-        catch (Exception)
-        {
-            return Optional<Version>.None;
-        }
-    }
+        => GameExecutableVersion.Read(installation, new GamePath(LocationId.Game, EngineExe));
 }

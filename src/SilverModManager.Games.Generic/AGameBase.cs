@@ -108,14 +108,5 @@ public abstract class AGameBase : IGame
     // Declared here because a default interface member can't be overridden by a subclass that doesn't
     // list the interface itself, and a title may need a different version source.
     public virtual Optional<Version> GetLocalVersion(GameInstallation installation)
-    {
-        try
-        {
-            return GameExecutableVersion.Read(installation.Locations.ToAbsolutePath(GetPrimaryFile(installation)));
-        }
-        catch (Exception)
-        {
-            return Optional<Version>.None;
-        }
-    }
+        => GameExecutableVersion.Read(installation, GetPrimaryFile(installation));
 }

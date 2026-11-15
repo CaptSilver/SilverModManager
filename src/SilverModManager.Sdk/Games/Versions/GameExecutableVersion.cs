@@ -16,6 +16,16 @@ namespace SilverModManager.Sdk.Games.Versions;
 /// </summary>
 public static partial class GameExecutableVersion
 {
+    /// <summary>
+    /// The version of the executable at <paramref name="executable"/> in <paramref name="installation"/>. An install
+    /// with no such location has no version. Nothing else is caught here: a failure past that check is a bug and
+    /// should surface rather than read as "version unknown".
+    /// </summary>
+    public static Optional<Version> Read(GameInstallation installation, GamePath executable)
+        => installation.Locations.ContainsKey(executable.LocationId)
+            ? Read(installation.Locations.ToAbsolutePath(executable))
+            : Optional<Version>.None;
+
     public static Optional<Version> Read(AbsolutePath executable)
     {
         try
