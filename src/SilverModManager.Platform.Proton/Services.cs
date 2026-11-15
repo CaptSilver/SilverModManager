@@ -53,20 +53,12 @@ public static class Services
         services.AddSingleton<IPrefixFileFetcher>(s => new HttpPrefixFileFetcher(s.GetRequiredService<HttpClient>()));
         services.AddSingleton<PrefixSetupRunner>();
         services.AddSingleton<IPrefixSetupRunner>(s => s.GetRequiredService<PrefixSetupRunner>());
-        // The doctor probes launch locks without needing the rest of the headless launch services.
-        services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
-        services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
-        services.TryAddSingleton<SteamConfigFileEditor>();
-        services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
-        // The Steam launch options suggestion shows the line the fix would write.
-        services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
+        // The doctor probes launch locks, reads the launch markers and shows the launch options line without the rest
+        // of the headless launch services.
+        services.AddSteamConfigAndLocks();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, BuiltInDxgiOverrideEmitter>());
-        // The finding list is the one the launch gate fills, so the emitter and the promote action see what a recovery recorded.
-        services.TryAddSingleton<MountRecoveryFindings>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, MountDiagnosticEmitter>());
-        // The same marker store the launch writes, so the diagnostic reads what a headless launch left.
-        services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, UnfinishedLaunchEmitter>());
         services.AddDiagnosticActionHandler<PromoteStagedFilesActionHandler>();
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();

@@ -52,12 +52,30 @@ public static class LaunchServices
     }
 
     /// <summary>
+    /// The process tracker, installation locks, Steam config writers and launch-finish state that both the doctor
+    /// (<see cref="Services.AddProton"/>) and the headless launch need. Each of those two registers this itself so
+    /// either stands alone; going through one method keeps the two from drifting apart.
+    /// </summary>
+    internal static IServiceCollection AddSteamConfigAndLocks(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
+        services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
+        services.TryAddSingleton<SteamConfigFileEditor>();
+        services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
+        services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
+        // One finding list and one marker store, shared by the launch that writes them and the doctor that reads them.
+        services.TryAddSingleton<MountRecoveryFindings>();
+        services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
+        return services;
+    }
+
+    /// <summary>
     /// Registers the services that let a game launch run without the GUI.
     /// </summary>
     public static IServiceCollection AddHeadlessLaunch(this IServiceCollection services)
     {
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
-        services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
+        services.AddSteamConfigAndLocks();
         services.AddGameLaunchCore();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ILaunchGate, RunningGameGate>());
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
@@ -71,17 +89,11 @@ public static class LaunchServices
         services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<LaunchFinish>();
-        services.TryAddSingleton<ILaunchFinishMarkers, LaunchFinishMarkers>();
-        services.TryAddSingleton<MountRecoveryFindings>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ILaunchGate, MountLaunchGate>());
         services.TryAddSingleton<ILaunchMounts, DeploymentLaunchMounts>();
         services.TryAddSingleton<PendingLaunchFinisher>();
         services.TryAddSingleton<IPendingLaunchFinisher>(s => s.GetRequiredService<PendingLaunchFinisher>());
-        services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
-        services.TryAddSingleton<SteamConfigFileEditor>();
-        services.TryAddSingleton(s => new LocalConfigVdfWriter(s.GetRequiredService<SteamConfigFileEditor>()));
-        services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         return services.AddSteamShortcuts().AddLaunchVerbs();
     }
 
@@ -91,7 +103,6 @@ public static class LaunchServices
     private static IServiceCollection AddSteamShortcuts(this IServiceCollection services)
     {
         services.TryAddSingleton<IBinaryKeyValues, HandWrittenBinaryKeyValues>();
-        services.TryAddSingleton<SteamConfigFileEditor>();
         services.TryAddSingleton<ShortcutsVdfWriter>();
         services.TryAddSingleton(s => new LauncherShim(LauncherShim.ResolveDataHome(s.GetRequiredService<IEnvironmentReader>(), s.GetRequiredService<IFileSystem>())));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ISteamShortcutRoute, ShortcutsFileRoute>());
