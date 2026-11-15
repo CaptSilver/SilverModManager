@@ -72,6 +72,17 @@ public class RunningGameDetectorTests
     }
 
     [Fact]
+    public void PublicConstructor_WalksAncestorsThroughTheTracker()
+    {
+        const int FakeAncestor = 4242;
+        _tracker.Parent = pid => pid == Environment.ProcessId ? FakeAncestor : null;
+        Lists([FakeAncestor, 777]);
+        var detector = new RunningGameDetector(_tracker, _tools, _clock);
+
+        Pids(detector.Running(Installation()).Game).Should().Equal(777);
+    }
+
+    [Fact]
     public void Running_NeverReturnsOurOwnPidOrTheAppImageHelper()
     {
         Lists([OwnPid, Helper, 777]);

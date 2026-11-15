@@ -29,7 +29,7 @@ public sealed class RunningGameDetector : IRunningGameDetector
     private readonly TimeSpan _interval;
 
     public RunningGameDetector(IProcessTracker tracker, IStartedTools tools, TimeProvider clock, ILogger<RunningGameDetector>? logger = null)
-        : this(tracker, tools, clock, logger, StragglerShutdown.ParentOf, OwnProcessFamily.Current, Environment.ProcessId, DefaultInterval)
+        : this(tracker, tools, clock, logger, tracker.ParentOf, OwnProcessFamily.Current, Environment.ProcessId, DefaultInterval)
     {
     }
 

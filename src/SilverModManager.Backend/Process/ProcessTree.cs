@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using SilverModManager.Abstractions.Games.Processes;
 
 namespace SilverModManager.Backend.Process;
 
@@ -22,7 +23,7 @@ internal static partial class ProcessTree
         foreach (var dir in Directory.EnumerateDirectories(procRoot))
         {
             if (!int.TryParse(Path.GetFileName(dir), out var pid)) continue;
-            if (ReadParent(dir) is not { } parent) continue;
+            if (ProcStat.Read(procRoot, pid)?.ParentPid is not { } parent) continue;
 
             if (!childrenOf.TryGetValue(parent, out var children)) childrenOf[parent] = children = [];
             children.Add(pid);
@@ -55,20 +56,6 @@ internal static partial class ProcessTree
             // A process that exited since the scan fails with ESRCH, which is the outcome we wanted anyway.
             _ = kill(pid, SigInt);
         }
-    }
-
-    private static int? ReadParent(string dir)
-    {
-        string stat;
-        try { stat = File.ReadAllText(Path.Combine(dir, "stat")); }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
-
-        // The second field is the name in parentheses, which may itself hold spaces and ')'. The fields after
-        // the last ')' are the state and then the parent pid.
-        var nameEnd = stat.LastIndexOf(')');
-        if (nameEnd < 0 || nameEnd + 2 > stat.Length) return null;
-        var fields = stat[(nameEnd + 2)..].Split(' ');
-        return fields.Length > 1 && int.TryParse(fields[1], out var parent) ? parent : null;
     }
 
     [LibraryImport("libc", EntryPoint = "kill", SetLastError = true)]

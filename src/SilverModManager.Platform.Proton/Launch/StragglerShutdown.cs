@@ -71,22 +71,6 @@ internal static partial class StragglerShutdown
             => detector.Running(installation, protectedPids).Game;
     }
 
-    /// <summary>The parent of <paramref name="pid"/> as <c>/proc/&lt;pid&gt;/stat</c> reports it, or null when it cannot be read.</summary>
-    internal static int? ParentOf(int pid)
-    {
-        try
-        {
-            // "pid (comm) state ppid ...": comm may hold spaces and parentheses, so read after the last ')'.
-            var stat = File.ReadAllText($"/proc/{pid}/stat");
-            var fields = stat[(stat.LastIndexOf(')') + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            return fields.Length > 1 && int.TryParse(fields[1], out var parent) ? parent : null;
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
-
     [LibraryImport("libc", EntryPoint = "kill", SetLastError = true)]
     private static partial int kill(int pid, int signal);
 }

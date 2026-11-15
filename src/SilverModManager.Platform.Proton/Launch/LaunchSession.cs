@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Processes;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Errors;
@@ -679,18 +680,7 @@ public sealed class LaunchSession
     private static bool IsProcessAlive(string pidText)
     {
         if (!int.TryParse(pidText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var pid)) return false;
-        try
-        {
-            // Field 3 of /proc/<pid>/stat follows the last ')' (the command name may contain one); Z is a
-            // process that has exited and is waiting to be reaped.
-            var stat = File.ReadAllText($"/proc/{pid}/stat");
-            var state = stat[(stat.LastIndexOf(')') + 1)..].TrimStart();
-            return state.Length > 0 && state[0] != 'Z' && state[0] != 'X';
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
+        return ProcStat.Read("/proc", pid)?.IsAlive == true;
     }
 
     /// <summary>The state file key the Steam wrapper reports its pid under.</summary>
