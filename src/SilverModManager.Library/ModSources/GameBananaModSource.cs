@@ -85,44 +85,12 @@ internal sealed class GameBananaModSource(
     // Both a replace and a keep-old download; only a replace changes what a loadout links.
     public bool WillReplace(ModUpdateRequest request) => request.Replace;
 
+    // The files are fetched by id from the site's own download address: nothing here opens a browser.
     public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
-        var downloaded = new List<LibraryItem.ReadOnly>();
-        var replacements = new List<ModUpdateReplacement>();
-        var failures = new List<ModUpdateFailure>();
-
-        foreach (var update in request.Updates.OfType<GameBananaModUpdate>())
-        {
-            if (cancellationToken.IsCancellationRequested) break;
-
-            try
-            {
-                var current = update.CurrentItems.Select(id => LibraryItem.Load(connection.Db, id)).Where(static item => item.IsValid()).ToArray();
-                if (current.Length == 0) throw new InvalidOperationException($"{update.Profile.Name} {update.CurrentVersion} is no longer in the library.");
-
-                var added = await Download(update, current, cancellationToken);
-                downloaded.Add(added);
-                if (!request.Replace) continue;
-
-                var library = provider.GetRequiredService<ILibraryService>();
-                foreach (var old in current)
-                {
-                    var result = await library.ReplaceLinkedItemsInAllLoadouts(old, added, new ReplaceLibraryItemOptions { SkipLockedCollections = true, KeepPlace = true });
-                    replacements.Add(new ModUpdateReplacement(old, added, result));
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The user cancelled; there is nothing to report.
-            }
-            catch (Exception e)
-            {
-                failures.Add(new ModUpdateFailure(update, update.Profile.Name, e));
-            }
-        }
-
-        // The files are fetched by id from the site's own download address: nothing here opens a browser.
-        return new ModUpdateOutcome(downloaded, replacements, failures, [], false);
+        // Resolved here rather than injected: injecting it forms a cycle when the sources are constructed.
+        var batch = new ModUpdateBatch(request, provider.GetRequiredService<ILibraryService>(), cancellationToken);
+        return await batch.Run(request.Updates.OfType<GameBananaModUpdate>().Select(update => new Step(this, connection, update)));
     }
 
     // Hiding an update means freezing the item: the check leaves a frozen item out. Unfreezing retracts the flag
@@ -206,6 +174,14 @@ internal sealed class GameBananaModSource(
         {
             if (GameBananaModUpdate.From(modId, profile, file, items) is { } update) yield return update;
         }
+    }
+
+    private sealed class Step(GameBananaModSource source, IConnection connection, GameBananaModUpdate update) : DownloadThenReplaceStep(update, update.Profile.Name)
+    {
+        protected override IReadOnlyList<LibraryItem.ReadOnly> LoadCurrent() => LoadItems(connection, update);
+
+        protected override async Task<LibraryItem.ReadOnly?> Download(IReadOnlyList<LibraryItem.ReadOnly> current, ModUpdateBatch batch)
+            => await source.Download(update, current, batch.CancellationToken);
     }
 
     private async Task<LibraryItem.ReadOnly> Download(GameBananaModUpdate update, IReadOnlyList<LibraryItem.ReadOnly> current, CancellationToken cancellationToken)

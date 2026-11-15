@@ -220,6 +220,28 @@ public class ModIoModSourceTests(IServiceProvider serviceProvider, IConnection c
         rig.Expected.Current.Should().ContainSingle().Which.FileName.Should().Be("mod-22.zip");
     }
 
+    [Fact]
+    public async Task ApplyUpdates_Replace_SwapsWithTheModUpdateOptions()
+    {
+        var payload = Guid.NewGuid().ToByteArray().Concat(new byte[300]).ToArray();
+        var rig = new ModIoRig(connection);
+        rig.Api.Mods_[(rig.Game.ModIoGameId, _modId)] = TestMods.Mod(_modId, "Mod", 2000, TestMods.File(_modId + 2, $"swap-{_modId}.zip", payload, binaryUrl: $"https://files.test/{_modId}.zip", modId: _modId));
+        rig.Bytes.Serve($"https://files.test/{_modId}.zip", payload);
+        var item = await ModIoModSources.AddItem(connection, rig.Game.ModIoGameId, _modId, _modId + 1, dateUpdated: 1000);
+        var library = Substitute.For<ILibraryService>();
+        library.ReplaceLinkedItemsInAllLoadouts(default, default, default).ReturnsForAnyArgs(ValueTask.FromResult(LibraryItemReplacementResult.Success));
+        var source = ModIoModSources.Create(rig, serviceProvider, library);
+        await source.CheckUpdates(rig.Game, force: false, CancellationToken.None);
+
+        var outcome = await source.ApplyUpdates(new ModUpdateRequest([source.AllUpdates(rig.Game).Single()], Replace: true, MayOpenBrowser: true), CancellationToken.None);
+
+        outcome.DownloadFailures.Should().BeEmpty();
+        var downloaded = outcome.Downloaded.Should().ContainSingle().Subject;
+        await library.Received(1).ReplaceLinkedItemsInAllLoadouts(
+            Arg.Is<LibraryItem.ReadOnly>(old => old.Id == item.Id), Arg.Is<LibraryItem.ReadOnly>(next => next.Id == downloaded.Id),
+            Arg.Is<ReplaceLibraryItemOptions>(options => options == ReplaceLibraryItemOptions.ModUpdate));
+    }
+
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)

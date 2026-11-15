@@ -77,12 +77,4 @@ public interface IDownloadsService
     /// Cancels selected downloads.
     /// </summary>
     void CancelRange(IEnumerable<DownloadInfo> downloads);
-    
-    /// <summary>
-    /// Resolves a library file for a completed download using FileId/GameId matching.
-    /// Returns None for incomplete downloads or non-Nexus downloads.
-    /// </summary>
-    /// <param name="downloadInfo">The download info to resolve library file for.</param>
-    /// <returns>The library file if found, otherwise None.</returns>
-    Optional<LibraryFile.ReadOnly> ResolveLibraryFile(DownloadInfo downloadInfo);
 }

@@ -305,40 +305,6 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
         return nameWithoutExt.Replace('_', ' ').Replace('-', ' ');
     }
 
-    public Optional<LibraryFile.ReadOnly> ResolveLibraryFile(DownloadInfo downloadInfo)
-    {
-        // Only resolve for completed downloads
-        if (downloadInfo.Status.Value != JobStatus.Completed)
-            return Optional<LibraryFile.ReadOnly>.None;
-        
-        // Only Nexus Mods downloads have file metadata to find the library file from.
-        if (downloadInfo.FileMetadataId.Value == default(EntityId))
-            return Optional<LibraryFile.ReadOnly>.None;
-
-        try
-        {
-            // Retrieve the FileMetadata from the database using the stored EntityId
-            var fileMetadata = new NexusModsFileMetadata.ReadOnly(_connection.Db, downloadInfo.FileMetadataId.Value);
-            
-            // Find library items that match this file metadata
-            var libraryItems = NexusModsLibraryItem.FindByFileMetadata(_connection.Db, fileMetadata);
-            if (libraryItems.Count == 0)
-                return Optional<LibraryFile.ReadOnly>.None;
-            
-            // Convert the first library item to LibraryFile.ReadOnly
-            var libraryItem = libraryItems.First().AsLibraryItem();
-            return !libraryItem.TryGetAsLibraryFile(out var libraryFile) 
-                ? Optional<LibraryFile.ReadOnly>.None
-                : Optional<LibraryFile.ReadOnly>.Create(libraryFile);
-        }
-        catch (Exception)
-        {
-            // Any database error results in None
-            return Optional<LibraryFile.ReadOnly>.None;
-        }
-    }
-
-    
     public void Dispose()
     {
         // Dispose all job subscriptions

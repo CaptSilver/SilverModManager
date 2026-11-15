@@ -126,21 +126,10 @@ public interface ILibraryService
     ///     A result indicating success or failure of the replacement operation.
     /// </returns>
     ValueTask<LibraryItemReplacementResult> ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem, ReplaceLibraryItemOptions options);
-
-    /// <summary>
-    /// Replaces multiple sets of linked loadout items across all loadouts with new versions,
-    /// managing the transaction automatically.
-    /// </summary>
-    /// <param name="replacements">The pairs of library items (old and new) whose linked loadout items should be replaced.</param>
-    /// <param name="options">Options controlling how to replace the linked loadout items.</param>
-    /// <returns>
-    ///     A result indicating success or failure of the replacement operation.
-    /// </returns>
-    ValueTask<LibraryItemReplacementResult> ReplaceLinkedItemsInAllLoadouts(IEnumerable<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)> replacements, ReplaceLibraryItemsOptions options);
 }
 
 /// <summary>
-/// Represents the result of a <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions,SilverModManager.MnemonicDB.Abstractions.ITransaction)"/> operation.
+/// Represents the result of a <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions)"/> operation.
 /// </summary>
 public enum LibraryItemReplacementResult
 {
@@ -156,10 +145,10 @@ public enum LibraryItemReplacementResult
 }
 
 /// <summary>
-/// Options for the <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions,SilverModManager.MnemonicDB.Abstractions.ITransaction)"/>
+/// Options for the <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions)"/>
 /// API.
 /// </summary>
-public struct ReplaceLibraryItemOptions
+public record struct ReplaceLibraryItemOptions
 {
     /// <summary>
     /// Skips items in locked collections: Nexus collections and the mods of a modlist.
@@ -171,20 +160,10 @@ public struct ReplaceLibraryItemOptions
     /// it the new item goes into the loadout's default collection, enabled.
     /// </summary>
     public bool KeepPlace { get; set; }
-}
 
-/// <summary>
-/// Options controlling how multiple sets of linked loadout items are replaced across loadouts.
-/// </summary>
-public struct ReplaceLibraryItemsOptions
-{
     /// <summary>
-    /// Skips items in locked collections: Nexus collections and the mods of a modlist.
+    /// What an update swaps in with: the new version takes the old one's collection and on/off switch in every
+    /// loadout, and locked collections (Nexus collections, a modlist's mods) are left alone.
     /// </summary>
-    public bool SkipLockedCollections { get; set; }
-    
-    /// <summary>
-    /// Gets the <see cref="ReplaceLibraryItemOptions"/> for this <see cref="ReplaceLibraryItemsOptions"/>
-    /// </summary>
-    public ReplaceLibraryItemOptions ToReplaceLibraryItemOptions() => new() { SkipLockedCollections = SkipLockedCollections };
+    public static ReplaceLibraryItemOptions ModUpdate => new() { SkipLockedCollections = true, KeepPlace = true };
 }

@@ -279,24 +279,4 @@ public sealed class LibraryService : ILibraryService
 
         return LibraryItemReplacementResult.Success;
     }
-    
-    public async ValueTask<LibraryItemReplacementResult> ReplaceLinkedItemsInAllLoadouts(IEnumerable<(LibraryItem.ReadOnly oldItem, LibraryItem.ReadOnly newItem)> replacements, ReplaceLibraryItemsOptions options)
-    {
-        var replacementsArr = replacements.ToArray();
-        try
-        {
-            foreach (var (oldItem, newItem) in replacementsArr)
-            {
-                var result = await ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, options.ToReplaceLibraryItemOptions());
-                if (result != LibraryItemReplacementResult.Success)
-                    return result; // failed due to some reason.
-            }
-        }
-        catch
-        {
-            return LibraryItemReplacementResult.FailedUnknownReason;
-        }
-
-        return LibraryItemReplacementResult.Success;
-    }
 }

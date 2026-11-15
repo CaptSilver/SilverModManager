@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Library;
@@ -100,7 +99,9 @@ internal sealed class NexusModSource(
         if (loginManager.IsPremium is false)
             return request.MayOpenBrowser ? OpenInBrowser(newestToCurrent.Keys) : ModUpdateOutcome.Nothing with { AccountCannotDownload = true };
 
-        return await DownloadAll(newestToCurrent, request, cancellationToken);
+        var steps = newestToCurrent.Select(pair => new Step(connection, downloader, pair.Key, pair.Value, OnlyUpdateTo(pair.Key, request)));
+        var batch = new ModUpdateBatch(request, libraryService, cancellationToken);
+        return await batch.Run(steps, settingsManager.Get<DownloadSettings>().MaxParallelDownloads);
     }
 
     // Every version of each file, the file itself included: the update check decides what is newer, and hiding a
@@ -189,57 +190,25 @@ internal sealed class NexusModSource(
         return ModUpdateOutcome.Nothing with { OpenedInBrowser = opened };
     }
 
-    private async ValueTask<ModUpdateOutcome> DownloadAll(
-        Dictionary<NexusModsFileMetadata.ReadOnly, List<NexusModsFileMetadata.ReadOnly>> newestToCurrent,
-        ModUpdateRequest request,
-        CancellationToken cancellationToken)
+    // One newest file with every current file it replaces, whichever page asked for it.
+    private sealed class Step(
+        IConnection connection,
+        INexusUpdateDownloader downloader,
+        NexusModsFileMetadata.ReadOnly newest,
+        List<NexusModsFileMetadata.ReadOnly> currentFiles,
+        ModUpdate update) : DownloadThenReplaceStep(update, newest.Name)
     {
-        var downloaded = new ConcurrentBag<LibraryItem.ReadOnly>();
-        var replacements = new ConcurrentBag<ModUpdateReplacement>();
-        var failures = new ConcurrentBag<ModUpdateFailure>();
-        var limit = settingsManager.Get<DownloadSettings>().MaxParallelDownloads;
-        using var semaphore = new SemaphoreSlim(limit);
+        // Should only be one library item per file.
+        protected override IReadOnlyList<LibraryItem.ReadOnly> LoadCurrent()
+            => [.. currentFiles.SelectMany(file => NexusModsLibraryItem.FindByFileMetadata(connection.Db, file)).Select(static held => held.AsLibraryItem())];
 
-        async Task Apply(NexusModsFileMetadata.ReadOnly newest, List<NexusModsFileMetadata.ReadOnly> current)
-        {
-            var isTaken = false;
-            try
-            {
-                isTaken = await semaphore.WaitAsync(Timeout.Infinite, cancellationToken);
-                var newItem = (await downloader.Download(newest, current, cancellationToken)).AsLibraryItem();
-                downloaded.Add(newItem);
-                if (request.Replace is false) return;
-
-                foreach (var currentFile in current)
-                {
-                    // Should only be one library item per file.
-                    foreach (var held in NexusModsLibraryItem.FindByFileMetadata(connection.Db, currentFile))
-                    {
-                        var old = held.AsLibraryItem();
-                        var result = await libraryService.ReplaceLinkedItemsInAllLoadouts(old, newItem, new ReplaceLibraryItemOptions { SkipLockedCollections = true });
-                        replacements.Add(new ModUpdateReplacement(old, newItem, result));
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // The user cancelled; there is nothing to report.
-            }
-            catch (Exception e)
-            {
-                failures.Add(new ModUpdateFailure(OnlyUpdateTo(newest, request), newest.Name, e));
-            }
-            finally
-            {
-                if (isTaken) semaphore.Release();
-            }
-        }
-
-        await Task.WhenAll(newestToCurrent.Select(pair => Apply(pair.Key, pair.Value)));
-        return new ModUpdateOutcome([.. downloaded], [.. replacements], [.. failures], [], false);
+        // The downloader wants the files' metadata, which is what the current items were found by.
+        protected override async Task<LibraryItem.ReadOnly?> Download(IReadOnlyList<LibraryItem.ReadOnly> current, ModUpdateBatch batch)
+            => (await downloader.Download(newest, currentFiles, batch.CancellationToken)).AsLibraryItem();
     }
 
-    // What is left of the batch when only the update to this file is retried.
+    // What is left of the batch when only the update to this file is retried. Every newest file came from the
+    // request's own mappings, so the lookup below cannot come up empty.
     private static ModUpdate OnlyUpdateTo(NexusModsFileMetadata.ReadOnly newest, ModUpdateRequest request)
     {
         var mappings = request.Updates.OfType<NexusModUpdate>()

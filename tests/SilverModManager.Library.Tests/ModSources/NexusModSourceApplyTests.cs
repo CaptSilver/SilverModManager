@@ -11,6 +11,7 @@ using SilverModManager.Backend;
 using SilverModManager.Library.Tests.DownloadsService;
 using SilverModManager.Library.Tests.Lock;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -121,7 +122,7 @@ public class NexusModSourceApplyTests(IConnection connection)
         await library.Received(2).ReplaceLinkedItemsInAllLoadouts(
             Arg.Any<LibraryItem.ReadOnly>(),
             Arg.Is<LibraryItem.ReadOnly>(item => item.Id == downloaded.Id),
-            Arg.Is<ReplaceLibraryItemOptions>(options => options.SkipLockedCollections));
+            Arg.Is<ReplaceLibraryItemOptions>(options => options == ReplaceLibraryItemOptions.ModUpdate));
         outcome.Downloaded.Select(item => item.Id).Should().Equal(downloaded.Id);
         outcome.Replacements.Select(replacement => replacement.Old.Id).Should().BeEquivalentTo([first.Library.Id, second.Library.Id]);
         outcome.Replacements.Should().OnlyContain(replacement => replacement.Result == LibraryItemReplacementResult.Success && replacement.New.Id == downloaded.Id);
@@ -229,6 +230,44 @@ public class NexusModSourceApplyTests(IConnection connection)
         await source.ApplyUpdates(new ModUpdateRequest(updates, Replace: false, MayOpenBrowser: true), CancellationToken.None);
 
         peak.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Premium_DownloaderThrowsTaskCanceledWithoutUserCancel_ReportsAFailure()
+    {
+        var installed = await AddInstalled("TimedOut");
+        var newer = await AddNewer(installed.Current, "timed-out-newer.zip");
+        var timeout = new TaskCanceledException("the request timed out");
+        var downloader = Substitute.For<INexusUpdateDownloader>();
+        downloader.Download(Arg.Any<NexusModsFileMetadata.ReadOnly>(), Arg.Any<IReadOnlyList<NexusModsFileMetadata.ReadOnly>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<LibraryFile.ReadOnly>(timeout));
+        var source = NexusModSources.Create(connection, login: Login(true), downloader: downloader, library: LibraryReplacing());
+
+        var outcome = await source.ApplyUpdates(new ModUpdateRequest([UpdateOf((installed.Current, newer))], Replace: true, MayOpenBrowser: true), CancellationToken.None);
+
+        outcome.DownloadFailures.Should().ContainSingle().Which.Error.Should().BeSameAs(timeout);
+    }
+
+    [Fact]
+    public async Task Premium_CurrentFileNoLongerInTheLibrary_FailsWithoutDownloading()
+    {
+        var installed = await AddInstalled("Removed");
+        var newer = await AddNewer(installed.Current, "removed-newer.zip");
+        var downloader = DownloaderReturning((newer, await AddDownloaded("removed")));
+        var source = NexusModSources.Create(connection, login: Login(true), downloader: downloader, library: LibraryReplacing());
+        var update = UpdateOf((installed.Current, newer));
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Delete(installed.Library.Id, recursive: false);
+            await tx.Commit();
+        }
+
+        var outcome = await source.ApplyUpdates(new ModUpdateRequest([update], Replace: false, MayOpenBrowser: true), CancellationToken.None);
+
+        var failure = outcome.DownloadFailures.Should().ContainSingle().Subject;
+        failure.Error.Message.Should().Contain("is no longer in the library");
+        outcome.Downloaded.Should().BeEmpty();
+        await downloader.DidNotReceiveWithAnyArgs().Download(default, default!, default);
     }
 
     [Fact]

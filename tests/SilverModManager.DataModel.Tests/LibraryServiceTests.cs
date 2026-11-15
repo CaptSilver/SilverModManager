@@ -226,14 +226,17 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             (oldItem2, newItem2),
         };
 
-        var options = new ReplaceLibraryItemsOptions
+        var options = new ReplaceLibraryItemOptions
         {
             SkipLockedCollections = false,
         };
-        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(replacements, options);
+        foreach (var (oldItem, newItem) in replacements)
+        {
+            var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, options);
+            result.Should().Be(LibraryItemReplacementResult.Success);
+        }
 
         // Assert
-        result.Should().Be(LibraryItemReplacementResult.Success);
 
         // Verify that the old items are no longer in any loadout
         var loadoutsWithOldItem1 = _libraryService.LoadoutsWithLibraryItem(oldItem1);
@@ -437,6 +440,31 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
     }
 
     [Fact]
+    public async Task ReplaceLinkedItemsInAllLoadouts_WithTheModUpdateOptions_KeepsPlaceAndLeavesALockedCollectionAlone()
+    {
+        var unlocked = await CreateTestLoadout("Unlocked");
+        var locked = await CreateTestLoadout("Locked");
+        await CreateCollectionInLoadout(unlocked, "Default");
+        var mine = await CreateCollectionInLoadout(unlocked, "Mine");
+        var lockedCollection = await CreateCollectionInLoadout(locked, "Locked", isReadOnly: true);
+        var (old, replacement) = await TwoLibraryItems();
+        await LoadoutManager.InstallItem(old, unlocked.LoadoutId, parent: mine.AsLoadoutItemGroup().LoadoutItemGroupId);
+        await LoadoutManager.InstallItem(old, locked.LoadoutId, parent: lockedCollection.AsLoadoutItemGroup().LoadoutItemGroupId);
+        var unlockedLink = LibraryLinkedLoadoutItem.FindByLibraryItem(_connection.Db, old).Single(l => l.AsLoadoutItem().LoadoutId == unlocked.LoadoutId);
+        await SetDisabled(unlockedLink.Id);
+
+        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(old, replacement, ReplaceLibraryItemOptions.ModUpdate);
+
+        result.Should().Be(LibraryItemReplacementResult.Success);
+        var link = LinkOf(replacement).AsLoadoutItem();
+        link.LoadoutId.Should().Be(unlocked.LoadoutId, "the locked collection's loadout is not touched");
+        link.ParentId.Should().Be(mine.AsLoadoutItemGroup().LoadoutItemGroupId);
+        link.IsDisabled.Should().BeTrue();
+        _libraryService.LoadoutsWithLibraryItem(old).Should().ContainSingle()
+            .Which.loadout.LoadoutId.Should().Be(locked.LoadoutId);
+    }
+
+    [Fact]
     public async Task ReplaceLinkedItemsInAllLoadouts_ShouldRespectReadOnlyCollectionFilter()
     {
         // Arrange
@@ -479,14 +507,17 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
         };
 
         // Set SkipLockedCollections to true to skip locked collections
-        var options = new ReplaceLibraryItemsOptions
+        var options = new ReplaceLibraryItemOptions
         {
             SkipLockedCollections = true,
         };
-        var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(replacements, options);
+        foreach (var (oldItem, newItem) in replacements)
+        {
+            var result = await _libraryService.ReplaceLinkedItemsInAllLoadouts(oldItem, newItem, options);
+            result.Should().Be(LibraryItemReplacementResult.Success);
+        }
 
         // Assert
-        result.Should().Be(LibraryItemReplacementResult.Success);
 
         // Verify that the old item in mutable collection is no longer in any loadout
         var loadoutsWithOldItem1 = _libraryService.LoadoutsWithLibraryItem(oldItem1);

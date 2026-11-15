@@ -146,7 +146,7 @@ internal sealed class ThunderstoreInstaller(
         if (result == LibraryItemReplacementResult.Success)
         {
             result = await provider.GetRequiredService<ILibraryService>()
-                .ReplaceLinkedItemsInAllLoadouts(current, root, new ReplaceLibraryItemOptions { SkipLockedCollections = true, KeepPlace = true });
+                .ReplaceLinkedItemsInAllLoadouts(current, root, ReplaceLibraryItemOptions.ModUpdate);
         }
 
         return ModUpdateOutcome.Nothing with

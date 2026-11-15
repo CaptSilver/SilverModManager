@@ -97,49 +97,9 @@ internal sealed class ModIoModSource(
 
     public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
-        var downloaded = new List<LibraryItem.ReadOnly>();
-        var replacements = new List<ModUpdateReplacement>();
-        var failures = new List<ModUpdateFailure>();
-        var opened = new List<Uri>();
-        var cannotDownload = false;
-
-        foreach (var update in request.Updates.OfType<ModIoModUpdate>())
-        {
-            if (cancellationToken.IsCancellationRequested) break;
-
-            try
-            {
-                var current = update.CurrentItems.Select(id => LibraryItem.Load(connection.Db, id)).Where(static item => item.IsValid()).ToArray();
-                if (current.Length == 0) throw new InvalidOperationException($"{update.Mod.Name} {update.CurrentVersion} is no longer in the library.");
-
-                var downloadedItem = await Download(update, current, request.MayOpenBrowser, opened, cancellationToken);
-                if (downloadedItem is not { } added)
-                {
-                    cannotDownload |= !request.MayOpenBrowser;
-                    continue;
-                }
-
-                downloaded.Add(added);
-                if (!request.Replace) continue;
-
-                var library = provider.GetRequiredService<ILibraryService>();
-                foreach (var old in current)
-                {
-                    var result = await library.ReplaceLinkedItemsInAllLoadouts(old, added, new ReplaceLibraryItemOptions { SkipLockedCollections = true, KeepPlace = true });
-                    replacements.Add(new ModUpdateReplacement(old, added, result));
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The user cancelled; there is nothing to report.
-            }
-            catch (Exception e)
-            {
-                failures.Add(new ModUpdateFailure(update, update.Mod.Name, e));
-            }
-        }
-
-        return new ModUpdateOutcome(downloaded, replacements, failures, opened, cannotDownload);
+        // Resolved here rather than injected: injecting it forms a cycle when the sources are constructed.
+        var batch = new ModUpdateBatch(request, provider.GetRequiredService<ILibraryService>(), cancellationToken);
+        return await batch.Run(request.Updates.OfType<ModIoModUpdate>().Select(update => new Step(this, connection, update)));
     }
 
     // Hiding an update means freezing the item: the check leaves a frozen item out. Unfreezing retracts the flag
@@ -224,10 +184,22 @@ internal sealed class ModIoModSource(
         }
     }
 
-    // Null when mod.io would not hand the file to the app: the caller says so, or this opened the page.
-    private async Task<LibraryItem.ReadOnly?> Download(
-        ModIoModUpdate update, IReadOnlyList<LibraryItem.ReadOnly> current, bool mayOpenBrowser, List<Uri> opened, CancellationToken cancellationToken)
+    private sealed class Step(ModIoModSource source, IConnection connection, ModIoModUpdate update) : DownloadThenReplaceStep(update, update.Mod.Name)
     {
+        protected override IReadOnlyList<LibraryItem.ReadOnly> LoadCurrent() => LoadItems(connection, update);
+
+        protected override async Task<LibraryItem.ReadOnly?> Download(IReadOnlyList<LibraryItem.ReadOnly> current, ModUpdateBatch batch)
+        {
+            var downloaded = await source.Download(update, current, batch);
+            if (downloaded is null && !batch.Request.MayOpenBrowser) batch.AccountCannotDownload();
+            return downloaded;
+        }
+    }
+
+    // Null when mod.io would not hand the file to the app: the caller says so, or this opened the page.
+    private async Task<LibraryItem.ReadOnly?> Download(ModIoModUpdate update, IReadOnlyList<LibraryItem.ReadOnly> current, ModUpdateBatch batch)
+    {
+        var cancellationToken = batch.CancellationToken;
         // The address cached with the mod expires, so the mod is read again.
         var mod = await mods.Get(update.GameId, update.ModId, force: true, cancellationToken)
             ?? throw new ModIoInstallRefusedException($"mod.io no longer has {MarkdownText.Inline(update.Mod.Name)}.", null);
@@ -245,12 +217,12 @@ internal sealed class ModIoModSource(
         }
         catch (Exception e) when (ModIoFiles.IsRejectedAddress(e))
         {
-            if (!mayOpenBrowser) return null;
+            if (!batch.Request.MayOpenBrowser) return null;
 
             // The user asked for this one update: the page opens and the file is picked up from the Downloads folder.
             pickups.Arm(update.GameId, mod.Id, file, mod.DateUpdated, acquisition);
             osInterop.OpenUri(page);
-            opened.Add(page);
+            batch.Opened(page);
             return null;
         }
     }

@@ -102,60 +102,22 @@ internal sealed class ThunderstoreModSource(
 
     public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
-        var downloaded = new Dictionary<EntityId, LibraryItem.ReadOnly>();
-        var replacements = new List<ModUpdateReplacement>();
-        var failures = new List<ModUpdateFailure>();
-
-        async Task Apply(ThunderstoreModUpdate package, IReadOnlyList<ThunderstoreUpdate> updates, Func<Task> apply)
-        {
-            try
-            {
-                await apply();
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The user cancelled; there is nothing to report.
-            }
-            catch (Exception e)
-            {
-                failures.Add(new ModUpdateFailure(ThunderstoreModUpdate.From(updates) ?? package, package.Newest.ToString(), e));
-            }
-        }
-
+        var steps = new List<UpdateStep>();
         foreach (var package in request.Updates.OfType<ThunderstoreModUpdate>())
         {
-            // Apply swallows the user's cancellation, so the loops stop here instead of entering each remaining
-            // download with a token that is already cancelled.
-            if (cancellationToken.IsCancellationRequested) break;
-
             if (request.Replace)
             {
-                foreach (var update in package.Updates)
-                {
-                    if (cancellationToken.IsCancellationRequested) break;
-
-                    await Apply(package, [update], async () =>
-                    {
-                        var current = LibraryItem.Load(connection.Db, update.LibraryFileId);
-                        if (current.IsValid() is false) throw new InvalidOperationException($"{update.Current} is no longer in the library.");
-
-                        var outcome = await installer.UpdateAsync(update.Newest, current, cancellationToken);
-                        foreach (var item in outcome.Downloaded) downloaded[item.Id] = item;
-                        replacements.AddRange(outcome.Replacements);
-                    });
-                }
+                // The installer swaps each package version in itself, so one step per update keeps a failure to that one.
+                steps.AddRange(package.Updates.Select(update => new ReplaceStep(connection, installer, package, update)));
             }
             else
             {
-                await Apply(package, package.Updates, async () =>
-                {
-                    foreach (var file in await AddToLibrary(package, cancellationToken))
-                        downloaded[file.Id] = file.AsLibraryItem();
-                });
+                steps.Add(new AddStep(this, package));
             }
         }
 
-        return new ModUpdateOutcome([.. downloaded.Values], replacements, failures, [], false);
+        // The installer swaps through the library service itself, so the batch has none to replace with.
+        return await new ModUpdateBatch(request, library: null, cancellationToken).Run(steps);
     }
 
     // Hiding an update means freezing the version: the update check leaves a frozen item out and the lock keeps it
@@ -198,6 +160,27 @@ internal sealed class ThunderstoreModSource(
     }
 
     public HideUpdatesLabelKind HideUpdatesLabel(bool hidden) => hidden ? HideUpdatesLabelKind.Unfreeze : HideUpdatesLabelKind.Freeze;
+
+    // The installer downloads and swaps one version; its outcome is folded into the batch.
+    private sealed class ReplaceStep(IConnection connection, IThunderstoreInstaller installer, ThunderstoreModUpdate package, ThunderstoreUpdate update)
+        : UpdateStep(ThunderstoreModUpdate.From([update]) ?? package, package.Newest.ToString())
+    {
+        public override async Task Apply(ModUpdateBatch batch)
+        {
+            var current = LibraryItem.Load(connection.Db, update.LibraryFileId);
+            if (current.IsValid() is false) throw new InvalidOperationException($"{update.Current} is no longer in the library.");
+
+            batch.Absorb(await installer.UpdateAsync(update.Newest, current, batch.CancellationToken));
+        }
+    }
+
+    private sealed class AddStep(ThunderstoreModSource source, ThunderstoreModUpdate package) : UpdateStep(package, package.Newest.ToString())
+    {
+        public override async Task Apply(ModUpdateBatch batch)
+        {
+            foreach (var file in await source.AddToLibrary(package, batch.CancellationToken)) batch.Downloaded(file.AsLibraryItem());
+        }
+    }
 
     // Library only: nothing is linked, so the old version stays in the loadouts.
     private async Task<IReadOnlyList<LibraryFile.ReadOnly>> AddToLibrary(ThunderstoreModUpdate package, CancellationToken cancellationToken)

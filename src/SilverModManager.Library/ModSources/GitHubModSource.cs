@@ -86,41 +86,9 @@ internal sealed class GitHubModSource(
 
     public async ValueTask<ModUpdateOutcome> ApplyUpdates(ModUpdateRequest request, CancellationToken cancellationToken)
     {
-        var downloaded = new List<LibraryItem.ReadOnly>();
-        var replacements = new List<ModUpdateReplacement>();
-        var failures = new List<ModUpdateFailure>();
-
-        foreach (var update in request.Updates.OfType<GitHubModUpdate>())
-        {
-            if (cancellationToken.IsCancellationRequested) break;
-
-            try
-            {
-                var current = update.CurrentItems.Select(id => LibraryItem.Load(connection.Db, id)).Where(static item => item.IsValid()).ToArray();
-                if (current.Length == 0) throw new InvalidOperationException($"{update.Repository.Name} {update.CurrentVersion} is no longer in the library.");
-
-                var added = await Download(update, current, cancellationToken);
-                downloaded.Add(added);
-                if (!request.Replace) continue;
-
-                var library = provider.GetRequiredService<ILibraryService>();
-                foreach (var old in current)
-                {
-                    var result = await library.ReplaceLinkedItemsInAllLoadouts(old, added, new ReplaceLibraryItemOptions { SkipLockedCollections = true, KeepPlace = true });
-                    replacements.Add(new ModUpdateReplacement(old, added, result));
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The user cancelled; there is nothing to report.
-            }
-            catch (Exception e)
-            {
-                failures.Add(new ModUpdateFailure(update, update.Repository.Name, e));
-            }
-        }
-
-        return new ModUpdateOutcome(downloaded, replacements, failures, [], false);
+        // Resolved here rather than injected: injecting it forms a cycle when the sources are constructed.
+        var batch = new ModUpdateBatch(request, provider.GetRequiredService<ILibraryService>(), cancellationToken);
+        return await batch.Run(request.Updates.OfType<GitHubModUpdate>().Select(update => new Step(this, connection, update)));
     }
 
     // Hiding records the newest tag the user saw and passed on: a release newer than that is offered again.
@@ -212,6 +180,14 @@ internal sealed class GitHubModSource(
 
         // Hiding passes on the release the user saw, not on everything that follows it.
         return !GitHubReleaseLibraryFile.HiddenUpdateTag.TryGetValue(file, out var hiddenTag) || !NotNewerThan(newest.TagName, hiddenTag);
+    }
+
+    private sealed class Step(GitHubModSource source, IConnection connection, GitHubModUpdate update) : DownloadThenReplaceStep(update, update.Repository.Name)
+    {
+        protected override IReadOnlyList<LibraryItem.ReadOnly> LoadCurrent() => LoadItems(connection, update);
+
+        protected override async Task<LibraryItem.ReadOnly?> Download(IReadOnlyList<LibraryItem.ReadOnly> current, ModUpdateBatch batch)
+            => await source.Download(update, current, batch.CancellationToken);
     }
 
     private async Task<LibraryItem.ReadOnly> Download(GitHubModUpdate update, IReadOnlyList<LibraryItem.ReadOnly> current, CancellationToken cancellationToken)

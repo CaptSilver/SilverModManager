@@ -257,7 +257,7 @@ public class GameBananaModSourceTests(IServiceProvider serviceProvider, IConnect
         outcome.Replacements.Should().ContainSingle().Which.Old.Id.Should().Be(item.Id);
         await library.Received(1).ReplaceLinkedItemsInAllLoadouts(
             Arg.Is<LibraryItem.ReadOnly>(old => old.Id == item.Id), Arg.Is<LibraryItem.ReadOnly>(next => next.Id == downloaded.Id),
-            Arg.Is<ReplaceLibraryItemOptions>(options => options.KeepPlace && options.SkipLockedCollections));
+            Arg.Is<ReplaceLibraryItemOptions>(options => options == ReplaceLibraryItemOptions.ModUpdate));
         outcome.OpenedInBrowser.Should().BeEmpty();
     }
 
