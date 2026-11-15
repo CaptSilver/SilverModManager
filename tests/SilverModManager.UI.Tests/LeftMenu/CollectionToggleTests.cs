@@ -150,7 +150,7 @@ public class CollectionToggleTests(IServiceProvider provider) : AUiTest(provider
         await Click(entry, bindingWritesIsEnabled: true);
 
         toasts.Received(1).ShowToast(Arg.Is<string>(message => message.Contains("it is a required item of a collection")),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     private async Task<(Window Window, ToggleSwitch Toggle)> ViewOf(CollectionLeftMenuItemViewModel entry)

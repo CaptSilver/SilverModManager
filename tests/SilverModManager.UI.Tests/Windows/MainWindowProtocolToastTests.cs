@@ -36,7 +36,7 @@ public class MainWindowProtocolToastTests(IServiceProvider provider) : AUiTest(p
     }
 
     private void ToastShown(string text, ToastNotificationVariant variant) =>
-        _toasts.Received(1).ShowToast(text, variant, Arg.Any<TimeSpan?>(), Arg.Any<SilverModManager.UI.Sdk.Dialog.DialogButtonDefinition[]?>(), Arg.Any<Action<SilverModManager.UI.Sdk.Dialog.ButtonDefinitionId>?>());
+        _toasts.Received(1).ShowToast(text, variant, Arg.Any<TimeSpan?>());
 
     private static string Holder() => $"holder-{Guid.NewGuid():N}.desktop";
 

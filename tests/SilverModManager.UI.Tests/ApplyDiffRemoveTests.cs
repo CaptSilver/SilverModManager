@@ -376,7 +376,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
 
         await Eventually(() => RowsAt(h.Loadout, ModFile).Should().Be(0));
         await Eventually(() => _ = h.Sync.Received(1).Synchronize(h.Loadout.LoadoutId, Arg.Any<BackupOverflowChoice?>(), Arg.Any<CancellationToken>()));
-        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the loadout was applied")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the loadout was applied")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
     }
 
     [Fact]
@@ -434,7 +434,7 @@ public class ApplyDiffRemoveTests(IServiceProvider provider) : AUiTest(provider)
         await Press(h);
 
         await Eventually(() => RowsAt(h.Loadout, ModFile).Should().Be(0));
-        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the apply did not finish")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+        await Eventually(() => h.Toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("the apply did not finish")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
         await Eventually(() => h.Sync.Received(2).GetApplyDiffTree(Arg.Any<LoadoutId>()));
         _ = h.Presenter.DidNotReceiveWithAnyArgs().Report(default!, default!);
         h.Thrown.Should().BeEmpty();

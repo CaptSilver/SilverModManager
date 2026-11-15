@@ -352,7 +352,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
 
         await Eventually(() => harness.Library.Received(1).RemoveLibraryItems(Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(removed => removed.Select(item => item.Id).SequenceEqual(new[] { items[1].Id })), Arg.Any<GarbageCollectorRunMode>()));
         harness.TitlesOf(Language.Library_Update_SomeInstallsFailed_Title).Should().HaveCount(1);
-        harness.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!, default, default, default, default);
+        harness.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!, default, default);
     }
 
     [Fact]
@@ -366,7 +366,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         Send(harness, new FakeModUpdate(1, Source: "a"), replace: true);
 
         await Eventually(() => harness.Library.Received(1).RemoveLibraryItems(Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(removed => removed.Select(item => item.Id).SequenceEqual(new[] { items[0].Id })), Arg.Any<GarbageCollectorRunMode>()));
-        harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "new"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "new"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     // The Thunderstore source is the real one; only the installer behind it is a substitute, so what is checked is
@@ -389,7 +389,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
         Send(harness, update, replace: true);
 
         await Eventually(() => harness.Library.Received(1).RemoveLibraryItems(Arg.Is<IEnumerable<LibraryItem.ReadOnly>>(removed => removed.Select(item => item.Id).SequenceEqual(new[] { items[0].Id })), Arg.Any<GarbageCollectorRunMode>()));
-        harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "Zehs-REPOLib-1.1.0.zip"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        harness.Toasts.Received(1).ShowToast(string.Format(Language.ToastNotification_Mod_updated____0_, "Zehs-REPOLib-1.1.0.zip"), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -405,7 +405,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
 
         Send(harness, new FakeModUpdate(1, Source: "a"), replace: true);
 
-        await Eventually(() => harness.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!, default, default, default, default));
+        await Eventually(() => harness.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!, default, default));
         await Task.Delay(200);
         await harness.Library.DidNotReceiveWithAnyArgs().RemoveLibraryItems(default!, default);
     }
@@ -425,7 +425,7 @@ public class LibraryApplyUpdatesTests(IServiceProvider provider) : AUiTest(provi
 
         Send(harness, new FakeModUpdate(1, Source: "a"), replace: true);
 
-        await Eventually(() => harness.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!, default, default, default, default));
+        await Eventually(() => harness.Toasts.ReceivedWithAnyArgs(1).ShowToast(default!, default, default));
         await Task.Delay(200);
         await harness.Library.DidNotReceiveWithAnyArgs().RemoveLibraryItems(default!, default);
     }

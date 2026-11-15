@@ -3,7 +3,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.UI.Sdk;
-using SilverModManager.UI.Sdk.Dialog;
 
 namespace SilverModManager.App.UI.Notifications;
 
@@ -40,20 +39,15 @@ public class WindowNotificationService : IWindowNotificationService
     public void ShowToast(
         string message,
         ToastNotificationVariant type = ToastNotificationVariant.Neutral,
-        TimeSpan? expiration = null,
-        DialogButtonDefinition[]? buttonDefinitions = null,
-        Action<ButtonDefinitionId>? buttonHandler = null)
+        TimeSpan? expiration = null)
     {
         DispatcherHelper.EnsureOnUIThread(() =>
             {
                 var manager = GetNotificationManager();
                 if (manager == null) return;
                 
-                // TODO: Use ToastNotificationVariant
-                // TODO: Use buttons and handler
-        
                 // Must be on UI thread to show the notification
-                manager.Show(BuildNotification(message, expiration));
+                manager.Show(BuildNotification(message, expiration, type));
                 return;
             }
         );
@@ -64,6 +58,17 @@ public class WindowNotificationService : IWindowNotificationService
     /// the dialogs render). Code spans are unwrapped and escapes removed here, once, for every caller; a name stays
     /// inert because plain text has nothing to interpret.
     /// </summary>
-    internal static Notification BuildNotification(string message, TimeSpan? expiration) =>
-        new(null, MarkdownText.PlainText(MarkdownText.ToPlain(message), keepLayout: true), NotificationType.Information, expiration ?? TimeSpan.FromSeconds(5));
+    internal static Notification BuildNotification(string message, TimeSpan? expiration, ToastNotificationVariant variant = ToastNotificationVariant.Neutral) =>
+        new(null, MarkdownText.PlainText(MarkdownText.ToPlain(message), keepLayout: true), ToNotificationType(variant), expiration ?? TimeSpan.FromSeconds(5));
+
+    /// <summary>
+    /// The card theme colours a toast by its <see cref="NotificationType"/>, so this is what makes a failure look different from a success.
+    /// </summary>
+    internal static NotificationType ToNotificationType(ToastNotificationVariant variant) => variant switch
+    {
+        ToastNotificationVariant.Neutral => NotificationType.Information,
+        ToastNotificationVariant.Success => NotificationType.Success,
+        ToastNotificationVariant.Failure => NotificationType.Error,
+        _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, null),
+    };
 }

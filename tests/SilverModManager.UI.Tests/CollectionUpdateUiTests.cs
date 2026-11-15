@@ -365,7 +365,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
 
         update.Calls.Where(call => call is "download" or "apply").Should().Equal("download", "apply");
-        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -388,7 +388,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
 
         update.Calls.Should().NotContain("apply");
-        toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("2.0")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.Received(1).ShowToast(Arg.Is<string>(m => m.Contains("2.0")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -402,7 +402,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         toasts.Received(1).ShowToast(
             Arg.Is<string>(m => m.Contains(MarkdownText.InlineMidLine("My_List [beta]*")) && m.Contains(MarkdownText.InlineMidLine("2_0 [rc]"))
                                 && !m.Contains("My_List [beta]*") && !m.Contains("2_0 [rc]")),
-            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
 
-        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), null, null);
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -424,7 +424,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
 
-        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), null, null);
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -464,7 +464,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         var offer = (Dialog)DialogsShown(windows).Last();
         offer.ViewModel.ButtonDefinitions.Select(b => b.Text).Should().Equal("Close", "Undo update");
         undone.Should().Be(1);
-        toasts.Received(1).ShowToast("Update undone: Big List is back at 1.0.", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.Received(1).ShowToast("Update undone: Big List is back at 1.0.", ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -477,7 +477,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         await CollectionUpdateFlow.Run(Provider, Windows(Pressed("accept"), Pressed("close")), toasts, update, CancellationToken.None);
 
         undone.Should().Be(0);
-        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -488,8 +488,8 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         await CollectionUpdateFlow.Run(Provider, Windows(Pressed("accept"), Pressed("undo-update")), toasts, update, CancellationToken.None);
 
-        toasts.Received(1).ShowToast("restore broke", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
-        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.Received(1).ShowToast("restore broke", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
+        toasts.DidNotReceive().ShowToast(Arg.Is<string>(m => m.StartsWith("Update undone")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -500,7 +500,7 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
 
         await CollectionUpdateFlow.Run(Provider, ReviewAnsweredWith(ButtonDefinitionId.Accept), toasts, update, CancellationToken.None);
 
-        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), null, null);
+        toasts.Received(1).ShowToast("Toast text", ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 
     [Fact]

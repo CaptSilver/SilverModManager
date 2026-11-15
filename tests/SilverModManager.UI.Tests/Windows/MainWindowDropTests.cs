@@ -192,7 +192,7 @@ public class MainWindowDropTests : IDisposable
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("Added 2 mods") && text.Contains("Skyrim - Main")),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class MainWindowDropTests : IDisposable
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text == "Added 1 mod to the library"),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public class MainWindowDropTests : IDisposable
 
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("a.txt") && text.Contains("b.txt") && text.Contains("gone.zip") && text.Contains("exist")),
-            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
         await fixture.Actions.DidNotReceiveWithAnyArgs().AddMod(default, default);
     }
 
@@ -232,10 +232,10 @@ public class MainWindowDropTests : IDisposable
         await fixture.Actions.Received(2).AddMod(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>());
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("bad.zip") && text.Contains("disk full")),
-            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.StartsWith("Added 1 mod")),
-            Arg.Is<ToastNotificationVariant>(v => v != ToastNotificationVariant.Failure), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Is<ToastNotificationVariant>(v => v != ToastNotificationVariant.Failure), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -250,6 +250,6 @@ public class MainWindowDropTests : IDisposable
         fixture.Actions.DidNotReceiveWithAnyArgs().OpenModlist(default);
         fixture.Notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("list.wabbajack") && text.Contains("not a modlist")),
-            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 }

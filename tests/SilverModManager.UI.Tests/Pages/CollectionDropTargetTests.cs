@@ -316,7 +316,7 @@ public class CollectionDropTargetTests(IServiceProvider provider) : AUiTest(prov
         var drop = async () => await harness.Target.DropAsync(Library(harness.Loadout, items), CancellationToken.None);
 
         await drop.Should().ThrowAsync<IOException>();
-        harness.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!, default, default, default, default);
+        harness.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!, default, default);
     }
 
     [Fact]

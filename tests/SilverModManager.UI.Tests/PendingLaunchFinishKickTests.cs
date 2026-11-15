@@ -104,7 +104,7 @@ public class PendingLaunchFinishKickTests
         kick.Start();
 
         await Eventually(() => _toasts.ReceivedCalls().Any());
-        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game 2 closed with a folder still mounted. The mount is released now."), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game 2 closed with a folder still mounted. The mount is released now."), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
     }
 
     [Fact(Timeout = 30000)]
@@ -144,7 +144,7 @@ public class PendingLaunchFinishKickTests
     public async Task AReport_DoesNotWaitForTheToastToBeShown()
     {
         using var gate = new ManualResetEventSlim();
-        _toasts.When(t => t.ShowToast(Arg.Any<string>(), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()))
+        _toasts.When(t => t.ShowToast(Arg.Any<string>(), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()))
             .Do(_ => gate.Wait(TimeSpan.FromSeconds(20)));
         using var kick = NewKick();
         kick.Start();
@@ -159,7 +159,7 @@ public class PendingLaunchFinishKickTests
     [Fact(Timeout = 30000)]
     public async Task AToastThatThrows_DoesNotFailThePublisher()
     {
-        _toasts.When(t => t.ShowToast(Arg.Any<string>(), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()))
+        _toasts.When(t => t.ShowToast(Arg.Any<string>(), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()))
             .Do(_ => throw new InvalidOperationException("no window"));
         using var kick = NewKick();
         kick.Start();
@@ -183,9 +183,9 @@ public class PendingLaunchFinishKickTests
         _reports.OnNext(new LaunchFinishReport(LaunchFinishOutcome.Finished, _marked));
 
         await Eventually(() => _toasts.ReceivedCalls().Count() >= 3);
-        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game closed before its changes were taken back into 'Loadout'. That is done now."), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
-        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game is still running."), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
-        _toasts.Received(1).ShowToast(MarkdownText.Inline("The loadout has been deleted."), ToastNotificationVariant.Neutral, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game closed before its changes were taken back into 'Loadout'. That is done now."), ToastNotificationVariant.Success, Arg.Any<TimeSpan?>());
+        _toasts.Received(1).ShowToast(MarkdownText.Inline("Test Game is still running."), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
+        _toasts.Received(1).ShowToast(MarkdownText.Inline("The loadout has been deleted."), ToastNotificationVariant.Neutral, Arg.Any<TimeSpan?>());
         _toasts.ReceivedCalls().Should().HaveCount(3);
     }
 

@@ -91,7 +91,7 @@ public class SetAsideActionHandlerTests(IServiceProvider provider) : AUiTest(pro
         await rig.Handler.ExecuteAsync(loadout.LoadoutId, DiagnosticActions.SetAsideLoadoutFiles([Dll], overrides.Value).Arguments);
 
         await rig.SetAside.Received(1).SetAside(Arg.Any<Loadout.ReadOnly>(), Arg.Is<IReadOnlyList<GamePath>>(p => p.SequenceEqual(new[] { Dll })), Arg.Any<CancellationToken>());
-        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("1 file set aside")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("1 file set aside")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
         await rig.Diagnostics.Received(1).RefreshAsync(loadout.LoadoutId);
     }
 
@@ -105,7 +105,7 @@ public class SetAsideActionHandlerTests(IServiceProvider provider) : AUiTest(pro
         await rig.Handler.ExecuteAsync(loadout.LoadoutId, DiagnosticActions.SetAsideLoadoutFiles([Dll, DiskOnly], overrides.Value).Arguments);
 
         await rig.SetAside.Received(1).SetAside(Arg.Any<Loadout.ReadOnly>(), Arg.Is<IReadOnlyList<GamePath>>(p => p.SequenceEqual(new[] { Dll })), Arg.Any<CancellationToken>());
-        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("disk-only.dll") && t.Contains("offers Set aside")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("disk-only.dll") && t.Contains("offers Set aside")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class SetAsideActionHandlerTests(IServiceProvider provider) : AUiTest(pro
 
         await rig.Handler.ExecuteAsync(loadout.LoadoutId, DiagnosticActions.SetAsideLoadoutFiles([Dll], overrides.Value).Arguments);
 
-        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("the apply did not finish") && t.Contains("run Apply")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        rig.Toasts.Received().ShowToast(Arg.Is<string>(t => t.Contains("the apply did not finish") && t.Contains("run Apply")), ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
         await rig.Diagnostics.Received(1).RefreshAsync(loadout.LoadoutId);
     }
 

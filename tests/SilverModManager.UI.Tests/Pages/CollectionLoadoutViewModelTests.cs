@@ -83,7 +83,7 @@ public class CollectionLoadoutViewModelTests(IServiceProvider provider) : AUiTes
 
         await Eventually(() => refused.Should().Be(1));
         toasts.Received(1).ShowToast(Arg.Is<string>(message => message.Contains("it is a required item of a collection")),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
     }
 
     [Fact]

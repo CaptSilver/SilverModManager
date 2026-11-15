@@ -336,8 +336,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
 
         await Eventually(() => _notifications.Received(1).ShowToast(
             Arg.Is<string>(message => message.Contains("the file is open in another program")),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
-            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
     }
 
     [Fact]
@@ -357,8 +356,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
 
         await Eventually(() => _notifications.Received(1).ShowToast(
             Arg.Is<string>(message => message.Contains("claimable.pak") && message.Contains("claimable.esp") && !message.Contains("claimable.ini")),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
-            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
     }
 
     [Fact]

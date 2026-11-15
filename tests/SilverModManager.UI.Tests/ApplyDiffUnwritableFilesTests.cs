@@ -213,7 +213,7 @@ public class ApplyDiffUnwritableFilesTests(IServiceProvider provider) : AUiTest(
         var applied = await LoadoutApplier.Apply(services, LoadoutId.From(EntityId.From(1)));
 
         applied.Should().BeTrue();
-        toasts.Received().ShowToast(string.Format(Language.ToastNotification_Applied_With_Unrestorable, 2), ToastNotificationVariant.Neutral, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        toasts.Received().ShowToast(string.Format(Language.ToastNotification_Applied_With_Unrestorable, 2), ToastNotificationVariant.Neutral, Arg.Any<TimeSpan?>());
         toasts.DidNotReceive().ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
     }
 

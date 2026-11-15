@@ -110,7 +110,7 @@ public class RemoveLoadoutFileActionHandlerTests(IServiceProvider provider) : AU
         await rig.ListHandler.ExecuteAsync(loadout.LoadoutId, DiagnosticActions.RemoveLoadoutFiles([Dll, diskOnly], strays.Value).Arguments);
 
         RowsAt(loadout).Should().Be(0, "the path with a row is removed");
-        rig.Toasts.Received().ShowToast(Arg.Is<string>(text => text.Contains("disk-only.dll")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+        rig.Toasts.Received().ShowToast(Arg.Is<string>(text => text.Contains("disk-only.dll")), Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>());
         await rig.Presenter.DidNotReceiveWithAnyArgs().Report(default!, default!);
         await rig.Diagnostics.Received(1).RefreshAsync(loadout.LoadoutId);
     }

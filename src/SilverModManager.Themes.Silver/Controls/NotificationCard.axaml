@@ -16,9 +16,9 @@
     <StaticResource x:Key="NotificationCardForegroundBrush" ResourceKey="SystemControlForegroundBaseHighBrush" />
     <SolidColorBrush x:Key="NotificationCardProgressBackgroundBrush" Color="#9A9A9A" />
     <SolidColorBrush x:Key="NotificationCardInformationBackgroundBrush" Color="#0078D4" />
-    <SolidColorBrush x:Key="NotificationCardSuccessBackgroundBrush" Color="#128B44" />
+    <StaticResource x:Key="NotificationCardSuccessBackgroundBrush" ResourceKey="SuccessStrongBrush" />
     <SolidColorBrush x:Key="NotificationCardWarningBackgroundBrush" Color="#FFC316" />
-    <SolidColorBrush x:Key="NotificationCardErrorBackgroundBrush" Color="#F03916" />
+    <StaticResource x:Key="NotificationCardErrorBackgroundBrush" ResourceKey="DangerStrongBrush" />
     
     <ControlTheme x:Key="{x:Type NotificationCard}" TargetType="NotificationCard">
     <Setter Property="UseLayoutRounding" Value="True"/>
@@ -101,13 +101,16 @@
     <Style Selector="^:information /template/ Panel#PART_HeaderBar">
       <Setter Property="Background" Value="{DynamicResource NotificationCardInformationBackgroundBrush}"/>
     </Style>
+    <!-- Outcome toasts show a coloured strip so a failure does not read like a success; plain notices stay bare. -->
     <Style Selector="^:success /template/ Panel#PART_HeaderBar">
+      <Setter Property="IsVisible" Value="True"/>
       <Setter Property="Background" Value="{DynamicResource NotificationCardSuccessBackgroundBrush}"/>
     </Style>
     <Style Selector="^:warning /template/ Panel#PART_HeaderBar">
       <Setter Property="Background" Value="{DynamicResource NotificationCardWarningBackgroundBrush}"/>
     </Style>
     <Style Selector="^:error /template/ Panel#PART_HeaderBar">
+      <Setter Property="IsVisible" Value="True"/>
       <Setter Property="Background" Value="{DynamicResource NotificationCardErrorBackgroundBrush}"/>
     </Style>
   </ControlTheme>

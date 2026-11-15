@@ -182,8 +182,7 @@ public class GameInstalledFilesTests(IServiceProvider provider) : AUiTest(provid
 
         await Eventually(() => _notifications.Received(1).ShowToast(
             string.Format(Language.GameInstalled_UndoTreatAsMine_Failed, "a mod now owns that path"),
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
-            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
     }
 
     /// <summary>A files page over the loadout's Overrides group, which is what External Changes shows, or over a plain group.</summary>
@@ -281,7 +280,6 @@ public class GameInstalledFilesTests(IServiceProvider provider) : AUiTest(provid
 
         await Eventually(() => _notifications.Received(1).ShowToast(
             "The app could not read the game folder: the folder is unreadable",
-            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
-            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>()));
     }
 }

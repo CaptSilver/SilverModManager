@@ -94,10 +94,10 @@ public class FilesDropTargetTests : IDisposable
 
         _notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.StartsWith("Added 2 mods")),
-            Arg.Is<ToastNotificationVariant>(v => v != ToastNotificationVariant.Failure), Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            Arg.Is<ToastNotificationVariant>(v => v != ToastNotificationVariant.Failure), Arg.Any<TimeSpan?>());
         _notifications.Received(1).ShowToast(
             Arg.Is<string>(text => text.Contains("bad.zip") && text.Contains("disk full")),
-            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>(), Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>());
+            ToastNotificationVariant.Failure, Arg.Any<TimeSpan?>());
     }
 
     [Fact]
