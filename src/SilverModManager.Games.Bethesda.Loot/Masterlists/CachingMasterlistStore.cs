@@ -33,6 +33,9 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
     private const string Branch = "v0.29";
     private const string PreludeRepository = "prelude";
 
+    /// <summary>Moves a file over its destination; tests swap it to make a move fail midway.</summary>
+    internal Action<string, string> MoveFile { get; init; } = (from, to) => IoFile.Move(from, to, overwrite: true);
+
     private string LootDir => dataDir.Combine("loot").ToString();
     private string MasterlistPath(string repo) => Path.Combine(LootDir, repo, "masterlist.yaml");
     private string PreludePath => Path.Combine(LootDir, "prelude.yaml");
@@ -111,7 +114,7 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
     /// failed write touches nothing; if a later move fails, the files already replaced are put back,
     /// so <see cref="Current"/> never pairs a masterlist with a prelude it wasn't validated with.
     /// </summary>
-    private static void ReplaceTogether(List<StagedFile> files)
+    private void ReplaceTogether(List<StagedFile> files)
     {
         // (target, temp content to move in or null to delete the target)
         var steps = new List<(string Target, string? Temp)>();
@@ -138,29 +141,41 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
             {
                 // Set the old file aside first so a later failure can bring it back.
                 var backedUp = IoFile.Exists(target);
-                if (backedUp) IoFile.Move(target, target + ".bak", overwrite: true);
+                if (backedUp) MoveFile(target, target + ".bak");
                 applied.Add((target, backedUp));
-                if (temp is not null) IoFile.Move(temp, target, overwrite: true);
+                if (temp is not null) MoveFile(temp, target);
             }
         }
         catch
         {
+            // Each undo step is attempted on its own: one that fails must not leave the files
+            // applied before it unrestored, nor replace the error that started the rollback.
             for (var i = applied.Count - 1; i >= 0; i--)
             {
                 // Only a backup this call made goes back; a .bak left by a crashed refresh is stale.
                 var (target, backedUp) = applied[i];
-                if (backedUp) IoFile.Move(target + ".bak", target, overwrite: true);
-                else if (IoFile.Exists(target)) IoFile.Delete(target);
+                TryUndo(() =>
+                {
+                    if (backedUp) MoveFile(target + ".bak", target);
+                    else if (IoFile.Exists(target)) IoFile.Delete(target);
+                });
             }
 
             foreach (var (_, temp) in steps)
             {
-                if (temp is not null) IoFile.Delete(temp);
+                if (temp is not null) TryUndo(() => IoFile.Delete(temp));
             }
             throw;
         }
 
         foreach (var (target, _) in applied) IoFile.Delete(target + ".bak");
+    }
+
+    // A failed undo step has nowhere better to go than the original exception, which the caller sees.
+    private static void TryUndo(Action step)
+    {
+        try { step(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
     private static string? ReadIfPresent(string path) => IoFile.Exists(path) ? IoFile.ReadAllText(path) : null;

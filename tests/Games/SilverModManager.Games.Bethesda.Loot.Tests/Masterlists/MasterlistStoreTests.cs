@@ -222,8 +222,8 @@ public class MasterlistStoreTests : IDisposable
         WriteCache(PreludeCache, OldPrelude, AfterLock, "\"old-p\"");
     }
 
-    private async Task<MasterlistRefreshResult> RefreshWithNewPair() =>
-        await Store().RefreshAsync(Game, new HttpClient(new FakeHandler(r =>
+    private async Task<MasterlistRefreshResult> RefreshWithNewPair(CachingMasterlistStore? store = null) =>
+        await (store ?? Store()).RefreshAsync(Game, new HttpClient(new FakeHandler(r =>
             Ok(r.RequestUri!.AbsolutePath.Contains("prelude") ? ValidPrelude : ValidMasterlist, "\"new\""))), CancellationToken.None);
 
     [Fact]
@@ -257,6 +257,50 @@ public class MasterlistStoreTests : IDisposable
         System.IO.File.ReadAllText(PreludeCache + ".etag").Should().Be("\"old-p\"");
         Directory.GetFiles(Path.GetDirectoryName(PreludeCache)!, "*", SearchOption.AllDirectories)
             .Should().NotContain(f => f.EndsWith(".tmp") || f.EndsWith(".bak"));
+    }
+
+    [Fact]
+    public async Task AFailedRestoreDoesNotStopTheOtherFilesFromBeingRestored()
+    {
+        WriteOldPair();
+        var store = new CachingMasterlistStore(NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(_dir), _bundled)
+        {
+            // The masterlist's ETag move fails (the original error) and so does putting the
+            // masterlist's backup back; the prelude, replaced earlier, must still be restored.
+            MoveFile = (from, to) =>
+            {
+                if (to == MasterlistCache + ".etag" && from.EndsWith(".tmp")) throw new IOException("etag move failed");
+                if (from == MasterlistCache + ".bak") throw new IOException("restore failed");
+                System.IO.File.Move(from, to, overwrite: true);
+            },
+        };
+
+        (await RefreshWithNewPair(store)).Should().Be(MasterlistRefreshResult.Failed);
+
+        System.IO.File.ReadAllText(PreludeCache).Should().Be(OldPrelude);
+        System.IO.File.ReadAllText(PreludeCache + ".etag").Should().Be("\"old-p\"");
+        Directory.GetFiles(Path.GetDirectoryName(PreludeCache)!, "*.tmp", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AFailedRestoreDoesNotReplaceTheErrorThatStartedTheRollback()
+    {
+        WriteOldPair();
+        var store = new CachingMasterlistStore(NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(_dir), _bundled)
+        {
+            // RefreshAsync turns an IOException into Failed but lets this type through, so the
+            // exception that escapes shows which error the rollback rethrew.
+            MoveFile = (from, to) =>
+            {
+                if (to == MasterlistCache + ".etag" && from.EndsWith(".tmp")) throw new InvalidOperationException("etag move failed");
+                if (from == MasterlistCache + ".bak") throw new IOException("restore failed");
+                System.IO.File.Move(from, to, overwrite: true);
+            },
+        };
+
+        var refresh = () => RefreshWithNewPair(store);
+
+        await refresh.Should().ThrowAsync<InvalidOperationException>().WithMessage("etag move failed");
     }
 
     [Fact]
