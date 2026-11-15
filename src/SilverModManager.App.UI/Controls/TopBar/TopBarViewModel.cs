@@ -36,6 +36,7 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
     private readonly ILoginManager _loginManager;
     private readonly INexusCredentialSummary _credentialSummary;
     private readonly ILogger<TopBarViewModel> _logger;
+    private readonly HttpClient _httpClient;
 
     public ILogger Logger => _logger;
     private readonly IWindowNotificationService _notificationService;
@@ -81,10 +82,12 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
         ISettingsManager settingsManager,
         IFileSystem fileSystem,
         IWindowNotificationService notificationService,
-        INexusCredentialSummary credentialSummary)
+        INexusCredentialSummary credentialSummary,
+        HttpClient httpClient)
     {
         _credentialSummary = credentialSummary;
         _logger = logger;
+        _httpClient = httpClient;
         _loginManager = loginManager;
         _notificationService = notificationService;
 
@@ -187,7 +190,9 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
         this.WhenActivated(d =>
             {
                 _loginManager.AvatarObservable
-                    .SelectMany(LoadImage)
+                    // Switch: a newer avatar supersedes a load in flight, and deactivating cancels it.
+                    .Select(uri => System.Reactive.Linq.Observable.FromAsync(ct => LoadImage(uri, ct)))
+                    .Switch()
                     .OnUI()
                     .SubscribeWithErrorLogging(image => Avatar = image)
                     .DisposeWith(d);
@@ -227,15 +232,19 @@ public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarView
         );
     }
 
-    private async Task<IImage?> LoadImage(Uri? uri)
+    private async Task<IImage?> LoadImage(Uri? uri, CancellationToken cancellationToken)
     {
         if (uri is null) return null;
 
         try
         {
-            var client = new HttpClient();
-            var stream = await client.GetByteArrayAsync(uri);
-            return new Bitmap(new MemoryStream(stream));
+            var bytes = await _httpClient.GetByteArrayAsync(uri, cancellationToken);
+            using var stream = new MemoryStream(bytes);
+            return new Bitmap(stream);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return null;
         }
         catch (Exception e)
         {

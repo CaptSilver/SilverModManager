@@ -122,7 +122,8 @@ public class WorkspaceMissingSelectionTests(IServiceProvider provider) : AUiTest
             var topBar = new TopBarViewModel(Substitute.For<IServiceProvider>(), NullLogger<TopBarViewModel>.Instance,
                 Substitute.For<ILoginManager>(), windowManager, Substitute.For<IOverlayController>(),
                 Substitute.For<IOSInterop>(), Substitute.For<ISettingsManager>(), Substitute.For<IFileSystem>(),
-                Substitute.For<IWindowNotificationService>(), Substitute.For<INexusCredentialSummary>());
+                Substitute.For<IWindowNotificationService>(), Substitute.For<INexusCredentialSummary>(),
+                new HttpClient());
 
             var act = async () => await topBar.NewTabCommand.Execute().FirstOrDefaultAsync();
 
