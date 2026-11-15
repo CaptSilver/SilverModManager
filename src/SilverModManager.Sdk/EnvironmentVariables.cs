@@ -56,20 +56,6 @@ public static class EnvironmentVariables
     }
 
     /// <summary>
-    /// Tries to get 
-    /// </summary>
-    public static bool TryGetUri(string name, [NotNullWhen(true)] out Uri? value)
-    {
-        if (!TryGetString(name, out var sValue))
-        {
-            value = null;
-            return false;
-        }
-
-        return Uri.TryCreate(sValue, UriKind.Absolute, out value);
-    }
-
-    /// <summary>
     /// Tries to get a string.
     /// </summary>
     public static bool TryGetString(string name, [NotNullWhen(true)] out string? value)

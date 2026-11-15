@@ -2,47 +2,55 @@
 
 !!! info "Describes how to add a game to the Nexus Mods app."
 
-To have a game be automatically recognised by the Nexus Mods app, create a class that inherits from `AGame`.
+To have a game be automatically recognised by the Nexus Mods app, create a class that inherits from `AGame<TSelf>` and implements `IGameData<TSelf>`, with itself as `TSelf`.
 
 ??? "Example Game (Click to Expand)"
 
     ```csharp
-    public class Sifu : AGame, ISteamGame, IEpicGame
+    public sealed class Sifu(IServiceProvider provider) : AGame<Sifu>(provider), IGameData<Sifu>
     {
-        // Name of your game.
-        public override string Name => "Sifu";
+        public static GameId GameId { get; } = GameId.From("Sifu");
+        public static string DisplayName => "Sifu";
 
-        // Game 'Domain' on Nexus, i.e. https://www.nexusmods.com/sifu is 'sifu'
-        public override GameDomain Domain => GameDomain.From("sifu");
+        // The game's id on Nexus Mods; see `src/SilverModManager.Networking.NexusWebApi/V1Interop/games.json`.
+        public static Optional<NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(4309);
 
-        // Path to EXE
-        public override GamePath GetPrimaryFile(GameStore store) => new(LocationId.Game, "Sifu.exe");
-
-        // [ISteamGame] Steam ID
-        // Extract this from SteamDB e.g. https://steamdb.info/app/2138710/ or your `appmanifest_` files in `SteamApps`.
-        public IEnumerable<uint> SteamIds => new[] { 2138710u };
-
-        // [IEpicGame] 'CatalogItemId' from JSON,
+        // Steam App ID from SteamDB (https://steamdb.info/app/2138710/), Epic 'CatalogItemId',
         // see https://github.com/erri120/GameFinder/wiki/Epic-Games-Store
-        public IEnumerable<string> EpicCatalogItemId => new[] { "c80a76de890145edbe0d41679dbccc66" };
-
-        public Sifu(IServiceProvider serviceProvider) : base(serviceProvider) { }
-
-        // Registers supported 'Mod Installers'
-        protected override IEnumerable<IModInstaller> MakeInstallers(IServiceProvider provider) => new[] { new SifuModInstaller(provider) };
-
-        // Boilerplate for games that don't do anything special. //
-        protected override IReadOnlyDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem,
-            GameLocatorResult installation)
+        public override StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
         {
-            return new Dictionary<LocationId, AbsolutePath>()
-            {
-                { LocationId.Game, installation.Path },
-            };
+            SteamAppIds = [2138710u],
+            EGSCatalogItemId = ["c80a76de890145edbe0d41679dbccc66"],
+        };
+
+        // Path to EXE, relative to the game folder
+        protected override RelativePath PrimaryExe => "Sifu.exe";
+
+        public override ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
+        {
+            return ImmutableDictionary<LocationId, AbsolutePath>.Empty
+                .Add(LocationId.Game, gameLocatorResult.Path);
         }
 
-        public override List<IModInstallDestination> GetInstallDestinations(IReadOnlyDictionary<LocationId, AbsolutePath> locations)
-            => ModInstallDestinationHelpers.GetCommonLocations(locations);
+        // Nothing game-specific happens on apply, so the default synchronizer will do.
+        protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new DefaultSynchronizer(provider);
+
+        // Install destinations: each InstallFolderTarget is a folder in the game that mod archives get mapped onto.
+        protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
+        [
+            new GenericPatternMatchInstaller(provider)
+            {
+                InstallFolderTargets =
+                [
+                    new InstallFolderTarget
+                    {
+                        DestinationGamePath = new GamePath(LocationId.Game, "Sifu/Content/Paks/~mods"),
+                        KnownSourceFolderNames = ["~mods"],
+                        KnownValidFileExtensions = [new Extension(".pak")],
+                    },
+                ],
+            },
+        ];
     }
     ```
 

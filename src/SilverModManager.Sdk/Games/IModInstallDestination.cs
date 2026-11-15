@@ -43,34 +43,6 @@ public static class ModInstallDestinationHelpers
     }
 
     /// <summary>
-    /// Adds a list of common locations (passed via parameter) to accumulator of <see cref="IModInstallDestination"/>.
-    /// </summary>
-    /// <param name="locations">Locations to add to the accumulator.</param>
-    /// <param name="accumulator">List to return the results into.</param>
-    public static void AddCommonLocations(IReadOnlyDictionary<LocationId, AbsolutePath> locations, List<IModInstallDestination> accumulator)
-    {
-        foreach (var location in locations)
-        {
-            accumulator.Add(new InstallFolderTarget()
-            {
-                // Locations has
-                DestinationGamePath = new GamePath(location.Key, ""),
-            });
-        }
-    }
-
-    /// <summary>
-    /// Converts a list of common locations (passed via parameter) to <see cref="IModInstallDestination"/>.
-    /// </summary>
-    /// <param name="locations">Locations to add to the accumulator.</param>
-    public static List<IModInstallDestination> GetCommonLocations(IReadOnlyDictionary<LocationId, AbsolutePath> locations)
-    {
-        var result = new List<IModInstallDestination>();
-        AddCommonLocations(locations, result);
-        return result;
-    }
-
-    /// <summary>
     /// Converts a list of <see cref="InstallFolderTarget"/>(s) into <see cref="IModInstallDestination"/>.
     /// </summary>
     /// <param name="targets">Collection of targets to get destinations from.</param>

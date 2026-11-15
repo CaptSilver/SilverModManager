@@ -1,5 +1,4 @@
 using SilverModManager.Abstractions.FileExtractor;
-using NexusMods.Paths;
 using SilverModManager.Sdk.FileExtractor;
 
 namespace SilverModManager.Backend.FileExtractor.FileSignatures;
@@ -11,8 +10,6 @@ public class SignatureChecker : ISignatureChecker
 {
     private readonly (FileType, byte[])[] _signatures;
     private readonly int _bufferSize;
-
-    private static readonly Dictionary<Extension, FileType> Extensions = Definitions.Extensions.ToDictionary(x => x.Item2, x => x.Item1);
 
     /// <summary>
     /// Creates a signature checker responsible for identifying file headers.
@@ -77,16 +74,5 @@ public class SignatureChecker : ISignatureChecker
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Performs a lookup of the extension against the known extensions
-    /// </summary>
-    /// <param name="extension">The file extension to validate.</param>
-    /// <param name="fileType">The file type used.</param>
-    /// <returns>True if found, else false.</returns>
-    public static bool TryGetFileType(Extension extension, out FileType fileType)
-    {
-        return Extensions.TryGetValue(extension, out fileType);
     }
 }

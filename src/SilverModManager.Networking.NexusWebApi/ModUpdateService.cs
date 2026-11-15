@@ -593,12 +593,6 @@ public readonly record struct ModUpdatesOnModPage(ModUpdateOnPage[] FileMappings
     public IEnumerable<NexusModsFileMetadata.ReadOnly> NewestFileForEachMod() => FileMappings.Select(x => x.NewestFile);
 
     /// <summary>
-    /// Returns the newest file from every mod on this page.
-    /// Only distinct (unique) files are returned.
-    /// </summary>
-    public IEnumerable<NexusModsFileMetadata.ReadOnly> NewestUniqueFileForEachMod() => NewestFileForEachMod().DistinctBy(only => only.Id);
-    
-    /// <summary>
     /// Returns mappings of unique newest file(s) to 1 or more current files.
     /// </summary>
     /// <remarks>

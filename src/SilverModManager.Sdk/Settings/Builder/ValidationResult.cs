@@ -20,11 +20,6 @@ public readonly struct ValidationResult
     public bool IsFailed() => Value.IsT0;
 
     /// <summary>
-    /// Gets whether the validation was successful.
-    /// </summary>
-    public bool IsSuccessful() => Value.IsT1;
-
-    /// <summary>
     /// Constructor.
     /// </summary>
     public ValidationResult(OneOf<Failed, Successful> value)
