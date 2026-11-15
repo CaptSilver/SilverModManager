@@ -1,11 +1,8 @@
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SilverModManager.App.UI.Controls.Spine;
@@ -25,19 +22,12 @@ namespace SilverModManager.App.UI.Controls;
 /// </remarks>
 internal sealed class VerticalReorderDrag : IDisposable
 {
-    // The menu entries are as wide as their column, so the spine's 1.15 would push a lifted entry out of it.
-    private const double LiftScale = 1.04;
-    private const double LiftedOpacity = 0.92;
-    private const double EdgeScrollBand = 48;
-    private const double EdgeScrollMaxStep = 14;
-    private static readonly TimeSpan SlideDuration = TimeSpan.FromMilliseconds(150);
-    private static readonly TimeSpan LiftDuration = TimeSpan.FromMilliseconds(120);
-    private static readonly TimeSpan EdgeScrollInterval = TimeSpan.FromMilliseconds(16);
-
     private readonly ItemsControl _items;
     private readonly ScrollViewer _scroller;
     private readonly Func<int, bool> _isMovable;
     private readonly Action<int, int> _move;
+    private readonly ReorderDragFeel _feel;
+    private readonly Visual _unclipUpTo;
     private readonly DispatcherTimer _edgeScrollTimer;
 
     private Point? _pressPoint;
@@ -71,14 +61,17 @@ internal sealed class VerticalReorderDrag : IDisposable
         public double PointerViewportY { get; set; }
     }
 
-    public VerticalReorderDrag(ItemsControl items, ScrollViewer scroller, Func<int, bool> isMovable, Action<int, int> move)
+    /// <param name="unclipUpTo">The last ancestor whose clipping is switched off while an entry is lifted; the scroll viewer when null.</param>
+    public VerticalReorderDrag(ItemsControl items, ScrollViewer scroller, Func<int, bool> isMovable, Action<int, int> move, ReorderDragFeel feel, Visual? unclipUpTo = null)
     {
         _items = items;
         _scroller = scroller;
         _isMovable = isMovable;
         _move = move;
+        _feel = feel;
+        _unclipUpTo = unclipUpTo ?? scroller;
 
-        _edgeScrollTimer = new DispatcherTimer { Interval = EdgeScrollInterval };
+        _edgeScrollTimer = new DispatcherTimer { Interval = ReorderDragVisuals.EdgeScrollInterval };
         _edgeScrollTimer.Tick += OnEdgeScrollTick;
 
         // The entries are buttons that mark their pointer events handled, so the press has to be watched on the way
@@ -106,8 +99,8 @@ internal sealed class VerticalReorderDrag : IDisposable
     {
         if (_isSettling || _drag != null) return;
         if (!e.GetCurrentPoint(_items).Properties.IsLeftButtonPressed) return;
-        var index = IndexOfRowUnder(e.Source);
-        _pressedIndex = _isMovable(index) ? index : -1;
+        var index = ReorderDragVisuals.IndexOfChildUnder(Rows, e.Source);
+        _pressedIndex = index >= 0 && _isMovable(index) ? index : -1;
         _pressPoint = _pressedIndex < 0 ? null : e.GetPosition(_items.ItemsPanelRoot);
     }
 
@@ -168,6 +161,8 @@ internal sealed class VerticalReorderDrag : IDisposable
     private void BeginDrag(int pressed, double startY, IPointer pointer)
     {
         var rows = Rows;
+        var slideDuration = ReorderDragVisuals.SlideDuration(_items);
+        var liftDuration = ReorderDragVisuals.LiftDuration(_items);
         var first = pressed;
         while (first > 0 && _isMovable(first - 1)) first--;
         var last = pressed;
@@ -203,19 +198,19 @@ internal sealed class VerticalReorderDrag : IDisposable
         for (var i = 0; i < run.Length; i++)
         {
             if (i == from) continue;
-            run[i].Transitions = SlideTransitions(SlideDuration);
-            run[i].RenderTransform = Transform(0, 1);
+            run[i].Transitions = ReorderDragVisuals.SlideTransitions(slideDuration);
+            run[i].RenderTransform = ReorderDragVisuals.Transform(default, 1);
         }
 
         // The lifted entry eases up to its raised look; once that is done it must track the pointer without lag.
         tile.ZIndex = 100;
         UnclipAncestors(tile);
-        tile.Opacity = LiftedOpacity;
+        tile.Opacity = ReorderDragVisuals.LiftedOpacity;
         tile.Effect = new DropShadowEffect { OffsetX = 0, OffsetY = 3, BlurRadius = 10, Color = Colors.Black, Opacity = 0.45 };
-        tile.Transitions = SlideTransitions(LiftDuration);
-        tile.RenderTransform = Transform(0, LiftScale);
+        tile.Transitions = ReorderDragVisuals.SlideTransitions(liftDuration);
+        tile.RenderTransform = ReorderDragVisuals.Transform(default, _feel.LiftScale);
         var state = _drag;
-        DelayThen(LiftDuration, () =>
+        _ = ReorderDragVisuals.DelayThen(liftDuration, () =>
         {
             if (_drag != state || state is null) return;
             state.Tile.Transitions = null;
@@ -228,7 +223,7 @@ internal sealed class VerticalReorderDrag : IDisposable
     {
         if (_drag is not { } drag || _isSettling) return;
 
-        var step = SpineDragLayout.EdgeScrollStep(drag.PointerViewportY, _scroller.Viewport.Height, EdgeScrollBand, EdgeScrollMaxStep);
+        var step = SpineDragLayout.EdgeScrollStep(drag.PointerViewportY, _scroller.Viewport.Height, _feel.EdgeScrollBand, _feel.EdgeScrollMaxStep);
         if (step == 0) return;
 
         var before = _scroller.Offset.Y;
@@ -243,7 +238,7 @@ internal sealed class VerticalReorderDrag : IDisposable
     {
         drag.PointerPanelY = pointerY;
         drag.Offset = SpineDragLayout.ClampOffset(drag.Tops, drag.Heights, drag.From, pointerY - drag.StartY);
-        drag.Tile.RenderTransform = Transform(drag.Offset, LiftScale);
+        drag.Tile.RenderTransform = ReorderDragVisuals.Transform(new Vector(0, drag.Offset), _feel.LiftScale);
 
         var centre = drag.Tops[drag.From] + drag.Offset + drag.Heights[drag.From] / 2;
         var target = SpineDragLayout.TargetIndex(drag.Tops, drag.Heights, drag.From, centre);
@@ -254,7 +249,7 @@ internal sealed class VerticalReorderDrag : IDisposable
         for (var i = 0; i < drag.Tops.Length; i++)
         {
             if (i == drag.From) continue;
-            rows[drag.First + i].RenderTransform = Transform(SpineDragLayout.NeighbourShift(i, drag.From, target, drag.Stride), 1);
+            rows[drag.First + i].RenderTransform = ReorderDragVisuals.Transform(new Vector(0, SpineDragLayout.NeighbourShift(i, drag.From, target, drag.Stride)), 1);
         }
     }
 
@@ -265,22 +260,23 @@ internal sealed class VerticalReorderDrag : IDisposable
         try
         {
             var target = commit ? drag.Target : drag.From;
+            var slideDuration = ReorderDragVisuals.SlideDuration(_items);
             if (!commit)
             {
                 // Everything glides back to where it started.
                 var rows = Rows;
                 for (var i = 0; i < drag.Tops.Length; i++)
                 {
-                    if (i != drag.From) rows[drag.First + i].RenderTransform = Transform(0, 1);
+                    if (i != drag.From) rows[drag.First + i].RenderTransform = ReorderDragVisuals.Transform(default, 1);
                 }
             }
 
-            drag.Tile.Transitions = SlideTransitions(SlideDuration);
+            drag.Tile.Transitions = ReorderDragVisuals.SlideTransitions(slideDuration);
             drag.Tile.Opacity = 1;
             drag.Tile.Effect = null;
-            drag.Tile.RenderTransform = Transform(SpineDragLayout.SettleOffset(drag.Tops, drag.Heights, drag.From, target), 1);
+            drag.Tile.RenderTransform = ReorderDragVisuals.Transform(new Vector(0, SpineDragLayout.SettleOffset(drag.Tops, drag.Heights, drag.From, target)), 1);
 
-            await Task.Delay(SlideDuration);
+            await Task.Delay(slideDuration);
             if (_drag != drag) return;
 
             // Drop the transforms first so the new order is not painted with them still applied.
@@ -321,7 +317,7 @@ internal sealed class VerticalReorderDrag : IDisposable
         {
             _unclipped.Add((visual, visual.ClipToBounds));
             visual.ClipToBounds = false;
-            if (ReferenceEquals(visual, _scroller)) break;
+            if (ReferenceEquals(visual, _unclipUpTo)) break;
         }
     }
 
@@ -329,43 +325,5 @@ internal sealed class VerticalReorderDrag : IDisposable
     {
         foreach (var (visual, clipToBounds) in _unclipped) visual.ClipToBounds = clipToBounds;
         _unclipped.Clear();
-    }
-
-    private static Transitions SlideTransitions(TimeSpan duration) =>
-    [
-        new TransformOperationsTransition
-        {
-            Property = Visual.RenderTransformProperty,
-            Duration = duration,
-            Easing = new CubicEaseOut(),
-        },
-    ];
-
-    // Every entry always carries the same two operations so a transition can interpolate between any two of them.
-    private static ITransform Transform(double offsetY, double scale)
-    {
-        var builder = TransformOperations.CreateBuilder(2);
-        builder.AppendTranslate(0, offsetY);
-        builder.AppendScale(scale, scale);
-        return builder.Build();
-    }
-
-    private static async void DelayThen(TimeSpan delay, Action action)
-    {
-        await Task.Delay(delay);
-        Dispatcher.UIThread.Post(action);
-    }
-
-    private int IndexOfRowUnder(object? source)
-    {
-        var rows = Rows;
-        for (var visual = source as Visual; visual != null; visual = visual.GetVisualParent())
-        {
-            for (var i = 0; i < rows.Count; i++)
-            {
-                if (ReferenceEquals(rows[i], visual)) return i;
-            }
-        }
-        return -1;
     }
 }

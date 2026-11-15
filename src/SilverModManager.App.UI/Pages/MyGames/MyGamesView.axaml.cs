@@ -1,16 +1,14 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Media.Transformation;
 using Avalonia.ReactiveUI;
 using Avalonia.VisualTree;
 using ReactiveUI;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.Spine;
 using SilverModManager.UI.Sdk;
 
@@ -18,13 +16,7 @@ namespace SilverModManager.App.UI.Pages.MyGames;
 
 public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
 {
-    private const double LiftScale = 1.05;
-    private const double LiftedOpacity = 0.92;
-    private static readonly TimeSpan DefaultSlideDuration = TimeSpan.FromMilliseconds(150);
-    private static readonly TimeSpan DefaultLiftDuration = TimeSpan.FromMilliseconds(120);
-    private const double EdgeScrollBand = 64;
-    private const double EdgeScrollMaxStep = 18;
-    private static readonly TimeSpan EdgeScrollInterval = TimeSpan.FromMilliseconds(16);
+    private static readonly ReorderDragFeel Feel = ReorderDragFeel.Grid;
 
     private Point? _pressPoint;
     private int _pressedIndex = -1;
@@ -56,7 +48,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
     {
         InitializeComponent();
 
-        _edgeScrollTimer = new Avalonia.Threading.DispatcherTimer { Interval = EdgeScrollInterval };
+        _edgeScrollTimer = new Avalonia.Threading.DispatcherTimer { Interval = ReorderDragVisuals.EdgeScrollInterval };
         _edgeScrollTimer.Tick += OnEdgeScrollTick;
 
         this.WhenActivated(d =>
@@ -114,7 +106,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
     {
         if (_isSettling || _drag != null) return;
         if (!e.GetCurrentPoint(DetectedGamesItemsControl).Properties.IsLeftButtonPressed) return;
-        _pressedIndex = IndexOfTileUnder(e.Source);
+        _pressedIndex = ReorderDragVisuals.IndexOfChildUnder(Tiles, e.Source);
         _pressPoint = _pressedIndex < 0 ? null : e.GetPosition(DetectedGamesItemsControl.ItemsPanelRoot);
     }
 
@@ -194,19 +186,19 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
         for (var i = 0; i < tiles.Count; i++)
         {
             if (i == from) continue;
-            tiles[i].Transitions = SlideTransitions(SlideDuration);
-            tiles[i].RenderTransform = Transform(default, 1);
+            tiles[i].Transitions = ReorderDragVisuals.SlideTransitions(SlideDuration);
+            tiles[i].RenderTransform = ReorderDragVisuals.Transform(default, 1);
         }
 
         // The lifted tile eases up to its raised look; once that is done it must track the pointer without lag.
         tile.ZIndex = 100;
         UnclipAncestors(tile);
-        tile.Opacity = LiftedOpacity;
+        tile.Opacity = ReorderDragVisuals.LiftedOpacity;
         tile.Effect = new DropShadowEffect { OffsetX = 0, OffsetY = 3, BlurRadius = 10, Color = Colors.Black, Opacity = 0.45 };
-        tile.Transitions = SlideTransitions(LiftDuration);
-        tile.RenderTransform = Transform(default, LiftScale);
+        tile.Transitions = ReorderDragVisuals.SlideTransitions(LiftDuration);
+        tile.RenderTransform = ReorderDragVisuals.Transform(default, Feel.LiftScale);
         var state = _drag;
-        DelayThen(LiftDuration, () =>
+        _ = ReorderDragVisuals.DelayThen(LiftDuration, () =>
         {
             if (_drag != state || state is null) return;
             state.Tile.Transitions = null;
@@ -219,7 +211,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
     {
         if (_drag is not { } drag || _isSettling) return;
 
-        var step = SpineDragLayout.EdgeScrollStep(drag.PointerViewportY, PageScroller.Viewport.Height, EdgeScrollBand, EdgeScrollMaxStep);
+        var step = SpineDragLayout.EdgeScrollStep(drag.PointerViewportY, PageScroller.Viewport.Height, Feel.EdgeScrollBand, Feel.EdgeScrollMaxStep);
         if (step == 0) return;
 
         var before = PageScroller.Offset.Y;
@@ -234,7 +226,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
     {
         drag.PointerPanel = pointer;
         var offset = GameTileDragLayout.ClampOffset(drag.Slots, drag.From, pointer - drag.Start);
-        drag.Tile.RenderTransform = Transform(offset, LiftScale);
+        drag.Tile.RenderTransform = ReorderDragVisuals.Transform(offset, Feel.LiftScale);
 
         var target = GameTileDragLayout.TargetIndex(drag.Slots, drag.From, drag.Slots[drag.From].Translate(offset));
         if (target == drag.Target) return;
@@ -244,7 +236,7 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
         for (var i = 0; i < tiles.Count; i++)
         {
             if (i == drag.From) continue;
-            tiles[i].RenderTransform = Transform(GameTileDragLayout.NeighbourShift(drag.Slots, i, drag.From, target), 1);
+            tiles[i].RenderTransform = ReorderDragVisuals.Transform(GameTileDragLayout.NeighbourShift(drag.Slots, i, drag.From, target), 1);
         }
     }
 
@@ -261,14 +253,14 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
                 var tiles = Tiles;
                 for (var i = 0; i < tiles.Count; i++)
                 {
-                    if (i != drag.From) tiles[i].RenderTransform = Transform(default, 1);
+                    if (i != drag.From) tiles[i].RenderTransform = ReorderDragVisuals.Transform(default, 1);
                 }
             }
 
-            drag.Tile.Transitions = SlideTransitions(SlideDuration);
+            drag.Tile.Transitions = ReorderDragVisuals.SlideTransitions(SlideDuration);
             drag.Tile.Opacity = 1;
             drag.Tile.Effect = null;
-            drag.Tile.RenderTransform = Transform(GameTileDragLayout.SettleOffset(drag.Slots, drag.From, target), 1);
+            drag.Tile.RenderTransform = ReorderDragVisuals.Transform(GameTileDragLayout.SettleOffset(drag.Slots, drag.From, target), 1);
 
             await Task.Delay(SlideDuration);
             if (_drag != drag) return;
@@ -321,47 +313,8 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
         _unclipped.Clear();
     }
 
-    private TimeSpan SlideDuration => ThemeDuration("SpineReorderSlideDuration", DefaultSlideDuration);
-    private TimeSpan LiftDuration => ThemeDuration("SpineReorderLiftDuration", DefaultLiftDuration);
-
-    private TimeSpan ThemeDuration(string key, TimeSpan fallback) =>
-        this.TryFindResource(key, ActualThemeVariant, out var value) && value is TimeSpan duration ? duration : fallback;
-
-    private static Transitions SlideTransitions(TimeSpan duration) =>
-    [
-        new TransformOperationsTransition
-        {
-            Property = RenderTransformProperty,
-            Duration = duration,
-            Easing = new CubicEaseOut(),
-        },
-    ];
-
-    // Every tile always carries the same two operations so a transition can interpolate between any two of them.
-    private static ITransform Transform(Vector offset, double scale)
-    {
-        var builder = TransformOperations.CreateBuilder(2);
-        builder.AppendTranslate(offset.X, offset.Y);
-        builder.AppendScale(scale, scale);
-        return builder.Build();
-    }
-
-    private static async void DelayThen(TimeSpan delay, Action action)
-    {
-        await Task.Delay(delay);
-        Avalonia.Threading.Dispatcher.UIThread.Post(action);
-    }
+    private TimeSpan SlideDuration => ReorderDragVisuals.SlideDuration(this);
+    private TimeSpan LiftDuration => ReorderDragVisuals.LiftDuration(this);
 
     private IReadOnlyList<Control> Tiles => DetectedGamesItemsControl.ItemsPanelRoot?.Children ?? [];
-
-    private int IndexOfTileUnder(object? source)
-    {
-        var tiles = Tiles;
-        for (var visual = source as Visual; visual != null; visual = visual.GetVisualParent())
-        {
-            var index = tiles.ToList().FindIndex(tile => ReferenceEquals(tile, visual));
-            if (index >= 0) return index;
-        }
-        return -1;
-    }
 }

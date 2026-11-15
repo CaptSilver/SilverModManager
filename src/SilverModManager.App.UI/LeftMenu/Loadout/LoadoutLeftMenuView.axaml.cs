@@ -73,7 +73,7 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
             var reorderDrag = new SerialDisposable().DisposeWith(disposables);
             this.WhenAnyValue(x => x.ViewModel)
                 .WhereNotNull()
-                .Subscribe(vm => reorderDrag.Disposable = new VerticalReorderDrag(CollectionItems, LeftMenuScroller, vm.IsCollectionMovable, vm.MoveCollection))
+                .Subscribe(vm => reorderDrag.Disposable = new VerticalReorderDrag(CollectionItems, LeftMenuScroller, vm.IsCollectionMovable, vm.MoveCollection, ReorderDragFeel.Menu))
                 .DisposeWith(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.HasSingleCollection, view => view.LoadoutItem.IsVisible, input => !input)
