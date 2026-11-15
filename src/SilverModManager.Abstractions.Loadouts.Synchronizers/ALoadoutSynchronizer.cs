@@ -899,12 +899,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await Preflight(loadout.InstallationInstance);
         var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
         RespellTree(syncTree, _applySpellings);
-        RefuseTraversalPaths(syncTree);
-        KeepNeverWrittenPathsOffDisk(syncTree);
-        await PreflightActions(syncTree, loadout);
-        await RefuseExtractionsWithoutBytes(syncTree);
-        ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
-        ApplyBackupOverflowChoice(syncTree, choice);
+        await PreflightTree(syncTree, loadout.InstallationInstance, loadout, choice);
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
@@ -920,7 +915,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
         PreflightRecordedRoots(loadout.InstallationInstance, plan, syncTree);
-        var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> plannedTimes = loadout.InstallationInstance.Game is ITimestampOrderedGame timestamped
             ? await timestamped.PluginTimestamps(loadout, syncTree)
             : [];
@@ -936,70 +930,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             PlannedModifiedTimes = plannedTimes.ToDictionary(t => t.Path, t => t.Mtime),
         };
 
-        foreach (var action in ActionsInOrder)
-        {
-            switch (action)
-            {
-                case Actions.DoNothing:
-                    break;
-
-                case Actions.BackupFile:
-                    job?.SetStatus(SyncPhases.BackingUp);
-                    foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
-                    await RootStoredFilesBeingReplaced(context);
-                    break;
-
-                case Actions.IngestFromDisk:
-                    job?.SetStatus(SyncPhases.IngestingChanges);
-                    foreach (var group in groups) group.Backend.Ingest(context, group.Nodes);
-                    break;
-                
-                case Actions.AdaptLoadout:
-                    job?.SetStatus(SyncPhases.UpdatingLoadout);
-                    foreach (var group in groups) await group.Backend.AdaptLoadout(context, group.Nodes);
-                    break;
-
-                case Actions.DeleteFromDisk:
-                    job?.SetStatus(SyncPhases.Deleting);
-                    foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
-                    break;
-
-                case Actions.ExtractToDisk:
-                    job?.SetStatus(SyncPhases.Deploying);
-                    foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
-                    break;
-                
-                case Actions.WriteIntrinsic:
-                    job?.SetStatus(SyncPhases.WritingIntrinsics);
-                    foreach (var group in groups) await group.Backend.WriteIntrinsics(context, group.Nodes);
-                    break;
-
-                case Actions.AddReifiedDelete:
-                    job?.SetStatus(SyncPhases.UpdatingDeletedFiles);
-                    foreach (var group in groups)
-                    {
-                        foreach (var (path, node) in group.Nodes.Where(n => n.Value.PlayerDeleted))
-                            Logger.LogInformation("Recording the player's deletion of {Path}: it is gone from the game folder and the row providing it was the player's, not a mod's", path);
-                        group.Backend.AddReifiedDeletes(context, group.Nodes);
-                    }
-                    break;
-
-                case Actions.WarnOfUnableToExtract:
-                    WarnOfUnableToExtract(syncTree);
-                    break;
-
-                case Actions.WarnOfConflict:
-                    WarnOfConflict(syncTree);
-                    break;
-
-                case Actions.ForgetDiskState:
-                    ActionForgetDiskState(syncTree, tx);
-                    break;
-                
-                default:
-                    throw new InvalidOperationException($"Unknown action: {action}");
-            }
-        }
+        var foldersWithDeletedFiles = await RunActionsInOrder(groups, context);
 
         // After the loop so every file is in place: the ones extracted got their time as they were written, the
         // ones already there get theirs now.
@@ -1030,13 +961,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         loadout = loadout.Rebase();
         var newState = DiskStateEntry.FindByGame(loadout.Db, loadout.Installation);
 
-        // Clean up empty directories
-        for (var i = 0; i < groups.Count; i++)
-        {
-            if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
-                groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newState);
-        }
-
+        CleanEmptyDirectories(groups, foldersWithDeletedFiles, context, newState);
         LogSummary($"Sync of loadout {loadout.Name} ({loadout.LoadoutId})", syncTree, groups, context, plan);
 
         // The collector sweeps the staging store, which waits for every hold.
@@ -1281,11 +1206,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // still spelled two ways stays as the disk has it and paths are restored into the folder they came from.
         if (MergesCaseVariantFoldersOnApply(gameInstallation))
             RespellTree(syncTree, BuildSpellings(gameInstallation, null, _gameRegistry.ForceGetMetadata(gameInstallation), keepSplit: true));
-        RefuseTraversalPaths(syncTree);
-        KeepNeverWrittenPathsOffDisk(syncTree);
-        await PreflightActions(syncTree, null);
-        ProbeWritableRoots(syncTree, gameInstallation.Locations);
-        ApplyBackupOverflowChoice(syncTree, choice);
+        await PreflightTree(syncTree, gameInstallation, null, choice);
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
@@ -1299,7 +1220,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var stagingHold = _stagingStore.Hold();
         var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
-        var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
             Synchronizer = this,
@@ -1309,62 +1229,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             Transaction = tx,
         };
 
-        foreach (var action in ActionsInOrder)
-        {
-            switch (action)
-            {
-                case Actions.DoNothing:
-                    break;
-
-                case Actions.BackupFile:
-                    foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
-                    await RootStoredFilesBeingReplaced(context);
-                    break;
-                
-                case Actions.AdaptLoadout:
-                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.AdaptLoadout)))
-                        throw new InvalidOperationException("Cannot adapt loadout when not in a loadout context");
-                    break;
-                
-                case Actions.WriteIntrinsic:
-                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.WriteIntrinsic)))
-                        throw new InvalidOperationException("Cannot write intrinsic files when not in a loadout context");
-                    break;
-
-                case Actions.IngestFromDisk:
-                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.IngestFromDisk)))
-                        throw new InvalidOperationException("Cannot ingest files from disk when not in a loadout context");
-                    break;
-
-                case Actions.DeleteFromDisk:
-                    foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
-                    break;
-
-                case Actions.ExtractToDisk:
-                    foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
-                    break;
-
-                case Actions.AddReifiedDelete:
-                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.AddReifiedDelete)))
-                        throw new InvalidOperationException("Cannot add reified deletes when not in a loadout context");
-                    break;
-
-                case Actions.WarnOfUnableToExtract:
-                    WarnOfUnableToExtract(syncTree);
-                    break;
-
-                case Actions.WarnOfConflict:
-                    WarnOfConflict(syncTree);
-                    break;
-
-                case Actions.ForgetDiskState:
-                    ActionForgetDiskState(syncTree, tx);
-                    break;
-
-                default:
-                    throw new InvalidOperationException($"Unknown action: {action}");
-            }
-        }
+        var foldersWithDeletedFiles = await RunActionsInOrder(groups, context);
 
         if (metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadout))
         {
@@ -1385,15 +1250,129 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         var newMetadata = metadata.Rebase(result.Db);
 
-        // Clean up empty directories
-        var newDiskState = DiskStateEntry.FindByGame(newMetadata.Db, newMetadata);
+        CleanEmptyDirectories(groups, foldersWithDeletedFiles, context, DiskStateEntry.FindByGame(newMetadata.Db, newMetadata));
+        LogSummary($"Reset of the game folder of {gameInstallation.Game.DisplayName}", syncTree, groups, context, plan);
+    }
+
+    /// <summary>
+    /// What both RunActions overloads check, in this order, after the tree is respelled and before the lock is taken.
+    /// A reset gets the extraction check too: its bytes can leave the store between building the reset tree and
+    /// running it (an archive removed), and since the delete phase runs before the extract phase, the store's error
+    /// would otherwise come after files were already deleted.
+    /// </summary>
+    private async Task PreflightTree(Dictionary<GamePath, SyncNode> syncTree, GameInstallation installation, Loadout.ReadOnly? loadout, BackupOverflowChoice choice)
+    {
+        RefuseTraversalPaths(syncTree);
+        KeepNeverWrittenPathsOffDisk(syncTree);
+        await PreflightActions(syncTree, loadout);
+        await RefuseExtractionsWithoutBytes(syncTree, forReset: loadout is null);
+        ProbeWritableRoots(syncTree, installation.Locations);
+        ApplyBackupOverflowChoice(syncTree, choice);
+    }
+
+    /// <summary>
+    /// Runs <see cref="ActionsInOrder"/> through every backend group, reporting each phase to the context's job (none
+    /// for a reset). With no loadout in the context (a reset), the actions that only make sense inside one are
+    /// skipped. Returns, per group, the folders that lost a file in the delete phase.
+    /// </summary>
+    private async Task<List<IReadOnlyCollection<GamePath>>> RunActionsInOrder(List<BackendGroup> groups, DeploymentContext context)
+    {
+        var job = context.Job;
+        var syncTree = context.SyncTree;
+        var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
+
+        foreach (var action in ActionsInOrder)
+        {
+            switch (action)
+            {
+                case Actions.DoNothing:
+                    break;
+
+                case Actions.BackupFile:
+                    job?.SetStatus(SyncPhases.BackingUp);
+                    foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
+                    await RootStoredFilesBeingReplaced(context);
+                    break;
+
+                case Actions.IngestFromDisk:
+                    if (SkipOutsideLoadout(context, action, "Cannot ingest files from disk when not in a loadout context")) break;
+                    job?.SetStatus(SyncPhases.IngestingChanges);
+                    foreach (var group in groups) group.Backend.Ingest(context, group.Nodes);
+                    break;
+
+                case Actions.AdaptLoadout:
+                    if (SkipOutsideLoadout(context, action, "Cannot adapt loadout when not in a loadout context")) break;
+                    job?.SetStatus(SyncPhases.UpdatingLoadout);
+                    foreach (var group in groups) await group.Backend.AdaptLoadout(context, group.Nodes);
+                    break;
+
+                case Actions.DeleteFromDisk:
+                    job?.SetStatus(SyncPhases.Deleting);
+                    foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
+                    break;
+
+                case Actions.ExtractToDisk:
+                    job?.SetStatus(SyncPhases.Deploying);
+                    foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
+                    break;
+
+                case Actions.WriteIntrinsic:
+                    if (SkipOutsideLoadout(context, action, "Cannot write intrinsic files when not in a loadout context")) break;
+                    job?.SetStatus(SyncPhases.WritingIntrinsics);
+                    foreach (var group in groups) await group.Backend.WriteIntrinsics(context, group.Nodes);
+                    break;
+
+                case Actions.AddReifiedDelete:
+                    if (SkipOutsideLoadout(context, action, "Cannot add reified deletes when not in a loadout context")) break;
+                    job?.SetStatus(SyncPhases.UpdatingDeletedFiles);
+                    foreach (var group in groups)
+                    {
+                        foreach (var (path, _) in group.Nodes.Where(n => n.Value.PlayerDeleted))
+                            Logger.LogInformation("Recording the player's deletion of {Path}: it is gone from the game folder and the row providing it was the player's, not a mod's", path);
+                        group.Backend.AddReifiedDeletes(context, group.Nodes);
+                    }
+                    break;
+
+                case Actions.WarnOfUnableToExtract:
+                    WarnOfUnableToExtract(syncTree);
+                    break;
+
+                case Actions.WarnOfConflict:
+                    WarnOfConflict(syncTree);
+                    break;
+
+                case Actions.ForgetDiskState:
+                    ActionForgetDiskState(syncTree, context.Transaction);
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown action: {action}");
+            }
+        }
+
+        return foldersWithDeletedFiles;
+    }
+
+    /// <summary>
+    /// True when the context has no loadout, so the action is skipped. A debug build refuses a tree that carries the
+    /// action instead, because it means the caller built the tree for the wrong overload.
+    /// </summary>
+    private static bool SkipOutsideLoadout(DeploymentContext context, Actions action, string message)
+    {
+        if (context.Loadout is not null) return false;
+        if (ApplicationConstants.IsDebug && context.SyncTree.Any(n => n.Value.Actions.HasFlag(action)))
+            throw new InvalidOperationException(message);
+        return true;
+    }
+
+    /// <summary>Removes each group's folders that lost a file in the delete phase, judged against the committed state.</summary>
+    private static void CleanEmptyDirectories(List<BackendGroup> groups, List<IReadOnlyCollection<GamePath>> foldersWithDeletedFiles, DeploymentContext context, DiskState newState)
+    {
         for (var i = 0; i < groups.Count; i++)
         {
             if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
-                groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newDiskState);
+                groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newState);
         }
-
-        LogSummary($"Reset of the game folder of {gameInstallation.Game.DisplayName}", syncTree, groups, context, plan);
     }
 
     private void LogSummary(string subject, Dictionary<GamePath, SyncNode> tree, List<BackendGroup> groups, DeploymentContext context, DeploymentPlan plan)
@@ -1728,7 +1707,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// Refuses, before anything is written, an apply that has to write a file whose bytes the store does not hold.
     /// The extraction would fail halfway with the store's own error; this names the files instead.
     /// </summary>
-    private async ValueTask RefuseExtractionsWithoutBytes(Dictionary<GamePath, SyncNode> syncTree)
+    private async ValueTask RefuseExtractionsWithoutBytes(Dictionary<GamePath, SyncNode> syncTree, bool forReset)
     {
         List<GamePath>? missing = null;
         foreach (var (path, node) in syncTree)
@@ -1740,7 +1719,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         if (missing is null) return;
         Logger.LogInformation("{Count} file(s) to write are not in the file store: {Paths}", missing.Count, string.Join(", ", missing.Take(20)));
-        throw new MissingFileBytesException(missing);
+        throw forReset ? MissingFileBytesException.ForReset(missing) : new MissingFileBytesException(missing);
     }
 
     private void WarnOfUnableToExtract(Dictionary<GamePath, SyncNode> groupings)
