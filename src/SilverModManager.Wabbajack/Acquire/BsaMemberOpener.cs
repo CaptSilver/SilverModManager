@@ -19,15 +19,17 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     /// </summary>
     internal static readonly int DefaultReadersPerArchive = Math.Clamp(Environment.ProcessorCount / 4, 2, 4);
 
+    private readonly TemporaryFileManager _temporaryFiles;
     private readonly int _readersPerArchive;
 
-    public BsaMemberOpener() : this(DefaultReadersPerArchive)
+    public BsaMemberOpener(TemporaryFileManager temporaryFiles) : this(temporaryFiles, DefaultReadersPerArchive)
     {
     }
 
-    internal BsaMemberOpener(int readersPerArchive)
+    internal BsaMemberOpener(TemporaryFileManager temporaryFiles, int readersPerArchive)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(readersPerArchive, 1);
+        _temporaryFiles = temporaryFiles;
         _readersPerArchive = readersPerArchive;
     }
 
@@ -39,7 +41,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
 
     /// <summary>Reads the archive's index once; its readers, one for each thread reading at the same time, are kept until it is disposed.</summary>
     public Task<INestedArchive> OpenArchive(Func<CancellationToken, Task<Stream>> openContainer, CancellationToken cancellationToken)
-        => Task.FromResult<INestedArchive>(new OpenedArchive(openContainer, _readersPerArchive));
+        => Task.FromResult<INestedArchive>(new OpenedArchive(this, openContainer, _readersPerArchive));
 
     public async Task<IReadOnlyList<RelativePath>> ListMembers(Stream archive, CancellationToken cancellationToken)
     {
@@ -58,7 +60,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     /// <summary>A reader over one stream of the archive and its entries by folded path, the first of two that differ only in case.</summary>
     private sealed record ArchiveReader(IBethesdaArchiveReader Reader, Dictionary<string, IBethesdaArchiveEntry> Entries);
 
-    private static async Task<ArchiveReader> OpenReader(Stream archive, string purpose, CancellationToken cancellationToken)
+    private async Task<ArchiveReader> OpenReader(Stream archive, string purpose, CancellationToken cancellationToken)
     {
         // The readers seek. A store stream that cannot is spooled; the reader then owns (and disposes) the spool.
         var source = archive.CanSeek ? archive : await Spool(archive, cancellationToken);
@@ -93,28 +95,18 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
         }
     }
 
-    private static async Task<Stream?> Copy(Dictionary<string, IBethesdaArchiveEntry> entries, RelativePath member, CancellationToken cancellationToken)
+    private async Task<Stream?> Copy(Dictionary<string, IBethesdaArchiveEntry> entries, RelativePath member, CancellationToken cancellationToken)
     {
         if (!entries.TryGetValue(Fold(member.ToString()), out var entry)) return null;
 
         // Returned to the resolver, which hashes it and stores it, so it has to outlive the archive.
-        var copy = new FileStream(System.IO.Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None,
-            BufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
         try
         {
-            await entry.CopyToAsync(copy, cancellationToken);
-            copy.Position = 0;
-            return copy;
+            return await DiskSpool.Fill(_temporaryFiles, BufferSize, entry.CopyToAsync, cancellationToken);
         }
         catch (BethesdaArchiveException e)
         {
-            await copy.DisposeAsync();
             throw new MemberNotFoundException($"cannot read '{member}': {e.Message}");
-        }
-        catch
-        {
-            await copy.DisposeAsync();
-            throw;
         }
     }
 
@@ -123,7 +115,7 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
     /// so a reader is lent to one member's copy and taken back. Threads beyond the reader count wait
     /// for a reader instead of opening another.
     /// </summary>
-    private sealed class OpenedArchive(Func<CancellationToken, Task<Stream>> openContainer, int readers) : INestedArchive
+    private sealed class OpenedArchive(BsaMemberOpener opener, Func<CancellationToken, Task<Stream>> openContainer, int readers) : INestedArchive
     {
         private readonly ConcurrentBag<ArchiveReader> _idle = [];
         private readonly SemaphoreSlim _readers = new(readers);
@@ -146,12 +138,12 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
         private async Task<Stream?> OpenWithReader(RelativePath member, CancellationToken cancellationToken)
         {
             if (!_idle.TryTake(out var reader))
-                reader = await OpenReader(await openContainer(cancellationToken), $"look for '{member}'", cancellationToken);
+                reader = await opener.OpenReader(await openContainer(cancellationToken), $"look for '{member}'", cancellationToken);
 
             var healthy = false;
             try
             {
-                var copy = await Copy(reader.Entries, member, cancellationToken);
+                var copy = await opener.Copy(reader.Entries, member, cancellationToken);
                 healthy = true;
                 return copy;
             }
@@ -169,22 +161,8 @@ public sealed class BsaMemberOpener : INestedArchiveOpener
         }
     }
 
-    private static async Task<Stream> Spool(Stream archive, CancellationToken cancellationToken)
-    {
-        var spool = new FileStream(System.IO.Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None,
-            BufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
-        try
-        {
-            await archive.CopyToAsync(spool, cancellationToken);
-            spool.Position = 0;
-            return spool;
-        }
-        catch
-        {
-            await spool.DisposeAsync();
-            throw;
-        }
-    }
+    private Task<Stream> Spool(Stream archive, CancellationToken cancellationToken)
+        => DiskSpool.Fill(_temporaryFiles, BufferSize, archive.CopyToAsync, cancellationToken);
 
     private static string Fold(string path) => path.Replace('\\', '/').ToLowerInvariant();
 }

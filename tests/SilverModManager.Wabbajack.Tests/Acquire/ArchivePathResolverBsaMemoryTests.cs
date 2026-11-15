@@ -233,7 +233,8 @@ public class ArchivePathResolverBsaMemoryTests(ITestOutputHelper helper) : Acqui
     public async Task TheOpenerAloneAllocatesPerMember()
     {
         var count = 300;
-        var opener = new BsaMemberOpener();
+        using var spools = new TemporaryFileManager(NexusMods.Paths.FileSystem.Shared);
+        var opener = new BsaMemberOpener(spools);
         var before = GC.GetTotalAllocatedBytes(true);
         for (var i = 0; i < count; i++)
         {

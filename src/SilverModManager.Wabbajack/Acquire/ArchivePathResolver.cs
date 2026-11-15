@@ -464,25 +464,7 @@ public sealed class ArchivePathResolver(
         if (source.CanSeek) return source;
 
         await using (source)
-        {
-            // Opened directly for DeleteOnClose, which the manager's file system cannot pass on. That skips its repair of
-            // a temp folder something removed under the running app, so the folder is made again here first.
-            var path = temporaryFiles.CreateFile().Path;
-            path.Parent.CreateDirectory();
-            var spool = new FileStream(path.GetFullPath(), FileMode.Create, FileAccess.ReadWrite, FileShare.None,
-                bufferSize: HashBufferSize, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
-            try
-            {
-                await source.CopyToAsync(spool, cancellationToken);
-                spool.Position = 0;
-                return spool;
-            }
-            catch
-            {
-                await spool.DisposeAsync();
-                throw;
-            }
-        }
+            return await DiskSpool.Fill(temporaryFiles, HashBufferSize, source.CopyToAsync, cancellationToken);
     }
 
     /// <summary>Hands the store the stream already open, positioned at the start; the caller disposes it.</summary>

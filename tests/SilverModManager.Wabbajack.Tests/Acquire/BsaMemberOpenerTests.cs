@@ -11,7 +11,9 @@ public class BsaMemberOpenerTests : IDisposable
         FileSystem.Shared,
         FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Wabbajack.Tests-{Guid.NewGuid()}")));
 
-    private readonly BsaMemberOpener _opener = new();
+    private readonly BsaMemberOpener _opener;
+
+    public BsaMemberOpenerTests() => _opener = new BsaMemberOpener(_temp);
 
     public void Dispose() => _temp.Dispose();
 
@@ -123,7 +125,7 @@ public class BsaMemberOpenerTests : IDisposable
         var bytes = await TestArchives.Tes5Archive(_temp);
         var open = 0;
         var mostOpen = 0;
-        await using var archive = await new BsaMemberOpener(readersPerArchive: 3).OpenArchive(_ =>
+        await using var archive = await new BsaMemberOpener(_temp, readersPerArchive: 3).OpenArchive(_ =>
         {
             var now = Interlocked.Increment(ref open);
             int seen;
@@ -220,6 +222,40 @@ public class BsaMemberOpenerTests : IDisposable
         var failure = await Record.ExceptionAsync(() => _opener.Open(new MemoryStream(new byte[100]), P("meshes/a.nif"), CancellationToken.None));
 
         failure.Should().BeOfType<MemberNotFoundException>().Which.Message.Should().Contain("meshes/a.nif");
+    }
+
+    [Fact]
+    public async Task AMemberCopy_LivesUnderTheAppsTempRoot()
+    {
+        var archive = await TestArchives.Tes5Archive(_temp);
+
+        await using var member = await _opener.Open(new MemoryStream(archive), TestArchives.FirstMemberPath, CancellationToken.None);
+
+        member.Should().BeOfType<FileStream>().Which.Name.Should().StartWith(RootOf(_temp), "a spool on /tmp is memory on a tmpfs system");
+    }
+
+    [Fact]
+    public async Task ANonSeekableArchive_IsSpooledUnderTheAppsTempRoot()
+    {
+        var archive = await TestArchives.Tes5Archive(_temp);
+        var root = RootOf(_temp);
+        var seen = 0;
+
+        await using var opened = await _opener.OpenArchive(_ =>
+        {
+            return Task.FromResult<Stream>(new ForwardOnlyStream(new MemoryStream(archive)));
+        }, CancellationToken.None);
+        await using var member = await opened.Open(TestArchives.SecondMemberPath, CancellationToken.None);
+        // The reader is idle between members and still holds the spool, so it is there to count.
+        if (Directory.Exists(root)) seen = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Count();
+
+        seen.Should().BeGreaterThanOrEqualTo(2, "the archive's spool and the member's copy are both under the temp root");
+    }
+
+    private static string RootOf(TemporaryFileManager temp)
+    {
+        using var probe = temp.CreateFile();
+        return probe.Path.Parent.GetFullPath();
     }
 
     private sealed class ForwardOnlyStream(Stream inner) : Stream

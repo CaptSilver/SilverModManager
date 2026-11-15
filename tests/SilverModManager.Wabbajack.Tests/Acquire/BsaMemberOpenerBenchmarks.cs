@@ -48,13 +48,14 @@ public class BsaMemberOpenerBenchmarks(ITestOutputHelper helper)
         var bsa = await CompressedBsa();
         var workers = Env("SILVER_BSA_WORKERS", 24);
 
+        using var spools = new TemporaryFileManager(NexusMods.Paths.FileSystem.Shared);
         foreach (var readers in new[] { 1, 2, 4, 8, 24 })
         {
             var best = TimeSpan.MaxValue;
             long peakWorkingSet = 0;
             for (var run = 0; run < 3; run++)
             {
-                await using var archive = await new BsaMemberOpener(readers).OpenArchive(_ => Task.FromResult<Stream>(new MemoryStream(bsa)), CancellationToken.None);
+                await using var archive = await new BsaMemberOpener(spools, readers).OpenArchive(_ => Task.FromResult<Stream>(new MemoryStream(bsa)), CancellationToken.None);
                 var clock = Stopwatch.StartNew();
                 var gate = new SemaphoreSlim(workers);
                 await Task.WhenAll(Enumerable.Range(0, Members).Select(async i =>
