@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using R3;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -26,6 +28,14 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
     {
         get => _gate.Interval;
         init => _gate.Interval = value;
+    }
+
+    /// <summary>
+    /// Where a failure to publish a report is logged, at Trace. Held in the gate for the same reason as the interval.
+    /// </summary>
+    public ILogger Logger
+    {
+        init => _gate.Logger = value;
     }
 
     public SynchronizeLoadoutJob(LoadoutId loadoutId) : this(loadoutId, new BindableReactiveProperty<string>()) {}
@@ -80,9 +90,11 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
             Progress.Value = progress;
             StatusMessage.Value = message;
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            // ignored
+            // A subscriber that throws (a binding set off the UI thread, a property already disposed) must not
+            // fail the apply, but it freezes the progress display, so leave a trace of why.
+            _gate.Logger.LogTrace(e, "Publishing the progress of loadout {LoadoutId} failed", LoadoutId);
         }
     }
 
@@ -90,5 +102,6 @@ public record SynchronizeLoadoutJob(LoadoutId LoadoutId, BindableReactivePropert
     {
         public long LastPublishedAt = Stopwatch.GetTimestamp();
         public TimeSpan Interval = DefaultPublishInterval;
+        public ILogger Logger = NullLogger.Instance;
     }
 }

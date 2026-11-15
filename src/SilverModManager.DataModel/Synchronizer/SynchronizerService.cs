@@ -208,7 +208,7 @@ public class SynchronizerService : ISynchronizerService, IDisposable
             if (target.IsValid()) await finisher.FinishIfPending(target.InstallationInstance, callerToken);
         }
 
-        await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
+        await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId) { Logger = _logger },
             async ctx =>
             {
                 var job = ctx.Definition;
