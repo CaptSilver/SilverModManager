@@ -18,6 +18,7 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Pages.Collections;
 using SilverModManager.App.UI.Pages.Collections.Update;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LoadoutPage;
@@ -57,6 +58,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
     private readonly CollectionMetadata.ReadOnly _collection;
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger _logger;
     private readonly IOverlayController _overlayController;
     private readonly IWindowNotificationService _notificationService;
     private readonly LoadoutId _targetLoadout;
@@ -83,6 +85,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         var loginManager = serviceProvider.GetRequiredService<ILoginManager>();
         var jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
         var logger = serviceProvider.GetRequiredService<ILogger<CollectionDownloadViewModel>>();
+        _logger = logger;
 
         var tileImagePipeline = ImagePipelines.GetCollectionTileImagePipeline(serviceProvider);
         var backgroundImagePipeline = ImagePipelines.GetCollectionBackgroundImagePipeline(serviceProvider);
@@ -677,8 +680,8 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     .ObserveOnUIThreadDispatcher()
                     .Subscribe(this, static (graphQlResult, self) =>
                         {
-                            // TODO: handle errors
-                            var lastPublishedRevisionNumber = graphQlResult.AssertHasData();
+                            if (!graphQlResult.TryReadPublishedRevision(self._logger, self._collection.Slug, out var lastPublishedRevisionNumber)) return;
+
                             if (!lastPublishedRevisionNumber.HasValue)
                             {
                                 self.IsUpdateAvailable.Value = false;

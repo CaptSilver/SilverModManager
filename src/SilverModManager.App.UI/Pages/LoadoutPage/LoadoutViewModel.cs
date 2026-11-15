@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
@@ -108,6 +109,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     public bool EnableCollectionSharing { get; }
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger _logger;
     private readonly NexusModsLibrary _nexusModsLibrary;
     private readonly IConnection _connection;
     private readonly IAvaloniaInterop _avaloniaInterop;
@@ -123,6 +125,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         Optional<LoadoutPageSubTabs> selectedSubTab = default) : base(windowManager)
     {
         _serviceProvider = serviceProvider;
+        _logger = serviceProvider.GetRequiredService<ILogger<LoadoutViewModel>>();
         _loadoutId = loadoutId;
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
@@ -835,7 +838,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
 
     private ValueTask UpdateCollectionInfo(ManagedCollectionLoadoutGroup.ReadOnly managedCollectionLoadoutGroup, CancellationToken cancellationToken)
     {
-        return UpdateCollectionInfo(managedCollectionLoadoutGroup, _connection, _nexusModsLibrary.GetLastPublishedRevisionNumber, cancellationToken);
+        return UpdateCollectionInfo(managedCollectionLoadoutGroup, _connection, _nexusModsLibrary.GetLastPublishedRevisionNumber, _logger, cancellationToken);
     }
 
     /// <summary>
@@ -846,13 +849,12 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         ManagedCollectionLoadoutGroup.ReadOnly managedCollectionLoadoutGroup,
         IConnection connection,
         Func<CollectionMetadata.ReadOnly, CancellationToken, ValueTask<GraphQlResult<Optional<RevisionNumber>, NotFound>>> getLastPublishedRevisionNumber,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         var graphQlResult = await getLastPublishedRevisionNumber(managedCollectionLoadoutGroup.Collection, cancellationToken);
 
-        // TODO: handle errors
-        var lastPublishedRevisionNumber = graphQlResult.AssertHasData();
-
+        if (!graphQlResult.TryReadPublishedRevision(logger, managedCollectionLoadoutGroup.Collection.Slug, out var lastPublishedRevisionNumber)) return;
         if (!lastPublishedRevisionNumber.HasValue) return;
 
         using var tx = connection.BeginTransaction();
@@ -869,14 +871,4 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     {
         return LoadoutDataProviderHelper.CannotRemove(LoadoutItem.Load(connection.Db, id));
     }
-
-    // private static IClipboard GetClipboard()
-    // {
-    //     if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
-    //     {
-    //         return window.Clipboard!;
-    //     }
-    //
-    //     return null!;
-    // }
 }
