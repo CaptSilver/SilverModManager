@@ -6,6 +6,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.ModUpdates;
 using SilverModManager.Networking.ModUpdates.Mixins;
 using SilverModManager.Networking.ModUpdates.Traits;
+using SilverModManager.Networking.NexusWebApi.Errors;
 using SilverModManager.Networking.NexusWebApi.Extensions;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -82,14 +83,17 @@ public static class RunUpdateCheck
             {
                 isTaken = await sema.WaitAsync(Timeout.Infinite, cancellationToken);
                 await UpdateModPage(db, tx,
+                    logger,
                     graphQlClient,
                     mixin,
                     cancellationToken
                 );
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // Ignored.
+                // The caller commits the shared transaction once this returns, so a cancelled refresh must
+                // surface; swallowing it would commit pages whose file lists were never brought up to date.
+                throw;
             }
             catch (Exception e)
             {
@@ -130,30 +134,41 @@ public static class RunUpdateCheck
     private static async Task UpdateModPage(
         IDb db,
         ITransaction tx,
+        ILogger logger,
         IGraphQlClient graphQlClient,
         PageMetadataMixin mixin,
         CancellationToken cancellationToken = default)
     {
         var uid = mixin.GetModPageId();
 
+        // A page Nexus no longer serves (removed, hidden, taken down) is skipped and stays due for the next check;
+        // throwing would fail every other page's refresh along with it.
         var modResult = await graphQlClient.QueryMod(uid.ModId, uid.GameId, cancellationToken);
-        // TODO: handle errors
-        var mod = modResult.AssertHasData();
-
-        mod.Resolve(db, tx, setFilesTimestamp: true);
-
-        // Update Mod Files
-        var pageEntityId = mixin.GetModPageEntityId();
+        if (!modResult.TryGetData(out var mod))
+        {
+            logger.LogWarning("Skipping update of Mod (GameID: {GameId}, ModId: {ModId}): Nexus Mods did not return the page ({Errors})", uid.GameId, uid.ModId, DescribeErrors(modResult));
+            return;
+        }
 
         var modFilesResult = await graphQlClient.QueryModFiles(uid.ModId, uid.GameId, cancellationToken: cancellationToken);
-        // TODO: handle errors
-        var modFiles = modFilesResult.AssertHasData();
+        if (!modFilesResult.TryGetData(out var modFiles))
+        {
+            logger.LogWarning("Skipping update of Mod (GameID: {GameId}, ModId: {ModId}): Nexus Mods did not return its files ({Errors})", uid.GameId, uid.ModId, DescribeErrors(modFilesResult));
+            return;
+        }
 
+        // Stamp the page as refreshed only now that its files are in hand.
+        mod.Resolve(db, tx, setFilesTimestamp: true);
+
+        var pageEntityId = mixin.GetModPageEntityId();
         foreach (var modFile in modFiles)
         {
             modFile.Resolve(db, tx, pageEntityId);
         }
     }
+
+    private static string DescribeErrors(IGraphQlResult result)
+        => string.Join("; ", result.Errors.Select(e => e.Value.Message));
 
     /// <summary>
     /// Returns all files which have a 'newer' date than the current one.
