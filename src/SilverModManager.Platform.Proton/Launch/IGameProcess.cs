@@ -19,6 +19,29 @@ public interface IGameProcess : IDisposable
 }
 
 /// <summary>
+/// Waits that keep the game under the caller's control.
+/// </summary>
+public static class GameProcessWaits
+{
+    /// <summary>
+    /// Waits for the game. On any exception, a cancelled wait included, terminates it before rethrowing: a game never
+    /// outlives a wait that failed.
+    /// </summary>
+    public static async Task<GameProcessResult> WaitOrTerminateAsync(this IGameProcess process, CancellationToken cancellationToken, IProgress<RunningProcesses>? progress = null)
+    {
+        try
+        {
+            return await process.WaitAsync(cancellationToken, progress);
+        }
+        catch
+        {
+            process.Terminate();
+            throw;
+        }
+    }
+}
+
+/// <summary>
 /// Starts game commands. Exists so a launch can be run against a fake process.
 /// </summary>
 public interface IGameProcessFactory

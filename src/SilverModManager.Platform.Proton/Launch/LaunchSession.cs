@@ -410,7 +410,7 @@ public sealed class LaunchSession
                         AttachProcess(process);
                         try
                         {
-                            exit = await WaitFor(process, new ImmediateProgress<RunningProcesses>(running => ReportOpenTools(running.Tools)), cancellationToken);
+                            exit = await process.WaitOrTerminateAsync(cancellationToken, new ImmediateProgress<RunningProcesses>(running => ReportOpenTools(running.Tools)));
                         }
                         finally
                         {
@@ -638,20 +638,6 @@ public sealed class LaunchSession
 
         _logger.LogInformation("Starting {Game}: argv [{Argv}], working directory {WorkingDirectory}", game,
             string.Join(' ', plan.Process.Argv), plan.Process.WorkingDirectory ?? "inherited");
-    }
-
-    private static async Task<GameProcessResult> WaitFor(IGameProcess process, IProgress<RunningProcesses> progress, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await process.WaitAsync(cancellationToken, progress);
-        }
-        catch
-        {
-            // Never leave the game running unattended behind an exception.
-            process.Terminate();
-            throw;
-        }
     }
 
     /// <summary>

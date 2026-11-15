@@ -41,16 +41,7 @@ public sealed class ProcessGameStarter(IGameProcessFactory processes, Deployment
             WineDllOverrideRequirements.For(installation.Game, request.Loadout), HdrLaunchEnvironment.For(request.Loadout));
 
         using var process = processes.Start(plan.Process, installation);
-        try
-        {
-            await process.WaitAsync(token);
-        }
-        catch
-        {
-            // Never leave the game running unattended behind an exception or a cancelled wait.
-            process.Terminate();
-            throw;
-        }
+        await process.WaitOrTerminateAsync(token);
         return GameStartOutcome.Exited;
     }
 
