@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Paths;
@@ -207,6 +209,68 @@ public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<Archi
 
         unmatched.Should().BeEmpty();
         Acquirer.Plan.Rows[0].State.Should().Be(ArchiveState.Manual);
+    }
+
+    [Fact]
+    public async Task DisposingWhileAWatcherScanRuns_WaitsForTheScanInsteadOfFailingIt()
+    {
+        var gate = new ManualResetEventSlim();
+        var inScan = new ManualResetEventSlim();
+        var acquirer = Substitute.For<IArchiveAcquirer>();
+        acquirer.Plan.Returns(_ =>
+        {
+            inScan.Set();
+            gate.Wait(TimeSpan.FromSeconds(30));
+            return new ArchivePlan([]);
+        });
+        var logger = new ListLogger<ArchiveInbox>();
+        var inbox = new ArchiveInbox(ServiceProvider.GetRequiredService<WabbajackPaths>(), ServiceProvider.GetRequiredService<ILibraryService>(),
+            ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(), Connection, acquirer, logger) { DebounceInterval = TimeSpan.FromMilliseconds(50) };
+        inbox.StartWatching();
+        await InboxFolder.Combine("dropped.txt").WriteAllBytesAsync(Wanted);
+        inScan.Wait(TimeSpan.FromSeconds(15)).Should().BeTrue("the watcher starts a scan, which stops at the plan");
+
+        var disposing = Task.Run(inbox.Dispose);
+        await Task.Delay(300);
+        var finishedEarly = disposing.IsCompleted;
+        gate.Set();
+        await disposing.WaitAsync(TimeSpan.FromSeconds(15));
+        await Task.Delay(200);
+
+        finishedEarly.Should().BeFalse("Dispose has to wait for the scan that is still running");
+        logger.Messages(LogLevel.Error).Should().BeEmpty("a scan that outlives its semaphore fails with ObjectDisposedException");
+    }
+
+    [Fact]
+    public async Task DisposingWhileTheDebounceCallbackIsStillInItsScan_WaitsForIt()
+    {
+        // A .part file wakes the watcher but has nothing to hash, so the scan runs inside the timer callback all the
+        // way to the plan, before the callback has handed its task over to be waited for.
+        var gate = new ManualResetEventSlim();
+        var inScan = new ManualResetEventSlim();
+        var acquirer = Substitute.For<IArchiveAcquirer>();
+        acquirer.Plan.Returns(_ =>
+        {
+            inScan.Set();
+            gate.Wait(TimeSpan.FromSeconds(30));
+            return new ArchivePlan([]);
+        });
+        var logger = new ListLogger<ArchiveInbox>();
+        var inbox = new ArchiveInbox(ServiceProvider.GetRequiredService<WabbajackPaths>(), ServiceProvider.GetRequiredService<ILibraryService>(),
+            ServiceProvider.GetRequiredService<ILibraryArchiveLocator>(), Connection, acquirer, logger) { DebounceInterval = TimeSpan.FromMilliseconds(50) };
+        inbox.StartWatching();
+        await InboxFolder.Combine("dropped.part").WriteAllBytesAsync(Wanted);
+        inScan.Wait(TimeSpan.FromSeconds(15)).Should().BeTrue("the watcher starts a scan, which stops at the plan");
+
+        var disposing = Task.Run(inbox.Dispose);
+        await Task.Delay(300);
+        var finishedEarly = disposing.IsCompleted;
+        gate.Set();
+        await disposing.WaitAsync(TimeSpan.FromSeconds(15));
+        await Task.Delay(200);
+
+        finishedEarly.Should().BeFalse("Dispose has to wait for the scan the timer callback is still running");
+        logger.Messages(LogLevel.Error).Should().BeEmpty("a scan that outlives its semaphore fails with ObjectDisposedException");
     }
 
     [Fact]

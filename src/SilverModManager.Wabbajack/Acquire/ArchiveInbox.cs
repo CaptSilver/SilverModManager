@@ -37,6 +37,9 @@ public sealed class ArchiveInbox(
     private readonly Lock _watchLock = new();
     private FileSystemWatcher? _watcher;
     private Timer? _debounce;
+    // Cancelled by Dispose so a watcher scan stops hashing; those scans are tracked so Dispose can wait them out.
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly ConcurrentDictionary<Task, byte> _watcherScans = new();
     private bool _waitingForPlan;
 
     /// <summary>How long the folder has to be quiet before a change triggers a scan.</summary>
@@ -227,7 +230,7 @@ public sealed class ArchiveInbox(
 
     private void StartWatcher()
     {
-        _debounce = new Timer(_ => _ = ScanAfterChange());
+        _debounce = new Timer(_ => TrackScan(ScanAfterChange()));
         _watcher = new FileSystemWatcher(paths.Inbox.ToString())
         {
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
@@ -240,11 +243,21 @@ public sealed class ArchiveInbox(
 
     private void Schedule() => _debounce?.Change(DebounceInterval, Timeout.InfiniteTimeSpan);
 
+    private void TrackScan(Task scan)
+    {
+        _watcherScans.TryAdd(scan, 0);
+        _ = scan.ContinueWith(done => _watcherScans.TryRemove(done, out _), TaskScheduler.Default);
+    }
+
     private async Task ScanAfterChange()
     {
         try
         {
-            await Scan(CancellationToken.None);
+            await Scan(_lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The inbox is being disposed.
         }
         catch (Exception e)
         {
@@ -256,8 +269,17 @@ public sealed class ArchiveInbox(
     {
         acquirer.PlanChanged -= OnPlanChanged;
         _watcher?.Dispose();
-        _debounce?.Dispose();
+        // A callback can still be running its scan synchronously (nothing to hash yet) before it has tracked it.
+        if (_debounce is not null)
+        {
+            using var callbacksDone = new ManualResetEvent(false);
+            if (_debounce.Dispose(callbacksDone)) callbacksDone.WaitOne();
+        }
+        _lifetime.Cancel();
+        // On the pool, so a scan's continuations cannot need the thread that is blocked waiting for them.
+        Task.Run(() => Task.WhenAll(_watcherScans.Keys)).GetAwaiter().GetResult();
         _scanning.Dispose();
+        _lifetime.Dispose();
     }
 
     /// <summary>
