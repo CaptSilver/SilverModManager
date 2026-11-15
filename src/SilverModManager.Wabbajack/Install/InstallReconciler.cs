@@ -1,6 +1,7 @@
 using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Wabbajack.Format;
@@ -232,4 +233,36 @@ internal static class InstallReconciler
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static bool IsSettings(string folder) => folder.Equals(Mo2Layout.ProfileSettingsGroup, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The rows at a loadout-named tweak path of the list's settings group whose bytes are the list's own: still what the
+    /// list wrote (the xxHash64 of the stored bytes is the one recorded with the row), or the very bytes of the list's tweak.
+    /// The list's tweak is an inline file, so no library file holds its bytes to compare with.
+    /// </summary>
+    public static async Task<Func<GamePath, FileIdentity, bool>> ListOutputRows(IFileStore fileStore, WriteState state, string listName)
+    {
+        var listOutputs = new HashSet<(GamePath Path, FileIdentity Identity)>();
+        if (state.Files.TryGetValue(Mo2Layout.ProfileSettingsGroup, out var files))
+        {
+            foreach (var path in files.Paths)
+            {
+                if (!IniTweakLayers.IsLoadoutTweakPath(path, out var target)) continue;
+
+                var listPath = IniTweakLayers.TweakPath(IniTweakLayers.LayerName(listName), target);
+                foreach (var (identity, known) in files.AtPath(path))
+                {
+                    if (known.Wanted || known.Ids.Count == 0) continue;
+                    if (files.TryGet(listPath, identity, out _) || await IsListOutput(fileStore, known, identity)) listOutputs.Add((path, identity));
+                }
+            }
+        }
+        return (path, identity) => listOutputs.Contains((path, identity));
+    }
+
+    /// <summary>Whether a legacy row still holds what the list wrote: the xxHash64 of its bytes is the one recorded with the row.</summary>
+    private static async Task<bool> IsListOutput(IFileStore fileStore, KnownFile known, FileIdentity identity)
+    {
+        if (known.ListHash is not { } recorded) return false;
+        return FileIdentity.XxHash64(Xx64Hasher.Hash(await fileStore.Load(identity))).Equals(recorded);
+    }
 }
